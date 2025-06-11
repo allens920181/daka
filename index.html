@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>簡易打卡系統</title>
+    <style>
+:root {
+    /* Color Palette */
+    --primary-color: #6B7280; /* Muted blue-gray for primary actions */
+    --secondary-color: #6D7280; /* Muted grayish-purple for secondary actions */
+    --background-color: #F7F7F9; /* Light grayish-white background */
+    --card-background: rgba(255, 255, 255, 0.5); /* Highly translucent white for cards */
+    --modal-background: rgba(255, 255, 255, 0.65); /* Translucent modal */
+    --text-primary: #2D2D2D; /* Soft black for main content */
+    --text-secondary: #9CA3AF; /* Light gray for secondary info */
+    --border-color: rgba(0, 0, 0, 0.08); /* Subtler borders */
+    --hover-overlay: rgba(107, 114, 128, 0.1); /* Hover effect aligned with primary color */
+    --active-overlay: rgba(107, 114, 128, 0.2); /* Active effect aligned with primary color */
+    --shadow-color: rgba(0, 0, 0, 0.08); /* Softer shadow */
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 15px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.search-filter-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    margin-bottom: 15px;
+}
+
+.search-input-wrapper {
+    position: relative;
+    flex-grow: 1;
+}
+
+.search-filter input {
+    width: 100%;
+    padding: 12px 40px 12px 15px;
+    font-size: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px 0 0 12px;
+    background-color: var(--card-background);
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    height: 48px;
+}
+
+.search-filter input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--hover-overlay);
+    outline: none;
+}
+
+.clear-search {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.3s;
+}
+
+.clear-search:hover {
+    color: var(--text-primary);
+}
+
+.search-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0 20px;
+    border-radius: 0 12px 12px 0;
+    cursor: pointer;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.search-button:hover {
+    background-color: #005ECB;
+    transform: translateY(-1px);
+}
+
+.search-button:active {
+    transform: translateY(0);
+}
+
+.filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.filter-button {
+    padding: 10px 0;
+    cursor: pointer;
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: all 0.3s;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    flex: 1;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+}
+
+.filter-button:hover {
+    background-color: var(--hover-overlay);
+}
+
+.filter-button.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+#nameList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+    width: 100%;
+}
+
+.name-item {
+    background-color: var(--card-background);
+    padding: 15px;
+    border-radius: 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    backdrop-filter: blur(10px);
+}
+
+.name-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.language-switch {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+    justify-content: flex-end;
+}
+
+.language-button {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-background);
+    cursor: pointer;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s;
+    backdrop-filter: blur(10px);
+}
+
+.language-button.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.name-info {
+    flex-grow: 1;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 51px;
+    height: 31px;
+    margin-left: 15px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #D1D5DB;
+    transition: background-color 0.3s;
+    border-radius: 31px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 27px;
+    width: 27px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: transform 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+button {
+    padding: 12px 24px;
+    cursor: pointer;
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+#openInputButton {
+    background-color: var(--primary-color);
+    color: white;
+    margin-left: auto;
+    transition: transform 0.2s, background-color 0.3s;
+}
+
+#openInputButton:hover {
+    background-color: #005ECB;
+    transform: translateY(-1px);
+}
+
+.check-time {
+    font-size: 12px;
+    margin-top: 5px;
+    color: var(--text-secondary);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background-color: var(--modal-background);
+    margin: 10% auto;
+    padding: 25px;
+    border-radius: 18px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 5px 15px var(--shadow-color);
+    animation: slideIn 0.3s;
+    backdrop-filter: blur(12px);
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    margin-bottom: 20px;
+}
+
+.modal-close {
+    color: var(--text-secondary);
+    float: right;
+    font-size: 24px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.textarea-container {
+    margin-bottom: 20px;
+}
+
+.textarea-container textarea {
+    width: 100%;
+    height: 200px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 16px;
+    resize: vertical;
+    background-color: var(--card-background);
+    backdrop-filter: blur(10px);
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    text-align: right;
+}
+
+#loadNamesButton {
+    background-color: var(--primary-color);
+    color: white;
+    transition: transform 0.2s, background-color 0.3s;
+}
+
+#loadNamesButton:hover {
+    background-color: #005ECB;
+    transform: translateY(-1px);
+}
+
+.cancel-button {
+    background-color: var(--card-background);
+    color: var(--text-primary);
+    margin-right: 10px;
+    transition: transform 0.2s, background-color 0.3s;
+}
+
+.cancel-button:hover {
+    background-color: var(--hover-overlay);
+    transform: translateY(-1px);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    #nameList {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        margin: 15% auto;
+        width: 95%;
+        padding: 20px;
+    }
+
+    #openInputButton {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 0 10px;
+    }
+
+    .filter-button {
+        padding: 8px 15px;
+        font-size: 13px;
+    }
+
+    .search-filter input {
+        padding: 10px 40px 10px 12px;
+        font-size: 14px;
+    }
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="language-switch">
+            <div class="language-button active" data-lang="zh">中文</div>
+            <div class="language-button" data-lang="en">English</div>
+        </div>
+        
+        <div class="header">
+            <h1>簡易打卡系統</h1>
+        </div>
+        
+        <button id="openInputButton">輸入名單</button>
+        
+        <div class="search-filter-container">
+            <div class="search-input-wrapper search-filter">
+                <input type="text" id="searchInput" placeholder="搜尋姓名...">
+                <button class="clear-search" id="clearSearch">&times;</button>
+            </div>
+            <button class="search-button" id="searchButton">搜尋</button>
+        </div>
+        
+        <div class="filter-buttons">
+            <div class="filter-button active" data-filter="all">全部 (<span id="totalCount">0</span>)</div>
+            <div class="filter-button" data-filter="not-checked">未打卡 (<span id="notCheckedCount">0</span>)</div>
+            <div class="filter-button" data-filter="checked">已打卡 (<span id="checkedCount">0</span>)</div>
+        </div>
+        
+        <div id="nameList"></div>
+    </div>
+    
+    <!-- 名單輸入模態窗 -->
+    <div id="inputModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-close">&times;</span>
+                <h2>輸入名單</h2>
+            </div>
+            <div class="modal-body">
+                <div class="textarea-container">
+                    <textarea id="namesInput" placeholder="請輸入姓名，每行一個名字"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-button">取消</button>
+                <button id="loadNamesButton">載入名單</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 元素引用
+            const openInputButton = document.getElementById('openInputButton');
+            const inputModal = document.getElementById('inputModal');
+            const modalClose = document.querySelector('.modal-close');
+            const cancelButton = document.querySelector('.cancel-button');
+            const namesInput = document.getElementById('namesInput');
+            const loadNamesButton = document.getElementById('loadNamesButton');
+            const nameList = document.getElementById('nameList');
+            const searchInput = document.getElementById('searchInput');
+            const clearSearchButton = document.getElementById('clearSearch');
+            const searchButton = document.getElementById('searchButton');
+            const filterButtons = document.querySelectorAll('.filter-button');
+            const totalCountSpan = document.getElementById('totalCount');
+            const checkedCountSpan = document.getElementById('checkedCount');
+            const notCheckedCountSpan = document.getElementById('notCheckedCount');
+            
+            // 數據
+            let names = [];
+            let checkedInNames = {};
+            let checkedInTimes = {};
+            let activeFilter = 'all';
+            let currentLang = 'zh'; // 預設語言為中文
+            
+            // 從localStorage加載數據
+            function loadDataFromStorage() {
+                const savedNames = localStorage.getItem('punchCardNames');
+                const savedCheckedInNames = localStorage.getItem('punchCardCheckedInNames');
+                const savedCheckedInTimes = localStorage.getItem('punchCardCheckedInTimes');
+                const savedLang = localStorage.getItem('punchCardLanguage');
+                
+                if (savedNames) {
+                    names = JSON.parse(savedNames);
+                }
+                
+                if (savedCheckedInNames) {
+                    checkedInNames = JSON.parse(savedCheckedInNames);
+                }
+                
+                if (savedCheckedInTimes) {
+                    checkedInTimes = JSON.parse(savedCheckedInTimes);
+                }
+                
+                if (savedLang) {
+                    currentLang = savedLang;
+                    switchLanguage(currentLang);
+                }
+                
+                renderNameList();
+                updateCounts();
+            }
+            
+            // 保存數據到localStorage
+            function saveDataToStorage() {
+                localStorage.setItem('punchCardNames', JSON.stringify(names));
+                localStorage.setItem('punchCardCheckedInNames', JSON.stringify(checkedInNames));
+                localStorage.setItem('punchCardCheckedInTimes', JSON.stringify(checkedInTimes));
+                localStorage.setItem('punchCardLanguage', currentLang);
+            }
+            
+            // 語言包
+            const translations = {
+                zh: {
+                    title: '簡易打卡系統',
+                    inputNames: '輸入名單',
+                    searchPlaceholder: '搜尋姓名...',
+                    search: '搜尋',
+                    all: '全部',
+                    notCheckedIn: '未打卡',
+                    checkedIn: '已打卡',
+                    inputNamesList: '輸入名單',
+                    inputPlaceholder: '請輸入姓名，每行一個名字',
+                    cancel: '取消',
+                    load: '載入名單',
+                    noNames: '請輸入姓名列表！',
+                    noValidNames: '未找到有效姓名！'
+                },
+                en: {
+                    title: 'Simple Check-in System',
+                    inputNames: 'Input Names',
+                    searchPlaceholder: 'Search names...',
+                    search: 'Search',
+                    all: 'All',
+                    notCheckedIn: 'Not Checked In',
+                    checkedIn: 'Checked In',
+                    inputNamesList: 'Input Names List',
+                    inputPlaceholder: 'Enter names, one per line',
+                    cancel: 'Cancel',
+                    load: 'Load Names',
+                    noNames: 'Please enter a name list!',
+                    noValidNames: 'No valid names found!'
+                }
+            };
+            
+            // 語言切換按鈕
+            const languageButtons = document.querySelectorAll('.language-button');
+            
+            // 切換語言
+            function switchLanguage(lang) {
+                if (lang === currentLang) return;
+                
+                currentLang = lang;
+                languageButtons.forEach(btn => {
+                    if (btn.dataset.lang === lang) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                // 更新界面文字
+                document.querySelector('h1').textContent = translations[lang].title;
+                document.getElementById('openInputButton').textContent = translations[lang].inputNames;
+                document.getElementById('searchInput').placeholder = translations[lang].searchPlaceholder;
+                document.getElementById('searchButton').textContent = translations[lang].search;
+                
+                // 更新過濾按鈕文字
+                const filterButtons = document.querySelectorAll('.filter-button');
+                filterButtons[0].childNodes[0].textContent = translations[lang].all + ' (';
+                filterButtons[1].childNodes[0].textContent = translations[lang].notCheckedIn + ' (';
+                filterButtons[2].childNodes[0].textContent = translations[lang].checkedIn + ' (';
+                
+                // 更新模態窗文字
+                document.querySelector('.modal-header h2').textContent = translations[lang].inputNamesList;
+                document.getElementById('namesInput').placeholder = translations[lang].inputPlaceholder;
+                document.querySelector('.cancel-button').textContent = translations[lang].cancel;
+                document.getElementById('loadNamesButton').textContent = translations[lang].load;
+                
+                // 重新渲染名單（如果有）
+                if (names.length > 0) {
+                    renderNameList();
+                }
+            }
+            
+            // 語言切換按鈕點擊事件
+            languageButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    switchLanguage(this.dataset.lang);
+                    saveDataToStorage(); // 保存語言設定
+                });
+            });
+            
+            // 關閉模態窗的多種方式
+            modalClose.addEventListener('click', closeModal);
+            cancelButton.addEventListener('click', closeModal);
+            window.addEventListener('click', function(event) {
+                if (event.target === inputModal) {
+                    closeModal();
+                }
+            });
+            
+            // 打開名單輸入模態窗
+            openInputButton.addEventListener('click', function() {
+                inputModal.style.display = 'block';
+            });
+            
+            function closeModal() {
+                inputModal.style.display = 'none';
+            }
+            
+            // 清空搜尋框
+            clearSearchButton.addEventListener('click', function() {
+                searchInput.value = '';
+                searchInput.focus();
+                renderNameList();
+            });
+            
+            // 搜尋按鈕
+            searchButton.addEventListener('click', function() {
+                renderNameList();
+            });
+            
+            // 載入名單按鈕點擊事件
+            loadNamesButton.addEventListener('click', function() {
+                const inputText = namesInput.value.trim();
+                if (!inputText) {
+                    alert(translations[currentLang].noNames);
+                    return;
+                }
+                
+                // 將輸入文字按行分割成名字數組
+                names = inputText.split('\n')
+                    .map(name => name.trim())
+                    .filter(name => name.length > 0);
+                
+                if (names.length === 0) {
+                    alert(translations[currentLang].noValidNames);
+                    return;
+                }
+                
+                // 重置打卡狀態
+                checkedInNames = {};
+                checkedInTimes = {};
+                
+                // 渲染名單
+                renderNameList();
+                updateCounts();
+                saveDataToStorage(); // 保存到本地存儲
+                closeModal();
+            });
+            
+            // 渲染名單
+            function renderNameList() {
+                nameList.innerHTML = '';
+                
+                names.forEach(name => {
+                    const isCheckedIn = checkedInNames[name] || false;
+                    
+                    // 根據過濾條件決定是否顯示
+                    let shouldDisplay = true;
+                    if (activeFilter === 'checked' && !isCheckedIn) {
+                        shouldDisplay = false;
+                    } else if (activeFilter === 'not-checked' && isCheckedIn) {
+                        shouldDisplay = false;
+                    }
+                    
+                    // 根據搜尋條件決定是否顯示
+                    const searchTerm = searchInput.value.toLowerCase();
+                    if (searchTerm && !name.toLowerCase().includes(searchTerm)) {
+                        shouldDisplay = false;
+                    }
+                    
+                    if (shouldDisplay) {
+                        const nameElement = document.createElement('div');
+                        nameElement.className = `name-item ${isCheckedIn ? 'checked-in' : ''}`;
+                        nameElement.dataset.name = name;
+                        
+                        // 名字與時間信息
+                        const nameInfo = document.createElement('div');
+                        nameInfo.className = 'name-info';
+                        
+                        // 名字顯示
+                        const nameText = document.createElement('div');
+                        nameText.textContent = name;
+                        nameText.style.fontSize = '16px';
+                        nameInfo.appendChild(nameText);
+                        
+                        // 如果已打卡，顯示打卡時間
+                        if (isCheckedIn && checkedInTimes[name]) {
+                            const timeElement = document.createElement('div');
+                            timeElement.className = 'check-time';
+                            timeElement.textContent = checkedInTimes[name];
+                            nameInfo.appendChild(timeElement);
+                        }
+                        
+                        nameElement.appendChild(nameInfo);
+                        
+                        // 創建滑動開關
+                        const switchLabel = document.createElement('label');
+                        switchLabel.className = 'switch';
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.checked = isCheckedIn;
+                        checkbox.dataset.name = name;
+                        
+                        const slider = document.createElement('span');
+                        slider.className = 'slider';
+                        
+                        switchLabel.appendChild(checkbox);
+                        switchLabel.appendChild(slider);
+                        nameElement.appendChild(switchLabel);
+                        
+                        // 設置整個卡片的點擊事件
+                        nameElement.addEventListener('click', function(event) {
+                            // 如果點擊的是滑動開關或其內部元素，不執行額外操作
+                            if (event.target === checkbox || 
+                                event.target === slider || 
+                                switchLabel.contains(event.target)) {
+                                return;
+                            }
+                            
+                            // 切換打卡狀態
+                            const name = this.dataset.name;
+                            const isCurrentlyChecked = checkedInNames[name] || false;
+                            
+                            if (!isCurrentlyChecked) {
+                                // 打卡
+                                checkedInNames[name] = true;
+                                checkedInTimes[name] = getCurrentTime();
+                                this.classList.add('checked-in');
+                                checkbox.checked = true;
+                            } else {
+                                // 取消打卡
+                                checkedInNames[name] = false;
+                                delete checkedInTimes[name];
+                                this.classList.remove('checked-in');
+                                checkbox.checked = false;
+                            }
+                            
+                            updateCounts();
+                            saveDataToStorage(); // 保存到本地存儲
+                            renderNameList();
+                        });
+                        
+                        // 設置開關的點擊事件
+                        checkbox.addEventListener('change', function(event) {
+                            event.stopPropagation(); // 防止事件冒泡
+                            const name = this.dataset.name;
+                            const isChecked = this.checked;
+                            
+                            if (isChecked) {
+                                // 打卡
+                                checkedInNames[name] = true;
+                                checkedInTimes[name] = getCurrentTime();
+                                nameElement.classList.add('checked-in');
+                            } else {
+                                // 取消打卡
+                                checkedInNames[name] = false;
+                                delete checkedInTimes[name];
+                                nameElement.classList.remove('checked-in');
+                            }
+                            
+                            updateCounts();
+                            saveDataToStorage(); // 保存到本地存儲
+                            renderNameList();
+                        });
+                        
+                        nameList.appendChild(nameElement);
+                    }
+                });
+            }
+            
+            // 搜尋輸入事件
+            searchInput.addEventListener('input', function() {
+                renderNameList();
+            });
+            
+            // 搜尋框按下Enter事件
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    renderNameList();
+                }
+            });
+            
+            // 過濾按鈕點擊事件
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    activeFilter = this.dataset.filter;
+                    
+                    // 清空搜尋框
+                    searchInput.value = '';
+                    
+                    renderNameList();
+                });
+            });
+            
+            // 獲取當前時間
+            function getCurrentTime() {
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                const seconds = now.getSeconds().toString().padStart(2, '0');
+                return `${hours}:${minutes}:${seconds}`;
+            }
+            
+            // 更新計數器
+            function updateCounts() {
+                const total = names.length;
+                const checked = Object.values(checkedInNames).filter(v => v).length;
+                const notChecked = total - checked;
+                
+                totalCountSpan.textContent = total;
+                checkedCountSpan.textContent = checked;
+                notCheckedCountSpan.textContent = notChecked;
+            }
+        });
+    </script>
+</body>
+</html>
