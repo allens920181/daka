@@ -4,20 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>簡易打卡系統</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <style>
 :root {
-    /* Color Palette */
-    --primary-color: #6B7280; /* Muted blue-gray for primary actions */
-    --secondary-color: #6D7280; /* Muted grayish-purple for secondary actions */
-    --background-color: #F7F7F9; /* Light grayish-white background */
-    --card-background: rgba(255, 255, 255, 0.5); /* Highly translucent white for cards */
-    --modal-background: rgba(255, 255, 255, 0.65); /* Translucent modal */
-    --text-primary: #2D2D2D; /* Soft black for main content */
-    --text-secondary: #9CA3AF; /* Light gray for secondary info */
-    --border-color: rgba(0, 0, 0, 0.08); /* Subtler borders */
-    --hover-overlay: rgba(107, 114, 128, 0.1); /* Hover effect aligned with primary color */
-    --active-overlay: rgba(107, 114, 128, 0.2); /* Active effect aligned with primary color */
-    --shadow-color: rgba(0, 0, 0, 0.08); /* Softer shadow */
+    --primary-color: #007AFF;
+    --secondary-color: #6C757D;
+    --background-color: #F8F9FA;
+    --card-background: #FFFFFF;
+    --modal-background: #FFFFFF;
+    --text-primary: #212529;
+    --text-secondary: #6C757D;
+    --border-color: #DEE2E6;
+    --hover-overlay: rgba(0, 122, 255, 0.1);
+    --active-overlay: rgba(0, 122, 255, 0.2);
+    --shadow-color: rgba(0, 0, 0, 0.1);
+
+    --dark-primary-color: #0A84FF;
+    --dark-secondary-color: #8E8E93;
+    --dark-background-color: #1C1C1E;
+    --dark-card-background: #2C2C2E;
+    --dark-modal-background: #2C2C2E;
+    --dark-text-primary: #FFFFFF;
+    --dark-text-secondary: #8D8D93;
+    --dark-border-color: #3A3A3C;
+    --dark-hover-overlay: rgba(10, 132, 255, 0.1);
+    --dark-active-overlay: rgba(10, 132, 255, 0.2);
+    --dark-shadow-color: rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -27,13 +39,14 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     width: 100%;
     margin: 0 auto;
     padding: 20px;
     background-color: var(--background-color);
     color: var(--text-primary);
-    line-height: 1.5;
+    line-height: 1.6;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .container {
@@ -52,6 +65,8 @@ body {
     flex-wrap: wrap;
     gap: 15px;
     margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 h1 {
@@ -77,9 +92,8 @@ h1 {
     padding: 12px 40px 12px 15px;
     font-size: 16px;
     border: 1px solid var(--border-color);
-    border-radius: 12px 0 0 12px;
+    border-radius: 10px 0 0 10px;
     background-color: var(--card-background);
-    backdrop-filter: blur(10px);
     transition: border-color 0.3s, box-shadow 0.3s;
     height: 48px;
 }
@@ -113,7 +127,7 @@ h1 {
     color: white;
     border: none;
     padding: 0 20px;
-    border-radius: 0 12px 12px 0;
+    border-radius: 0 10px 10px 0;
     cursor: pointer;
     height: 48px;
     display: flex;
@@ -126,7 +140,7 @@ h1 {
 
 .search-button:hover {
     background-color: #005ECB;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 .search-button:active {
@@ -143,21 +157,20 @@ h1 {
 }
 
 .filter-button {
-    padding: 10px 0;
+    padding: 8px 16px;
     cursor: pointer;
     background-color: var(--card-background);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 10px;
     transition: all 0.3s;
     font-size: 14px;
     font-weight: 500;
     text-align: center;
     flex: 1;
-    height: 48px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(10px);
 }
 
 .filter-button:hover {
@@ -179,20 +192,20 @@ h1 {
 
 .name-item {
     background-color: var(--card-background);
-    padding: 15px;
-    border-radius: 14px;
+    padding: 20px;
+    border-radius: 12px;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
     transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
-    box-shadow: 0 2px 8px var(--shadow-color);
-    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px var(--shadow-color);
+    border: 1px solid var(--border-color);
 }
 
 .name-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px var(--shadow-color);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px var(--shadow-color);
 }
 
 .language-switch {
@@ -217,7 +230,6 @@ h1 {
     font-size: 14px;
     font-weight: 500;
     transition: all 0.3s;
-    backdrop-filter: blur(10px);
 }
 
 .language-button.active {
@@ -292,11 +304,12 @@ button {
     color: white;
     margin-left: auto;
     transition: transform 0.2s, background-color 0.3s;
+    border-radius: 10px;
 }
 
 #openInputButton:hover {
     background-color: #005ECB;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 .check-time {
@@ -336,7 +349,7 @@ button {
 }
 
 @keyframes slideIn {
-    from { transform: translateY(-50px); opacity: 0; }
+    from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
 
@@ -386,11 +399,12 @@ button {
     background-color: var(--primary-color);
     color: white;
     transition: transform 0.2s, background-color 0.3s;
+    border-radius: 10px;
 }
 
 #loadNamesButton:hover {
     background-color: #005ECB;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 .cancel-button {
@@ -398,11 +412,13 @@ button {
     color: var(--text-primary);
     margin-right: 10px;
     transition: transform 0.2s, background-color 0.3s;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
 }
 
 .cancel-button:hover {
     background-color: var(--hover-overlay);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
 /* Responsive Adjustments */
@@ -447,13 +463,64 @@ button {
         font-size: 14px;
     }
 }
+
+.top-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+#theme-toggle {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+#theme-toggle:hover {
+    background-color: var(--hover-overlay);
+}
+
+#theme-toggle svg {
+    stroke: var(--text-primary);
+    transition: stroke 0.3s;
+}
+
+.dark-mode {
+    --primary-color: var(--dark-primary-color);
+    --secondary-color: var(--dark-secondary-color);
+    --background-color: var(--dark-background-color);
+    --card-background: var(--dark-card-background);
+    --modal-background: var(--dark-modal-background);
+    --text-primary: var(--dark-text-primary);
+    --text-secondary: var(--dark-text-secondary);
+    --border-color: var(--dark-border-color);
+    --hover-overlay: var(--dark-hover-overlay);
+    --active-overlay: var(--dark-active-overlay);
+    --shadow-color: var(--dark-shadow-color);
+}
+
+.dark-mode #theme-toggle svg {
+    stroke: var(--dark-text-primary);
+}
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="language-switch">
-            <div class="language-button active" data-lang="zh">中文</div>
-            <div class="language-button" data-lang="en">English</div>
+        <div class="top-controls">
+            <div class="language-switch">
+                <div class="language-button active" data-lang="zh">中文</div>
+                <div class="language-button" data-lang="en">English</div>
+            </div>
+            <button id="theme-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            </button>
         </div>
         
         <div class="header">
@@ -867,6 +934,31 @@ button {
                 checkedCountSpan.textContent = checked;
                 notCheckedCountSpan.textContent = notChecked;
             }
+
+            // Theme switching
+            const themeToggleButton = document.getElementById('theme-toggle');
+            const body = document.body;
+
+            function setTheme(theme) {
+                if (theme === 'dark') {
+                    body.classList.add('dark-mode');
+                    themeToggleButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+                } else {
+                    body.classList.remove('dark-mode');
+                    themeToggleButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
+                }
+            }
+
+            themeToggleButton.addEventListener('click', () => {
+                const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                setTheme(newTheme);
+                localStorage.setItem('punchCardTheme', newTheme);
+            });
+
+            // Load saved theme
+            const savedTheme = localStorage.getItem('punchCardTheme') || 'light';
+            setTheme(savedTheme);
         });
     </script>
 </body>
