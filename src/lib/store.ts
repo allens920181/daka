@@ -49,6 +49,14 @@ export const groups = computed(() => groupsOf(members.value))
 export const pendingUploads = computed(() =>
   room.value ? countForRoom(outbox.value, room.value.code) : 0,
 )
+/**
+ * 剛複製出來的房號。房間畫面進來看到自己就會自動打開分享面板，然後清掉。
+ *
+ * 複製回程房會換一組新房號，而五支協助的手機還開著舊房——他們的畫面完全沒有
+ * 變化，會繼續在舊房打勾。這是整條動線裡最貴的失敗，而且是靜默的。
+ */
+export const shareOnEnter = signal<string | null>(null)
+
 export const isOwner = computed(() => {
   const code = room.value?.code
   if (!code) return false
@@ -181,6 +189,10 @@ export async function refreshMyRooms(): Promise<void> {
 
 function handleOnline(): void {
   void flushOutbox().then(() => reconcile().catch(() => {}))
+  // 身分也要跟著恢復。refreshMyRooms 只在啟動與登入時跑過，訊號差時它靜默
+  // 失敗，於是換過手機的主揪會被降級成「協助點名」——管理功能整片消失，
+  // 畫面還當著他的面把他標成協助者，而且連上網也不會自己好。
+  void refreshMyRooms()
 }
 
 function handleOffline(): void {
@@ -388,7 +400,10 @@ export async function enterRoom(code: string): Promise<void> {
 
   const r = room.value
   if (r) {
-    const wasOwner = recentRooms.value.find((x) => x.code === c)?.isOwner ?? false
+    // 帳號那一邊也算數：離線時 myRooms 可能是空的，但只要本機記得自己是主揪
+    // 就不能因為這一次進房把標記洗掉。
+    const wasOwner = (recentRooms.value.find((x) => x.code === c)?.isOwner ?? false) ||
+      myRooms.value.some((x) => x.code === c)
     recentRooms.value = await rememberRoom({ code: c, name: r.name, isOwner: wasOwner, lastSeen: Date.now() })
   }
   refreshConnection()

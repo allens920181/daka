@@ -411,9 +411,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* === 計數區 ============================================================== */
 
 .scoreboard {
-  display: flex; align-items: baseline; gap: var(--sp-3);
+  display: flex; align-items: center; gap: var(--sp-3);
   padding: var(--sp-4) 0 var(--sp-3);
 }
+.score-main { align-self: baseline; }
 .score-main { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
 .score-number {
   font-size: var(--fs-8); font-weight: 800; line-height: 1;
@@ -433,11 +434,25 @@ button, input, textarea, select { font: inherit; color: inherit; }
   margin-left: auto; font-size: var(--fs-4); font-weight: 700;
   color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
+/* 「複製結果」是收尾動作，留在計分區這一列——那是數字所在的地方，也是
+   收尾時眼睛本來就在看的地方。窄螢幕上收成純圖示（aria-label 保留）。 */
+.score-copy { flex: none; padding: 0 var(--sp-3); }
+@media (max-width: 359px) {
+  .score-copy-text { position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .score-copy { padding: 0 var(--sp-2); }
+}
 
-.progress-row { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+/*
+ * 進度條是計分區的下緣，不自己佔一列。
+ * 控制項的節奏用兩個值而不是一個：同一群內 8px，跨群 24px。五段等距的橫條
+ * 會讓所有東西看起來一樣重要，也就是一樣不重要——志工第一次拿到手機，要在
+ * 兩秒內看出「上面是答案、下面是切片」。
+ */
 .progress {
-  flex: 1; height: 6px; border-radius: var(--r-full);
+  height: 6px; border-radius: var(--r-full);
   background: var(--surface-3); overflow: hidden;
+  margin-bottom: var(--sp-5);
 }
 .progress-fill {
   height: 100%; background: var(--st-arrived); border-radius: var(--r-full);
@@ -449,7 +464,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .segmented {
   display: flex; gap: var(--sp-1); padding: var(--sp-1);
   background: var(--surface-2); border-radius: var(--r-2);
-  margin-bottom: var(--sp-3);
+  margin-bottom: var(--sp-2);
   overflow-x: auto; scrollbar-width: none;
 }
 .segmented::-webkit-scrollbar { display: none; }
@@ -467,7 +482,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* --- 分組（分車）------------------------------------------------------ */
 
 .groups {
-  display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3);
+  display: flex; gap: var(--sp-2); margin-bottom: var(--sp-2);
   overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
 }
 .groups::-webkit-scrollbar { display: none; }
@@ -499,7 +514,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   content: ""; flex: 1; height: 1px; background: var(--rule);
 }
 
-.search-wrap { position: relative; margin-bottom: var(--sp-3); }
+.search-wrap { position: relative; margin-bottom: var(--sp-5); }
 /* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
    留自訂的那顆：它有 48px 的觸控目標與無障礙名稱，原生那顆兩者都沒有。 */
 .search-wrap input[type='search']::-webkit-search-cancel-button,
@@ -511,6 +526,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 
 /* === 名單列 ============================================================== */
+
+/* 名單前一定要有跨群的間距，不管上面最後一段是搜尋框還是分段控制。 */
+.list { margin-top: var(--sp-3); }
 
 /*
  * 底部留白要同時讓開底部動作列（88px）與可能疊在它上面的 Toast（約 60px）。
@@ -835,7 +853,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   body { background: #fff; color: #000; font-size: 11pt; }
 
   .topbar, .dock, .toast-wrap, .overlay, .segmented, .search-wrap,
-  .progress-row, .member-side, .icon-btn, .btn, .groups,
+  .progress, .member-side, .icon-btn, .btn, .groups,
   .scoreboard, .banner { display: none !important; }
 
   /*

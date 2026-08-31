@@ -2,7 +2,7 @@ import { Fragment } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
-  room, setStatusWithUndo, showToast,
+  room, setStatusWithUndo, shareOnEnter, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
 import { isExcusedNote } from '../lib/parse'
@@ -52,6 +52,14 @@ export function Room({ code }: { code: string }) {
     // t 隨語言變動，但重新進房沒有意義；只依 code。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
+
+  // 剛從「複製這間房」進來的話，直接把分享面板打開。
+  useEffect(() => {
+    if (status !== 'ready') return
+    if (shareOnEnter.value !== code) return
+    shareOnEnter.value = null
+    setSheet('share')
+  }, [status, code])
 
   useEffect(() => {
     const el = scoreboardRef.current
@@ -234,22 +242,25 @@ export function Room({ code }: { code: string }) {
           <span class="score-heads">
             {t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}
           </span>
+          <button class="btn btn-sm score-copy" onClick={() => { void copySummary() }} aria-label={t('copySummary')}>
+            <IconCopy /> <span class="score-copy-text">{t('copySummary')}</span>
+          </button>
         </div>
 
-        <div class="progress-row">
-          <div
-            class="progress"
-            role="progressbar"
-            aria-label={t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}
-            aria-valuenow={Math.round(progress)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div class="progress-fill" style={`width:${progress}%`} />
-          </div>
-          <button class="btn btn-sm" onClick={() => { void copySummary() }}>
-            <IconCopy /> {t('copySummary')}
-          </button>
+        {/*
+          進度條併進計分區的下緣。原本它自己佔一列（6px 的條 + 44px 的按鈕 +
+          24px 間距），而首屏本來就有 45–50% 的高度被控制項吃掉——80 人的名單
+          一屏只看得到 4 個人。省下的高度在任何長度的名單上都直接變成人名。
+        */}
+        <div
+          class="progress"
+          role="progressbar"
+          aria-label={t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}
+          aria-valuenow={Math.round(progress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div class="progress-fill" style={`width:${progress}%`} />
         </div>
 
         {groupList.length > 0 && (
@@ -260,6 +271,10 @@ export function Room({ code }: { code: string }) {
               onClick={() => setGroup(null)}
             >
               {t('allGroups')}
+              {/* 「全部」也帶一個數字，這一列的數字才加得起來：各車的未到數
+                  相加要等於它。少了它，志工看到「第一車 2、第二車 4」和下面
+                  的「未到 7」對不上，會開始找那個不存在的差額。 */}
+              <span class={allHere ? 'group-n done' : 'group-n'}>{summarize(all).pending}</span>
             </button>
             {groupList.map((g) => {
               const gs = summarize(all.filter((m) => m.group_label === g))

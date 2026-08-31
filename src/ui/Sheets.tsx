@@ -2,7 +2,8 @@ import { useEffect, useState } from 'preact/hooks'
 import {
   AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
   prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
-  session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo, showToast,
+  session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
+  shareOnEnter, showToast,
   signIn, signOut,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -170,6 +171,10 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
               onClick={() => { void run(async () => {
                 const code = await copyCurrentRoom(value)
                 onClose()
+                // 回程房是新的房號，五支協助的手機還開著舊房——複製完的下一個
+                // 動作 100% 是把新的房號發出去。不主動提醒的話，主揪會直接
+                // 開始點名，而其他人繼續在舊房打勾，兩邊的數字各走各的。
+                shareOnEnter.value = code
                 navigate(`/r/${code}`)
               }) }}
             >
@@ -578,12 +583,18 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           <div class="field">
             <span class="label">{t('account')}</span>
             {session.value ? (
-              <div class="row">
-                <span class="hint" style="flex:1">
-                  {t('signedInAs', { email: session.value.email })}
-                </span>
-                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
-              </div>
+              <>
+                <div class="row">
+                  <span class="hint" style="flex:1">
+                    {t('signedInAs', { email: session.value.email })}
+                  </span>
+                  <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
+                </div>
+                {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
+                    動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
+                    不加確認對話框（重新登入就還原），但後果要講出來。 */}
+                <p class="hint">{t('signOutWhat')}</p>
+              </>
             ) : (
               <>
                 <button class="btn btn-block" onClick={() => setSigningIn(true)}>{t('signIn')}</button>

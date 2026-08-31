@@ -109,6 +109,13 @@ await B.p.locator('#checker-name').blur(); await B.p.waitForTimeout(400)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(300)
 await B.p.goto(`${URL}#/r/${newCode}`); await B.p.waitForTimeout(1800)
 
+// 複製回程房會換一組新房號，而五支協助的手機還開著舊房——他們的畫面完全
+// 沒有變化，會繼續在舊房打勾。複製完的下一個動作 100% 是把新房號發出去，
+// 所以分享面板要自己打開。
+ok('[主揪] 複製完自動打開分享面板', (await A.p.locator('.sheet-title').textContent())?.includes('加入'))
+ok('[主揪] 面板裡是新房號', (await A.p.locator('.code-display').textContent())?.trim() === newCode)
+await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
+
 // 主揪先把第一個人標成已到
 await A.p.locator('.member-main').nth(0).click(); await A.p.waitForTimeout(1400)
 ok('[主揪] 標記已到', (await A.p.locator('.member').nth(0).getAttribute('class'))?.includes('is-arrived'))

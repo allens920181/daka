@@ -334,10 +334,12 @@ await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(4
 ok('第二車未到仍是 2（陳大同請假）', (await p.locator('.score-number').textContent())==='2')
 
 
-// 分組晶片上的未到數
-await p.getByRole('button',{name:/^全部$/}).click(); await p.waitForTimeout(400)
+// 分組晶片上的未到數。「全部」也帶一個數字，而且各車相加要等於它——
+// 加不起來的話志工會以為自己算錯，開始找那個不存在的差額。
+await p.locator('.groups .group-chip').first().click(); await p.waitForTimeout(400)
 const gn = await p.locator('.group-chip .group-n').allTextContents()
-ok(`晶片顯示各車未到數：${gn.join(' / ')}`, gn.length===2 && gn[0]==='2' && gn[1]==='2')
+ok(`晶片數字（全部｜各車）：${gn.join(' / ')}`, gn.length===3 && gn[1]==='2' && gn[2]==='2')
+ok('各車未到數相加等於「全部」', Number(gn[1]) + Number(gn[2]) === Number(gn[0]))
 
 // --- 複製結果應限定在選取的分組 ---
 await ctx.grantPermissions(['clipboard-read','clipboard-write'])
@@ -347,7 +349,7 @@ const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))
 
 // --- 看板模式 ---
-await p.getByRole('button',{name:/^全部$/}).click(); await p.waitForTimeout(300)
+await p.locator('.groups .group-chip').first().click(); await p.waitForTimeout(300)
 const groupRoomCode=(await p.locator('.topbar-sub .mono').first().textContent())?.trim()
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/看板模式/}).click(); await p.waitForTimeout(1600)
