@@ -312,7 +312,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .recent-item:hover { border-color: var(--rule-strong); }
 .recent-name { font-weight: 600; font-size: var(--fs-4); }
-.recent-meta { font-size: var(--fs-1); color: var(--ink-3); }
+/* 11px 只留給等寬微標籤；這一行有日期與統計要讀，用 13px。分隔點用 ::before
+   產生，才不會在只有一段時多出一個孤兒點。 */
+.recent-meta {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2);
+  font-size: var(--fs-2); color: var(--ink-3);
+}
+.recent-meta > span + span::before { content: "· "; }
 
 .tag {
   display: inline-flex; align-items: center;
@@ -345,6 +351,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
   white-space: nowrap;
 }
 .topbar-count.done { color: var(--st-arrived); }
+/* 捲動後頂欄接手時，數字同樣要帶著「哪一車」一起走。 */
+.topbar-scope {
+  color: var(--accent); font-weight: 700;
+}
+.topbar-scope::after { content: " · "; color: var(--ink-3); font-weight: 400; }
 
 .sync { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-2); font-weight: 600; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
@@ -369,8 +380,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
   letter-spacing: -.02em; font-variant-numeric: tabular-nums;
   color: var(--st-pending);
 }
-.score-number.done { color: var(--st-arrived); }
+/* 全部到齊時大字換成一句話，字級降一階才放得下四個中文字。 */
+.score-number.score-done { font-size: var(--fs-7); color: var(--st-arrived); }
+.score-text { display: flex; flex-direction: column; min-width: 0; }
 .score-label { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
+/* 選了分組之後，計分區的數字必須自己說是哪一車。 */
+.score-scope {
+  font-size: var(--fs-2); font-weight: 700; color: var(--accent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .score-heads {
   margin-left: auto; font-size: var(--fs-4); font-weight: 700;
   color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap;

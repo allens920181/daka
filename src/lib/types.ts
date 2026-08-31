@@ -55,6 +55,8 @@ export interface OwnedRoom {
   people: number
   arrived: number
   headcount: number
+  /** 扣掉請假之後今天該到的人頭。清單上的分母用這個。 */
+  expectedHeadcount: number
   arrivedHeadcount: number
 }
 

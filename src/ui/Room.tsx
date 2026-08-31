@@ -7,6 +7,7 @@ import {
 import { summarize } from '../lib/merge'
 import type { Member, MemberStatus } from '../lib/types'
 import { toShareText } from '../lib/export'
+import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
 import { AddWalkInSheet, ManageSheet, MemberSheet, ShareSheet } from './Sheets'
@@ -112,7 +113,10 @@ export function Room({ code }: { code: string }) {
     showToast(t('summaryCopied'))
   }
 
-  const progress = s.headcount === 0 ? 0 : (s.arrivedHeadcount / s.headcount) * 100
+  // 分母是「今天該到的人頭」而不是名單總人頭：請假的人不該讓進度條永遠差一截。
+  const progress = s.expectedHeadcount === 0 ? 0 : (s.arrivedHeadcount / s.expectedHeadcount) * 100
+  // 空名單不是「全部到齊」，只是還沒有人。
+  const allHere = s.people > 0 && s.pending === 0
 
   return (
     <>
@@ -127,8 +131,9 @@ export function Room({ code }: { code: string }) {
               {scoreVisible ? (
                 <span class="mono">{current.code}</span>
               ) : (
-                <span class={s.pending === 0 ? 'topbar-count done' : 'topbar-count'}>
-                  {s.pending === 0 ? t('allHere') : t('missingCount', { n: s.pending })}
+                <span class={allHere ? 'topbar-count done' : 'topbar-count'}>
+                  {group !== null && <span class="topbar-scope">{group}</span>}
+                  {allHere ? t('allHere') : t('missingCount', { n: s.pending })}
                 </span>
               )}
               <SyncBadge />
@@ -148,13 +153,21 @@ export function Room({ code }: { code: string }) {
 
         <div class="scoreboard" ref={scoreboardRef}>
           <div class="score-main">
-            <span class={s.pending === 0 ? 'score-number done' : 'score-number'}>{s.pending}</span>
-            <span class="score-label">
-              {s.pending === 0 ? t('allHere') : t('missingCount', { n: s.pending })}
-            </span>
+            {allHere ? (
+              // 全部到齊時不印那顆「0」：44px 的 0 配上「全部到齊」會讓人愣一下。
+              <span class="score-number score-done">{t('allHere')}</span>
+            ) : (
+              <>
+                <span class="score-number">{s.pending}</span>
+                <span class="score-text">
+                  <span class="score-label">{t('missingUnit')}</span>
+                  {group !== null && <span class="score-scope">{group}</span>}
+                </span>
+              </>
+            )}
           </div>
           <span class="score-heads">
-            {t('headcount', { arrived: s.arrivedHeadcount, total: s.headcount })}
+            {t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}
           </span>
         </div>
 
@@ -162,7 +175,7 @@ export function Room({ code }: { code: string }) {
           <div
             class="progress"
             role="progressbar"
-            aria-label={t('headcount', { arrived: s.arrivedHeadcount, total: s.headcount })}
+            aria-label={t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}
             aria-valuenow={Math.round(progress)}
             aria-valuemin={0}
             aria-valuemax={100}
@@ -227,9 +240,23 @@ export function Room({ code }: { code: string }) {
         <div class="list">
           {shown.length === 0 ? (
             <div class="empty">
-              <p class="empty-big">
-                {filter === 'pending' && s.people > 0 ? t('emptyMissing') : t('emptyList')}
-              </p>
+              {/*
+                「太好了，全部都到了」等於「可以關門了」，只有在真的沒有人沒到時
+                才能說。有搜尋字串時名單是空的通常代表打錯字——收尾時單手打注音
+                很容易打錯，這時候要說的是「沒找到」，不是「不用找了」。
+              */}
+              {query.trim() ? (
+                <>
+                  <p class="empty-big">{t('emptyList')}</p>
+                  <p class="hint">
+                    {s.pending > 0 ? t('emptySearchHint', { n: s.pending }) : t('emptySearchHintDone')}
+                  </p>
+                </>
+              ) : (
+                <p class="empty-big">
+                  {filter === 'pending' && s.people > 0 ? t('emptyMissing') : t('emptyList')}
+                </p>
+              )}
             </div>
           ) : (
             shown.map((m, i) => {
@@ -306,9 +333,7 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
 }) {
   const t = useT()
   const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}${member.status === 'excused' ? ' is-excused' : ''}`
-  const time = member.status_at
-    ? new Date(member.status_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-    : null
+  const time = member.status_at ? formatTime(member.status_at) : null
 
   return (
     <div class={cls}>

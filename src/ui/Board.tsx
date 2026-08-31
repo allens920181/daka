@@ -72,7 +72,7 @@ export function Board({ code }: { code: string }) {
         <div class="board-count" role="status" aria-live="polite">
           <span class="board-num">{s.arrivedHeadcount}</span>
           <span class="board-slash">/</span>
-          <span class="board-total">{s.headcount}</span>
+          <span class="board-total">{s.expectedHeadcount}</span>
         </div>
         <p class="board-label">{t('arrived')}</p>
 

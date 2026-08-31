@@ -731,6 +731,10 @@ as $$
                       where m.room_id = r.id and m.status = 'arrived'),
       'headcount',  (select coalesce(sum(1 + m.companions), 0) from public.room_members m
                       where m.room_id = r.id),
+      -- 今天真的該到的人頭：扣掉請假的人與他們的攜伴。清單上的「x / y」用這個
+      -- 當分母，才不會出現「全部到齊」卻寫著 15 / 16 的情況。
+      'expectedHeadcount', (select coalesce(sum(1 + m.companions), 0) from public.room_members m
+                             where m.room_id = r.id and m.status <> 'excused'),
       'arrivedHeadcount', (select coalesce(sum(1 + m.companions), 0) from public.room_members m
                             where m.room_id = r.id and m.status = 'arrived')
     ) as x

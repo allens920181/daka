@@ -173,8 +173,37 @@ describe('summarize', () => {
       people: 4, headcount: 12,
       arrived: 2, arrivedHeadcount: 4,
       pending: 1, pendingHeadcount: 2,
-      excused: 1,
+      excused: 1, excusedHeadcount: 6, expectedHeadcount: 6,
     })
+  })
+
+  it('請假的人與他們的攜伴不算進今天該到的人頭', () => {
+    // 12 人報名，其中一位請假並帶 5 人 → 今天該上車的是 6 個人頭。
+    const s = summarize([
+      member('a', { status: 'arrived', companions: 2 }),
+      member('b', { status: 'arrived' }),
+      member('c', { status: 'pending', companions: 1 }),
+      member('d', { status: 'excused', companions: 5 }),
+    ])
+    expect(s.headcount).toBe(12)
+    expect(s.excusedHeadcount).toBe(6)
+    expect(s.expectedHeadcount).toBe(6)
+  })
+
+  it('全部到齊時分子等於分母，進度條才會滿（請假不該讓它永遠差一截）', () => {
+    const s = summarize([
+      member('a', { status: 'arrived', companions: 2 }),
+      member('b', { status: 'arrived' }),
+      member('c', { status: 'excused' }),
+    ])
+    expect(s.pending).toBe(0)
+    expect(s.arrivedHeadcount).toBe(s.expectedHeadcount)
+    expect(s.expectedHeadcount).toBe(4)
+  })
+
+  it('全員請假時分母是 0，呼叫端要自己避開除以零', () => {
+    const s = summarize([member('a', { status: 'excused' })])
+    expect(s.expectedHeadcount).toBe(0)
   })
 
   it('請假不算未到', () => {

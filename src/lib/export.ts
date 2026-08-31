@@ -58,7 +58,7 @@ export function toShareText(room: Room, members: readonly Member[], group?: stri
 
   const lines = [
     group ? `${room.name} · ${group}` : room.name,
-    `已到 ${s.arrivedHeadcount} / ${s.headcount} 人`,
+    `已到 ${s.arrivedHeadcount} / ${s.expectedHeadcount} 人`,
   ]
   if (missing.length > 0) {
     lines.push(`未到 ${missing.length} 位：${missing.map((m) => m.name).join('、')}`)

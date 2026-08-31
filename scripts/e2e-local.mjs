@@ -44,7 +44,11 @@ ok('進入房間', await p.locator('.topbar-name').isVisible())
 const code = (await p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`取得 6 碼房號: ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
 ok('未到 8（9 人中「陳大同（請假）」自動判定為請假）', (await p.locator('.score-number').textContent()) === '8')
-ok('人頭數含攜伴 = 0 / 12', (await p.locator('.score-heads').textContent())?.includes('/ 12'))
+// 44px 的數字旁邊只補單位，不把同一個數字再寫一次。
+ok('計分標籤只寫單位不重複數字', (await p.locator('.score-label').textContent())?.trim() === '位沒到')
+// 名單共 12 個人頭（9 列 + 李美花＋1 + 王五＋2），陳大同請假 → 今天該到 11。
+// 分母用 12 的話，全部到齊時畫面會寫「11 / 12」配一條填不滿的進度條。
+ok('分母扣掉請假者 = 0 / 11', (await p.locator('.score-heads').textContent())?.includes('/ 11'))
 
 
 // 點名
@@ -74,7 +78,18 @@ await p.locator('input[type=search]').fill('陳怡君'); await p.waitForTimeout(
 ok('搜尋同名找到 2 人', (await p.locator('.member').count()) === 2)
 await p.locator('input[type=search]').fill('0912'); await p.waitForTimeout(300)
 ok('可用電話搜尋', (await p.locator('.member').count()) === 1)
+
+// 收尾時單手打錯字：切「未到」再搜一個不存在的名字。這裡絕對不能回答
+// 「太好了，全部都到了」——那句話在車門口等於「可以關門了」。
+await p.getByRole('button', { name: /^未到/ }).click(); await p.waitForTimeout(200)
+await p.locator('input[type=search]').fill('王大明'); await p.waitForTimeout(300)
+const typoEmpty = (await p.locator('.empty-big').textContent())?.trim()
+ok(`搜尋打錯字時說「沒找到」而不是「全部都到了」：${typoEmpty}`, typoEmpty === '這裡沒有人')
+ok('並附上「換個字再找找」的下一步', ((await p.locator('.empty .hint').textContent()) || '').includes('換個字'))
 await p.locator('input[type=search]').fill(''); await p.waitForTimeout(300)
+ok('清掉搜尋後「未到」篩選才回到成功文案',
+   (await p.locator('.empty-big').count()) === 0 || (await p.locator('.empty-big').textContent())?.includes('全部都到了'))
+await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitForTimeout(300)
 
 // 電話按鈕
 const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
@@ -169,6 +184,9 @@ ok('看全部時有分組分隔', (await p.locator('.group-divider').count())===
 await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
 ok('第一車：未到 3', (await p.locator('.score-number').textContent())==='3')
 ok('第一車：人頭 0 / 4（李美花 +1）', (await p.locator('.score-heads').textContent())?.includes('/ 4'))
+// 選了分組之後，計分區的數字必須自己說是哪一車，否則「還有 3 位沒到」
+// 在全隊和第一車是同一句話。
+ok('計分區標出目前分組', (await p.locator('.score-scope').textContent())?.trim() === '第一車')
 ok('第一車只顯示 3 人', (await p.locator('.member').count())===3)
 ok('選了分組後不再顯示分隔', (await p.locator('.group-divider').count())===0)
 

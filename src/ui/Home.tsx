@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
-import { connection, forgetRecentRoom, myRooms, recentRooms, session } from '../lib/store'
+import { connection, forgetRecentRoom, myRooms, prefs, recentRooms, session } from '../lib/store'
+import { formatDate } from '../lib/format'
 import { findConfusables, isValidRoomCode, normalizeRoomCode, CODE_LENGTH } from '../lib/code'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
@@ -26,7 +27,10 @@ export function Home({ onSettings }: { onSettings: () => void }) {
     navigate(`/j/${normalized}`)
   }
 
-  const rooms = recentRooms.value
+  // 登入之後「我的活動」與「最近的房間」是兩份各自維護的清單，主揪自己開的房
+  // 兩邊都有——不去重的話首頁會上下相鄰地把同一間房印兩次。以「我的活動」為準。
+  const ownedCodes = new Set(session.value ? myRooms.value.map((r) => r.code) : [])
+  const rooms = recentRooms.value.filter((r) => !ownedCodes.has(r.code))
 
   return (
     <div class="shell">
@@ -90,8 +94,10 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                   <button key={r.code} class="recent-item" onClick={() => navigate(`/r/${r.code}`)}>
                     <div style="flex:1; min-width:0">
                       <div class="recent-name">{r.name}</div>
-                      <div class="recent-meta mono">
-                        {r.code} · {t('roomStat', { arrived: r.arrivedHeadcount, total: r.headcount })}
+                      <div class="recent-meta">
+                        <span class="mono">{r.code}</span>
+                        <span>{formatDate(r.created_at, prefs.value.lang)}</span>
+                        <span>{t('roomStat', { arrived: r.arrivedHeadcount, total: r.expectedHeadcount })}</span>
                       </div>
                     </div>
                     <span class="tag tag-owner">{t('owner')}</span>
@@ -113,7 +119,10 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                   <button class="recent-item" onClick={() => navigate(`/r/${r.code}`)}>
                     <div style="flex:1; min-width:0">
                       <div class="recent-name">{r.name}</div>
-                      <div class="recent-meta mono">{r.code}</div>
+                      <div class="recent-meta">
+                        <span class="mono">{r.code}</span>
+                        <span>{formatDate(r.lastSeen, prefs.value.lang)}</span>
+                      </div>
                     </div>
                     <span class={r.isOwner ? 'tag tag-owner' : 'tag'}>
                       {r.isOwner ? t('owner') : t('helper')}

@@ -134,7 +134,7 @@ export function detectOverrides(
 export interface RosterSummary {
   /** 名單列數。 */
   people: number
-  /** 總人頭，含攜伴。遊覽車上要對的是這個數字。 */
+  /** 名單上的總人頭，含攜伴、含請假。這是「原本報名幾個人」。 */
   headcount: number
   arrived: number
   arrivedHeadcount: number
@@ -142,13 +142,24 @@ export interface RosterSummary {
   pending: number
   pendingHeadcount: number
   excused: number
+  /** 請假者的人頭，含他們的攜伴。 */
+  excusedHeadcount: number
+  /**
+   * 今天真的該上車的人頭 = headcount - excusedHeadcount。
+   *
+   * 進度條、「x / y 人」、看板都必須用這個當分母。用 headcount 當分母的話，
+   * 只要有人請假，全部到齊時畫面就會是「15 / 16」配一條填不滿的進度條——
+   * 車長會以為還有一個人沒上車。
+   */
+  expectedHeadcount: number
 }
 
 export function summarize(members: readonly Member[]): RosterSummary {
   const s: RosterSummary = {
     people: members.length, headcount: 0,
     arrived: 0, arrivedHeadcount: 0,
-    pending: 0, pendingHeadcount: 0, excused: 0,
+    pending: 0, pendingHeadcount: 0,
+    excused: 0, excusedHeadcount: 0, expectedHeadcount: 0,
   }
   for (const m of members) {
     const heads = 1 + m.companions
@@ -158,10 +169,12 @@ export function summarize(members: readonly Member[]): RosterSummary {
       s.arrivedHeadcount += heads
     } else if (m.status === 'excused') {
       s.excused++
+      s.excusedHeadcount += heads
     } else {
       s.pending++
       s.pendingHeadcount += heads
     }
   }
+  s.expectedHeadcount = s.headcount - s.excusedHeadcount
   return s
 }

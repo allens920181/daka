@@ -75,6 +75,27 @@ describe('toShareText', () => {
     expect(text).toContain('未到 2 位：李美花、陳大同')
   })
 
+  it('請假的人不算進分母，貼回 LINE 的數字不會自相矛盾', () => {
+    // 3 人報名、1 人請假、其餘全到 → 「已到 2 / 2 人」＋「全部到齊」。
+    // 用名單總人頭當分母的話這裡會寫成「已到 2 / 3 人」配「全部到齊」。
+    const text = toShareText(room, [
+      member('王小明', { status: 'arrived' }),
+      member('李美花', { status: 'arrived' }),
+      member('陳大同', { status: 'excused' }),
+    ])
+    expect(text).toContain('已到 2 / 2 人')
+    expect(text).toContain('全部到齊')
+    expect(text).toContain('請假 1 位：陳大同')
+  })
+
+  it('請假者的攜伴也一起扣掉', () => {
+    const text = toShareText(room, [
+      member('王小明', { status: 'arrived' }),
+      member('陳大同', { status: 'excused', companions: 3 }),
+    ])
+    expect(text).toContain('已到 1 / 1 人')
+  })
+
   it('全到齊時明講', () => {
     const text = toShareText(room, [member('王小明', { status: 'arrived' })])
     expect(text).toContain('全部到齊')

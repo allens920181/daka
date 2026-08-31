@@ -82,7 +82,10 @@
 .scoreboard
 ├─ .score-main
 │   ├─ .score-number   未到人數，--fs-8
-│   └─ .score-label    「還有 N 位沒到」／「全部到齊」
+│   │   └─ .score-done 全到齊時改印「全部到齊」，--fs-7
+│   └─ .score-text
+│       ├─ .score-label  「位沒到」（單位，不重複數字）
+│       └─ .score-scope  選了分組時的分組名
 └─ .score-heads        「3 / 14 人」
 .progress-row
 ├─ .progress           進度條
@@ -92,8 +95,18 @@
 **規則**
 
 - 未到人數是全畫面唯一的 `--fs-8`。
-- 全到齊時顏色由 `--st-pending` 換成 `--st-arrived`。
+- **大數字與標籤不得重複同一個數字。** 標籤只寫單位（「位沒到」），因為數字
+  已經以 44px 印在它左邊。把「還有 N 位沒到」整句放進標籤，等於在 8px 外把
+  同一個數字寫第二次。
+- **全到齊時不印那顆「0」。** `.score-number` 換成 `.score-done` 印「全部到齊」，
+  字級降到 `--fs-7`、顏色 `--st-arrived`。「0 全部到齊」會讓人愣一下。
+  空名單（`people === 0`）不算全到齊，只是還沒有人。
 - **右側是人頭數不是列數**——遊覽車上要對的是人頭。
+- **分母是 `expectedHeadcount`（扣掉請假者與其攜伴），不是 `headcount`。**
+  進度條、`.score-heads`、看板、貼回 LINE 的文字都適用。用名單總人頭當分母，
+  只要有人請假，全到齊時就會顯示「15 / 16」配一條填不滿的進度條。
+- **選了分組時，數字必須自己說是哪一組**（`.score-scope`；頂欄接手時是
+  `.topbar-scope`）。否則「還有 3 位沒到」在全隊和第一車是同一句話。
 - **捲出畫面時頂欄必須接手顯示**（`.topbar-count`）。這個數字不能消失。
 
 **無障礙契約** — 進度條 `role="progressbar"` + `aria-valuenow/min/max` + `aria-label`（帶實際人數，不只是百分比）。

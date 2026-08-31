@@ -7,6 +7,7 @@ import {
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { csvFilename, downloadFile, toCsv } from '../lib/export'
+import { formatDate } from '../lib/format'
 import { rosterToText } from '../lib/parse'
 import type { Member } from '../lib/types'
 import { joinUrl, navigate } from '../router'
@@ -237,7 +238,7 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
     )
   }
 
-  const expires = new Date(current.expires_at).toLocaleDateString()
+  const expires = formatDate(current.expires_at, prefs.value.lang)
 
   return (
     <Sheet title={t('manage')} onClose={onClose}>
