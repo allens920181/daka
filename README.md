@@ -11,7 +11,7 @@
 - **回程用複製房間。** 同一份名單、已到歸零、請假的維持請假。
 
 - [`docs/product-direction.md`](docs/product-direction.md) — 產品方向與架構決策
-- [`docs/design-system.md`](docs/design-system.md) — 設計規範（色彩、字級、觸控、元件、無障礙、文案）
+- [`docs/design-system.md`](docs/design-system.md) — 設計規範（色彩、字級、觸控、元件、無障礙、文案）；另有[視覺對照頁](https://claude.ai/code/artifact/9df0f69b-dc39-4fc6-928f-e62be58ef97f)
 
 ---
 

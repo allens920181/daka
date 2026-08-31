@@ -1,5 +1,9 @@
 # 設計規範
 
+> 視覺對照頁（色票、字級、元件標本在淺色深色並排呈現）：
+> https://claude.ai/code/artifact/9df0f69b-dc39-4fc6-928f-e62be58ef97f
+> 那頁是輔助閱讀用的，**這份 markdown 才是正式規範**。
+
 這份文件是**規範**，不是建議。每一條盡量寫成可以被檢查的形式，能自動檢查的都由
 [`scripts/design-audit.mjs`](../scripts/design-audit.mjs) 在真實瀏覽器裡驗證，淺色與深色都要過。
 
