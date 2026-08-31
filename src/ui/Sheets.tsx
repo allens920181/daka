@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import {
   AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
   prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
-  session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatus, showToast,
+  session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo, showToast,
   signIn, signOut,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -15,7 +15,8 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconCopy, IconDownload, IconDuplicate, IconList, IconLock, IconPhone, IconShare, IconTrash,
+  IconBookmark, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLeave, IconList, IconLock,
+  IconPhone, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
 } from './icons'
 import { useT } from './t'
 
@@ -119,7 +120,7 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster'
+type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings'
 type Confirming = null | 'delete' | 'replaceRoster'
 
 export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () => void }) {
@@ -272,10 +273,27 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
     )
   }
 
+  if (mode === 'settings') return <SettingsSheet onClose={onClose} />
+
   const expires = formatDate(current.expires_at, prefs.value.lang)
+  const myName = identity.value.checkerName.trim()
 
   return (
     <Sheet title={t('manage')} onClose={onClose}>
+      {/*
+        身分與名字。協助者是掃 QR 直接進房的，從來不會經過首頁——在這之前
+        整個 App 沒有任何一條路通往設定，於是「你的名字」永遠是空的，
+        「誰點的」與衝突提示就常態退化成匿名：現場問「這個是誰點的」沒有答案。
+        另外協助者的管理面板會靜默少掉一半項目，這裡也一併說清楚。
+      */}
+      <div class="role-line">
+        <span class={owner ? 'tag tag-owner' : 'tag'}>{owner ? t('owner') : t('helper')}</span>
+        <button class="role-name" onClick={() => setMode('settings')}>
+          {myName ? t('youAre', { name: myName }) : t('setYourName')}
+        </button>
+      </div>
+      {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
+
       <div class="menu">
         <button
           class="menu-item"
@@ -294,7 +312,7 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
         </button>
 
         <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
-          <IconList />
+          <IconPrinter />
           <span>
             <strong>{t('printRoster')}</strong>
             <span class="sub">{t('printHint')}</span>
@@ -322,7 +340,7 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
               class="menu-item"
               onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
             >
-              <IconList />
+              <IconEdit />
               <span><strong>{t('editRoster')}</strong></span>
             </button>
 
@@ -331,13 +349,13 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
                 class="menu-item"
                 onClick={() => { setValue(current.name); setMode('saveRoster') }}
               >
-                <IconList />
+                <IconBookmark />
                 <span><strong>{t('saveAsRoster')}</strong></span>
               </button>
             )}
 
             <button class="menu-item" onClick={() => { setValue(current.name); setMode('rename') }}>
-              <IconList />
+              <IconTag />
               <span><strong>{t('rename')}</strong></span>
             </button>
 
@@ -353,7 +371,13 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
 
         <div class="menu-divider" />
 
+        <button class="menu-item" onClick={() => setMode('settings')}>
+          <IconSettings />
+          <span><strong>{t('settings')}</strong></span>
+        </button>
+
         <button class="menu-item" onClick={() => { leaveRoom(); onClose(); navigate('/') }}>
+          <IconLeave />
           <span><strong>{t('leaveRoom')}</strong></span>
         </button>
 
@@ -389,6 +413,27 @@ export function MemberSheet({ member, owner, onClose }: {
 }) {
   const t = useT()
   const closed = Boolean(room.value?.closed_at)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  // 從名單列點名有 5 秒復原；從這裡做同一件事卻什麼都沒有。同一個結果要有
+  // 同一種安全網，否則使用者學不會「哪一種操作可以反悔」。
+  function mark(status: Member['status'], label: string): void {
+    void setStatusWithUndo(member.id, status, (m) => `${m.name} · ${label}`, t('undo'))
+    onClose()
+  }
+
+  if (confirmingDelete) {
+    return (
+      <ConfirmDialog
+        title={t('confirmRemoveMemberTitle', { name: member.name })}
+        body={t('confirmRemoveMemberBody')}
+        confirmLabel={t('remove')}
+        danger
+        onConfirm={() => { void removeMember(member.id); onClose() }}
+        onClose={() => setConfirmingDelete(false)}
+      />
+    )
+  }
 
   return (
     <Sheet title={member.name} onClose={onClose}>
@@ -407,17 +452,17 @@ export function MemberSheet({ member, owner, onClose }: {
           <>
             <div class="menu-divider" />
             {member.status !== 'arrived' && (
-              <button class="menu-item" onClick={() => { void setStatus(member.id, 'arrived'); onClose() }}>
+              <button class="menu-item" onClick={() => mark('arrived', t('arrived'))}>
                 <span><strong>{t('markArrived')}</strong></span>
               </button>
             )}
             {member.status !== 'pending' && (
-              <button class="menu-item" onClick={() => { void setStatus(member.id, 'pending'); onClose() }}>
+              <button class="menu-item" onClick={() => mark('pending', t('missing'))}>
                 <span><strong>{t('markMissing')}</strong></span>
               </button>
             )}
             {member.status !== 'excused' && (
-              <button class="menu-item" onClick={() => { void setStatus(member.id, 'excused'); onClose() }}>
+              <button class="menu-item" onClick={() => mark('excused', t('excused'))}>
                 <span><strong>{t('markExcused')}</strong></span>
               </button>
             )}
@@ -456,12 +501,13 @@ export function MemberSheet({ member, owner, onClose }: {
         {owner && (
           <>
             <div class="menu-divider" />
-            <button
-              class="menu-item danger"
-              onClick={() => { void removeMember(member.id); onClose() }}
-            >
+            {/* 刪除是這個面板裡唯一不可復原的動作，而它坐在最好按的位置。 */}
+            <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
               <IconTrash />
-              <span><strong>{t('deleteRoster')}</strong></span>
+              <span>
+                <strong>{t('removeMember')}</strong>
+                <span class="sub">{t('removeMemberSub')}</span>
+              </span>
             </button>
           </>
         )}
@@ -472,23 +518,37 @@ export function MemberSheet({ member, owner, onClose }: {
 
 // ---------------------------------------------------------------------------
 
-export function AddWalkInSheet({ onClose }: { onClose: () => void }) {
+export function AddWalkInSheet({ group, onClose }: { group: string | null; onClose: () => void }) {
   const t = useT()
   const [text, setText] = useState('')
   const drafts = draftsFrom(text)
+
+  async function add(): Promise<void> {
+    const added: string[] = []
+    for (const d of drafts) {
+      const m = await addWalkIn(d, group)
+      if (m) added.push(m.name)
+    }
+    onClose()
+    // 加完人之後畫面上常常什麼都沒動：新加的人排在名單最後，而且已經是「已到」，
+    // 在「未到」篩選下根本看不見。不講一句話的話，使用者會不確定到底加成功沒有。
+    if (added.length === 1) {
+      showToast(t(group ? 'walkInAddedInGroup' : 'walkInAdded', { name: added[0] ?? '', group: group ?? '' }))
+    } else if (added.length > 1) {
+      showToast(t('walkInAddedMany', { n: added.length }))
+    }
+  }
 
   return (
     <Sheet title={t('addWalkIn')} onClose={onClose}>
       <div class="stack">
         <p class="hint">{t('walkInPlaceholder')}</p>
+        {group && <p class="note">{t('walkInIntoGroup', { group })}</p>}
         <RosterInput text={text} onText={setText} />
         <button
           class="btn btn-primary btn-block btn-lg"
           disabled={drafts.length === 0}
-          onClick={() => {
-            for (const d of drafts) void addWalkIn(d)
-            onClose()
-          }}
+          onClick={() => { void add() }}
         >
           {`${t('add')}（${drafts.length}）`}
         </button>

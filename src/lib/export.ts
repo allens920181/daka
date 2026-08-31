@@ -1,5 +1,6 @@
 import type { Member, Room } from './types'
 import { summarize } from './merge'
+import { formatTime } from './format'
 
 const STATUS_LABEL: Record<Member['status'], string> = {
   arrived: '已到',
@@ -50,18 +51,34 @@ export function csvFilename(room: Room): string {
  * 給主揪貼回 LINE 的文字。這是點名結束時最常用的動作，
  * 所以未到名單放在最前面、而且只列人名，方便直接唸出來。
  */
-export function toShareText(room: Room, members: readonly Member[], group?: string | null): string {
-  const scoped = group ? members.filter((m) => m.group_label === group) : members
+export function toShareText(
+  room: Room,
+  scoped: readonly Member[],
+  groupLabel?: string | null,
+  now: Date = new Date(),
+): string {
   const s = summarize(scoped)
   const missing = scoped.filter((m) => m.status === 'pending')
   const excused = scoped.filter((m) => m.status === 'excused')
 
   const lines = [
-    group ? `${room.name} · ${group}` : room.name,
-    `已到 ${s.arrivedHeadcount} / ${s.expectedHeadcount} 人`,
+    groupLabel ? `${room.name} · ${groupLabel}` : room.name,
+    // 時間是這段文字唯一會過期的東西，所以要寫出來：貼進 LINE 群之後，
+    // 辦公室看到的必須知道這是幾點的狀態，而不是一份不知何時的名單。
+    `${formatTime(now)} · 已到 ${s.arrivedHeadcount} / ${s.expectedHeadcount} 人`,
   ]
   if (missing.length > 0) {
-    lines.push(`未到 ${missing.length} 位：${missing.map((m) => m.name).join('、')}`)
+    // 沒分車就一行列完；有分車就按車分行——20 個名字擠成一句，現場沒有人
+    // 唸得出來是哪一車的誰。
+    const byGroup = groupLabel ? [] : splitByGroup(missing)
+    if (byGroup.length > 1) {
+      lines.push(`未到 ${missing.length} 位：`)
+      for (const [name, list] of byGroup) {
+        lines.push(`　${name}（${list.length}）：${list.map((m) => m.name).join('、')}`)
+      }
+    } else {
+      lines.push(`未到 ${missing.length} 位：${missing.map((m) => m.name).join('、')}`)
+    }
   } else {
     lines.push('全部到齊')
   }
@@ -70,6 +87,22 @@ export function toShareText(room: Room, members: readonly Member[], group?: stri
   }
   return lines.join('\n')
 }
+
+/** 依分組切開，保留第一次出現的順序；沒有分組的人排在最後。 */
+function splitByGroup(members: readonly Member[]): [string, Member[]][] {
+  const out = new Map<string, Member[]>()
+  for (const m of members) {
+    const key = m.group_label ?? UNGROUPED_LABEL
+    const list = out.get(key)
+    if (list) list.push(m)
+    else out.set(key, [m])
+  }
+  const entries = [...out.entries()]
+  return entries.sort((a, b) =>
+    a[0] === UNGROUPED_LABEL ? 1 : b[0] === UNGROUPED_LABEL ? -1 : 0)
+}
+
+const UNGROUPED_LABEL = '未分組'
 
 /** 觸發瀏覽器下載。 */
 export function downloadFile(filename: string, content: string, mime = 'text/csv;charset=utf-8'): void {

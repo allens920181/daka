@@ -110,6 +110,74 @@ ok('單機模式：講清楚別人會看到什麼',
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 
+// ---- 現場操作：同名辨識、未分組、臨時加人、刪除確認 ----
+await p.goto(URL); await p.waitForTimeout(900)
+await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(300)
+await p.locator('#room-name').fill('現場操作測試')
+await p.locator('#roster-text').fill(`沒填車次的甲
+沒填車次的乙
+【第一車】
+陳怡君 0912345678
+王小明
+【第二車】
+陳怡君 0955666777
+陳大同（請假）`)
+await p.waitForTimeout(400)
+await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
+
+// #28 沒有分車的人也要有自己的晶片與標題，否則兩個顧車的志工會同時漏掉他們。
+const chips2 = await p.locator('.group-chip').allTextContents()
+ok(`分組晶片含「未分組」：${chips2.join(' | ')}`, chips2.some(c => c.includes('未分組')))
+const dividers = await p.locator('.group-divider').allTextContents()
+ok(`第一段也有標題：${dividers.join(' | ')}`, dividers[0]?.trim() === '未分組')
+await p.getByRole('button',{name:/未分組/}).click(); await p.waitForTimeout(400)
+ok('選「未分組」只看到那 2 個人', (await p.locator('.member').count()) === 2)
+ok('計分區說得出是「未分組」', (await p.locator('.score-scope').textContent())?.trim() === '未分組')
+await p.locator('.groups button').first().click(); await p.waitForTimeout(400)
+
+// #11 同名的人要看得出誰是誰。
+const dupRows = p.locator('.member').filter({ hasText: '陳怡君' })
+ok('兩位陳怡君都帶辨識晶片', (await dupRows.locator('.chip-tell').count()) === 2)
+const tells = await dupRows.locator('.chip-tell').allTextContents()
+ok(`辨識用的是分車：${tells.join(' / ')}`, tells.includes('第一車') && tells.includes('第二車'))
+ok('沒有同名的人不會多印晶片',
+   (await p.locator('.member').filter({ hasText: '王小明' }).locator('.chip-tell').count()) === 0)
+
+// 「陳大同（請假）」：備註和狀態都是「請假」，畫面上只能出現一次。
+const excusedRow = p.locator('.member.is-excused').first()
+const excusedText = (await excusedRow.locator('.member-meta').textContent()) ?? ''
+ok(`請假不重複印：「${excusedText.trim()}」`, (excusedText.match(/請假/g) || []).length === 1)
+
+// #10 臨時加人：站在你面前的人不該被算成「未到」，而且要說一聲。
+const beforeMissing = await p.locator('.score-number').textContent()
+await p.getByRole('button',{name:/臨時/}).click(); await p.waitForTimeout(500)
+await p.locator('#roster-text').fill('路上遇到的人'); await p.waitForTimeout(400)
+await p.getByRole('button',{name:/加入名單/}).click(); await p.waitForTimeout(1200)
+ok(`臨時加人不會讓未到數變多（${beforeMissing} → ${await p.locator('.score-number').textContent()}）`,
+   (await p.locator('.score-number').textContent()) === beforeMissing)
+const walkToast = (await p.locator('.toast-text').textContent().catch(() => '')) ?? ''
+ok(`加完有說一聲：「${walkToast}」`, walkToast.includes('路上遇到的人') && walkToast.includes('已到'))
+
+// #36 刪除是唯一不可復原的動作，不能一按就沒。
+await p.locator('.member').filter({ hasText: '王小明' }).locator('.icon-btn').last().click()
+await p.waitForTimeout(500)
+await p.getByRole('button',{name:/從名單移除/}).click(); await p.waitForTimeout(500)
+ok('刪除前有確認對話框', (await p.locator('.dialog').count()) === 1)
+ok('對話框指出更好的替代做法（標記請假）',
+   ((await p.locator('.dialog').textContent()) || '').includes('標記請假'))
+await p.getByRole('button',{name:/^取消$/}).click(); await p.waitForTimeout(400)
+ok('取消之後人還在', (await p.locator('.member').filter({ hasText: '王小明' }).count()) === 1)
+// 取消會退回成員面板（而不是整個關掉），這是對的——使用者本來就在那裡。
+ok('取消後退回成員面板而不是全部關掉', (await p.locator('.sheet').count()) === 1)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+// #13 協助者要有地方寫上自己的名字，否則「誰點的」永遠是匿名。
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(600)
+ok('管理面板有身分列', (await p.locator('.role-line').count()) === 1)
+await p.locator('.role-name').click(); await p.waitForTimeout(500)
+ok('點名字可以進到設定', (await p.locator('#checker-name').count()) === 1)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
 // 掃描端：單機模式下用房號加入別人的房，錯的不是房號，是這個站台沒有雲端。
 // 講「找不到這個房號。請確認有沒有打錯」會讓人重打三次，而主揪正在數人頭。
 await p.evaluate(() => { window.location.hash = '#/j/ZZZZZZ' }); await p.waitForTimeout(1500)

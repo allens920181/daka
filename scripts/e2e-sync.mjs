@@ -72,7 +72,9 @@ ok(`[雙方] 同時點同一人不會重複計算（A=${a1} B=${b1}）`, a1 === 
 await B.ctx.setOffline(true)
 await B.p.waitForTimeout(500)
 await B.p.locator('.member-main').nth(1).click(); await B.p.waitForTimeout(800)
-ok('[同工] 離線仍可點名，本地立刻更新', (await B.p.locator('.score-number').textContent()) === '0')
+// 全部到齊時大字換成「全部到齊」而不是一顆「0」（見 04-components/roll-call.md）。
+ok('[同工] 離線仍可點名，本地立刻更新',
+   (await B.p.locator('.score-number').textContent())?.trim() === '全部到齊')
 const badge = await B.p.locator('.sync').textContent()
 ok(`[同工] 顯示離線與待上傳筆數：「${badge?.trim()}」`, /離線|待上傳/.test(badge || ''))
 await reconcile(A)
@@ -82,7 +84,8 @@ await B.ctx.setOffline(false)
 await B.p.evaluate(() => window.dispatchEvent(new Event('online')))
 await B.p.waitForTimeout(2000)
 await reconcile(A)
-ok('[主揪] 恢復連線後自動補上，全部到齊', (await A.p.locator('.score-number').textContent()) === '0')
+ok('[主揪] 恢復連線後自動補上，全部到齊',
+   (await A.p.locator('.score-number').textContent())?.trim() === '全部到齊')
 ok('[同工] 同步狀態回到已同步', /已同步/.test((await B.p.locator('.sync').textContent()) || ''))
 
 // --- 複製房間（回程）---

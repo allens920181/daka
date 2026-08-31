@@ -224,14 +224,21 @@ export async function setCheckerName(name: string): Promise<void> {
  * 震動是「這一下有記到」的第二個確認管道。
  * iOS Safari 不支援 navigator.vibrate，所以這是 Android 才有的加分項。
  */
-function haptic(ms = 12): void {
+/**
+ * 震動回饋。逆光下看不清畫面時，手感是第二個確認管道——所以「記上車」和
+ * 「從車上拿掉」不能震得一模一樣：一下短震是「收到了」，兩下是「拿掉了」。
+ */
+function haptic(pattern: number | number[] = 12): void {
   if (!prefs.value.haptics) return
   try {
-    navigator.vibrate?.(ms)
+    navigator.vibrate?.(pattern)
   } catch {
     /* 不支援或被使用者停用，忽略。 */
   }
 }
+
+const HAPTIC_ADD = 12
+const HAPTIC_REMOVE = [10, 60, 10]
 
 // ---------------------------------------------------------------------------
 // 提示訊息
@@ -497,7 +504,7 @@ export async function setStatus(memberId: string, status: MemberStatus): Promise
   const { members: next, rev } = applyStatusLocally(members.value, memberId, status, by)
   members.value = next
   rememberChange(memberId)
-  haptic()
+  haptic(status === 'arrived' ? HAPTIC_ADD : HAPTIC_REMOVE)
   persistSoon()
 
   await queue({
@@ -523,14 +530,28 @@ export async function setStatusWithUndo(
   })
 }
 
-export async function addWalkIn(draft: DraftMember): Promise<void> {
+/**
+ * 臨時加人。
+ *
+ * `fallbackGroup` 是使用者目前正在看的那一車：站在第一車門口按「臨時加人」，
+ * 加進來的人本來就屬於第一車，再叫他去成員面板改一次分組是白繞一圈。
+ *
+ * 預設是「已到」而不是「未到」：這個功能的定義就是「沒報名但到場的人」，
+ * 他正站在你面前。標成未到的話，計分區會為了一個看得見的人說「還有 1 位
+ * 沒到」——那正是這個產品最不能出的錯。
+ */
+export async function addWalkIn(
+  draft: DraftMember,
+  fallbackGroup: string | null = null,
+): Promise<Member | null> {
   const r = room.value
-  if (!r || r.closed_at) return
+  if (!r || r.closed_at) return null
 
   const memberId = generateId()
+  const groupLabel = draft.group_label ?? fallbackGroup
   const local: Member = {
     id: memberId, room_id: r.id, name: draft.name, note: draft.note, phone: draft.phone,
-    companions: draft.companions, group_label: draft.group_label,
+    companions: draft.companions, group_label: groupLabel,
     sort_order: Number.MAX_SAFE_INTEGER, status: 'pending',
     status_at: null, status_by: null, rev: 0, created_at: new Date().toISOString(),
   }
@@ -541,11 +562,16 @@ export async function addWalkIn(draft: DraftMember): Promise<void> {
     await queue({
       kind: 'add', key: generateId(), code: r.code, memberId,
       name: draft.name, note: draft.note, phone: draft.phone, companions: draft.companions,
-      groupLabel: draft.group_label, queuedAt: Date.now(),
+      groupLabel, queuedAt: Date.now(),
     })
   } else {
     await persistNow()
   }
+
+  // 加完立刻標成已到。flushOrder() 保證同一批佇列裡 add 一定排在 status 前面，
+  // 所以離線時這兩筆的順序也是對的。
+  await setStatus(memberId, 'arrived')
+  return members.value.find((m) => m.id === memberId) ?? null
 }
 
 // ---------------------------------------------------------------------------

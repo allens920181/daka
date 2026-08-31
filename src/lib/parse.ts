@@ -113,6 +113,21 @@ function splitInlineNumbering(line: string): string[] {
 const EXCUSED_WORDS = ['請假', '不去', '不參加', '不能去', '不出席', '取消', '缺席', '退出']
 const EXCUSED_WORDS_EN = ['absent', 'excused', 'cancel', 'not going', 'no show']
 
+/**
+ * 這則備註本身就是「請假」的意思嗎？
+ *
+ * 名單上寫「陳大同（請假）」時，備註是「請假」而狀態也會被判成請假。畫面上
+ * 兩個都印的話就會出現「請假 請假」——螢幕上與紙本上都是。狀態自己會說，
+ * 備註就不必再說一次。（「請假 已請假單」這種有額外資訊的備註仍要印出來，
+ * 所以比對的是整則備註，不是「有沒有包含請假兩個字」。）
+ */
+export function isExcusedNote(note: string | null): boolean {
+  if (!note) return false
+  const trimmed = note.trim()
+  const lower = trimmed.toLowerCase()
+  return EXCUSED_WORDS.includes(trimmed) || EXCUSED_WORDS_EN.includes(lower)
+}
+
 function statusFromNote(note: string | null): MemberStatus | undefined {
   if (!note) return undefined
   const trimmed = note.trim()

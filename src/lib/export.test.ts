@@ -96,6 +96,46 @@ describe('toShareText', () => {
     expect(text).toContain('已到 1 / 1 人')
   })
 
+  it('附上時間：貼進 LINE 群之後辦公室要知道這是幾點的狀態', () => {
+    const text = toShareText(room, [member('王小明', { status: 'arrived' })],
+      null, new Date(2026, 9, 1, 8, 5))
+    expect(text).toContain('08:05 · 已到 1 / 1 人')
+  })
+
+  it('沒選分組時，未到名單按車分行', () => {
+    const text = toShareText(room, [
+      member('甲', { group_label: '第一車' }),
+      member('乙', { group_label: '第二車' }),
+      member('丙', { group_label: '第一車' }),
+    ])
+    expect(text).toContain('未到 3 位：')
+    expect(text).toContain('　第一車（2）：甲、丙')
+    expect(text).toContain('　第二車（1）：乙')
+  })
+
+  it('沒有分組的人排在最後一行', () => {
+    const text = toShareText(room, [
+      member('甲'),
+      member('乙', { group_label: '第一車' }),
+    ])
+    const lines = text.split('\n')
+    expect(lines[lines.length - 1]).toContain('未分組')
+  })
+
+  it('只有一車時不做多餘的分行', () => {
+    const text = toShareText(room, [
+      member('甲', { group_label: '第一車' }),
+      member('乙', { group_label: '第一車' }),
+    ])
+    expect(text).toContain('未到 2 位：甲、乙')
+  })
+
+  it('已經限定某一車時，名單就是那一車，標題帶著車名', () => {
+    const text = toShareText(room, [member('甲', { group_label: '第二車' })], '第二車')
+    expect(text).toContain('秋季旅遊 · 出發 · 第二車')
+    expect(text).toContain('未到 1 位：甲')
+  })
+
   it('全到齊時明講', () => {
     const text = toShareText(room, [member('王小明', { status: 'arrived' })])
     expect(text).toContain('全部到齊')

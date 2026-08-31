@@ -351,6 +351,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   white-space: nowrap;
 }
 .topbar-count.done { color: var(--st-arrived); }
+.topbar-count.closed { color: var(--ink-2); }
 /* 捲動後頂欄接手時，數字同樣要帶著「哪一車」一起走。 */
 .topbar-scope {
   color: var(--accent); font-weight: 700;
@@ -468,7 +469,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* === 名單列 ============================================================== */
 
-.list { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: 120px; }
+/*
+ * 底部留白要同時讓開底部動作列（88px）與可能疊在它上面的 Toast（約 60px）。
+ * 少留的話，名單最後一兩列會永遠被蓋住——而收尾時要找的正是最後那幾個人。
+ * 176px = 88 + 88，落在 4px 階上。
+ */
+.list { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: 176px; }
 
 .member {
   display: flex; align-items: stretch;
@@ -477,7 +483,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .member-main {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-3);
-  min-height: var(--tap-row); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+  min-height: var(--tap-row); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-3);
   border: none; background: transparent; color: inherit;
   text-align: left; cursor: pointer; font: inherit; touch-action: manipulation;
 }
@@ -507,8 +513,22 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-2); color: var(--ink-3); margin-top: 1px;
 }
 
-.member-side { display: flex; align-items: center; gap: var(--sp-1); padding-right: var(--sp-1); }
+/*
+ * 右側動作區。撥號鍵整場點名都在，而它就貼在「整列＝切換已到」的熱區旁邊：
+ * 拇指往右偏一點就變成打電話給人家。相鄰的觸控目標之間至少要有 8px，而且
+ * 切換區與動作區之間要有一條看得見的界線。
+ */
+.member-side {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 0 var(--sp-2) 0 var(--sp-1);
+  border-left: 1px solid var(--rule);
+}
+.member.is-arrived .member-side { border-left-color: var(--st-arrived-line); }
 .call-btn { color: var(--accent); }
+
+/* 關閉之後整列不能點：說出來，不要只是沒反應。 */
+.member-main:disabled { cursor: default; }
+.member-main:disabled:active { background: transparent; }
 
 /* --- Chip：三種語意，不得混用 --- */
 .chip {
@@ -518,11 +538,29 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--surface-2); color: var(--ink-2);
 }
 .chip-count { background: var(--accent-soft); color: var(--accent); }
+/* 同名的人才會出現的辨識晶片（分車或電話尾碼）。要比備註更顯眼，
+   因為它存在的唯一理由就是「讓你分得出這兩個陳怡君」。 */
+.chip-tell { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
 .chip-note { background: var(--surface-2); color: var(--ink-2); }
 .chip-data {
   background: var(--surface-2); color: var(--ink-2); font-weight: 500;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+/* 管理面板頂端的身分列：協助者從掃 QR 直接進房，這是他唯一會看到「我是誰、
+   我少了什麼」的地方。 */
+.role-line {
+  display: flex; align-items: center; gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.role-name {
+  flex: 1; min-width: 0; text-align: left;
+  min-height: var(--tap-min); padding: 0 var(--sp-2);
+  border: none; background: transparent; cursor: pointer;
+  font: inherit; font-size: var(--fs-3); font-weight: 600; color: var(--accent);
+  border-radius: var(--r-1);
+}
+.role-name:active { background: var(--surface-2); }
 
 /* === 狀態畫面 ============================================================ */
 
@@ -593,13 +631,21 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sheet-title { font-size: var(--fs-5); }
 
 .menu { display: flex; flex-direction: column; gap: 2px; }
+/*
+ * 圖示對齊標題那一行，不是整列的中線：有副說明的項目會長成兩三行，用
+ * align-items: center 的話圖示會浮到中間，整條圖示欄上下跳動，就失去
+ * 「一眼掃過去分辨」的功能。svg 高 20px、標題行高約 24px，補 2px 置中。
+ */
 .menu-item {
-  display: flex; align-items: center; gap: var(--sp-3); width: 100%;
+  display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%;
   min-height: var(--tap-lg); padding: var(--sp-2) var(--sp-3);
   border: none; border-radius: var(--r-2); background: transparent;
   color: var(--ink); font: inherit; text-align: left; cursor: pointer;
   text-decoration: none;
 }
+.menu-item > svg { flex: none; margin-top: 2px; }
+/* 只有一行的項目維持垂直置中，才不會看起來黏在上緣。 */
+.menu-item > span { flex: 1; min-width: 0; }
 .menu-item:hover { background: var(--surface-2); }
 .menu-item strong { font-weight: 600; font-size: var(--fs-3); }
 .menu-item .sub { display: block; font-size: var(--fs-2); color: var(--ink-3); font-weight: 400; }

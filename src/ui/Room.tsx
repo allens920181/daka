@@ -5,6 +5,7 @@ import {
   room, setStatusWithUndo, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
+import { isExcusedNote } from '../lib/parse'
 import type { Member, MemberStatus } from '../lib/types'
 import { toShareText } from '../lib/export'
 import { formatTime } from '../lib/format'
@@ -16,6 +17,12 @@ import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived' | 'excused'
 type OpenSheet = null | 'share' | 'manage' | 'walkin' | { member: Member }
+
+/**
+ * 「未分組」這個晶片的內部值。用一個不可能當成分組名的哨符，而不是 null——
+ * null 已經是「看全部」的意思了，兩者必須分得開。
+ */
+const UNGROUPED = '\u0000ungrouped'
 
 export function Room({ code }: { code: string }) {
   const t = useT()
@@ -63,14 +70,29 @@ export function Room({ code }: { code: string }) {
 
   // 選了分組之後就不存在了的分組（名單被換掉），自動退回全部。
   useEffect(() => {
+    if (group === UNGROUPED) return
     if (group && !groupList.includes(group)) setGroup(null)
   }, [group, groupList])
 
+  // 有分車時，「沒有分車的人」也必須是一個可以選的晶片。少了它，兩個顧車的
+  // 志工各自選了自己那一車，就沒有人負責名單上那幾個沒填車次的人。
+  const hasUngrouped = groupList.length > 0 && all.some((m) => m.group_label === null)
+
   const scoped = useMemo(
-    () => (group === null ? all : all.filter((m) => m.group_label === group)),
+    () => (group === null ? all
+      : group === UNGROUPED ? all.filter((m) => m.group_label === null)
+      : all.filter((m) => m.group_label === group)),
     [all, group],
   )
   const s = useMemo(() => summarize(scoped), [scoped])
+
+  // 同名的人在現場完全無法分辨：兩列一模一樣的「陳怡君」，點錯了也不知道。
+  // 名單上有重複姓名時，那些列要多印一點資訊（分車、電話尾碼、備註）。
+  const duplicated = useMemo(() => {
+    const seen = new Map<string, number>()
+    for (const m of all) seen.set(m.name, (seen.get(m.name) ?? 0) + 1)
+    return new Set([...seen].filter(([, n]) => n > 1).map(([name]) => name))
+  }, [all])
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -109,14 +131,22 @@ export function Room({ code }: { code: string }) {
 
   async function copySummary() {
     if (!current) return
-    await navigator.clipboard.writeText(toShareText(current, all, group))
-    showToast(t('summaryCopied'))
+    try {
+      // scoped 已經是「目前這一車」的名單；標題用看得懂的字，不是內部哨符。
+      await navigator.clipboard.writeText(toShareText(current, scoped, groupLabel))
+      showToast(t('summaryCopied'))
+    } catch {
+      // 剪貼簿在部分瀏覽器需要使用者手勢或權限，失敗時不能靜默——
+      // 主揪會以為已經複製好了，貼出去卻是上一次的東西。
+      showToast(t('copyFailed'))
+    }
   }
 
   // 分母是「今天該到的人頭」而不是名單總人頭：請假的人不該讓進度條永遠差一截。
   const progress = s.expectedHeadcount === 0 ? 0 : (s.arrivedHeadcount / s.expectedHeadcount) * 100
   // 空名單不是「全部到齊」，只是還沒有人。
   const allHere = s.people > 0 && s.pending === 0
+  const groupLabel = group === UNGROUPED ? t('ungrouped') : group
 
   return (
     <>
@@ -128,11 +158,15 @@ export function Room({ code }: { code: string }) {
           <div class="topbar-title">
             <div class="topbar-name">{current.name}</div>
             <div class="topbar-sub">
-              {scoreVisible ? (
+              {scoreVisible && !closed ? (
                 <span class="mono">{current.code}</span>
+              ) : closed ? (
+                // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
+                // 戳名字沒反應，協助者完全不知道為什麼。
+                <span class="topbar-count closed">{t('roomClosedShort')}</span>
               ) : (
                 <span class={allHere ? 'topbar-count done' : 'topbar-count'}>
-                  {group !== null && <span class="topbar-scope">{group}</span>}
+                  {group !== null && <span class="topbar-scope">{groupLabel}</span>}
                   {allHere ? t('allHere') : t('missingCount', { n: s.pending })}
                 </span>
               )}
@@ -161,7 +195,7 @@ export function Room({ code }: { code: string }) {
                 <span class="score-number">{s.pending}</span>
                 <span class="score-text">
                   <span class="score-label">{t('missingUnit')}</span>
-                  {group !== null && <span class="score-scope">{group}</span>}
+                  {group !== null && <span class="score-scope">{groupLabel}</span>}
                 </span>
               </>
             )}
@@ -211,6 +245,20 @@ export function Room({ code }: { code: string }) {
                 </button>
               )
             })}
+            {hasUngrouped && (() => {
+              const gs = summarize(all.filter((m) => m.group_label === null))
+              return (
+                <button
+                  class="group-chip"
+                  aria-pressed={group === UNGROUPED}
+                  onClick={() => setGroup(UNGROUPED)}
+                  aria-label={t('groupCount', { name: t('ungrouped'), arrived: gs.arrived, total: gs.people })}
+                >
+                  {t('ungrouped')}
+                  <span class={gs.pending === 0 ? 'group-n done' : 'group-n'}>{gs.pending}</span>
+                </button>
+              )
+            })()}
           </div>
         )}
 
@@ -262,8 +310,10 @@ export function Room({ code }: { code: string }) {
             shown.map((m, i) => {
               // 看全部時在分組交界插一條標示，現場才知道哪裡是第二車的開頭。
               const prev = i > 0 ? shown[i - 1] : undefined
+              // 第一列也要有標題：把 prev 的分組當成 null 的話，開頭那一段
+              // 「沒有分車的人」就永遠沒有標題——兩個顧車的志工會同時漏掉他們。
               const divider =
-                group === null && groupList.length > 0 && m.group_label !== (prev?.group_label ?? null)
+                group === null && groupList.length > 0 && (i === 0 || m.group_label !== prev?.group_label)
               return (
                 <Fragment key={m.id}>
                   {divider && (
@@ -271,7 +321,7 @@ export function Room({ code }: { code: string }) {
                   )}
                   <MemberRow
                     member={m}
-                    showGroup={false}
+                    showGroup={duplicated.has(m.name)}
                     closed={closed}
                     onToggle={() => { void toggle(m) }}
                     onDetail={() => setSheet({ member: m })}
@@ -298,7 +348,7 @@ export function Room({ code }: { code: string }) {
       {sheet === 'manage' && (
         <ManageSheet owner={isOwner.value} onClose={() => setSheet(null)} />
       )}
-      {sheet === 'walkin' && <AddWalkInSheet onClose={() => setSheet(null)} />}
+      {sheet === 'walkin' && <AddWalkInSheet group={group} onClose={() => setSheet(null)} />}
       {sheet && typeof sheet === 'object' && (
         <MemberSheet member={sheet.member} owner={isOwner.value} onClose={() => setSheet(null)} />
       )}
@@ -335,6 +385,16 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
   const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}${member.status === 'excused' ? ' is-excused' : ''}`
   const time = member.status_at ? formatTime(member.status_at) : null
 
+  // 名單裡有同名的人時（showGroup），這一列要多給一點辨識用的資訊。分車最
+  // 有用；沒有分車就用電話尾四碼——那是現場唯一問得出來的東西。
+  const tell = showGroup
+    ? member.group_label ?? (member.phone ? t('phoneTail', { tail: member.phone.slice(-4) }) : null)
+    : null
+
+  // 「陳大同（請假）」這種名單，note 是「請假」而狀態也是請假：兩個都印的話
+  // 螢幕上與紙本上都會出現「請假 請假」。狀態自己會說，備註就不必再說一次。
+  const noteIsStatus = member.status === 'excused' && isExcusedNote(member.note)
+
   return (
     <div class={cls}>
       <button
@@ -348,17 +408,15 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
         <span class="member-body">
           <span class="member-name">{member.name}</span>
           <span class="member-meta">
-            {showGroup && member.group_label && (
-              <span class="chip chip-note">{member.group_label}</span>
-            )}
+            {tell && <span class="chip chip-tell">{tell}</span>}
             {member.companions > 0 && (
               <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
             )}
-            {member.note && <span class="chip chip-note">{member.note}</span>}
+            {member.note && !noteIsStatus && <span class="chip chip-note">{member.note}</span>}
             {member.status === 'arrived' && time && (
               <span>{member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}</span>
             )}
-            {member.status === 'excused' && <span>{t('excused')}</span>}
+            {member.status === 'excused' && <span class="meta-excused">{t('excused')}</span>}
           </span>
         </span>
       </button>
