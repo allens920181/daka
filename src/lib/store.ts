@@ -106,6 +106,26 @@ export async function setCheckerName(name: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// 觸覺回饋
+// ---------------------------------------------------------------------------
+
+/**
+ * 點名成功時的短震動。
+ *
+ * 這不是裝飾：逆光下看不清螢幕、或視線正盯著排隊的人而不是手機時，
+ * 震動是「這一下有記到」的第二個確認管道。
+ * iOS Safari 不支援 navigator.vibrate，所以這是 Android 才有的加分項。
+ */
+function haptic(ms = 12): void {
+  if (!prefs.value.haptics) return
+  try {
+    navigator.vibrate?.(ms)
+  } catch {
+    /* 不支援或被使用者停用，忽略。 */
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 提示訊息
 // ---------------------------------------------------------------------------
 
@@ -319,6 +339,7 @@ export async function setStatus(memberId: string, status: MemberStatus): Promise
   const by = identity.value.checkerName || null
   const { members: next, rev } = applyStatusLocally(members.value, memberId, status, by)
   members.value = next
+  haptic()
   persistSoon()
 
   await queue({

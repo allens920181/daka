@@ -88,6 +88,57 @@ ok('QR 產生成功', await p.locator('.qr-card img').isVisible())
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 
+// ---- 確認對話框、設定、列印樣式 ----
+await p.goto(URL); await p.waitForTimeout(900)
+
+await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(300)
+await p.locator('#room-name').fill('確認對話框測試')
+await p.locator('#roster-text').fill('王小明\n李美花\n陳大同')
+await p.waitForTimeout(300)
+await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
+
+// --- 確認對話框 ---
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button',{name:/刪除房間/}).click(); await p.waitForTimeout(500)
+ok('刪除房間跳出 alertdialog（不是 window.confirm）', await p.locator('[role=alertdialog]').isVisible())
+ok('對話框有標題與說明', (await p.locator('#dialog-title').textContent())==='刪除房間'
+   && (await p.locator('#dialog-body').textContent())?.includes('無法復原'))
+const focused = await p.evaluate(()=>document.activeElement?.textContent?.trim())
+ok(`初始焦點在「取消」而非破壞性按鈕（實際：${focused}）`, focused==='取消')
+
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關閉對話框，房間仍在', (await p.locator('[role=alertdialog]').count())===0
+   && (await p.locator('.member').count())===3)
+
+// --- 設定：震動開關 ---
+await p.keyboard.press('Escape'); await p.waitForTimeout(300)
+await p.goto(URL); await p.waitForTimeout(800)
+await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+ok('設定面板標題是「設定」不是「主題」', (await p.locator('.sheet-title').textContent())==='設定')
+ok('有震動回饋開關', await p.getByText('震動回饋').isVisible())
+
+await p.keyboard.press('Escape'); await p.waitForTimeout(300)
+
+// --- 列印樣式 ---
+await p.goBack(); await p.waitForTimeout(1500)
+await p.emulateMedia({media:'print'}); await p.waitForTimeout(500)
+const printState = await p.evaluate(()=>{
+  const hidden = (sel)=>{const e=document.querySelector(sel); return !e || getComputedStyle(e).display==='none'}
+  const check = document.querySelector('.check')
+  return { dock:hidden('.dock'), topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
+    rows: document.querySelectorAll('.member').length,
+    checkBg: check ? getComputedStyle(check).backgroundColor : null,
+    label: document.querySelector('.score-label') ? getComputedStyle(document.querySelector('.score-label'),'::after').content : null }
+})
+ok('列印時隱藏頂欄／動作列／篩選／搜尋', printState.dock&&printState.topbar&&printState.seg&&printState.search)
+ok(`列印仍保留名單 ${printState.rows} 列`, printState.rows===3)
+ok('列印的勾選格是空白的（給筆勾）', printState.checkBg==='rgb(255, 255, 255)')
+ok('列印標題附日期與點名者欄位', String(printState.label).includes('日期'))
+
+await p.emulateMedia({media:'screen'})
+
+
+
 ok('沒有 JS 錯誤', errs.length === 0)
 if (errs.length) console.log(errs.join('\n'))
 await b.close()

@@ -1,13 +1,12 @@
 import type { ComponentChildren } from 'preact'
-import { useEffect, useRef } from 'preact/hooks'
+import { useRef } from 'preact/hooks'
 import { IconClose } from './icons'
+import { useModal } from './useModal'
 import { useT } from './t'
 
-const FOCUSABLE = 'button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])'
-
 /**
- * 底部面板。鍵盤可完整操作：Esc 關閉、Tab 在面板內循環、
- * 關閉後焦點回到原本的元素。
+ * 底部面板：用於選單與較長的表單。
+ * 需要使用者做「是或否」的決定時用 ConfirmDialog，不要用面板。
  */
 export function Sheet({
   title, onClose, children,
@@ -17,65 +16,12 @@ export function Sheet({
   children: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)
-
-  const backdrop = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const restoreTo = document.activeElement as HTMLElement | null
-    const first = panel.current?.querySelector<HTMLElement>(FOCUSABLE)
-    first?.focus()
-
-    // 面板開啟時，背後的內容要退出無障礙樹與 Tab 順序。
-    // 只做視覺遮罩不夠：螢幕閱讀器仍讀得到底下的按鈕，
-    // 使用者會聽到一個他碰不到的「分享」。
-    const inerted: HTMLElement[] = []
-    const root = backdrop.current?.parentElement
-    if (root) {
-      for (const child of Array.from(root.children)) {
-        if (child === backdrop.current || !(child instanceof HTMLElement)) continue
-        if (child.hasAttribute('inert')) continue
-        child.setAttribute('inert', '')
-        inerted.push(child)
-      }
-    }
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-        return
-      }
-      if (e.key !== 'Tab' || !panel.current) return
-      const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)]
-      if (items.length === 0) return
-      const firstEl = items[0] as HTMLElement
-      const lastEl = items[items.length - 1] as HTMLElement
-      if (e.shiftKey && document.activeElement === firstEl) {
-        e.preventDefault()
-        lastEl.focus()
-      } else if (!e.shiftKey && document.activeElement === lastEl) {
-        e.preventDefault()
-        firstEl.focus()
-      }
-    }
-
-    document.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-      for (const el of inerted) el.removeAttribute('inert')
-      restoreTo?.focus?.()
-    }
-  }, [onClose])
-
+  useModal(panel, onClose)
   const t = useT()
 
   return (
     <div
-      class="sheet-backdrop"
-      ref={backdrop}
+      class="overlay overlay-bottom"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div class="sheet" ref={panel} role="dialog" aria-modal="true" aria-label={title}>
@@ -88,6 +34,57 @@ export function Sheet({
           </button>
         </div>
         {children}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * 確認對話框：不可逆動作的最後一道關卡。
+ *
+ * 刻意不用 window.confirm——它無法翻譯（按鈕永遠是瀏覽器語言）、
+ * 無法套用設計系統、在 iOS 上樣式也不受控。
+ *
+ * 初始焦點放在「取消」：破壞性動作不該讓 Enter 直接送出。
+ */
+export function ConfirmDialog({
+  title, body, confirmLabel, danger = false, onConfirm, onClose,
+}: {
+  title: string
+  body: string
+  confirmLabel: string
+  danger?: boolean
+  onConfirm: () => void
+  onClose: () => void
+}) {
+  const panel = useRef<HTMLDivElement>(null)
+  useModal(panel, onClose)
+  const t = useT()
+
+  return (
+    <div
+      class="overlay overlay-center"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        class="dialog"
+        ref={panel}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+        aria-describedby="dialog-body"
+      >
+        <h2 class="dialog-title" id="dialog-title">{title}</h2>
+        <p class="dialog-body" id="dialog-body">{body}</p>
+        <div class="dialog-actions">
+          <button class="btn btn-block" onClick={onClose}>{t('cancel')}</button>
+          <button
+            class={danger ? 'btn btn-danger btn-block' : 'btn btn-primary btn-block'}
+            onClick={() => { onConfirm(); onClose() }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   )

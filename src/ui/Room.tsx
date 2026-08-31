@@ -66,9 +66,7 @@ export function Room({ code }: { code: string }) {
     })
   }, [all, filter, query])
 
-  if (status === 'loading' && !current) {
-    return <p class="center-note">{t('loading')}</p>
-  }
+  if (status === 'loading' && !current) return <RoomSkeleton label={t('loading')} />
 
   if (status === 'error' && !current) {
     return (
@@ -79,7 +77,7 @@ export function Room({ code }: { code: string }) {
     )
   }
 
-  if (!current) return <p class="center-note">{t('loading')}</p>
+  if (!current) return <RoomSkeleton label={t('loading')} />
 
   async function toggle(m: Member) {
     if (closed) return
@@ -224,6 +222,18 @@ export function Room({ code }: { code: string }) {
         <MemberSheet member={sheet.member} owner={isOwner.value} onClose={() => setSheet(null)} />
       )}
     </>
+  )
+}
+
+/** 載入時顯示即將出現的形狀，比一句「載入中」更能讓人知道在等什麼。 */
+function RoomSkeleton({ label }: { label: string }) {
+  return (
+    <div class="shell" role="status" aria-busy="true" aria-label={label}>
+      <div class="scoreboard"><span class="sr-only">{label}</span></div>
+      <div class="list" aria-hidden="true">
+        {[0, 1, 2, 3, 4].map((i) => <div class="skeleton-row" key={i} />)}
+      </div>
+    </div>
   )
 }
 

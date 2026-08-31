@@ -17,6 +17,8 @@ const roomKey = (code: string) => `room:${code.toUpperCase()}`
 export interface Prefs {
   lang: 'zh' | 'en'
   theme: 'light' | 'dark' | 'system'
+  /** 點名時的震動回饋。逆光下看不清畫面時，手感是第二個確認管道。 */
+  haptics: boolean
 }
 
 export interface RecentRoom {
@@ -26,7 +28,7 @@ export interface RecentRoom {
   lastSeen: number
 }
 
-export const DEFAULT_PREFS: Prefs = { lang: 'zh', theme: 'system' }
+export const DEFAULT_PREFS: Prefs = { lang: 'zh', theme: 'system', haptics: true }
 
 /** IndexedDB 在無痕模式或停用儲存時會丟錯；一律降級成「沒有資料」而不是讓畫面掛掉。 */
 async function safeGet<T>(key: string): Promise<T | undefined> {

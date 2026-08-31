@@ -114,6 +114,12 @@ const zh = {
 
   settings: '設定',
   callMember: '打電話給 {name}',
+  haptics: '震動回饋',
+  hapticsHint: '點名時輕震一下。逆光下看不清畫面時，手感是第二個確認。部分裝置不支援。',
+  on: '開',
+  off: '關',
+  printRoster: '列印紙本名單',
+  printHint: '印出可以用筆勾的空白名單，當作手機沒電時的備援。',
 
   // 通用
   cancel: '取消',
@@ -237,6 +243,12 @@ const en: Record<MessageKey, string> = {
 
   settings: 'Settings',
   callMember: 'Call {name}',
+  haptics: 'Haptic feedback',
+  hapticsHint: 'A short buzz on each check-in — useful when you cannot see the screen. Not supported on every device.',
+  on: 'On',
+  off: 'Off',
+  printRoster: 'Print paper roster',
+  printHint: 'A blank tick-list to keep as a backup if a phone dies.',
 
   cancel: 'Cancel',
   confirm: 'Confirm',

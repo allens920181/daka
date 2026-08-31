@@ -10,7 +10,7 @@ import { rosterToText } from '../lib/parse'
 import type { Member } from '../lib/types'
 import { joinUrl, navigate } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
-import { Sheet } from './Sheet'
+import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconCopy, IconDownload, IconDuplicate, IconList, IconLock, IconPhone, IconTrash,
@@ -84,10 +84,12 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
 // ---------------------------------------------------------------------------
 
 type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster'
+type Confirming = null | 'delete' | 'replaceRoster'
 
 export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () => void }) {
   const t = useT()
   const [mode, setMode] = useState<ManageMode>('menu')
+  const [confirming, setConfirming] = useState<Confirming>(null)
   const [value, setValue] = useState('')
   const [rosterText, setRosterText] = useState('')
   const [working, setWorking] = useState(false)
@@ -179,12 +181,23 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
             <button
               class="btn btn-primary btn-block"
               disabled={working || drafts.length === 0}
-              onClick={() => { void run(async () => { await replaceRoster(drafts); setMode('menu') }) }}
+              onClick={() => setConfirming('replaceRoster')}
             >
               {working ? t('loading') : `${t('save')}（${drafts.length}）`}
             </button>
           </div>
         </div>
+
+        {confirming === 'replaceRoster' && (
+          <ConfirmDialog
+            title={t('editRoster')}
+            body={t('editRosterWarning')}
+            confirmLabel={t('save')}
+            danger
+            onClose={() => setConfirming(null)}
+            onConfirm={() => { void run(async () => { await replaceRoster(drafts); setMode('menu') }) }}
+          />
+        )}
       </Sheet>
     )
   }
@@ -234,6 +247,14 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
         >
           <IconDownload />
           <span><strong>{t('exportCsv')}</strong></span>
+        </button>
+
+        <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
+          <IconList />
+          <span>
+            <strong>{t('printRoster')}</strong>
+            <span class="sub">{t('printHint')}</span>
+          </span>
         </button>
 
         {owner && (
@@ -293,13 +314,7 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
         </button>
 
         {owner && (
-          <button
-            class="menu-item danger"
-            onClick={() => {
-              if (!window.confirm(t('deleteRoomWarning'))) return
-              void run(async () => { await deleteCurrentRoom(); onClose(); navigate('/') })
-            }}
-          >
+          <button class="menu-item danger" onClick={() => setConfirming('delete')}>
             <IconTrash />
             <span><strong>{t('deleteRoom')}</strong></span>
           </button>
@@ -308,6 +323,17 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
 
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
       <p class="hint" style="margin-top:14px">{t('expiresOn', { date: expires })}</p>
+
+      {confirming === 'delete' && (
+        <ConfirmDialog
+          title={t('deleteRoom')}
+          body={t('deleteRoomWarning')}
+          confirmLabel={t('deleteRoom')}
+          danger
+          onClose={() => setConfirming(null)}
+          onConfirm={() => { void run(async () => { await deleteCurrentRoom(); onClose(); navigate('/') }) }}
+        />
+      )}
     </Sheet>
   )
 }
@@ -432,6 +458,23 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
+        </div>
+
+        <div class="field">
+          <span class="label">{t('haptics')}</span>
+          <div class="segmented">
+            {([true, false] as const).map((on) => (
+              <button
+                key={String(on)}
+                class="segment"
+                aria-pressed={p.haptics === on}
+                onClick={() => { void setPrefs({ haptics: on }) }}
+              >
+                {on ? t('on') : t('off')}
+              </button>
+            ))}
+          </div>
+          <span class="hint">{t('hapticsHint')}</span>
         </div>
 
         <div class="field">
