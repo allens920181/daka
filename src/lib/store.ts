@@ -353,9 +353,18 @@ export async function enterRoom(code: string): Promise<void> {
       // 有快取就繼續用，離線照常點名。
       if (e instanceof AppError && e.kind === 'offline') connection.value = 'offline'
     }
+    // reconcile() 把 offline 吞下去自己處理了（它是背景對帳，不該讓畫面爆掉），
+    // 所以這裡要自己檢查：第一次進房又拿不到快照時 room 仍是 null，畫面會停在
+    // 骨架上一個字都沒有。掃 QR 的協助者站在車門口，看到的就是永遠的空白。
+    if (!room.value) {
+      currentCode = null
+      throw new AppError(connection.value === 'offline' ? 'offline' : 'room-not-found')
+    }
   } else if (!cached) {
+    // 單機模式下別人的房號本來就進不來。丟 room-not-found 會讓掃 QR 的人看到
+    // 「請確認有沒有打錯」，於是重打三次——錯的不是房號，是這個站台沒有雲端。
     currentCode = null
-    throw new AppError('room-not-found')
+    throw new AppError('not-configured')
   }
 
   const r = room.value
@@ -397,6 +406,7 @@ export async function flushOutbox(): Promise<void> {
 
   flushing = true
   connection.value = 'syncing'
+  const dropped: { kind: string; op: PendingOp }[] = []
   try {
     for (const op of flushOrder(outbox.value)) {
       try {
@@ -420,9 +430,13 @@ export async function flushOutbox(): Promise<void> {
         const kind = e instanceof AppError ? e.kind : 'unknown'
         if (kind === 'offline') break
         if (PERMANENT.has(kind)) {
-          // 丟掉這一筆，繼續處理其他的。
+          // 這一筆重試多少次都不會成功，留著只會擋住後面的操作——但也不能
+          // 無聲丟掉。使用者已經看到自己把人點成「已到」了（本地先套用），
+          // 靜靜刪掉佇列的話同步指示接著會翻成綠色的「已同步」，然後下一次
+          // 對帳時那一列自己彈回「未到」，沒有任何人知道發生過什麼事。
           outbox.value = dequeue(outbox.value, op.key)
           await persistOutbox()
+          dropped.push({ kind, op })
           continue
         }
         break
@@ -431,7 +445,35 @@ export async function flushOutbox(): Promise<void> {
   } finally {
     flushing = false
     refreshConnection()
+    if (dropped.length > 0) await announceDropped(dropped)
   }
+}
+
+/**
+ * 伺服器永久拒絕的操作要當面說。訊息裡一定要有人名——「有一筆沒存到」在
+ * 現場等於沒說，志工得知道是誰要重點一次。同時重新對帳，讓畫面回到伺服器
+ * 的真相，而不是留著一個永遠不會上傳的假「已到」。
+ */
+async function announceDropped(dropped: { kind: string; op: PendingOp }[]): Promise<void> {
+  const lang = prefs.value.lang
+  const first = dropped[0]
+  if (first) {
+    const name = memberName(first.op) ?? translate(lang, 'someone')
+    const key = first.kind === 'room-closed' ? 'dropClosed'
+      : first.kind === 'not-owner' ? 'dropNotOwner'
+      : first.kind === 'too-many-members' ? 'dropTooMany'
+      : 'dropGone'
+    const more = dropped.length - 1
+    const text = translate(lang, key, { name })
+    showToast(more > 0 ? `${text}（${translate(lang, 'dropMore', { n: more })}）` : text, undefined, 8000)
+  }
+  // 畫面上那一列還停在使用者以為成功的狀態，拉一次快照把它扳回真相。
+  await reconcile().catch(() => {})
+}
+
+function memberName(op: PendingOp): string | null {
+  if (op.kind === 'add') return op.name
+  return members.value.find((m) => m.id === op.memberId)?.name ?? null
 }
 
 async function queue(op: PendingOp): Promise<void> {

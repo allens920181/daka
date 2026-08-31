@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
+  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
   prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
   session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatus, showToast,
   signIn, signOut,
@@ -15,7 +15,7 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconCopy, IconDownload, IconDuplicate, IconList, IconLock, IconPhone, IconTrash,
+  IconCopy, IconDownload, IconDuplicate, IconList, IconLock, IconPhone, IconShare, IconTrash,
 } from './icons'
 import { useT } from './t'
 
@@ -34,16 +34,32 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
   const t = useT()
   const url = joinUrl(code)
   const [qr, setQr] = useState('')
+  // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。這間房真的只存在
+  // 這支手機裡，房號、QR、連結對任何人都沒有用——發出去只會讓五個同工站在
+  // 車門口看到「找不到這個房號。請確認有沒有打錯」，然後重打三次。
+  const localOnly = connection.value === 'local-only'
 
   useEffect(() => {
+    if (localOnly) return
     let alive = true
     // QR 只有打開分享面板才用得到，動態載入讓首頁不必背這段程式碼。
     void import('qrcode')
-      .then((m) => m.default.toDataURL(url, { margin: 1, width: 480, errorCorrectionLevel: 'M' }))
+      .then((m) => m.default.toDataURL(url, { margin: 2, width: 480, errorCorrectionLevel: 'M' }))
       .then((d) => { if (alive) setQr(d) })
       .catch(() => { /* QR 產不出來時仍可用房號與連結 */ })
     return () => { alive = false }
-  }, [url])
+  }, [url, localOnly])
+
+  if (localOnly) {
+    return (
+      <Sheet title={t('shareLocalTitle')} onClose={onClose}>
+        <div class="stack">
+          <p class="note note-warn">{t('shareLocalBody')}</p>
+          <p class="hint">{t('shareLocalHow')}</p>
+        </div>
+      </Sheet>
+    )
+  }
 
   return (
     <Sheet title={t('shareTitle')} onClose={onClose}>
@@ -73,14 +89,32 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
           </button>
           <button
             class="btn btn-primary btn-block"
-            onClick={() => { void copyText(url, t('copied'), t('errUnknown')) }}
+            onClick={() => { void shareLink(url, t) }}
           >
-            <IconCopy /> {t('copyLink')}
+            <IconShare /> {t('shareLink')}
           </button>
         </div>
       </div>
     </Sheet>
   )
+}
+
+/**
+ * 有系統分享就用系統分享：主揪要把連結送進 LINE 群，`navigator.share` 直接
+ * 走完那段路，而「複製連結」只走到剪貼簿，剩下的自己貼。沒有系統分享（桌面
+ * 瀏覽器）或使用者取消時退回複製。
+ */
+async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void> {
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    try {
+      await navigator.share({ title: t('appName'), text: t('shareLinkText'), url })
+      return
+    } catch (e) {
+      // 使用者自己按取消不是錯誤，不要再彈一個提示。
+      if (e instanceof DOMException && e.name === 'AbortError') return
+    }
+  }
+  await copyText(url, t('copied'), t('errUnknown'))
 }
 
 // ---------------------------------------------------------------------------

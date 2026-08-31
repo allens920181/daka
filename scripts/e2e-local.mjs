@@ -95,13 +95,27 @@ await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitFo
 const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
 ok(`未到者顯示撥號連結 ${telHref}`, telHref === 'tel:0912345678')
 
-// 分享
+// 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，房號、QR、連結對任何人
+// 都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個房號」，然後以為
+// 是自己打錯而重打三次。分享面板必須當場說出來，不能照樣印 QR。
 await p.locator('.topbar button[aria-label="分享"]').click(); await p.waitForTimeout(1500)
-ok('分享面板顯示房號', (await p.locator('.code-display').textContent())?.trim() === code)
-ok('QR 產生成功', await p.locator('.qr-card img').isVisible())
+ok('單機模式：面板標題改成「這間房只有你看得到」',
+   (await p.locator('.sheet-title').textContent())?.includes('只有你看得到'))
+ok('單機模式：不發房號', (await p.locator('.code-display').count()) === 0)
+ok('單機模式：不產 QR', (await p.locator('.qr-card img').count()) === 0)
+ok('單機模式：不給「複製連結」', (await p.getByRole('button', { name: /傳給別人|複製連結/ }).count()) === 0)
+ok('單機模式：講清楚別人會看到什麼',
+   ((await p.locator('.note-warn').textContent()) || '').includes('找不到這個房號'))
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
+
+// 掃描端：單機模式下用房號加入別人的房，錯的不是房號，是這個站台沒有雲端。
+// 講「找不到這個房號。請確認有沒有打錯」會讓人重打三次，而主揪正在數人頭。
+await p.evaluate(() => { window.location.hash = '#/j/ZZZZZZ' }); await p.waitForTimeout(1500)
+const joinMsg = ((await p.locator('.note-warn').textContent().catch(() => '')) ?? '').trim()
+ok(`單機模式加入房間的說法：「${joinMsg}」`, joinMsg.includes('沒有連上雲端'))
+ok('不會叫人去檢查房號有沒有打錯', !joinMsg.includes('打錯'))
 
 // ---- 確認對話框、設定、列印樣式 ----
 await p.goto(URL); await p.waitForTimeout(900)

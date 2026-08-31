@@ -25,7 +25,7 @@ export function Board({ code }: { code: string }) {
       .then(() => { if (alive) setStatus('ready') })
       .catch((e: unknown) => {
         if (!alive) return
-        setError(errorMessage(e, t))
+        setError(errorMessage(e, t, 'join'))
         setStatus('error')
       })
     return () => { alive = false; leaveRoom() }

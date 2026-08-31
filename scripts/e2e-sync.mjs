@@ -127,7 +127,52 @@ await B.p.locator('.member-main').nth(2).click(); await B.p.waitForTimeout(1200)
 await reconcile(A); await A.p.waitForTimeout(600)
 ok('[主揪] 別人改我沒碰過的人，不跳提示', (await A.p.locator('.toast').count()) === 0)
 
+// --- 伺服器永久拒絕的點名不能無聲消失（#39）---------------------------------
+// 情境：同工在車門口離線點了一個人，主揪這時把房間關掉。同工一連上網，那一筆
+// 就會被伺服器以 room_closed 拒絕。舊行為是靜靜地從佇列刪掉，同步指示接著翻成
+// 綠色的「已同步」——同工看著自己剛點的那個人，完全不知道伺服器沒收到。
+await reconcile(A)
+await B.ctx.setOffline(true); await B.p.waitForTimeout(400)
+// 找一個目前還沒到的人來點。
+const target = B.p.locator('.member:not(.is-arrived):not(.is-excused)').first()
+const targetName = (await target.locator('.member-name').textContent())?.trim()
+await target.locator('.member-main').click(); await B.p.waitForTimeout(700)
+ok(`[同工] 離線先點了「${targetName}」，本地已入列`,
+   /待上傳/.test((await B.p.locator('.sync').textContent()) || ''))
+
+// 主揪關閉房間
+await A.p.locator('.topbar button[aria-label="管理"]').click(); await A.p.waitForTimeout(600)
+await A.p.getByRole('button', { name: /關閉房間/ }).click(); await A.p.waitForTimeout(1600)
+await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(400)
+
+// 同工恢復連線 → 那一筆會被拒絕
+await B.ctx.setOffline(false)
+await B.p.evaluate(() => window.dispatchEvent(new Event('online')))
+await B.p.waitForTimeout(3000)
+const dropNotice = (await B.p.locator('.toast-text').textContent().catch(() => '')) ?? ''
+ok(`[同工] 被拒絕的點名有當面說：「${dropNotice}」`,
+   dropNotice.includes('沒有存到') && (targetName ? dropNotice.includes(targetName) : true))
+ok('[同工] 訊息說得出原因（房間已關閉）', /關閉/.test(dropNotice))
+
+// --- 掃 QR 時連不上：要說話，不能永遠留在骨架上（#23）---------------------
+// reconcile() 把 offline 自己吞掉（它是背景對帳，不該讓畫面爆掉），於是第一次
+// 進房又拿不到快照時 room 一直是 null，畫面停在載入骨架上一個字都沒有。站在
+// 車門口掃 QR 的協助者看到的就是永遠的空白。
+const C = await mk('新同工')
+// 先把 App 載進來（協助者通常是先開得了網頁，訊號才在車上斷掉的），再斷網。
+await C.p.goto(URL); await C.p.waitForTimeout(1200)
+await C.ctx.setOffline(true); await C.p.waitForTimeout(300)
+await C.p.evaluate(() => window.dispatchEvent(new Event('offline')))
+await C.p.evaluate((c) => { window.location.hash = `#/j/${c}` }, code)
+await C.p.waitForTimeout(4000)
+const joinErr = ((await C.p.locator('.note-warn').textContent().catch(() => '')) ?? '').trim()
+ok(`[新同工] 離線掃碼時有話說：「${joinErr}」`, joinErr.length > 0)
+ok('[新同工] 說的是連不上而不是「找不到房號」', /連不上網路/.test(joinErr))
+ok('[新同工] 不會卡在空白骨架', (await C.p.locator('.skeleton-row').count()) === 0)
+ok('[新同工] 有一顆回得去的按鈕', (await C.p.getByRole('button', { name: /回|返/ }).count()) > 0)
+await C.ctx.setOffline(false)
+
 console.log('\n--- page errors ---')
-const all = [...A.errs, ...B.errs]
+const all = [...A.errs, ...B.errs, ...C.errs]
 console.log(all.length ? all.join('\n') : '(none)')
 await b.close()

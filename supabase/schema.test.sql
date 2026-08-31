@@ -208,6 +208,19 @@ select public.claim_mine('ownerkey-iiiiiiiiiiiiiiiiiii') as claimed;
 select jsonb_array_length(public.my_rooms()) as my_rooms_count;
 select public.my_rooms() #>> '{0,code}' as my_first_room;
 
+\echo '(2b) my_rooms 的分母扣掉請假者與其攜伴'
+-- 名單：甲（1）、乙（1）。把乙標成請假，今天該到的人頭剩 1。
+-- 用 headcount（2）當分母的話，清單上會出現「1 / 2」配「全部到齊」。
+-- 成員 id 從 get_room() 取，不直接讀表：authenticated 對表本來就沒有權限。
+select public.set_member_status('ACC234',
+  ((select m from jsonb_array_elements(public.get_room('ACC234') -> 'members') m
+     where m ->> 'name' = '乙') ->> 'id')::uuid,
+  'excused', 1, null) is not null as marked_excused;
+select
+  (public.my_rooms() #>> '{0,headcount}')::int          as headcount_all,
+  (public.my_rooms() #>> '{0,expectedHeadcount}')::int  as expected_today,
+  (public.my_rooms() #>> '{0,arrivedHeadcount}')::int   as arrived_now;
+
 \echo '(3) 換一台新裝置（不同 owner_key）但同一個帳號，仍然管得動'
 select public.rename_room('ACC234','ownerkey-BRAND-NEW-DEVICE-xxx','從新手機改名') #>> '{room,name}' as new_device_works;
 

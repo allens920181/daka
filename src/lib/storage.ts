@@ -13,6 +13,7 @@ const K_OUTBOX = 'outbox'
 const K_RECENT = 'recentRooms'
 const K_PREFS = 'prefs'
 const K_SESSION = 'session'
+const K_DRAFT = 'newRoomDraft'
 const roomKey = (code: string) => `room:${code.toUpperCase()}`
 
 export interface Prefs {
@@ -107,6 +108,38 @@ export async function loadOutbox(): Promise<PendingOp[]> {
 
 export async function saveOutbox(ops: PendingOp[]): Promise<void> {
   await safeSet(K_OUTBOX, ops)
+}
+
+/**
+ * 開房畫面的草稿。
+ *
+ * 主揪常常是在遊覽車上、訊號最差的地方貼那份 200 人的名單。開房失敗之後
+ * 只要切去 LINE 看一眼再切回來，PWA 就可能已經重載，貼好的名單整份消失。
+ * 存下來，錯誤訊息才敢說「你貼的名單還留著」。
+ */
+export interface NewRoomDraft {
+  name: string
+  text: string
+  savedAt: number
+}
+
+/** 超過這個時間的草稿不再回填：那多半是上一場活動的名單，跳出來只會嚇人。 */
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000
+
+export async function loadDraft(now: number = Date.now()): Promise<NewRoomDraft | null> {
+  const d = await safeGet<NewRoomDraft>(K_DRAFT)
+  if (!d || typeof d.text !== 'string') return null
+  if (now - d.savedAt > DRAFT_TTL_MS) { await clearDraft(); return null }
+  if (!d.text.trim() && !d.name.trim()) return null
+  return d
+}
+
+export async function saveDraft(name: string, text: string): Promise<void> {
+  await safeSet(K_DRAFT, { name, text, savedAt: Date.now() } satisfies NewRoomDraft)
+}
+
+export async function clearDraft(): Promise<void> {
+  try { await del(K_DRAFT) } catch { /* 同 safeSet：儲存不可用時不影響點名 */ }
 }
 
 export async function loadRecentRooms(): Promise<RecentRoom[]> {
