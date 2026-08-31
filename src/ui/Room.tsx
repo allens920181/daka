@@ -160,8 +160,17 @@ export function Room({ code }: { code: string }) {
           <button class="icon-btn" onClick={() => navigate('/')} aria-label={t('back')}>
             <IconBack />
           </button>
-          <div class="topbar-title">
-            <div class="topbar-name">{current.name}</div>
+          {/*
+            點頂欄回到頂端。200 人的名單捲到底之後，要回到搜尋框得往上滑
+            17 個螢幕——而 overscroll-behavior-y: none 連「用力甩」都擋掉了。
+            這是行動裝置的既有慣例（狀態列／標題列回頂），不必再教。
+          */}
+          <button
+            class="topbar-title"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label={t('backToTop')}
+          >
+            <h1 class="topbar-name">{current.name}</h1>
             <div class="topbar-sub">
               {scoreVisible && !closed ? (
                 <span class="mono">{current.code}</span>
@@ -177,7 +186,7 @@ export function Room({ code }: { code: string }) {
               )}
               <SyncBadge />
             </div>
-          </div>
+          </button>
           <button class="icon-btn" onClick={() => setSheet('share')} aria-label={t('share')}>
             <IconShare />
           </button>
@@ -307,7 +316,7 @@ export function Room({ code }: { code: string }) {
           )}
         </div>
 
-        <div class="list">
+        <div class="list" role="list" aria-label={t('roster')}>
           {shown.length === 0 ? (
             <div class="empty">
               {/*
@@ -418,7 +427,7 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
   const noteIsStatus = member.status === 'excused' && isExcusedNote(member.note)
 
   return (
-    <div class={cls}>
+    <div class={cls} role="listitem">
       <button
         class="member-main"
         onClick={onToggle}

@@ -178,6 +178,50 @@ await p.locator('.role-name').click(); await p.waitForTimeout(500)
 ok('點名字可以進到設定', (await p.locator('#checker-name').count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
+// #15 捲進名單深處之後回得到頂端；#43 名單要是 list、<html lang> 要跟著語言走。
+await p.goto(URL); await p.waitForTimeout(800)
+await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(300)
+await p.locator('#room-name').fill('長名單測試')
+await p.locator('#roster-text').fill(Array.from({length: 40}, (_, i) => `同工${String(i+1).padStart(2,'0')}`).join('\n'))
+await p.waitForTimeout(400)
+await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300)
+ok('名單是 list 地標', (await p.locator('.list[role=list]').count()) === 1)
+ok('每一列是 listitem', (await p.locator('.member[role=listitem]').count()) === 40)
+ok('房間名是 h1', (await p.locator('h1.topbar-name').count()) === 1)
+await p.mouse.wheel(0, 3000); await p.waitForTimeout(700)
+ok('捲得下去', (await p.evaluate(() => window.scrollY)) > 500)
+await p.locator('.topbar-title').click(); await p.waitForTimeout(900)
+ok('點頂欄回到名單頂端', (await p.evaluate(() => window.scrollY)) < 10)
+// 搜尋框只留一顆清除鍵：原生那顆沒有 48px 觸控目標也沒有無障礙名稱。
+// Chrome 的 getComputedStyle 對這個 pseudo-element 會回傳宿主元素的值，驗不到，
+// 所以直接確認規則還在樣式表裡（防的是「有人把它刪掉」）。
+await p.locator('input[type=search]').fill('同工'); await p.waitForTimeout(300)
+ok('自訂清除鍵有 48px 觸控目標與無障礙名稱', await p.evaluate(() => {
+  const b = document.querySelector('.search-clear')
+  const r = b?.getBoundingClientRect()
+  return Boolean(b?.getAttribute('aria-label')) && r && r.width >= 48 && r.height >= 48
+}))
+ok('原生清除鍵被關掉（只剩自訂的那顆）', await p.evaluate(() => {
+  for (const sheet of document.styleSheets) {
+    let rules; try { rules = sheet.cssRules } catch { continue }
+    for (const r of rules) {
+      if (r.selectorText?.includes('search-cancel-button') &&
+          /appearance:\s*none/.test(r.style.cssText)) return true
+    }
+  }
+  return false
+}))
+await p.locator('input[type=search]').fill(''); await p.waitForTimeout(200)
+// <html lang> 要跟著 App 語言，否則螢幕閱讀器會用中文語音唸英文介面。
+ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button',{name:/^設定$/}).click(); await p.waitForTimeout(500)
+await p.getByRole('button',{name:/English/}).click(); await p.waitForTimeout(600)
+ok('切成英文後 lang=en', (await p.evaluate(() => document.documentElement.lang)) === 'en')
+await p.getByRole('button',{name:/中文/}).click(); await p.waitForTimeout(600)
+ok('切回中文後 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
 // 掃描端：單機模式下用房號加入別人的房，錯的不是房號，是這個站台沒有雲端。
 // 講「找不到這個房號。請確認有沒有打錯」會讓人重打三次，而主揪正在數人頭。
 await p.evaluate(() => { window.location.hash = '#/j/ZZZZZZ' }); await p.waitForTimeout(1500)

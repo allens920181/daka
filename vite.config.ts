@@ -26,8 +26,11 @@ export default defineConfig({
         theme_color: '#0e5e63',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          // maskable 要用另一張圖：作業系統會自己套形狀遮罩，所以圖示本身
+          // 不能先圓角（icon-512 是 rx=112 的圓角徽章，四角透明）。那會變成
+          // 「圓角再被圓角切一次」，或在彩色底上露出透明的四個角。
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {

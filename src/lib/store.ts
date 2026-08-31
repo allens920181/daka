@@ -123,6 +123,7 @@ export async function boot(): Promise<void> {
   recentRooms.value = await loadRecentRooms()
   outbox.value = await loadOutbox()
   applyTheme()
+  applyLang()
   window.addEventListener('online', handleOnline)
   window.addEventListener('offline', handleOffline)
   document.addEventListener('visibilitychange', handleVisibility)
@@ -195,6 +196,16 @@ function handleVisibility(): void {
 // 偏好設定
 // ---------------------------------------------------------------------------
 
+/**
+ * 讓 <html lang> 跟著 App 的語言走。
+ *
+ * index.html 寫死 zh-TW，切成英文之後螢幕閱讀器仍然會用中文語音去唸英文介面。
+ */
+export function applyLang(): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.lang = prefs.value.lang === 'en' ? 'en' : 'zh-TW'
+}
+
 export function applyTheme(): void {
   const theme = prefs.value.theme
   const root = document.documentElement
@@ -205,6 +216,7 @@ export function applyTheme(): void {
 export async function setPrefs(patch: Partial<Prefs>): Promise<void> {
   prefs.value = { ...prefs.value, ...patch }
   applyTheme()
+  applyLang()
   await savePrefs(prefs.value)
 }
 

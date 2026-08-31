@@ -353,9 +353,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
   padding-top: env(safe-area-inset-top);
 }
 .topbar-inner { display: flex; align-items: center; gap: var(--sp-1); min-height: var(--tap-lg); }
-.topbar-title { min-width: 0; flex: 1; }
+/* 頂欄標題是一顆按鈕（點了回到名單頂端），但要長得像標題。 */
+.topbar-title {
+  min-width: 0; flex: 1;
+  border: none; background: transparent; color: inherit;
+  font: inherit; text-align: left; padding: 0; cursor: pointer;
+  min-height: var(--tap-min);
+  display: flex; flex-direction: column; justify-content: center;
+}
 .topbar-name {
-  font-size: var(--fs-4); font-weight: 700;
+  font-size: var(--fs-4); font-weight: 700; margin: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .topbar-sub { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-2); color: var(--ink-3); }
@@ -493,6 +500,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 
 .search-wrap { position: relative; margin-bottom: var(--sp-3); }
+/* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
+   留自訂的那顆：它有 48px 的觸控目標與無障礙名稱，原生那顆兩者都沒有。 */
+.search-wrap input[type='search']::-webkit-search-cancel-button,
+.search-wrap input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
 .search-clear {
   position: absolute; right: var(--sp-1); top: 50%; transform: translateY(-50%);
   width: var(--tap-min); height: var(--tap-min); border: none; background: transparent;

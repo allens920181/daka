@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="點名房間">
+  <!--
+    Maskable 版本：整塊滿版，四角不透明。
+    作業系統會自己套形狀遮罩（圓形、方角、水滴…），所以圖示本身不能先圓角——
+    那會變成「圓角再被圓角切一次」，或在彩色底上露出透明的四個角。
+    重要內容一律收進中央 80% 的安全區（半徑 205px 的圓內）。
+  -->
+  <rect width="512" height="512" fill="#0E5E63"/>
+  <g transform="translate(256 256) scale(0.92) translate(-256 -256)">
+    <g fill="#FFFFFF">
+      <rect x="92" y="122" width="60" height="60" rx="16"/>
+      <rect x="186" y="138" width="234" height="28" rx="14"/>
+      <rect x="92" y="226" width="60" height="60" rx="16"/>
+      <rect x="186" y="242" width="234" height="28" rx="14"/>
+    </g>
+    <g fill="none" stroke="#0E5E63" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="107,152 119,165 138,139"/>
+      <polyline points="107,256 119,269 138,243"/>
+    </g>
+    <g fill="none" stroke="#FFFFFF" stroke-width="11" opacity="0.5">
+      <rect x="97.5" y="335.5" width="49" height="49" rx="12"/>
+    </g>
+    <rect x="186" y="346" width="234" height="28" rx="14" fill="#FFFFFF" opacity="0.5"/>
+  </g>
+</svg>

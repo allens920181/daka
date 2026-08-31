@@ -59,10 +59,21 @@
 | 構成網格 | 512 × 512，圓角 112（22%） |
 | 底色 | `#0E5E63`（品牌 teal，固定不隨主題變） |
 | 前景 | 白，未勾項 50% 不透明 |
-| 內容範圍 | x/y 92–420，即中央 64%——落在 maskable 安全區（中央 80%）內 |
+| 內容範圍 | x/y 92–420 |
 | 最小尺寸 | 24px。再小就把未勾的那一項拿掉，只留兩個勾 |
 | 留白 | 四周至少一個勾選格的高度 |
 | 原始檔 | `public/favicon.svg` |
+
+**maskable 一定要另外一張圖。** 上面這張是 `rx=112` 的圓角徽章，四個角是透明的
+——那正是 maskable 不能用它的原因：作業系統會自己套形狀遮罩（圓形、方角、
+水滴…），拿圓角圖去餵就變成「圓角再被圓角切一次」，或在彩色底上露出透明的
+四個角。
+
+| 規格 | 值 |
+| --- | --- |
+| 構成 | 512 × 512，**無圓角、滿版底色**，四角不透明 |
+| 內容 | 同一組圖形置中縮到 92%，半對角線 195px < 安全區半徑 205px（中央 80%） |
+| 原始檔 | `public/icon-maskable-512.svg` |
 
 **不得：**改底色、加陰影或漸層、把圖示放在其他形狀裡、拉伸比例、在標誌旁加標語。
 
@@ -102,12 +113,15 @@ ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace
 | --- | --- | --- |
 | Favicon | SVG，512 viewBox | `public/favicon.svg` |
 | PWA 圖示 | 192 × 192 PNG | `public/icon-192.png` |
-| PWA 圖示 | 512 × 512 PNG，同時作為 maskable | `public/icon-512.png` |
+| PWA 圖示 | 512 × 512 PNG，`purpose: any` | `public/icon-512.png` |
+| PWA maskable 圖示 | 512 × 512 PNG，滿版無圓角 | `public/icon-maskable-512.png` |
 | Apple touch icon | 指向 icon-192 | `index.html` |
 | theme-color | 淺色 `#0e5e63`／深色 `#0d1315`，兩個 meta 各帶 media | `index.html` |
 | App 名稱 | `點名房間`／短名 `點名` | `vite.config.ts` manifest |
 
-**改圖示時要一起改的**：`favicon.svg` 是來源，兩個 PNG 由它產生（見 commit 紀錄裡的產生腳本）。只改 SVG 不重新產 PNG，桌面圖示就會跟瀏覽器分頁不一致。
+**改圖示時要一起改的**：`favicon.svg` 是來源，`icon-192/512.png` 由它產生；
+`icon-maskable-512.svg`（滿版版本）另外維護，`icon-maskable-512.png` 由它產生。
+只改 SVG 不重新產 PNG，桌面圖示就會跟瀏覽器分頁不一致。
 
 ## 2.9 QR 碼
 
