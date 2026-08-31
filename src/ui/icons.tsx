@@ -11,8 +11,11 @@ const base = (size: number) => ({
   'aria-hidden': true,
 })
 
+// 「已到」的勾。渲染尺寸只有 16px，用系統預設的 strokeWidth 2 換算下來只有
+// 1.3px——比它旁邊那個 2px 的空心圓還細，是全系統最弱的一筆，偏偏它是名單上
+// 唯一表示「這個人上車了」的記號。線寬隨尺寸補回來。
 export const IconCheck = ({ size = 16, ...r }: P) => (
-  <svg {...base(size)} {...r}><polyline points="20 6 9 17 4 12" /></svg>
+  <svg {...base(size)} strokeWidth={3} {...r}><polyline points="20 6 9 17 4 12" /></svg>
 )
 export const IconBack = ({ size = 24, ...r }: P) => (
   <svg {...base(size)} {...r}><path d="M19 12H5" /><polyline points="12 19 5 12 12 5" /></svg>

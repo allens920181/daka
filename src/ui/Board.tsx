@@ -44,6 +44,7 @@ export function Board({ code }: { code: string }) {
   )
   const s = useMemo(() => summarize(scoped), [scoped])
   const missing = useMemo(() => scoped.filter((m) => m.status === 'pending'), [scoped])
+  const allHere = s.people > 0 && s.pending === 0
 
   if (status === 'error' || (status === 'loading' && !current)) {
     return (
@@ -62,33 +63,46 @@ export function Board({ code }: { code: string }) {
   return (
     <div class="board">
       <div class="board-head">
-        <span class="board-title">{current.name}{group ? ` · ${group}` : ''}</span>
-        <span class={`board-sync sync-${connection.value === 'local-only' ? 'local' : connection.value}`}>
+        <span class="board-title">{current.name}</span>
+        {group && <span class="board-scope">{group}</span>}
+        <span
+          class={`board-sync sync-${connection.value === 'local-only' ? 'local' : connection.value}`}
+          role="status"
+        >
           <span class="sync-dot" />
+          <span class="board-sync-text">{syncLabel(connection.value, t)}</span>
         </span>
       </div>
 
-      <div class="board-center">
-        <div class="board-count" role="status" aria-live="polite">
-          <span class="board-num">{s.arrivedHeadcount}</span>
-          <span class="board-slash">/</span>
-          <span class="board-total">{s.expectedHeadcount}</span>
-        </div>
-        <p class="board-label">{t('arrived')}</p>
-
-        <p class={s.pending === 0 ? 'board-missing done' : 'board-missing'}>
-          {s.pending === 0 ? t('allHere') : t('missingCount', { n: s.pending })}
-        </p>
-
-        {missing.length > 0 && (
-          <ul class="board-names">
-            {missing.map((m) => (
-              <li key={m.id}>
-                {m.name}
-                {m.companions > 0 && <span class="board-plus">＋{m.companions}</span>}
-              </li>
-            ))}
-          </ul>
+      {/*
+        看板最大的字要是「現在還缺誰」，不是「已經到了幾個」。車長站在門口看
+        看板，他要做的決定是「能不能開車」——已到的數字回答不了那個問題，未到
+        的人名才可以。全部到齊之後才換成那句話當主角。
+      */}
+      <div class="board-center" role="status" aria-live="polite">
+        {allHere ? (
+          <>
+            <p class="board-hero done">{t('allHere')}</p>
+            <p class="board-sub">{t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}</p>
+          </>
+        ) : (
+          <>
+            {/* 數字自己一個字級，標籤跟在後面——把整句「還有 24 位沒到」都放大到
+                主角字級的話，一行就吃掉整個看板的寬度。 */}
+            <p class="board-hero">
+              {s.pending}
+              <span class="board-hero-unit">{t('missingUnit')}</span>
+            </p>
+            <ul class={`board-names${missing.length > 12 ? ' dense' : ''}`}>
+              {missing.map((m) => (
+                <li key={m.id}>
+                  {m.name}
+                  {m.companions > 0 && <span class="board-plus">＋{m.companions}</span>}
+                </li>
+              ))}
+            </ul>
+            <p class="board-sub">{t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}</p>
+          </>
         )}
       </div>
 
@@ -116,6 +130,14 @@ export function Board({ code }: { code: string }) {
  * 讓螢幕不要自動關掉。平板放在門邊十分鐘沒人碰，預設就會睡著。
  * 切到背景時系統會自動釋放，所以回到前景要重新取得。
  */
+/** 看板上的同步狀態要有文字，不能只有一顆圓點——3 公尺外看不出顏色差別。 */
+function syncLabel(state: string, t: ReturnType<typeof useT>): string {
+  if (state === 'online') return t('syncOnline')
+  if (state === 'offline') return t('syncOffline')
+  if (state === 'syncing') return t('syncSyncing')
+  return t('syncLocalOnly')
+}
+
 function useWakeLock(): void {
   useEffect(() => {
     let lock: WakeLockSentinel | null = null

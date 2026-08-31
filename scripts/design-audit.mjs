@@ -48,7 +48,31 @@ function collect() {
   const label = (el) =>
     `${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : ''}`
 
-  const out = { contrast: [], tap: [], font: [], name: [], primary: 0 }
+  /**
+   * 祖先鏈上所有 opacity 的乘積。
+   *
+   * getComputedStyle(el).color 讀到的是「宣告的顏色」，不含祖先 opacity 的影響。
+   * 於是像 `.member.is-excused { opacity: .62 }` 這種寫法，會把裡面 13px 的說明
+   * 文字實際壓到 2.5:1，而這份檢查完全驗不到——螢幕上看得見的問題，工具說通過。
+   */
+  const effOpacity = (el) => {
+    let n = el, o = 1
+    while (n && n !== document.documentElement) {
+      const v = parseFloat(getComputedStyle(n).opacity)
+      if (!Number.isNaN(v)) o *= v
+      n = n.parentElement
+    }
+    return o
+  }
+  /** 把前景色按有效不透明度混進背景，得到眼睛真正看到的顏色。 */
+  const blend = (fg, bg, a) => ({
+    r: fg.r * a + bg.r * (1 - a),
+    g: fg.g * a + bg.g * (1 - a),
+    b: fg.b * a + bg.b * (1 - a),
+    a: 1,
+  })
+
+  const out = { contrast: [], tap: [], font: [], name: [], nonText: [], primary: 0 }
 
   for (const el of document.querySelectorAll('*')) {
     const cs = getComputedStyle(el)
@@ -71,9 +95,16 @@ function collect() {
       const fs = Math.round(parseFloat(cs.fontSize) * 100) / 100
       if (!inBoard) out.font.push({ fs, el: label(el), text: ownText.slice(0, 20) })
 
-      const fg = parse(cs.color)
       const bg = bgOf(el)
-      if (fg && bg && fg.a > 0.5) {
+      const declared = parse(cs.color)
+      // 顏色自己的 alpha 與祖先 opacity 一起算進去，再跟背景比。
+      const a = declared ? declared.a * effOpacity(el) : 0
+      const fg = declared && bg ? blend(declared, bg, a) : null
+      // WCAG 1.4.3 明確豁免停用中的控制項（inactive user interface component）。
+      // 不豁免的話 --op-disabled 會讓每一顆停用按鈕都變成永久噪音，真正的問題
+      // 反而被淹沒。
+      const inactive = Boolean(el.closest('[disabled], [aria-disabled="true"]'))
+      if (fg && bg && a > 0.06 && !inactive) {
         const r = ratio(fg, bg)
         const bold = parseInt(cs.fontWeight, 10) >= 700
         const large = fs >= 24 || (fs >= 18.66 && bold)
@@ -81,6 +112,31 @@ function collect() {
         if (r + 0.005 < need) {
           out.contrast.push({ ratio: +r.toFixed(2), need, fs, el: label(el), text: ownText.slice(0, 20) })
         }
+      }
+    }
+
+    /*
+     * 非文字的狀態指示。WCAG 1.4.11 要求 3:1。
+     *
+     * 「未到」是一個空心圓——它是名單上唯一表示「這個人還沒上車」的形狀，
+     * 而它沒有自己的文字節點，所以上面那段以文字為單位的檢查看不到它。
+     * 這裡明確點名幾個「形狀就是資訊」的元素。
+     */
+    const NON_TEXT = ['check', 'sync-dot', 'progress-fill', 'chip-count', 'chip-tell']
+    if ([...(el.classList ?? [])].some((c) => NON_TEXT.includes(c))) {
+      const bg = bgOf(el.parentElement ?? el)
+      const a = effOpacity(el)
+      let best = 0
+      // 邊框與填色只要有一個達標就算過：實心圓不需要外框也看得見，
+      // 空心圓則完全靠那條線。
+      for (const [prop, widthProp] of [['borderTopColor', 'borderTopWidth'], ['backgroundColor', null]]) {
+        if (widthProp && parseFloat(cs[widthProp]) < 0.5) continue
+        const c = parse(cs[prop])
+        if (!c || c.a * a <= 0.06) continue
+        best = Math.max(best, ratio(blend(c, bg, c.a * a), bg))
+      }
+      if (best > 0 && best + 0.005 < 3) {
+        out.nonText.push({ el: label(el), ratio: +best.toFixed(2), need: 3 })
       }
     }
 
@@ -120,6 +176,10 @@ async function audit(page, scheme, screen) {
     if (!FONT_SCALE.includes(Math.round(f.fs))) {
       note(scheme, screen, '字級不在八階內', `${f.fs}px ${f.el} 「${f.text}」`)
     }
+  }
+  for (const n of r.nonText) {
+    note(scheme, screen, '非文字元件對比不足',
+      `${n.el} ${n.ratio}:1（狀態靠形狀表達時線條要 ${n.need}:1）`)
   }
   for (const n of r.name) note(scheme, screen, '缺無障礙名稱', n.el)
   if (r.primary > 1) note(scheme, screen, '主要按鈕過多', `找到 ${r.primary} 個 .btn-primary，規範是至多一個`)
@@ -188,7 +248,7 @@ for (const scheme of ['light', 'dark']) {
 await browser.close()
 
 if (violations.length === 0) {
-  console.log('設計規範檢查通過：對比、觸控尺寸、字級、無障礙名稱、橫向溢出、主要按鈕數量。')
+  console.log('設計規範檢查通過：對比（含祖先 opacity）、非文字元件對比、觸控尺寸、字級、無障礙名稱、橫向溢出、主要按鈕數量。')
   process.exit(0)
 }
 

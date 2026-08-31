@@ -150,7 +150,12 @@ export function Room({ code }: { code: string }) {
 
   return (
     <>
-      <div class="topbar">
+      {/*
+        捲動之後計分區離開畫面，未到人數由頂欄接手。接手時它就是這個畫面上
+        唯一不能消失的數字，所以字級要和房間名對調——房間名此刻只是脈絡，
+        「還有幾個沒到」才是使用者盯著的東西。
+      */}
+      <div class={scoreVisible ? 'topbar' : 'topbar handover'}>
         <div class="shell topbar-inner">
           <button class="icon-btn" onClick={() => navigate('/')} aria-label={t('back')}>
             <IconBack />
@@ -183,6 +188,23 @@ export function Room({ code }: { code: string }) {
       </div>
 
       <div class="shell">
+        {/*
+          紙本備援的抬頭。只在列印時出現。
+          以前列印是把螢幕的計分區借來當標題，於是紙上印的是「還有 12 位沒到」
+          ——一個離開印表機就過期的數字，而真正需要的活動名稱與房號反而被
+          display:none 掉了。手機沒電時拿著這張紙的人要知道：這是哪一場、
+          房號多少、誰在點、幾號。
+        */}
+        <div class="print-head" aria-hidden="true">
+          <h1 class="print-title">{current.name}</h1>
+          <p class="print-meta">
+            <span>{t('roomCode')}：{current.code}</span>
+            <span>{t('printTotal', { people: s.people, heads: s.expectedHeadcount })}</span>
+            {group !== null && <span>{groupLabel}</span>}
+          </p>
+          <p class="print-blanks">{t('printBlanks')}</p>
+        </div>
+
         {closed && <p class="banner banner-warn" style="margin-top:12px">{t('roomClosed')}</p>}
 
         <div class="scoreboard" ref={scoreboardRef}>
@@ -421,6 +443,10 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
         </span>
       </button>
 
+      {/* 紙本上要看得到電話：收尾時「看到未到 → 打電話」是唯一的下一步，
+          而螢幕上電話只做成 tel: 圖示按鈕，列印時整個 .member-side 會被藏起來。 */}
+      {member.phone && <span class="print-phone" aria-hidden="true">{member.phone}</span>}
+
       <div class="member-side">
         {member.phone && member.status === 'pending' && (
           <a
@@ -452,10 +478,12 @@ function SyncBadge() {
   } as const
 
   const [cls, label] = map[state]
+  // 頂欄接手顯示未到人數時空間會不夠，文字收起來只留圓點——但無障礙名稱要
+  // 留著，而且點名人數才是那一刻不能被擠掉的東西。
   return (
-    <span class={`sync ${cls}`}>
+    <span class={`sync ${cls}`} role="status" aria-label={label} title={label}>
       <span class="sync-dot" />
-      {label}
+      <span class="sync-text">{label}</span>
     </span>
   )
 }

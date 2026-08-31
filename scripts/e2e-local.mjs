@@ -221,16 +221,27 @@ await p.goBack(); await p.waitForTimeout(1500)
 await p.emulateMedia({media:'print'}); await p.waitForTimeout(500)
 const printState = await p.evaluate(()=>{
   const hidden = (sel)=>{const e=document.querySelector(sel); return !e || getComputedStyle(e).display==='none'}
+  const txt = (sel)=>document.querySelector(sel)?.textContent?.trim() ?? null
   const check = document.querySelector('.check')
   return { dock:hidden('.dock'), topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
+    scoreboard: hidden('.scoreboard'),
     rows: document.querySelectorAll('.member').length,
     checkBg: check ? getComputedStyle(check).backgroundColor : null,
-    label: document.querySelector('.score-label') ? getComputedStyle(document.querySelector('.score-label'),'::after').content : null }
+    title: txt('.print-title'), meta: txt('.print-meta'), blanks: txt('.print-blanks'),
+    columns: getComputedStyle(document.querySelector('.list')).columnCount }
 })
 ok('列印時隱藏頂欄／動作列／篩選／搜尋', printState.dock&&printState.topbar&&printState.seg&&printState.search)
 ok(`列印仍保留名單 ${printState.rows} 列`, printState.rows===3)
 ok('列印的勾選格是空白的（給筆勾）', printState.checkBg==='rgb(255, 255, 255)')
-ok('列印標題附日期與點名者欄位', String(printState.label).includes('日期'))
+// 紙本備援是「手機沒電」時唯一剩下的東西。抬頭必須寫得出這是哪一場、房號多少。
+// 以前這裡印的是借來的計分區文字（「還有 12 位沒到」）——一個離開印表機就過期
+// 的數字，而活動名稱與房號反而被 display:none 掉了。
+ok(`列印抬頭是活動名稱：「${printState.title}」`, printState.title === '確認對話框測試')
+ok(`列印抬頭有房號與人數：「${printState.meta}」`,
+   /[2-9A-HJ-KM-NP-Z]{6}/.test(printState.meta || '') && (printState.meta || '').includes('共 3 人'))
+ok('列印抬頭有日期與點名者欄位', (printState.blanks || '').includes('日期') && (printState.blanks || '').includes('點名者'))
+ok('列印不再借用計分區當標題', printState.scoreboard)
+ok(`列印排成兩欄（${printState.columns}）省紙`, printState.columns === '2')
 
 await p.emulateMedia({media:'screen'})
 
@@ -297,15 +308,23 @@ const groupRoomCode=(await p.locator('.topbar-sub .mono').first().textContent())
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/看板模式/}).click(); await p.waitForTimeout(1600)
 ok('進入看板模式', await p.locator('.board').isVisible())
-ok('看板顯示已到人頭', (await p.locator('.board-num').textContent())==='1')
-ok('看板顯示未到人數', (await p.locator('.board-missing').textContent())?.includes('4'))
+// 看板最大的字要回答車長真正的問題——「還缺誰」，不是「已經到幾個」。
+ok('看板主角是未到人數', (await p.locator('.board-hero').textContent())?.includes('4'))
+// 6 列 + 李美花＋1 + 王五＋2 = 9 人頭，陳大同請假 → 今天該到 8。
+ok('已到人頭退成副行且分母扣掉請假', (await p.locator('.board-sub').textContent())?.includes('1 / 8'))
 const names=await p.locator('.board-names li').allTextContents()
 ok(`看板列出未到者：${names.map(n=>n.trim()).join('、')}`, names.length===4)
-const numSize=await p.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('.board-num')).fontSize))
+const numSize=await p.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('.board-hero')).fontSize))
 ok(`看板數字 ${numSize}px（遠距可讀，超出八階是具名例外）`, numSize>=52)
+// 未到的名字不得被切掉：最需要看板的那一刻正是名字最多的時候，而三公尺外
+// 沒有人能捲動。
+ok('未到名單沒有被切掉', await p.evaluate(()=>{
+  const ul=document.querySelector('.board-names'); return !ul || ul.scrollHeight <= ul.clientHeight + 2 }))
+// 三公尺外分不出圓點的顏色差別，同步狀態一定要有字。
+ok('看板同步狀態有文字', ((await p.locator('.board-sync-text').textContent())||'').trim().length > 0)
 
 await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
-ok('看板可切分組：第一車已到 1', (await p.locator('.board-num').textContent())==='1')
+ok('看板可切分組：第一車未到 2', (await p.locator('.board-hero').textContent())?.includes('2'))
 await p.getByRole('button',{name:/離開看板/}).click(); await p.waitForTimeout(1200)
 ok('離開看板回到房間', await p.locator('.topbar-name').isVisible() && (await p.locator('.topbar-sub .mono').first().textContent())?.trim()===groupRoomCode)
 

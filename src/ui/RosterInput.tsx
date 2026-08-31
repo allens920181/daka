@@ -56,7 +56,9 @@ export function RosterInput({
           <div class="row">
             <span class="label">{t('parsePreview')}</span>
             <div class="spacer" />
-            <span class="hint mono">
+            {/* 整句中文不套 .mono：等寬的空白會把句子撐出不自然的縫。
+                等寬只給真正需要對齊的數字與代碼。 */}
+            <span class="hint">
               {t('parsedCount', { n: result.members.length })}
               {heads !== result.members.length && ` · ${t('parsedHeads', { n: heads })}`}
             </span>
