@@ -406,7 +406,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState(identity.value.checkerName)
 
   return (
-    <Sheet title={t('theme')} onClose={onClose}>
+    <Sheet title={t('settings')} onClose={onClose}>
       <div class="stack">
         <div class="field">
           <label class="label" for="checker-name">{t('yourName')}</label>

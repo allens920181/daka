@@ -1,45 +1,85 @@
 /* ===========================================================================
-   點名房間 · 設計系統
+   點名房間 · 樣式
 
-   這是「站在遊覽車門口、單手、逆光、訊號差」的工具，不是後台管理介面。
-   由此推導出的三個原則：
-   1. 不載入任何網路字型。字型檔在爛網路上會擋住首次渲染。
-   2. 觸控目標大：列高 ≥ 64px，按鈕 ≥ 48px。人潮在動，手機在晃。
-   3. 「未到」是主色調。已到的人要退到背景，還沒到的人要跳出來。
+   這個檔案是 docs/design-system.md 的實作。所有數值都必須來自下面的 token；
+   要新增一個字級或間距，先改規範文件。
+   scripts/design-audit.mjs 會在真實瀏覽器裡驗對比、觸控尺寸與字級。
    =========================================================================== */
 
 :root {
+  /* --- 表面與文字 ------------------------------------------------------ */
   --paper: #f5f7f8;
   --surface: #ffffff;
   --surface-2: #eceff1;
   --surface-3: #dfe4e6;
   --ink: #10171a;
   --ink-2: #4a5a5e;
-  --ink-3: #7a8a8e;
+  --ink-3: #5f6f73;          /* 最淺的可用文字色 */
   --rule: #d7dee0;
   --rule-strong: #b5c0c3;
 
-  --accent: #0e5e63;
+  /* --- 品牌與互動 ------------------------------------------------------ */
+  --accent: #0e5e63;         /* 淡底上的強調文字也用這個 */
   --accent-ink: #ffffff;
   --accent-soft: #e2f0f0;
-  --accent-bright: #0c8a93;
+  --accent-strong: #0c8a93;  /* 焦點框、載入。不得用於一般文字 */
 
-  --ok: #1c7a44;
-  --ok-soft: #e3f2e8;
-  --ok-line: #a9d7bc;
+  /* --- 點名狀態（只用於名單成員）--------------------------------------- */
+  --st-pending: #a84d06;
+  --st-arrived: #1c7a44;
+  --st-arrived-soft: #e3f2e8;
+  --st-arrived-line: #a9d7bc;
 
-  --warn: #a84d06;
-  --warn-soft: #fbecdd;
+  /* --- 系統回饋（只用於系統訊息）--------------------------------------- */
+  --fb-warn: #a84d06;
+  --fb-warn-soft: #fbecdd;
+  --fb-error: #a02b22;
+  --fb-error-soft: #f9e6e4;
 
-  --stop: #a02b22;
-  --stop-soft: #f9e6e4;
+  /* --- Toast：獨立表面，不參與明暗反轉 --------------------------------- */
+  --toast-bg: #10171a;
+  --toast-ink: #f5f7f8;
+  --toast-action: #5fd8df;
 
-  --shadow: 0 1px 2px rgba(16, 23, 26, .06), 0 8px 24px rgba(16, 23, 26, .07);
-  --shadow-sheet: 0 -8px 40px rgba(16, 23, 26, .18);
+  /* --- 字級（八階，不得新增）------------------------------------------- */
+  --fs-1: 11px;   /* 等寬微標籤，唯一允許小於 13px 的用途 */
+  --fs-2: 13px;
+  --fs-3: 15px;
+  --fs-4: 17px;   /* 內文、姓名、所有輸入框（iOS 低於 16px 會放大頁面）*/
+  --fs-5: 20px;
+  --fs-6: 26px;
+  --fs-7: 34px;
+  --fs-8: 44px;
 
-  --radius: 12px;
-  --radius-lg: 18px;
-  --tap: 48px;
+  /* --- 間距（4px 基準）------------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* --- 圓角 ------------------------------------------------------------ */
+  --r-1: 8px;
+  --r-2: 12px;
+  --r-3: 18px;
+  --r-full: 999px;
+
+  /* --- 陰影 ------------------------------------------------------------ */
+  --el-1: 0 1px 2px rgba(16, 23, 26, .06);
+  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(16, 23, 26, .06);
+  --el-3: 0 -8px 40px rgba(16, 23, 26, .18);
+
+  /* --- 觸控 ------------------------------------------------------------ */
+  --tap-min: 48px;
+  --tap-row: 64px;
+  --tap-lg: 56px;
+
+  /* --- 動態 ------------------------------------------------------------ */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --ease: cubic-bezier(.2, .8, .3, 1);
 
   color-scheme: light;
 }
@@ -52,27 +92,32 @@
     --surface-3: #263336;
     --ink: #e9eef0;
     --ink-2: #a4b3b6;
-    --ink-3: #7b8b8f;
+    --ink-3: #8b9b9f;
     --rule: #29373a;
     --rule-strong: #3b4b4f;
 
     --accent: #3fbfc7;
     --accent-ink: #06232a;
     --accent-soft: #11292c;
-    --accent-bright: #5fd8df;
+    --accent-strong: #5fd8df;
 
-    --ok: #55bd7c;
-    --ok-soft: #12291d;
-    --ok-line: #2b5c3e;
+    --st-pending: #e0913f;
+    --st-arrived: #55bd7c;
+    --st-arrived-soft: #12291d;
+    --st-arrived-line: #2b5c3e;
 
-    --warn: #e0913f;
-    --warn-soft: #2a2013;
+    --fb-warn: #e0913f;
+    --fb-warn-soft: #2a2013;
+    --fb-error: #e5736a;
+    --fb-error-soft: #2e1a18;
 
-    --stop: #e5736a;
-    --stop-soft: #2e1a18;
+    --toast-bg: #1d282b;
+    --toast-ink: #e9eef0;
+    --toast-action: #5fd8df;
 
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
-    --shadow-sheet: 0 -8px 40px rgba(0, 0, 0, .5);
+    --el-1: 0 1px 2px rgba(0, 0, 0, .4);
+    --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(0, 0, 0, .35);
+    --el-3: 0 -8px 40px rgba(0, 0, 0, .5);
 
     color-scheme: dark;
   }
@@ -85,42 +130,49 @@
   --surface-3: #263336;
   --ink: #e9eef0;
   --ink-2: #a4b3b6;
-  --ink-3: #7b8b8f;
+  --ink-3: #8b9b9f;
   --rule: #29373a;
   --rule-strong: #3b4b4f;
 
   --accent: #3fbfc7;
   --accent-ink: #06232a;
   --accent-soft: #11292c;
-  --accent-bright: #5fd8df;
+  --accent-strong: #5fd8df;
 
-  --ok: #55bd7c;
-  --ok-soft: #12291d;
-  --ok-line: #2b5c3e;
+  --st-pending: #e0913f;
+  --st-arrived: #55bd7c;
+  --st-arrived-soft: #12291d;
+  --st-arrived-line: #2b5c3e;
 
-  --warn: #e0913f;
-  --warn-soft: #2a2013;
+  --fb-warn: #e0913f;
+  --fb-warn-soft: #2a2013;
+  --fb-error: #e5736a;
+  --fb-error-soft: #2e1a18;
 
-  --stop: #e5736a;
-  --stop-soft: #2e1a18;
+  --toast-bg: #1d282b;
+  --toast-ink: #e9eef0;
+  --toast-action: #5fd8df;
 
-  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
-  --shadow-sheet: 0 -8px 40px rgba(0, 0, 0, .5);
+  --el-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(0, 0, 0, .35);
+  --el-3: 0 -8px 40px rgba(0, 0, 0, .5);
 
   color-scheme: dark;
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+/* === 基礎 ================================================================ */
 
+*, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
 
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
+  /* 刻意不載入網路字型：字型檔會擋住爛網路上的首次渲染。 */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Helvetica Neue', sans-serif;
-  font-size: 16px;
+  font-size: var(--fs-3);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
@@ -131,13 +183,12 @@ body {
 
 h1, h2, h3 { margin: 0; font-weight: 700; line-height: 1.25; text-wrap: balance; }
 p { margin: 0; }
-
 button, input, textarea, select { font: inherit; color: inherit; }
 
 :focus-visible {
-  outline: 3px solid var(--accent-bright);
+  outline: 3px solid var(--accent-strong);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--r-1);
 }
 
 .mono {
@@ -150,100 +201,104 @@ button, input, textarea, select { font: inherit; color: inherit; }
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-/* --- 版面 ------------------------------------------------------------- */
+/* === 版面 ================================================================ */
 
-.shell { max-width: 640px; margin: 0 auto; padding: 0 16px; }
-.stack { display: flex; flex-direction: column; gap: 14px; }
-.row { display: flex; align-items: center; gap: 10px; }
+.shell { max-width: 640px; margin: 0 auto; padding: 0 var(--sp-4); }
+.stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+.row { display: flex; align-items: center; gap: var(--sp-2); }
 .spacer { flex: 1; }
 
-/* --- 按鈕 ------------------------------------------------------------- */
+/* === 按鈕 ================================================================ */
 
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: var(--tap); padding: 0 18px;
-  border: 1px solid var(--rule-strong); border-radius: var(--radius);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-height: var(--tap-min); padding: 0 var(--sp-4);
+  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
   background: var(--surface); color: var(--ink);
-  font-size: 16px; font-weight: 600; cursor: pointer;
-  transition: transform .06s ease, background-color .15s ease, border-color .15s ease;
+  font-size: var(--fs-4); font-weight: 600; cursor: pointer;
+  transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
   touch-action: manipulation;
 }
 .btn:active { transform: scale(.98); }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
-.btn-primary {
-  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
-}
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .btn-ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
 .btn-ghost:hover { background: var(--surface-2); }
-.btn-danger { color: var(--stop); border-color: var(--rule); }
-.btn-danger:hover { background: var(--stop-soft); }
+.btn-danger { color: var(--fb-error); border-color: var(--rule); }
+.btn-danger:hover { background: var(--fb-error-soft); }
 .btn-block { width: 100%; }
-.btn-lg { min-height: 58px; font-size: 17px; }
-.btn-sm { min-height: 38px; padding: 0 12px; font-size: 14px; font-weight: 500; }
+.btn-lg { min-height: var(--tap-lg); }
+/* 小尺寸只縮字級與內距，高度仍守 48px 下限。 */
+.btn-sm { padding: 0 var(--sp-3); font-size: var(--fs-3); font-weight: 500; }
 
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: var(--tap); height: var(--tap); flex: none;
-  border: none; border-radius: var(--radius); background: transparent;
+  width: var(--tap-min); height: var(--tap-min); flex: none;
+  border: none; border-radius: var(--r-2); background: transparent;
   color: var(--ink-2); cursor: pointer; touch-action: manipulation;
+  transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
 .icon-btn:active { transform: scale(.94); }
 
-/* --- 輸入 ------------------------------------------------------------- */
+/* === 輸入 ================================================================ */
 
-.field { display: flex; flex-direction: column; gap: 6px; }
-.label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
-.hint { font-size: 13px; color: var(--ink-3); line-height: 1.5; }
+.field { display: flex; flex-direction: column; gap: var(--sp-1); }
+.label { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
+.hint { font-size: var(--fs-2); color: var(--ink-3); line-height: 1.5; }
 
 .input, .textarea {
-  width: 100%; padding: 13px 14px;
-  border: 1px solid var(--rule-strong); border-radius: var(--radius);
+  width: 100%; padding: var(--sp-3) var(--sp-3);
+  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
   background: var(--surface); color: var(--ink);
-  font-size: 16px; /* iOS 低於 16px 會自動放大 */
+  font-size: var(--fs-4);
 }
-.input:focus, .textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.input:focus, .textarea:focus {
+  border-color: var(--accent); outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .textarea { min-height: 200px; resize: vertical; line-height: 1.7; }
 
 .code-input {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 26px; font-weight: 700; letter-spacing: .34em;
-  text-align: center; text-transform: uppercase; padding: 14px 10px 14px 20px;
+  font-size: var(--fs-6); font-weight: 700; letter-spacing: .34em;
+  text-align: center; text-transform: uppercase;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-5);
 }
 
-/* --- 首頁 ------------------------------------------------------------- */
+/* === 首頁 ================================================================ */
 
-.home-head { padding: 40px 0 26px; }
-.home-title { font-size: 30px; letter-spacing: -.01em; }
-.home-tagline { color: var(--ink-2); font-size: 15px; margin-top: 6px; }
+.home-head { padding: var(--sp-6) 0 var(--sp-5); }
+.home-title { font-size: var(--fs-6); letter-spacing: -.01em; }
+.home-tagline { color: var(--ink-2); font-size: var(--fs-3); margin-top: var(--sp-1); }
 
 .card {
   background: var(--surface); border: 1px solid var(--rule);
-  border-radius: var(--radius-lg); padding: 18px;
+  border-radius: var(--r-3); padding: var(--sp-4); box-shadow: var(--el-1);
 }
-.card-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.card-title { font-size: var(--fs-4); font-weight: 700; margin-bottom: var(--sp-3); }
 
 .recent-item {
-  display: flex; align-items: center; gap: 12px; width: 100%;
-  min-height: 62px; padding: 10px 12px;
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%;
+  min-height: var(--tap-row); padding: var(--sp-2) var(--sp-3);
   background: var(--surface); border: 1px solid var(--rule);
-  border-radius: var(--radius); cursor: pointer; text-align: left;
+  border-radius: var(--r-2); cursor: pointer; text-align: left;
   color: inherit; font: inherit;
 }
 .recent-item:hover { border-color: var(--rule-strong); }
-.recent-name { font-weight: 600; }
-.recent-meta { font-size: 12.5px; color: var(--ink-3); }
+.recent-name { font-weight: 600; font-size: var(--fs-4); }
+.recent-meta { font-size: var(--fs-1); color: var(--ink-3); }
 
 .tag {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 8px; border-radius: 999px;
-  font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+  display: inline-flex; align-items: center;
+  padding: 2px var(--sp-2); border-radius: var(--r-full);
+  font-size: var(--fs-2); font-weight: 600;
   background: var(--surface-2); color: var(--ink-2);
 }
-.tag-owner { background: var(--accent-soft); color: var(--accent-bright); }
+.tag-owner { background: var(--accent-soft); color: var(--accent); }
 
-/* --- 房間頁首 --------------------------------------------------------- */
+/* === 頂欄 ================================================================ */
 
 .topbar {
   position: sticky; top: 0; z-index: 20;
@@ -251,148 +306,168 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--rule);
   padding-top: env(safe-area-inset-top);
 }
-.topbar-inner { display: flex; align-items: center; gap: 6px; min-height: 58px; }
+.topbar-inner { display: flex; align-items: center; gap: var(--sp-1); min-height: var(--tap-lg); }
 .topbar-title { min-width: 0; flex: 1; }
 .topbar-name {
-  font-size: 16px; font-weight: 700;
+  font-size: var(--fs-4); font-weight: 700;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.topbar-sub { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3); }
+.topbar-sub { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-2); color: var(--ink-3); }
 
-.sync {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12px; font-weight: 600;
+/* 計分區捲出畫面時的精簡計數。這個數字不能消失。 */
+.topbar-count {
+  display: inline-flex; align-items: baseline; gap: var(--sp-1);
+  font-size: var(--fs-2); font-weight: 700; color: var(--st-pending);
+  white-space: nowrap;
 }
+.topbar-count.done { color: var(--st-arrived); }
+
+.sync { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-2); font-weight: 600; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
-.sync-online { color: var(--ok); }
-.sync-offline { color: var(--warn); }
-.sync-syncing { color: var(--accent-bright); }
+.sync-online { color: var(--st-arrived); }
+.sync-offline { color: var(--fb-warn); }
+.sync-syncing { color: var(--accent); }
 .sync-local { color: var(--ink-3); }
 @media (prefers-reduced-motion: no-preference) {
   .sync-syncing .sync-dot { animation: pulse 1.1s ease-in-out infinite; }
 }
 @keyframes pulse { 50% { opacity: .3; } }
 
-/* --- 計數 ------------------------------------------------------------- */
+/* === 計數區 ============================================================== */
 
 .scoreboard {
-  display: flex; align-items: baseline; gap: 14px;
-  padding: 18px 0 14px;
+  display: flex; align-items: baseline; gap: var(--sp-3);
+  padding: var(--sp-4) 0 var(--sp-3);
 }
-.score-main { display: flex; align-items: baseline; gap: 9px; }
+.score-main { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
 .score-number {
-  font-size: 46px; font-weight: 800; line-height: 1;
+  font-size: var(--fs-8); font-weight: 800; line-height: 1;
   letter-spacing: -.02em; font-variant-numeric: tabular-nums;
-  color: var(--warn);
+  color: var(--st-pending);
 }
-.score-number.done { color: var(--ok); }
-.score-label { font-size: 15px; font-weight: 600; color: var(--ink-2); }
-.score-side { margin-left: auto; text-align: right; font-size: 13px; color: var(--ink-3); }
-.score-side b { display: block; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.score-number.done { color: var(--st-arrived); }
+.score-label { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
+.score-heads {
+  margin-left: auto; font-size: var(--fs-4); font-weight: 700;
+  color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 
+.progress-row { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .progress {
-  height: 6px; border-radius: 999px; background: var(--surface-3);
-  overflow: hidden; margin-bottom: 14px;
+  flex: 1; height: 6px; border-radius: var(--r-full);
+  background: var(--surface-3); overflow: hidden;
 }
 .progress-fill {
-  height: 100%; background: var(--ok); border-radius: 999px;
-  transition: width .3s ease;
+  height: 100%; background: var(--st-arrived); border-radius: var(--r-full);
+  transition: width var(--dur-2) var(--ease);
 }
 
-/* --- 篩選 ------------------------------------------------------------- */
+/* === 篩選與搜尋 ========================================================== */
 
 .segmented {
-  display: flex; gap: 4px; padding: 4px;
-  background: var(--surface-2); border-radius: var(--radius); margin-bottom: 12px;
+  display: flex; gap: var(--sp-1); padding: var(--sp-1);
+  background: var(--surface-2); border-radius: var(--r-2);
+  margin-bottom: var(--sp-3);
+  overflow-x: auto; scrollbar-width: none;
 }
+.segmented::-webkit-scrollbar { display: none; }
 .segment {
-  flex: 1; min-height: 40px; padding: 0 6px;
-  border: none; border-radius: 9px; background: transparent;
-  color: var(--ink-2); font-size: 14px; font-weight: 600;
-  cursor: pointer; touch-action: manipulation;
-  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  flex: 1 0 auto; min-height: var(--tap-min); padding: 0 var(--sp-3);
+  border: none; border-radius: var(--r-1); background: transparent;
+  color: var(--ink-2); font-size: var(--fs-3); font-weight: 600;
+  cursor: pointer; touch-action: manipulation; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
 }
-.segment[aria-pressed='true'] {
-  background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
-}
+.segment[aria-pressed='true'] { background: var(--surface); color: var(--ink); box-shadow: var(--el-1); }
 .segment .count { font-variant-numeric: tabular-nums; color: var(--ink-3); font-weight: 500; }
-.segment[aria-pressed='true'] .count { color: var(--accent-bright); }
+.segment[aria-pressed='true'] .count { color: var(--accent); }
 
-.search-wrap { position: relative; margin-bottom: 12px; }
+.search-wrap { position: relative; margin-bottom: var(--sp-3); }
 .search-clear {
-  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
-  width: 40px; height: 40px; border: none; background: transparent;
-  color: var(--ink-3); font-size: 20px; cursor: pointer; border-radius: 8px;
+  position: absolute; right: var(--sp-1); top: 50%; transform: translateY(-50%);
+  width: var(--tap-min); height: var(--tap-min); border: none; background: transparent;
+  color: var(--ink-3); font-size: var(--fs-5); cursor: pointer; border-radius: var(--r-1);
 }
 
-/* --- 名單列 ----------------------------------------------------------- */
+/* === 名單列 ============================================================== */
 
-.list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 120px; }
+.list { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: 120px; }
 
 .member {
   display: flex; align-items: stretch;
   background: var(--surface); border: 1px solid var(--rule);
-  border-radius: var(--radius); overflow: hidden;
+  border-radius: var(--r-2); overflow: hidden;
 }
 .member-main {
-  flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px;
-  min-height: 64px; padding: 10px 8px 10px 14px;
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-3);
+  min-height: var(--tap-row); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
   border: none; background: transparent; color: inherit;
   text-align: left; cursor: pointer; font: inherit; touch-action: manipulation;
 }
 .member-main:active { background: var(--surface-2); }
-.member:has(.member-main:disabled) .member-main { cursor: default; }
 
-.member.is-arrived { background: var(--ok-soft); border-color: var(--ok-line); }
+/* 狀態同時用顏色與形狀表達：逆光下顏色會失真，色盲者看不出色相。 */
+.member.is-arrived { background: var(--st-arrived-soft); border-color: var(--st-arrived-line); }
 .member.is-excused { opacity: .62; }
 
 .check {
   width: 30px; height: 30px; flex: none; border-radius: 50%;
   border: 2px solid var(--rule-strong);
   display: grid; place-items: center; color: transparent;
-  transition: background-color .15s ease, border-color .15s ease;
+  transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
-.member.is-arrived .check { background: var(--ok); border-color: var(--ok); color: #fff; }
+.member.is-arrived .check { background: var(--st-arrived); border-color: var(--st-arrived); color: var(--surface); }
 .member.is-excused .check { border-style: dashed; }
 
 .member-body { min-width: 0; flex: 1; }
 .member-name {
-  font-size: 17px; font-weight: 600;
+  font-size: var(--fs-4); font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .member.is-excused .member-name { text-decoration: line-through; text-decoration-thickness: 1px; }
 .member-meta {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  font-size: 12.5px; color: var(--ink-3); margin-top: 1px;
+  display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap;
+  font-size: var(--fs-2); color: var(--ink-3); margin-top: 1px;
 }
-.member-chip {
-  padding: 1px 6px; border-radius: 5px; background: var(--surface-2);
-  color: var(--ink-2); font-size: 11.5px; font-weight: 600;
-}
-.member-chip.plus { background: var(--accent-soft); color: var(--accent-bright); }
 
-.member-side { display: flex; align-items: center; padding-right: 6px; }
-.call-btn { color: var(--accent-bright); }
+.member-side { display: flex; align-items: center; gap: var(--sp-1); padding-right: var(--sp-1); }
+.call-btn { color: var(--accent); }
+
+/* --- Chip：三種語意，不得混用 --- */
+.chip {
+  display: inline-flex; align-items: center;
+  padding: 1px var(--sp-2); border-radius: var(--r-1);
+  font-size: var(--fs-2); font-weight: 600;
+  background: var(--surface-2); color: var(--ink-2);
+}
+.chip-count { background: var(--accent-soft); color: var(--accent); }
+.chip-note { background: var(--surface-2); color: var(--ink-2); }
+.chip-data {
+  background: var(--surface-2); color: var(--ink-2); font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* === 狀態畫面 ============================================================ */
 
 .empty {
-  text-align: center; padding: 54px 20px; color: var(--ink-3);
+  text-align: center; padding: var(--sp-7) var(--sp-5); color: var(--ink-3);
   background: var(--surface); border: 1px dashed var(--rule-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-3);
 }
-.empty-big { font-size: 17px; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; }
+.empty-big { font-size: var(--fs-4); font-weight: 600; color: var(--ink-2); margin-bottom: var(--sp-1); }
+.center-note { text-align: center; padding: var(--sp-7) var(--sp-5); color: var(--ink-3); }
 
-/* --- 底部動作列 ------------------------------------------------------- */
+/* === 底部動作列 ========================================================== */
 
 .dock {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: color-mix(in srgb, var(--paper) 88%, transparent);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid var(--rule);
+  padding: var(--sp-2) var(--sp-4) calc(var(--sp-2) + env(safe-area-inset-bottom));
+  background: var(--paper);
+  box-shadow: var(--el-2);
 }
-.dock-inner { max-width: 640px; margin: 0 auto; display: flex; gap: 10px; }
+.dock-inner { max-width: 640px; margin: 0 auto; display: flex; gap: var(--sp-2); }
 
-/* --- 面板（bottom sheet）---------------------------------------------- */
+/* === 面板 ================================================================ */
 
 .sheet-backdrop {
   position: fixed; inset: 0; z-index: 40;
@@ -400,115 +475,112 @@ button, input, textarea, select { font: inherit; color: inherit; }
   display: flex; align-items: flex-end; justify-content: center;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .sheet-backdrop { animation: fade .18s ease; }
-  .sheet { animation: rise .24s cubic-bezier(.2, .8, .3, 1); }
+  .sheet-backdrop { animation: fade var(--dur-2) var(--ease); }
+  .sheet { animation: rise var(--dur-2) var(--ease); }
+  .toast { animation: rise var(--dur-2) var(--ease); }
 }
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translateY(24px); opacity: 0; } }
 
 .sheet {
   width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto;
-  background: var(--paper); box-shadow: var(--shadow-sheet);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
+  background: var(--paper); box-shadow: var(--el-3);
+  border-radius: var(--r-3) var(--r-3) 0 0;
+  padding: var(--sp-2) var(--sp-4) calc(var(--sp-5) + env(safe-area-inset-bottom));
 }
 .sheet-grip {
-  width: 38px; height: 4px; border-radius: 999px;
-  background: var(--rule-strong); margin: 6px auto 12px;
+  width: 38px; height: 4px; border-radius: var(--r-full);
+  background: var(--rule-strong); margin: var(--sp-1) auto var(--sp-3);
 }
-.sheet-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-.sheet-title { font-size: 19px; }
+.sheet-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.sheet-title { font-size: var(--fs-5); }
 
 .menu { display: flex; flex-direction: column; gap: 2px; }
 .menu-item {
-  display: flex; align-items: center; gap: 12px; width: 100%;
-  min-height: 54px; padding: 8px 12px;
-  border: none; border-radius: var(--radius); background: transparent;
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%;
+  min-height: var(--tap-lg); padding: var(--sp-2) var(--sp-3);
+  border: none; border-radius: var(--r-2); background: transparent;
   color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  text-decoration: none;
 }
 .menu-item:hover { background: var(--surface-2); }
-.menu-item .sub { display: block; font-size: 12.5px; color: var(--ink-3); font-weight: 400; }
-.menu-item strong { font-weight: 600; font-size: 15.5px; }
-.menu-item.danger { color: var(--stop); }
-.menu-divider { height: 1px; background: var(--rule); margin: 8px 0; }
+.menu-item strong { font-weight: 600; font-size: var(--fs-3); }
+.menu-item .sub { display: block; font-size: var(--fs-2); color: var(--ink-3); font-weight: 400; }
+.menu-item.danger { color: var(--fb-error); }
+.menu-divider { height: 1px; background: var(--rule); margin: var(--sp-2) 0; }
 
-/* --- 分享 ------------------------------------------------------------- */
+/* === 分享 ================================================================ */
 
 .code-display {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 40px; font-weight: 700; letter-spacing: .18em;
-  text-align: center; padding: 18px 10px 18px 28px;
+  font-size: var(--fs-7); font-weight: 700; letter-spacing: .18em;
+  text-align: center; padding: var(--sp-4) var(--sp-2) var(--sp-4) var(--sp-5);
   background: var(--surface); border: 1px solid var(--rule);
-  border-radius: var(--radius); color: var(--ink);
+  border-radius: var(--r-2); color: var(--ink);
 }
 .qr-card {
   /* QR 一律白底黑碼：掃描器要的是對比，不是配色。 */
-  background: #fff; padding: 14px; border-radius: var(--radius);
+  background: #fff; padding: var(--sp-3); border-radius: var(--r-2);
   display: grid; place-items: center; border: 1px solid var(--rule);
 }
 .qr-card img { display: block; width: 100%; max-width: 240px; height: auto; }
 
-/* --- 解析預覽 --------------------------------------------------------- */
+/* === 名單解析預覽 ======================================================== */
 
 .preview {
   max-height: 260px; overflow-y: auto;
-  border: 1px solid var(--rule); border-radius: var(--radius);
+  border: 1px solid var(--rule); border-radius: var(--r-2);
   background: var(--surface);
 }
 .preview-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 12px; border-bottom: 1px solid var(--rule); font-size: 15px;
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--rule);
+  font-size: var(--fs-3);
 }
 .preview-row:last-child { border-bottom: none; }
-.preview-index {
-  font-size: 11.5px; color: var(--ink-3); min-width: 22px;
-  font-variant-numeric: tabular-nums;
-}
+.preview-index { font-size: var(--fs-1); color: var(--ink-3); min-width: 22px; font-variant-numeric: tabular-nums; }
+
+/* === 提示框 ============================================================== */
 
 .note {
-  padding: 11px 13px; border-radius: var(--radius);
-  font-size: 13.5px; line-height: 1.6;
+  padding: var(--sp-3); border-radius: var(--r-2);
+  font-size: var(--fs-2); line-height: 1.6;
   background: var(--surface-2); color: var(--ink-2);
 }
-.note-warn { background: var(--warn-soft); color: var(--warn); }
-.note-accent { background: var(--accent-soft); color: var(--accent-bright); }
+.note-warn { background: var(--fb-warn-soft); color: var(--fb-warn); }
+.note-error { background: var(--fb-error-soft); color: var(--fb-error); }
 
-/* --- Toast ------------------------------------------------------------ */
+.banner {
+  display: flex; align-items: flex-start; gap: var(--sp-2);
+  padding: var(--sp-3); border-radius: var(--r-2);
+  font-size: var(--fs-2); line-height: 1.6; margin-bottom: var(--sp-3);
+}
+.banner-warn { background: var(--fb-warn-soft); color: var(--fb-warn); }
+.banner-muted { background: var(--surface-2); color: var(--ink-2); }
+
+/* === Toast =============================================================== */
 
 .toast-wrap {
-  position: fixed; left: 0; right: 0; bottom: calc(84px + env(safe-area-inset-bottom));
-  z-index: 50; display: flex; justify-content: center; padding: 0 16px;
+  position: fixed; left: 0; right: 0; bottom: calc(88px + env(safe-area-inset-bottom));
+  z-index: 50; display: flex; justify-content: center; padding: 0 var(--sp-4);
   pointer-events: none;
 }
 .toast {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: var(--sp-3);
   max-width: 560px; width: 100%; pointer-events: auto;
-  padding: 12px 12px 12px 16px; border-radius: var(--radius);
-  background: var(--ink); color: var(--paper);
-  box-shadow: var(--shadow); font-size: 14.5px;
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border-radius: var(--r-2);
+  background: var(--toast-bg); color: var(--toast-ink);
+  box-shadow: var(--el-3); font-size: var(--fs-3);
 }
 .toast-text { flex: 1; min-width: 0; }
+/* 帶「復原」的 Toast 是誤觸的安全機制，不得低調化。 */
 .toast-action {
-  flex: none; min-height: 36px; padding: 0 12px;
-  border: 1px solid currentColor; border-radius: 8px;
-  background: transparent; color: var(--accent-bright);
-  font-size: 14px; font-weight: 700; cursor: pointer;
+  flex: none; min-height: 44px; padding: 0 var(--sp-3);
+  border: 1px solid currentColor; border-radius: var(--r-1);
+  background: transparent; color: var(--toast-action);
+  font-size: var(--fs-3); font-weight: 700; cursor: pointer;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .toast { animation: rise .2s ease; }
-}
-
-/* --- 其他 ------------------------------------------------------------- */
-
-.banner {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 12px 14px; border-radius: var(--radius);
-  font-size: 13.5px; line-height: 1.6; margin-bottom: 12px;
-}
-.banner-warn { background: var(--warn-soft); color: var(--warn); }
-.banner-muted { background: var(--surface-2); color: var(--ink-2); }
-
-.center-note { text-align: center; padding: 60px 20px; color: var(--ink-3); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }

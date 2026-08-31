@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
   connection, enterRoom, isOwner, leaveRoom, members, pendingUploads,
   room, setStatusWithUndo, showToast, summary,
@@ -21,6 +21,9 @@ export function Room({ code }: { code: string }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
   const [sheet, setSheet] = useState<OpenSheet>(null)
+  // 計分區捲出畫面時，頂欄接手顯示未到人數——這個數字不能消失。
+  const scoreboardRef = useRef<HTMLDivElement>(null)
+  const [scoreVisible, setScoreVisible] = useState(true)
 
   useEffect(() => {
     let alive = true
@@ -36,6 +39,16 @@ export function Room({ code }: { code: string }) {
     // t 隨語言變動，但重新進房沒有意義；只依 code。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
+
+  useEffect(() => {
+    const el = scoreboardRef.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => setScoreVisible(Boolean(e?.isIntersecting)), {
+      rootMargin: '-56px 0px 0px 0px',
+    })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [status])
 
   const current = room.value
   const all = members.value
@@ -97,7 +110,13 @@ export function Room({ code }: { code: string }) {
           <div class="topbar-title">
             <div class="topbar-name">{current.name}</div>
             <div class="topbar-sub">
-              <span class="mono">{current.code}</span>
+              {scoreVisible ? (
+                <span class="mono">{current.code}</span>
+              ) : (
+                <span class={s.pending === 0 ? 'topbar-count done' : 'topbar-count'}>
+                  {s.pending === 0 ? t('allHere') : t('missingCount', { n: s.pending })}
+                </span>
+              )}
               <SyncBadge />
             </div>
           </div>
@@ -113,23 +132,32 @@ export function Room({ code }: { code: string }) {
       <div class="shell">
         {closed && <p class="banner banner-warn" style="margin-top:12px">{t('roomClosed')}</p>}
 
-        <div class="scoreboard">
+        <div class="scoreboard" ref={scoreboardRef}>
           <div class="score-main">
             <span class={s.pending === 0 ? 'score-number done' : 'score-number'}>{s.pending}</span>
             <span class="score-label">
               {s.pending === 0 ? t('allHere') : t('missingCount', { n: s.pending })}
             </span>
           </div>
-          <div class="score-side">
-            <b>{t('headcount', { arrived: s.arrivedHeadcount, total: s.headcount })}</b>
-            <button class="btn btn-sm" style="margin-top:6px" onClick={() => { void copySummary() }}>
-              <IconCopy size={15} /> {t('copySummary')}
-            </button>
-          </div>
+          <span class="score-heads">
+            {t('headcount', { arrived: s.arrivedHeadcount, total: s.headcount })}
+          </span>
         </div>
 
-        <div class="progress" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
-          <div class="progress-fill" style={`width:${progress}%`} />
+        <div class="progress-row">
+          <div
+            class="progress"
+            role="progressbar"
+            aria-label={t('headcount', { arrived: s.arrivedHeadcount, total: s.headcount })}
+            aria-valuenow={Math.round(progress)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div class="progress-fill" style={`width:${progress}%`} />
+          </div>
+          <button class="btn btn-sm" onClick={() => { void copySummary() }}>
+            <IconCopy /> {t('copySummary')}
+          </button>
         </div>
 
         <div class="segmented" role="group" aria-label={t('all')}>
@@ -179,7 +207,7 @@ export function Room({ code }: { code: string }) {
       <div class="dock">
         <div class="dock-inner">
           <button class="btn btn-primary btn-block" onClick={() => setSheet('share')}>
-            <IconShare size={19} /> {t('share')}
+            <IconShare /> {t('share')}
           </button>
           <button class="btn" disabled={closed} onClick={() => setSheet('walkin')}>
             {t('addWalkIn')}
@@ -227,14 +255,14 @@ function MemberRow({ member, closed, onToggle, onDetail }: {
         aria-pressed={member.status === 'arrived'}
         aria-label={`${member.name} · ${member.status === 'arrived' ? t('markMissing') : t('markArrived')}`}
       >
-        <span class="check"><IconCheck size={17} /></span>
+        <span class="check"><IconCheck /></span>
         <span class="member-body">
           <span class="member-name">{member.name}</span>
           <span class="member-meta">
             {member.companions > 0 && (
-              <span class="member-chip plus">{t('withCompanions', { n: member.companions })}</span>
+              <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
             )}
-            {member.note && <span class="member-chip">{member.note}</span>}
+            {member.note && <span class="chip chip-note">{member.note}</span>}
             {member.status === 'arrived' && time && (
               <span>{member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}</span>
             )}
@@ -248,13 +276,13 @@ function MemberRow({ member, closed, onToggle, onDetail }: {
           <a
             class="icon-btn call-btn"
             href={`tel:${member.phone}`}
-            aria-label={`${t('markMissing')} ${member.name} ${member.phone}`}
+            aria-label={t('callMember', { name: member.name })}
           >
             <IconPhone />
           </a>
         )}
         <button class="icon-btn" onClick={onDetail} aria-label={`${member.name} ${t('manage')}`}>
-          <IconMore size={19} />
+          <IconMore />
         </button>
       </div>
     </div>

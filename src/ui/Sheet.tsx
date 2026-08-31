@@ -18,10 +18,26 @@ export function Sheet({
 }) {
   const panel = useRef<HTMLDivElement>(null)
 
+  const backdrop = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     const restoreTo = document.activeElement as HTMLElement | null
     const first = panel.current?.querySelector<HTMLElement>(FOCUSABLE)
     first?.focus()
+
+    // 面板開啟時，背後的內容要退出無障礙樹與 Tab 順序。
+    // 只做視覺遮罩不夠：螢幕閱讀器仍讀得到底下的按鈕，
+    // 使用者會聽到一個他碰不到的「分享」。
+    const inerted: HTMLElement[] = []
+    const root = backdrop.current?.parentElement
+    if (root) {
+      for (const child of Array.from(root.children)) {
+        if (child === backdrop.current || !(child instanceof HTMLElement)) continue
+        if (child.hasAttribute('inert')) continue
+        child.setAttribute('inert', '')
+        inerted.push(child)
+      }
+    }
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -49,6 +65,7 @@ export function Sheet({
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
+      for (const el of inerted) el.removeAttribute('inert')
       restoreTo?.focus?.()
     }
   }, [onClose])
@@ -58,6 +75,7 @@ export function Sheet({
   return (
     <div
       class="sheet-backdrop"
+      ref={backdrop}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div class="sheet" ref={panel} role="dialog" aria-modal="true" aria-label={title}>

@@ -67,9 +67,9 @@ export function RosterInput({
               <div class="preview-row" key={`${m.name}-${i}`}>
                 <span class="preview-index mono">{i + 1}</span>
                 <span style="flex:1; min-width:0">{m.name}</span>
-                {m.phone && <span class="member-chip mono">{m.phone}</span>}
-                {m.companions > 0 && <span class="member-chip plus">+{m.companions}</span>}
-                {m.note && <span class="member-chip">{m.note}</span>}
+                {m.phone && <span class="chip chip-data">{m.phone}</span>}
+                {m.companions > 0 && <span class="chip chip-count">+{m.companions}</span>}
+                {m.note && <span class="chip chip-note">{m.note}</span>}
               </div>
             ))}
           </div>

@@ -112,6 +112,9 @@ const zh = {
   errNotConfigured: '還沒設定雲端連線，目前是單機模式。',
   retry: '重試',
 
+  settings: '設定',
+  callMember: '打電話給 {name}',
+
   // 通用
   cancel: '取消',
   confirm: '確定',
@@ -231,6 +234,9 @@ const en: Record<MessageKey, string> = {
   errUnknown: 'Something went wrong. Try again.',
   errNotConfigured: 'No cloud configured — running in local-only mode.',
   retry: 'Retry',
+
+  settings: 'Settings',
+  callMember: 'Call {name}',
 
   cancel: 'Cancel',
   confirm: 'Confirm',

@@ -10,7 +10,8 @@
 - **「誰還沒到」是主畫面。** 未到的人直接一鍵撥號，結果一鍵複製貼回 LINE。
 - **回程用複製房間。** 同一份名單、已到歸零、請假的維持請假。
 
-產品方向與架構決策的完整說明在 [`docs/product-direction.md`](docs/product-direction.md)。
+- [`docs/product-direction.md`](docs/product-direction.md) — 產品方向與架構決策
+- [`docs/design-system.md`](docs/design-system.md) — 設計規範（色彩、字級、觸控、元件、無障礙、文案）
 
 ---
 
@@ -87,10 +88,23 @@ Supabase 免費專案閒置一段時間會自動暫停，而「一個月出遊�
 
 ```bash
 npm install
-npm run dev      # 開發伺服器
-npm test         # 單元測試
-npm run build    # 型別檢查 + 產出 dist/
-npm run preview  # 預覽 dist/
+npm run dev           # 開發伺服器
+npm test              # 單元測試
+npm run build         # 型別檢查 + 產出 dist/
+npm run preview       # 預覽 dist/
+
+# 以下需要先 build + preview（見下方說明）
+npm run audit:design  # 設計規範自動檢查
+npm run e2e           # 單機模式端對端
+```
+
+設計規範與端對端要跑在建置產物上：
+
+```bash
+npm run build
+npx vite preview --port 4173 --host 127.0.0.1 &
+npm run audit:design
+npm run e2e
 ```
 
 驗證資料庫（需要本機 PostgreSQL）：
@@ -117,12 +131,23 @@ src/
     i18n.ts       中英文字串
   ui/             畫面元件
   router.ts       hash 路由
+scripts/
+  design-audit.mjs   設計規範的自動檢查
+  e2e-local.mjs      單機模式端對端
+  fake-postgrest.mjs 同步測試用的假後端
+  e2e-sync.mjs       兩台裝置同步測試
 supabase/
   schema.sql      要貼到 Supabase 的那份
   schema.test.sql schema 的功能測試
 docs/
   product-direction.md   產品方向與架構決策
 ```
+
+### 設計規範是可執行的
+
+[`docs/design-system.md`](docs/design-system.md) 不是風格建議，是規範。能自動檢查的規則由 `npm run audit:design` 在真實瀏覽器裡驗證，淺色深色各一次：文字對比、觸控目標尺寸、字級是否在八階內、無障礙名稱、橫向溢出、每畫面至多一個主要按鈕。
+
+這套檢查建立時就抓到 16 處對比不足與 6 處過小的觸控目標，其中最嚴重的是**深色模式下「復原」按鈕只有 1.45:1** —— 誤觸的安全網幾乎看不見。現在全部歸零。
 
 ### 幾個實作上的取捨
 
@@ -150,8 +175,6 @@ docs/
 不需要真的 Supabase 專案也能測「兩台裝置看到同一份名單」——用本機 PostgreSQL 加一個 PostgREST 相容的轉發器：
 
 ```bash
-npm i -D pg playwright            # 只有跑這個測試才需要
-
 # 1. 準備本機資料庫
 createdb daka
 psql -d daka -c "create role anon nologin; grant usage on schema public to anon;"

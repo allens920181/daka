@@ -35,7 +35,7 @@ export function Home({ onSettings }: { onSettings: () => void }) {
           <h1 class="home-title">{t('appName')}</h1>
           <p class="home-tagline">{t('tagline')}</p>
         </div>
-        <button class="icon-btn" onClick={onSettings} aria-label={t('theme')}>
+        <button class="icon-btn" onClick={onSettings} aria-label={t('settings')}>
           <IconSettings />
         </button>
       </div>
