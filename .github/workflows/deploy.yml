@@ -1,0 +1,58 @@
+# 建置後部署到 GitHub Pages。
+# 前提：Repo → Settings → Pages → Source 要選「GitHub Actions」。
+name: Deploy to Pages
+
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署，但不取消進行中的（讓正在上線的那次跑完）。
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # 測試沒過就不部署。點名工具在活動當天沒有第二次機會。
+      - run: npm test
+
+      - run: npm run build
+        env:
+          # 這兩個沒設也能建置成功，只是 app 會退回單機模式。
+          # anon key 本來就是公開的（它會被打包進 JS），放 secrets 只是
+          # 為了方便更換，不是為了保密。真正保護資料的是 RLS。
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
