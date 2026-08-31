@@ -16,6 +16,7 @@
 
 - [`docs/product-direction.md`](docs/product-direction.md) — 產品方向與架構決策
 - [`docs/design/`](docs/design/) — 設計規範：[基礎](docs/design/01-foundations.md)、[品牌](docs/design/02-brand.md)、[Token](docs/design/03-tokens.md)、[元件](docs/design/04-components/)、[模式](docs/design/05-patterns.md)、[內容](docs/design/06-content.md)、[品質](docs/design/07-quality.md)、[貢獻](docs/design/08-contributing.md)；另有[視覺對照頁](https://claude.ai/code/artifact/9df0f69b-dc39-4fc6-928f-e62be58ef97f)
+- [`docs/design-review-2026-08.md`](docs/design-review-2026-08.md) — 設計評估報告：找到的 63 條問題、修了哪些、還有 8 條在等你決定方向
 
 ---
 
@@ -168,7 +169,8 @@ supabase/
   schema.sql      要貼到 Supabase 的那份
   schema.test.sql schema 的功能測試
 docs/
-  product-direction.md   產品方向與架構決策
+  product-direction.md      產品方向與架構決策
+  design-review-2026-08.md  設計評估報告與待決事項
 ```
 
 ### 設計規範是可執行的
@@ -179,9 +181,11 @@ docs/
 | --- | --- | --- |
 | Token 靜態檢查 | `npm test` | 原始碼有沒有繞過 token（硬寫色值、字級、z-index、動畫時間、rgba、opacity） |
 | 規範一致性 | `npm test` | 規範裡提到的 token、class、檔案、元件是否真的存在——防止文件與程式漂移 |
-| 執行期檢查 | `npm run audit:design` | 六個畫面、淺色深色各一次：對比、觸控尺寸、字級、無障礙名稱、橫向溢出 |
+| 執行期檢查 | `npm run audit:design` | 六個畫面、淺色深色各一次：對比（含祖先 `opacity`）、非文字元件對比、觸控尺寸、字級、無障礙名稱、橫向溢出 |
 
 這套檢查建立時就抓到 16 處對比不足與 6 處過小的觸控目標，其中最嚴重的是**深色模式下「復原」按鈕只有 1.45:1** —— 誤觸的安全網幾乎看不見。現在全部歸零。
+
+**檢查工具本身也會有盲點，發現一個就補一個。** 2026-08 的設計評估找到兩個：祖先的 `opacity` 讀不到（請假列的說明文字實際只有 2.5:1，工具說通過），以及沒有自己文字節點的元素整個被跳過（「未到」的空心圈只有 1.86:1，從來沒被驗過）。補上之後它立刻抓到第三個。細節見 [`docs/design-review-2026-08.md`](docs/design-review-2026-08.md) §2.4。
 
 ### 幾個實作上的取捨
 
