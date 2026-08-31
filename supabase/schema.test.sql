@@ -129,3 +129,24 @@ select public.save_roster('ownerkey-ccccccccccccccccccc','小組','"not-an-array
 select jsonb_array_length(public.list_rosters('ownerkey-ccccccccccccccccccc') #> '{0,members}')
        as members_should_still_be_3;
 reset role;
+
+-- ========== 12. add_member 冪等（待送佇列重送不可產生重複的人）==========
+\echo '--- 12. 同一個 member_id 重送兩次只會有一個人 ---'
+set role anon;
+select public.create_room('QRSTUV','冪等測試','ownerkey-ddddddddddddddddddd','[]'::jsonb) #>> '{room,code}' as room_made;
+select public.add_member('QRSTUV','臨時來賓',null,0,null,'11111111-1111-1111-1111-111111111111'::uuid) ->> 'name' as first_add;
+select public.add_member('QRSTUV','臨時來賓',null,0,null,'11111111-1111-1111-1111-111111111111'::uuid) ->> 'name' as retry_add;
+select jsonb_array_length(public.get_room('QRSTUV') -> 'members') as should_be_1;
+\echo '--- 不給 id 仍可新增（每次都是新的人）---'
+select public.add_member('QRSTUV','路人甲') ->> 'name' as no_id_add;
+select jsonb_array_length(public.get_room('QRSTUV') -> 'members') as should_be_2;
+reset role;
+
+-- ========== 13. phone 欄位：建房、複製、臨時加人都要保留 ==========
+\echo '--- 13. 電話號碼流過整條路徑 ---'
+set role anon;
+select public.create_room('WXY234','電話測試','ownerkey-eeeeeeeeeeeeeeeeeee',
+  '[{"name":"王小明","phone":"0912345678"}]'::jsonb) #>> '{members,0,phone}' as created_phone;
+select public.add_member('WXY234','李美花',null,0,null,null,'0987654321') ->> 'phone' as added_phone;
+select public.copy_room('WXY234','ownerkey-eeeeeeeeeeeeeeeeeee','ZAB345','回程') #>> '{members,0,phone}' as copied_phone;
+reset role;

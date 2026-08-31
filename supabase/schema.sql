@@ -41,6 +41,7 @@ create table if not exists public.room_members (
   room_id      uuid        not null references public.rooms(id) on delete cascade,
   name         text        not null check (length(name) between 1 and 60),
   note         text        check (note is null or length(note) <= 200),
+  phone        text        check (phone is null or length(phone) <= 30),
   companions   smallint    not null default 0 check (companions between 0 and 99),
   group_label  text        check (group_label is null or length(group_label) <= 20),
   sort_order   integer     not null default 0,
@@ -72,12 +73,17 @@ create table if not exists public.saved_roster_members (
   roster_id   uuid     not null references public.saved_rosters(id) on delete cascade,
   name        text     not null check (length(name) between 1 and 60),
   note        text     check (note is null or length(note) <= 200),
+  phone       text     check (phone is null or length(phone) <= 30),
   companions  smallint not null default 0 check (companions between 0 and 99),
   group_label text     check (group_label is null or length(group_label) <= 20),
   sort_order  integer  not null default 0
 );
 
 create index if not exists saved_roster_members_roster_idx on public.saved_roster_members (roster_id, sort_order);
+
+-- 從舊版升級用：這兩個欄位是後來才加的（重複執行安全）。
+alter table public.room_members         add column if not exists phone text;
+alter table public.saved_roster_members add column if not exists phone text;
 
 -- ---------------------------------------------------------------------------
 -- RLS：全部開啟、不給 policy ⇒ anon / authenticated 都無法直接存取。
@@ -173,11 +179,12 @@ begin
     raise exception 'too_many_members' using errcode = '22023';
   end if;
 
-  insert into public.room_members (room_id, name, note, companions, group_label, sort_order)
+  insert into public.room_members (room_id, name, note, phone, companions, group_label, sort_order)
   select
     p_room_id,
     left(btrim(e.value ->> 'name'), 60),
     nullif(left(btrim(coalesce(e.value ->> 'note', '')), 200), ''),
+    nullif(left(btrim(coalesce(e.value ->> 'phone', '')), 30), ''),
     least(greatest(coalesce((e.value ->> 'companions')::int, 0), 0), 99),
     nullif(left(btrim(coalesce(e.value ->> 'group_label', '')), 20), ''),
     e.ordinality::int
@@ -300,12 +307,22 @@ end;
 $$;
 
 -- 臨時加人：沒報名但出現的人。
+--
+-- p_member_id 由前端產生並帶進來，讓這個函式是「冪等」的：待送佇列在
+-- 網路不穩時會重送同一筆，沒有固定 id 就會變成重複的人。
+--
+-- 舊版簽章少一個參數，加預設值會變成多載而非取代，所以先明確 drop。
+drop function if exists public.add_member(text, text, text, int, text);
+drop function if exists public.add_member(text, text, text, int, text, uuid);
+
 create or replace function public.add_member(
   p_code        text,
   p_name        text,
   p_note        text default null,
   p_companions  int  default 0,
-  p_group_label text default null
+  p_group_label text default null,
+  p_member_id   uuid default null,
+  p_phone       text default null
 )
 returns jsonb
 language plpgsql
@@ -314,6 +331,7 @@ set search_path = public, pg_temp
 as $$
 declare
   v_room_id uuid := public._room_id(p_code);
+  v_id      uuid := coalesce(p_member_id, gen_random_uuid());
   v_row     public.room_members;
 begin
   if v_room_id is null then
@@ -324,15 +342,26 @@ begin
     raise exception 'empty_name' using errcode = '22023';
   end if;
 
+  -- 已經存在就直接回傳，重送不會產生第二個人。
+  select * into v_row from public.room_members where id = v_id;
+  if v_row.id is not null then
+    if v_row.room_id <> v_room_id then
+      raise exception 'member_id_conflict' using errcode = '23505';
+    end if;
+    return to_jsonb(v_row);
+  end if;
+
   if (select count(*) from public.room_members where room_id = v_room_id) >= 1000 then
     raise exception 'too_many_members' using errcode = '22023';
   end if;
 
-  insert into public.room_members (room_id, name, note, companions, group_label, sort_order)
+  insert into public.room_members (id, room_id, name, note, phone, companions, group_label, sort_order)
   values (
+    v_id,
     v_room_id,
     left(btrim(p_name), 60),
     nullif(left(btrim(coalesce(p_note, '')), 200), ''),
+    nullif(left(btrim(coalesce(p_phone, '')), 30), ''),
     least(greatest(coalesce(p_companions, 0), 0), 99),
     nullif(left(btrim(coalesce(p_group_label, '')), 20), ''),
     coalesce((select max(sort_order) from public.room_members where room_id = v_room_id), 0) + 1
@@ -409,8 +438,8 @@ begin
   where r.id = v_src
   returning id into v_new;
 
-  insert into public.room_members (room_id, name, note, companions, group_label, sort_order)
-  select v_new, m.name, m.note, m.companions, m.group_label, m.sort_order
+  insert into public.room_members (room_id, name, note, phone, companions, group_label, sort_order)
+  select v_new, m.name, m.note, m.phone, m.companions, m.group_label, m.sort_order
   from public.room_members m
   where m.room_id = v_src;
 
@@ -524,11 +553,12 @@ begin
     returning id into v_id;
   end if;
 
-  insert into public.saved_roster_members (roster_id, name, note, companions, group_label, sort_order)
+  insert into public.saved_roster_members (roster_id, name, note, phone, companions, group_label, sort_order)
   select
     v_id,
     left(btrim(e.value ->> 'name'), 60),
     nullif(left(btrim(coalesce(e.value ->> 'note', '')), 200), ''),
+    nullif(left(btrim(coalesce(e.value ->> 'phone', '')), 30), ''),
     least(greatest(coalesce((e.value ->> 'companions')::int, 0), 0), 99),
     nullif(left(btrim(coalesce(e.value ->> 'group_label', '')), 20), ''),
     e.ordinality::int
@@ -620,7 +650,7 @@ $$;
 grant execute on function public.create_room(text, text, text, jsonb, text)      to anon, authenticated;
 grant execute on function public.get_room(text)                                  to anon, authenticated;
 grant execute on function public.set_member_status(text, uuid, text, bigint, text) to anon, authenticated;
-grant execute on function public.add_member(text, text, text, int, text)         to anon, authenticated;
+grant execute on function public.add_member(text, text, text, int, text, uuid, text) to anon, authenticated;
 grant execute on function public.replace_roster(text, text, jsonb)               to anon, authenticated;
 grant execute on function public.remove_member(text, text, uuid)                 to anon, authenticated;
 grant execute on function public.copy_room(text, text, text, text)               to anon, authenticated;
