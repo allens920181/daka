@@ -364,9 +364,17 @@ export function Room({ code }: { code: string }) {
         </div>
       </div>
 
+      {/*
+        底部動作列沒有主要按鈕，這是刻意的。
+        `.btn-primary` 的定義是「這個畫面最主要的動作」（04-components/actions.md），
+        而這個畫面最主要的動作是點名單上的名字——它不在動作列裡。分享是活動前
+        用一次的東西，把它畫成全畫面最亮的物件（深色模式下特別明顯）等於整場
+        點名都在指著一個不該按的按鈕。位置不動（01-foundations §1.3：位置穩定
+        贏），只是不再喊那麼大聲。
+      */}
       <div class="dock">
         <div class="dock-inner">
-          <button class="btn btn-primary btn-block" onClick={() => setSheet('share')}>
+          <button class="btn btn-block" onClick={() => setSheet('share')}>
             <IconShare /> {t('share')}
           </button>
           <button class="btn" disabled={closed} onClick={() => setSheet('walkin')}>
