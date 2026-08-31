@@ -51,6 +51,13 @@
   --fs-7: 34px;
   --fs-8: 44px;
 
+  /* --- 看板字級：另一套尺度 --------------------------------------------
+     觀看距離從 30 公分變成 3 公尺，八階字級在這個情境不夠用。
+     這是規範裡的具名例外，見 docs/design/03-tokens.md §4.1。 */
+  --bfs-1: clamp(18px, 2.4vw, 34px);   /* 標籤 */
+  --bfs-2: clamp(26px, 3.6vw, 54px);   /* 未到的名字 */
+  --bfs-3: clamp(52px, 11vw, 168px);   /* 人數 */
+
   /* --- 間距（4px 基準）------------------------------------------------- */
   --sp-1: 4px;
   --sp-2: 8px;
@@ -399,6 +406,41 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .segment .count { font-variant-numeric: tabular-nums; color: var(--ink-3); font-weight: 500; }
 .segment[aria-pressed='true'] .count { color: var(--accent); }
 
+/* --- 分組（分車）------------------------------------------------------ */
+
+.groups {
+  display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3);
+  overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+}
+.groups::-webkit-scrollbar { display: none; }
+.group-chip {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  min-height: var(--tap-min); padding: 0 var(--sp-3); flex: 0 0 auto;
+  border: 1px solid var(--rule-strong); border-radius: var(--r-full);
+  background: var(--surface); color: var(--ink-2);
+  font-size: var(--fs-3); font-weight: 600; cursor: pointer;
+  white-space: nowrap; touch-action: manipulation;
+}
+.group-chip[aria-pressed='true'] {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+}
+/* 每一車還有幾個沒到——這是選車的人真正在看的數字。 */
+.group-n {
+  font-variant-numeric: tabular-nums; font-weight: 700;
+  color: var(--st-pending);
+}
+.group-n.done { color: var(--st-arrived); }
+
+/* 看全部時標出分組交界，現場才知道哪裡是第二車的開頭。 */
+.group-divider {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-1) var(--sp-1);
+  font-size: var(--fs-2); font-weight: 700; color: var(--ink-3);
+}
+.group-divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--rule);
+}
+
 .search-wrap { position: relative; margin-bottom: var(--sp-3); }
 .search-clear {
   position: absolute; right: var(--sp-1); top: 50%; transform: translateY(-50%);
@@ -648,7 +690,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   body { background: #fff; color: #000; font-size: 12pt; }
 
   .topbar, .dock, .toast-wrap, .overlay, .segmented, .search-wrap,
-  .progress-row, .member-side, .icon-btn, .btn { display: none !important; }
+  .progress-row, .member-side, .icon-btn, .btn, .groups { display: none !important; }
+
+  /* 分組在紙本上是小標題，每一組從新的區塊開始。 */
+  .group-divider {
+    display: block; font-size: 13pt; font-weight: 700; color: #000;
+    padding: 12pt 0 4pt; border-bottom: 1pt solid #000; break-after: avoid;
+  }
+  .group-divider::after { display: none; }
 
   .shell { max-width: none; padding: 0; }
   .list { padding-bottom: 0; gap: 0; display: block; }
@@ -675,3 +724,60 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .chip { background: none; border: none; padding: 0; color: #555; font-weight: 400; }
   .chip::after { content: "　"; }
 }
+
+/* ===========================================================================
+   看板模式：平板放在門邊給大家看。
+   唯讀——不做點名，避免路過的人靠上去就改了狀態。
+   =========================================================================== */
+
+.board {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: var(--sp-4) var(--sp-5) calc(var(--sp-4) + env(safe-area-inset-bottom));
+  background: var(--paper);
+}
+
+.board-head { display: flex; align-items: center; gap: var(--sp-3); }
+.board-title {
+  font-size: var(--bfs-1); font-weight: 700; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.board-sync { display: inline-flex; margin-left: auto; }
+.board-sync .sync-dot { width: 14px; height: 14px; }
+
+.board-center {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--sp-2);
+  text-align: center; min-height: 0;
+}
+
+.board-count {
+  display: flex; align-items: baseline; gap: var(--sp-2);
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.board-num { font-size: var(--bfs-3); font-weight: 800; color: var(--st-arrived); letter-spacing: -.02em; }
+.board-slash { font-size: var(--bfs-1); color: var(--ink-3); }
+.board-total { font-size: var(--bfs-1); font-weight: 700; color: var(--ink-2); }
+
+.board-label { font-size: var(--bfs-1); font-weight: 600; color: var(--ink-2); }
+
+.board-missing {
+  font-size: var(--bfs-2); font-weight: 800; color: var(--st-pending);
+  margin-top: var(--sp-4);
+}
+.board-missing.done { color: var(--st-arrived); }
+
+.board-names {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: var(--sp-3) var(--sp-5);
+  list-style: none; margin: var(--sp-4) 0 0; padding: 0;
+  overflow-y: auto; max-height: 38vh;
+}
+.board-names li {
+  font-size: var(--bfs-2); font-weight: 600; color: var(--ink);
+  display: inline-flex; align-items: baseline; gap: var(--sp-1);
+}
+.board-plus { font-size: var(--bfs-1); color: var(--accent); font-weight: 700; }
+
+.board-foot { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.board-foot .groups { margin-bottom: 0; flex: 1; min-width: 0; }

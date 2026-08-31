@@ -79,7 +79,7 @@ describe('parseRoster', () => {
   })
 
   it('空輸入回傳空名單', () => {
-    expect(parseRoster('')).toEqual({ members: [], duplicateNames: [], skipped: 0 })
+    expect(parseRoster('')).toEqual({ members: [], groups: [], duplicateNames: [], skipped: 0 })
     expect(parseRoster('   \n  \n')).toMatchObject({ members: [] })
   })
 
@@ -186,5 +186,89 @@ describe('parseRoster 請假狀態', () => {
 
   it('沒有備註時沒有 status 欄位', () => {
     expect(parseRoster('王小明').members[0]?.status).toBeUndefined()
+  })
+})
+
+describe('parseRoster 分組', () => {
+  const grouped = (s: string) => parseRoster(s).members.map((m) => [m.name, m.group_label])
+
+  it('括號標題行把後續的人歸到該組', () => {
+    expect(grouped('【第一車】\n王小明\n李美花\n【第二車】\n陳大同')).toEqual([
+      ['王小明', '第一車'], ['李美花', '第一車'], ['陳大同', '第二車'],
+    ])
+  })
+
+  it('沒有括號的「第二車」也算標題', () => {
+    expect(grouped('第一車\n王小明\n第二車\n李美花')).toEqual([
+      ['王小明', '第一車'], ['李美花', '第二車'],
+    ])
+  })
+
+  it('A車 / B組 這種也認得', () => {
+    expect(grouped('A車\n王小明\nB組\n李美花')).toEqual([
+      ['王小明', 'A車'], ['李美花', 'B組'],
+    ])
+  })
+
+  it('分隔線與冒號不影響判斷', () => {
+    expect(grouped('--- 第一車 ---\n王小明\n【第二車】：\n李美花')).toEqual([
+      ['王小明', '第一車'], ['李美花', '第二車'],
+    ])
+  })
+
+  it('標題之前的人沒有分組', () => {
+    expect(grouped('王小明\n【第一車】\n李美花')).toEqual([
+      ['王小明', null], ['李美花', '第一車'],
+    ])
+  })
+
+  it('「未分組」標題可以把分組清掉', () => {
+    expect(grouped('【第一車】\n王小明\n【未分組】\n李美花')).toEqual([
+      ['王小明', '第一車'], ['李美花', null],
+    ])
+  })
+
+  it('人名不會被誤判成分組標題', () => {
+    expect(grouped('王小明\n李美花\n陳大同')).toEqual([
+      ['王小明', null], ['李美花', null], ['陳大同', null],
+    ])
+  })
+
+  it('帶括號備註的人不會被當成標題', () => {
+    const m = parseRoster('王小明（請假）').members[0]
+    expect(m).toMatchObject({ name: '王小明', note: '請假', group_label: null })
+  })
+
+  it('回報出現過的分組，依順序', () => {
+    expect(parseRoster('【B車】\n甲\n【A車】\n乙\n【B車】\n丙').groups).toEqual(['B車', 'A車'])
+  })
+
+  it('分組名長度上限 20', () => {
+    const long = '車'.repeat(30)
+    expect(parseRoster(`【${long}】\n甲`).members[0]?.group_label ?? '').toHaveLength(0)
+  })
+
+  it('分組往返不會把「未分組」的人吸進上一組', () => {
+    const original = '【第一車】\n王小明 +1\n【未分組】\n李美花 0912345678'
+    const round = rosterToText(parseRoster(original).members)
+    expect(parseRoster(round).members).toEqual(parseRoster(original).members)
+  })
+
+  it('完整的分車接龍', () => {
+    const r = parseRoster(`秋季旅遊
+【第一車】
+1.王小明 0912345678
+2. 李美花 +1
+【第二車】
+3、陳大同（請假）
+4.王媽媽 帶2人`)
+    expect(r.groups).toEqual(['第一車', '第二車'])
+    expect(r.members.map((m) => [m.name, m.group_label])).toEqual([
+      ['秋季旅遊', null],
+      ['王小明', '第一車'], ['李美花', '第一車'],
+      ['陳大同', '第二車'], ['王媽媽', '第二車'],
+    ])
+    expect(r.members[3]).toMatchObject({ status: 'excused' })
+    expect(r.members[4]).toMatchObject({ companions: 2 })
   })
 })

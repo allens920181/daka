@@ -164,3 +164,22 @@ select public.copy_room('EXC234','ownerkey-fffffffffffffffffff','CPY234','回程
 select string_agg((e->>'name') || '=' || (e->>'status'), ', ' order by e->>'name') as after_copy
   from jsonb_array_elements(public.get_room('CPY234')->'members') e;
 reset role;
+
+-- ========== 15. 分組：匯入、修改、複製房間都要保留 ==========
+\echo '--- 15. 分組流過整條路徑 ---'
+set role anon;
+select public.create_room('GRP234','分組測試','ownerkey-ggggggggggggggggggg',
+  '[{"name":"甲","group_label":"第一車"},{"name":"乙","group_label":"第一車"},{"name":"丙","group_label":"第二車"}]'::jsonb) is not null as made;
+select string_agg((e->>'name') || '=' || coalesce(e->>'group_label','—'), ', ' order by e->>'name') as after_import
+  from jsonb_array_elements(public.get_room('GRP234')->'members') e;
+select public.set_member_group('GRP234','ownerkey-ggggggggggggggggggg',
+  (public.get_room('GRP234') #>> '{members,2,id}')::uuid, '第一車') is not null as moved;
+select public.copy_room('GRP234','ownerkey-ggggggggggggggggggg','GRP567','回程') is not null as copied;
+select string_agg((e->>'name') || '=' || coalesce(e->>'group_label','—'), ', ' order by e->>'name') as after_copy
+  from jsonb_array_elements(public.get_room('GRP567')->'members') e;
+\echo '--- 非房主不能改分組 ---'
+\set ON_ERROR_STOP off
+select public.set_member_group('GRP234','wrong-key-xxxxxxxxxxxxxxx',
+  (public.get_room('GRP234') #>> '{members,0,id}')::uuid, '第九車');
+\set ON_ERROR_STOP on
+reset role;

@@ -97,6 +97,40 @@ export function applyStatusLocally(
   return { members: next, rev }
 }
 
+export interface Override {
+  member: Member
+  previousStatus: MemberStatus
+}
+
+/**
+ * 找出「我剛改過、但被別人的較新變更蓋掉」的成員。
+ *
+ * LWW 讓合併有明確的勝負，但靜默覆蓋很危險：A 剛把王小明標成已到，
+ * B 同時標成未到，B 的 rev 較大就贏了——如果 A 完全不知道，
+ * 他會以為王小明已經上車。所以輸掉的那一邊必須被告知。
+ *
+ * `mine` 是這台裝置近期改過的成員 id。只看這些人，才不會把
+ * 「別人改別人的」也當成衝突報出來。
+ */
+export function detectOverrides(
+  before: readonly Member[],
+  after: readonly Member[],
+  mine: ReadonlySet<string>,
+): Override[] {
+  if (mine.size === 0) return []
+  const afterById = new Map(after.map((m) => [m.id, m]))
+  const out: Override[] = []
+  for (const prev of before) {
+    if (!mine.has(prev.id)) continue
+    const next = afterById.get(prev.id)
+    if (!next) continue
+    if (next.rev > prev.rev && next.status !== prev.status) {
+      out.push({ member: next, previousStatus: prev.status })
+    }
+  }
+  return out
+}
+
 export interface RosterSummary {
   /** 名單列數。 */
   people: number

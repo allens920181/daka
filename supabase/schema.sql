@@ -398,6 +398,28 @@ begin
 end;
 $$;
 
+-- 改一個人的分組（分車）。屬於名單編輯，所以需要 owner_key。
+create or replace function public.set_member_group(
+  p_code        text,
+  p_owner_key   text,
+  p_member_id   uuid,
+  p_group_label text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_id uuid := public._owned_room_id(p_code, p_owner_key);
+begin
+  update public.room_members
+     set group_label = nullif(left(btrim(coalesce(p_group_label, '')), 20), '')
+   where room_id = v_id and id = p_member_id;
+  return public._room_snapshot(v_id);
+end;
+$$;
+
 -- 移除單一成員。
 create or replace function public.remove_member(
   p_code      text,
@@ -659,6 +681,7 @@ grant execute on function public.set_member_status(text, uuid, text, bigint, tex
 grant execute on function public.add_member(text, text, text, int, text, uuid, text) to anon, authenticated;
 grant execute on function public.replace_roster(text, text, jsonb)               to anon, authenticated;
 grant execute on function public.remove_member(text, text, uuid)                 to anon, authenticated;
+grant execute on function public.set_member_group(text, text, uuid, text)        to anon, authenticated;
 grant execute on function public.copy_room(text, text, text, text)               to anon, authenticated;
 grant execute on function public.rename_room(text, text, text)                   to anon, authenticated;
 grant execute on function public.set_room_closed(text, text, boolean)            to anon, authenticated;

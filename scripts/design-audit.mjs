@@ -17,7 +17,7 @@ const BROWSER = process.env.CHROMIUM_PATH
     ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
     : undefined)
 
-/** docs/design-system.md §4 的八階字級。 */
+/** docs/design/03-tokens.md §4 的八階字級。 */
 const FONT_SCALE = [11, 13, 15, 17, 20, 26, 34, 44]
 /** §6：一般可互動元素 48px；Toast 動作是暫時性表面，放寬到 44px。 */
 const TAP_MIN = 48
@@ -55,6 +55,9 @@ function collect() {
     if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') continue
     // inert 子樹（面板開啟時的背景）不屬於當前畫面，整段跳過。
     if (el.closest('[inert]')) continue
+    // 看板模式的觀看距離是 3 公尺，字級另成一套（03-tokens.md §4.1 的具名例外）。
+    // 對比與觸控尺寸仍然要驗，只有字級白名單放行。
+    const inBoard = Boolean(el.closest('.board'))
     const rect = el.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) continue
 
@@ -66,7 +69,7 @@ function collect() {
       .join('')
     if (ownText) {
       const fs = Math.round(parseFloat(cs.fontSize) * 100) / 100
-      out.font.push({ fs, el: label(el), text: ownText.slice(0, 20) })
+      if (!inBoard) out.font.push({ fs, el: label(el), text: ownText.slice(0, 20) })
 
       const fg = parse(cs.color)
       const bg = bgOf(el)
@@ -159,6 +162,26 @@ for (const scheme of ['light', 'dark']) {
   await page.locator('.member').nth(1).locator('.icon-btn').last().click(); await page.waitForTimeout(400)
   await audit(page, scheme, '成員面板')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
+
+  // --- 分組（分車）---
+  await page.locator('.topbar button[aria-label="管理"]').click(); await page.waitForTimeout(400)
+  await page.getByRole('button', { name: /編輯名單|Edit roster/ }).click(); await page.waitForTimeout(400)
+  await page.locator('#roster-text').fill(
+    '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（請假）\n張三\n李四')
+  await page.waitForTimeout(400)
+  await page.locator('.sheet').getByRole('button', { name: /儲存|Save/ }).click(); await page.waitForTimeout(500)
+  await page.getByRole('button', { name: /^刪除房間$|^Delete room$/ }).count().catch(() => 0)
+  const confirmSave = page.locator('[role=alertdialog] .btn-danger')
+  if (await confirmSave.count()) { await confirmSave.click(); await page.waitForTimeout(900) }
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+  await audit(page, scheme, '房間（含分組）')
+
+  // --- 看板模式 ---
+  const roomCode = await page.locator('.topbar-sub .mono').first().textContent().catch(() => null)
+  if (roomCode) {
+    await page.goto(`${URL}#/b/${roomCode.trim()}`); await page.waitForTimeout(1600)
+    await audit(page, scheme, '看板模式')
+  }
 
   await ctx.close()
 }

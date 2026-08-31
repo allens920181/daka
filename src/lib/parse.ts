@@ -2,6 +2,8 @@ import type { DraftMember, MemberStatus } from './types'
 
 export interface ParseResult {
   members: DraftMember[]
+  /** 解析到的分組名稱，依出現順序。 */
+  groups: string[]
   /** 出現超過一次的名字。不會自動去重（同名的人是真實存在的），只提醒。 */
   duplicateNames: string[]
   /** 被判定為非姓名而略過的行數。 */
@@ -23,6 +25,34 @@ function normalizeWidth(input: string): string {
 
 /** 開頭的編號或項目符號：`1.` `2、` `3)` `10 ` `- ` `• ` */
 const LEADING_MARKER = /^\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–—•·*✦▪◦]\s+)/
+
+/**
+ * 分組標題行。真實的 LINE 接龍分車長這樣：
+ *
+ *   【第一車】
+ *   1.王小明
+ *   2.李美花
+ *   【第二車】
+ *   3.陳大同
+ *
+ * 所以分組是「區段標題」而不是每個人的標籤。標題之後的人都屬於它，
+ * 直到下一個標題為止。
+ */
+// normalizeWidth 已經把【】［］轉成 []，所以這裡要認的是半形方括號。
+// 整行只有括號內容才算標題——`王小明[遲到]` 的括號是備註，不是分組。
+const GROUP_BRACKETED = /^[\s\-–—=*]*[[〖《]\s*(.{1,20}?)\s*[\]〗》][\s\-–—=*:：]*$/
+const GROUP_BARE = /^[\s\-–—=*]*(第?[一二三四五六七八九十百\d]{1,3}\s*[車組隊桌梯團班]|[A-Za-z]\s*[車組隊桌])[\s\-–—=*:：]*$/
+
+/** 明確表示「這之後的人沒有分組」。rosterToText 會寫出這個標記。 */
+const GROUP_NONE = /^(未分組|無分組|沒分組|—|-)$/
+
+function groupHeader(line: string): string | null {
+  const bracketed = line.match(GROUP_BRACKETED)
+  if (bracketed?.[1]) return bracketed[1].trim()
+  const bare = line.match(GROUP_BARE)
+  if (bare?.[1]) return bare[1].replace(/\s+/g, '')
+  return null
+}
 
 /** 行內編號（一行被貼成 `1.甲 2.乙 3.丙` 的情況）。 */
 const INLINE_MARKER = /(?:^|\s)\d{1,3}\s*[.、)]\s*(?=\S)/g
@@ -154,13 +184,21 @@ export function parseRoster(input: string): ParseResult {
   const text = normalizeWidth(input ?? '')
   const members: DraftMember[] = []
   let skipped = 0
+  let group: string | null = null
 
   for (const line of text.split(/\r?\n/)) {
     if (!line.trim()) continue
+
+    const header = groupHeader(line)
+    if (header !== null) {
+      group = GROUP_NONE.test(header) ? null : header.slice(0, 20)
+      continue
+    }
+
     for (const part of splitInlineNumbering(line)) {
       if (!part.trim()) continue
       const entry = parseEntry(part)
-      if (entry) members.push(entry)
+      if (entry) members.push(group ? { ...entry, group_label: group } : entry)
       else skipped++
     }
   }
@@ -169,18 +207,42 @@ export function parseRoster(input: string): ParseResult {
   for (const m of members) counts.set(m.name, (counts.get(m.name) ?? 0) + 1)
   const duplicateNames = [...counts.entries()].filter(([, n]) => n > 1).map(([n]) => n)
 
-  return { members, duplicateNames, skipped }
+  return { members, groups: groupsOf(members), duplicateNames, skipped }
 }
 
-/** 名單轉回可編輯的文字（用於「編輯名單」時把現有名單填回輸入框）。 */
-export function rosterToText(members: DraftMember[]): string {
-  return members
-    .map((m) => {
-      let s = m.name
-      if (m.phone) s += ` ${m.phone}`
-      if (m.companions > 0) s += ` +${m.companions}`
-      if (m.note) s += `（${m.note}）`
-      return s
-    })
-    .join('\n')
+/** 名單裡出現過的分組，依第一次出現的順序。 */
+export function groupsOf(members: readonly { group_label: string | null }[]): string[] {
+  const seen: string[] = []
+  for (const m of members) {
+    if (m.group_label && !seen.includes(m.group_label)) seen.push(m.group_label)
+  }
+  return seen
+}
+
+/**
+ * 名單轉回可編輯的文字（用於「編輯名單」時把現有名單填回輸入框）。
+ * 分組寫成標題行，並在分組結束時明確寫出「未分組」——
+ * 否則往返之後那些人會被吸進上一個分組裡，是無聲的資料變更。
+ */
+export function rosterToText(members: readonly DraftMember[]): string {
+  const lines: string[] = []
+  let current: string | null = null
+  let started = false
+
+  for (const m of members) {
+    const group = m.group_label ?? null
+    if (group !== current) {
+      if (group) lines.push(`【${group}】`)
+      else if (started) lines.push('【未分組】')
+      current = group
+    }
+    started = true
+
+    let s = m.name
+    if (m.phone) s += ` ${m.phone}`
+    if (m.companions > 0) s += ` +${m.companions}`
+    if (m.note) s += `（${m.note}）`
+    lines.push(s)
+  }
+  return lines.join('\n')
 }

@@ -1,8 +1,10 @@
+import { Fragment } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
-  connection, enterRoom, isOwner, leaveRoom, members, pendingUploads,
-  room, setStatusWithUndo, showToast, summary,
+  connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
+  room, setStatusWithUndo, showToast,
 } from '../lib/store'
+import { summarize } from '../lib/merge'
 import type { Member, MemberStatus } from '../lib/types'
 import { toShareText } from '../lib/export'
 import { navigate } from '../router'
@@ -20,6 +22,9 @@ export function Room({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
+  // 分車：選了某一車之後，計數與名單都只算那一車——
+  // 顧第一車的人要看的是「我這台還有幾個沒上」。
+  const [group, setGroup] = useState<string | null>(null)
   const [sheet, setSheet] = useState<OpenSheet>(null)
   // 計分區捲出畫面時，頂欄接手顯示未到人數——這個數字不能消失。
   const scoreboardRef = useRef<HTMLDivElement>(null)
@@ -52,19 +57,30 @@ export function Room({ code }: { code: string }) {
 
   const current = room.value
   const all = members.value
-  const s = summary.value
+  const groupList = groups.value
   const closed = Boolean(current?.closed_at)
+
+  // 選了分組之後就不存在了的分組（名單被換掉），自動退回全部。
+  useEffect(() => {
+    if (group && !groupList.includes(group)) setGroup(null)
+  }, [group, groupList])
+
+  const scoped = useMemo(
+    () => (group === null ? all : all.filter((m) => m.group_label === group)),
+    [all, group],
+  )
+  const s = useMemo(() => summarize(scoped), [scoped])
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return all.filter((m) => {
+    return scoped.filter((m) => {
       if (filter === 'pending' && m.status !== 'pending') return false
       if (filter === 'arrived' && m.status !== 'arrived') return false
       if (filter === 'excused' && m.status !== 'excused') return false
       if (!q) return true
       return m.name.toLowerCase().includes(q) || (m.phone ?? '').includes(q)
     })
-  }, [all, filter, query])
+  }, [scoped, filter, query])
 
   if (status === 'loading' && !current) return <RoomSkeleton label={t('loading')} />
 
@@ -92,7 +108,7 @@ export function Room({ code }: { code: string }) {
 
   async function copySummary() {
     if (!current) return
-    await navigator.clipboard.writeText(toShareText(current, all))
+    await navigator.clipboard.writeText(toShareText(current, all, group))
     showToast(t('summaryCopied'))
   }
 
@@ -158,6 +174,33 @@ export function Room({ code }: { code: string }) {
           </button>
         </div>
 
+        {groupList.length > 0 && (
+          <div class="groups" role="group" aria-label={t('group')}>
+            <button
+              class="group-chip"
+              aria-pressed={group === null}
+              onClick={() => setGroup(null)}
+            >
+              {t('allGroups')}
+            </button>
+            {groupList.map((g) => {
+              const gs = summarize(all.filter((m) => m.group_label === g))
+              return (
+                <button
+                  key={g}
+                  class="group-chip"
+                  aria-pressed={group === g}
+                  onClick={() => setGroup(g)}
+                  aria-label={t('groupCount', { name: g, arrived: gs.arrived, total: gs.people })}
+                >
+                  {g}
+                  <span class={gs.pending === 0 ? 'group-n done' : 'group-n'}>{gs.pending}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         <div class="segmented" role="group" aria-label={t('all')}>
           <Segment active={filter === 'all'} onClick={() => setFilter('all')} label={t('all')} count={s.people} />
           <Segment active={filter === 'pending'} onClick={() => setFilter('pending')} label={t('missing')} count={s.pending} />
@@ -189,15 +232,26 @@ export function Room({ code }: { code: string }) {
               </p>
             </div>
           ) : (
-            shown.map((m) => (
-              <MemberRow
-                key={m.id}
-                member={m}
-                closed={closed}
-                onToggle={() => { void toggle(m) }}
-                onDetail={() => setSheet({ member: m })}
-              />
-            ))
+            shown.map((m, i) => {
+              // 看全部時在分組交界插一條標示，現場才知道哪裡是第二車的開頭。
+              const prev = i > 0 ? shown[i - 1] : undefined
+              const divider =
+                group === null && groupList.length > 0 && m.group_label !== (prev?.group_label ?? null)
+              return (
+                <Fragment key={m.id}>
+                  {divider && (
+                    <div class="group-divider">{m.group_label ?? t('ungrouped')}</div>
+                  )}
+                  <MemberRow
+                    member={m}
+                    showGroup={false}
+                    closed={closed}
+                    onToggle={() => { void toggle(m) }}
+                    onDetail={() => setSheet({ member: m })}
+                  />
+                </Fragment>
+              )
+            })
           )}
         </div>
       </div>
@@ -247,8 +301,8 @@ function Segment({ active, onClick, label, count }: {
   )
 }
 
-function MemberRow({ member, closed, onToggle, onDetail }: {
-  member: Member; closed: boolean; onToggle: () => void; onDetail: () => void
+function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
+  member: Member; closed: boolean; showGroup: boolean; onToggle: () => void; onDetail: () => void
 }) {
   const t = useT()
   const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}${member.status === 'excused' ? ' is-excused' : ''}`
@@ -269,6 +323,9 @@ function MemberRow({ member, closed, onToggle, onDetail }: {
         <span class="member-body">
           <span class="member-name">{member.name}</span>
           <span class="member-meta">
+            {showGroup && member.group_label && (
+              <span class="chip chip-note">{member.group_label}</span>
+            )}
             {member.companions > 0 && (
               <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
             )}

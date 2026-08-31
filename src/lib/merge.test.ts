@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRemoteMember, applyStatusLocally, maxRev, mergeMembers, nextRev, pickWinner, summarize } from './merge'
+import { applyRemoteMember, applyStatusLocally, detectOverrides, maxRev, mergeMembers, nextRev, pickWinner, summarize } from './merge'
 import type { Member, MemberStatus } from './types'
 
 function member(id: string, over: Partial<Member> = {}): Member {
@@ -190,5 +190,52 @@ describe('summarize', () => {
   it('未知狀態當作未到處理', () => {
     const odd = member('x', { status: 'weird' as unknown as MemberStatus })
     expect(summarize([odd]).pending).toBe(1)
+  })
+})
+
+describe('detectOverrides', () => {
+  const mine = (...ids: string[]) => new Set(ids)
+
+  it('我改的被別人較新的變更蓋掉時回報', () => {
+    const before = [member('a', { status: 'arrived', rev: 100, status_by: '我' })]
+    const after = [member('a', { status: 'pending', rev: 200, status_by: '陳姐' })]
+    expect(detectOverrides(before, after, mine('a'))).toEqual([
+      { member: after[0], previousStatus: 'arrived' },
+    ])
+  })
+
+  it('別人改別人的不算衝突', () => {
+    const before = [member('a', { status: 'arrived', rev: 100 })]
+    const after = [member('a', { status: 'pending', rev: 200 })]
+    expect(detectOverrides(before, after, mine('other'))).toEqual([])
+  })
+
+  it('狀態沒變就不是衝突（只是 rev 前進）', () => {
+    const before = [member('a', { status: 'arrived', rev: 100 })]
+    const after = [member('a', { status: 'arrived', rev: 200 })]
+    expect(detectOverrides(before, after, mine('a'))).toEqual([])
+  })
+
+  it('rev 沒前進就不是被蓋掉', () => {
+    const before = [member('a', { status: 'arrived', rev: 200 })]
+    const after = [member('a', { status: 'arrived', rev: 200 })]
+    expect(detectOverrides(before, after, mine('a'))).toEqual([])
+  })
+
+  it('成員被移除不算衝突', () => {
+    const before = [member('a', { status: 'arrived', rev: 100 })]
+    expect(detectOverrides(before, [], mine('a'))).toEqual([])
+  })
+
+  it('沒有近期變更時直接回空，不做多餘比對', () => {
+    const before = [member('a', { status: 'arrived', rev: 100 })]
+    const after = [member('a', { status: 'pending', rev: 200 })]
+    expect(detectOverrides(before, after, new Set())).toEqual([])
+  })
+
+  it('一次可以回報多筆', () => {
+    const before = [member('a', { status: 'arrived', rev: 1 }), member('b', { status: 'arrived', rev: 1 })]
+    const after = [member('a', { status: 'pending', rev: 9 }), member('b', { status: 'excused', rev: 9 })]
+    expect(detectOverrides(before, after, mine('a', 'b'))).toHaveLength(2)
   })
 })

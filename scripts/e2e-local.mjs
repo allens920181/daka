@@ -139,6 +139,79 @@ await p.emulateMedia({media:'screen'})
 
 
 
+// ---- 分組（分車）、看板模式 ----
+await p.goto(URL); await p.waitForTimeout(900)
+
+await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(300)
+await p.locator('#room-name').fill('秋季旅遊 · 出發')
+await p.locator('#roster-text').fill(`【第一車】
+1.王小明 0912345678
+2. 李美花 +1
+3.張三
+【第二車】
+4、陳大同（請假）
+5.李四
+6.王五 帶2人`)
+await p.waitForTimeout(400)
+const preview = await p.locator('.preview-row').count()
+ok(`解析預覽 ${preview} 人（標題行不算人）`, preview===6)
+await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300)
+
+// --- 分組 UI ---
+ok('出現分組選擇器', await p.locator('.groups').isVisible())
+const chips = await p.locator('.group-chip').allTextContents()
+ok(`分組晶片：${chips.join(' | ')}`, chips.length===3 && chips[1].includes('第一車') && chips[2].includes('第二車'))
+ok('全部：未到 5（陳大同請假不算）', (await p.locator('.score-number').textContent())==='5')
+ok('看全部時有分組分隔', (await p.locator('.group-divider').count())===2)
+
+
+// 選第一車 → 計數只算那一車
+await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
+ok('第一車：未到 3', (await p.locator('.score-number').textContent())==='3')
+ok('第一車：人頭 0 / 4（李美花 +1）', (await p.locator('.score-heads').textContent())?.includes('/ 4'))
+ok('第一車只顯示 3 人', (await p.locator('.member').count())===3)
+ok('選了分組後不再顯示分隔', (await p.locator('.group-divider').count())===0)
+
+// 點名只影響那一車的計數
+await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(600)
+ok('第一車點一人後未到 2', (await p.locator('.score-number').textContent())==='2')
+await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(400)
+ok('第二車未到仍是 2（陳大同請假）', (await p.locator('.score-number').textContent())==='2')
+
+
+// 分組晶片上的未到數
+await p.getByRole('button',{name:/^全部$/}).click(); await p.waitForTimeout(400)
+const gn = await p.locator('.group-chip .group-n').allTextContents()
+ok(`晶片顯示各車未到數：${gn.join(' / ')}`, gn.length===2 && gn[0]==='2' && gn[1]==='2')
+
+// --- 複製結果應限定在選取的分組 ---
+await ctx.grantPermissions(['clipboard-read','clipboard-write'])
+await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(600)
+const clip = await p.evaluate(()=>navigator.clipboard.readText())
+ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))
+
+// --- 看板模式 ---
+await p.getByRole('button',{name:/^全部$/}).click(); await p.waitForTimeout(300)
+const groupRoomCode=(await p.locator('.topbar-sub .mono').first().textContent())?.trim()
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button',{name:/看板模式/}).click(); await p.waitForTimeout(1600)
+ok('進入看板模式', await p.locator('.board').isVisible())
+ok('看板顯示已到人頭', (await p.locator('.board-num').textContent())==='1')
+ok('看板顯示未到人數', (await p.locator('.board-missing').textContent())?.includes('4'))
+const names=await p.locator('.board-names li').allTextContents()
+ok(`看板列出未到者：${names.map(n=>n.trim()).join('、')}`, names.length===4)
+const numSize=await p.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('.board-num')).fontSize))
+ok(`看板數字 ${numSize}px（遠距可讀，超出八階是具名例外）`, numSize>=52)
+
+await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
+ok('看板可切分組：第一車已到 1', (await p.locator('.board-num').textContent())==='1')
+await p.getByRole('button',{name:/離開看板/}).click(); await p.waitForTimeout(1200)
+ok('離開看板回到房間', await p.locator('.topbar-name').isVisible() && (await p.locator('.topbar-sub .mono').first().textContent())?.trim()===groupRoomCode)
+
+
+
+
 ok('沒有 JS 錯誤', errs.length === 0)
 if (errs.length) console.log(errs.join('\n'))
 await b.close()

@@ -6,7 +6,9 @@ import type {
 } from './types'
 import { AppError, api, isSupabaseConfigured, realtimeChannel } from './supabase'
 import { generateId, generateRoomCode, normalizeRoomCode } from './code'
-import { applyRemoteMember, applyStatusLocally, mergeMembers, summarize } from './merge'
+import { applyRemoteMember, applyStatusLocally, detectOverrides, mergeMembers, summarize } from './merge'
+import { groupsOf } from './parse'
+import { translate } from './i18n'
 import { countForRoom, dequeue, enqueue, flushOrder, pendingAddIds } from './outbox'
 import {
   DEFAULT_PREFS, type Prefs, type RecentRoom,
@@ -37,6 +39,8 @@ export interface ToastState {
 export const toast = signal<ToastState | null>(null)
 
 export const summary = computed(() => summarize(members.value))
+/** 名單裡出現過的分組（分車），依第一次出現的順序。 */
+export const groups = computed(() => groupsOf(members.value))
 export const pendingUploads = computed(() =>
   room.value ? countForRoom(outbox.value, room.value.code) : 0,
 )
@@ -51,6 +55,54 @@ let reconcileTimer: ReturnType<typeof setInterval> | undefined
 let persistTimer: ReturnType<typeof setTimeout> | undefined
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 let flushing = false
+
+/**
+ * 這台裝置近期改過的成員，用來判斷「我改的被別人蓋掉了」。
+ * 只保留 90 秒：更久以前的變更被覆蓋，不再算是需要當場提醒的衝突。
+ */
+const OVERRIDE_WINDOW_MS = 90_000
+const recentlyChanged = new Map<string, number>()
+
+function rememberChange(memberId: string): void {
+  recentlyChanged.set(memberId, Date.now())
+}
+
+function myRecentChanges(): Set<string> {
+  const cutoff = Date.now() - OVERRIDE_WINDOW_MS
+  for (const [id, at] of recentlyChanged) if (at < cutoff) recentlyChanged.delete(id)
+  return new Set(recentlyChanged.keys())
+}
+
+const STATUS_KEY = { arrived: 'arrived', pending: 'missing', excused: 'excused' } as const
+
+/**
+ * 告訴使用者他剛才的點名被別人改掉了。
+ *
+ * LWW 讓合併有明確勝負，但靜默覆蓋很危險：我把王小明標成已到、
+ * 別人同時標成未到而且贏了，如果我完全不知道，就會以為他已經上車。
+ */
+function announceOverrides(before: readonly Member[], after: readonly Member[]): void {
+  const overrides = detectOverrides(before, after, myRecentChanges())
+  if (overrides.length === 0) return
+
+  const lang = prefs.value.lang
+  const first = overrides[0] as { member: Member }
+  const m = first.member
+  const status = translate(lang, STATUS_KEY[m.status])
+
+  // 被蓋掉的人已經不是「我改的」了，別再重複提醒同一筆。
+  for (const o of overrides) recentlyChanged.delete(o.member.id)
+
+  showToast(
+    overrides.length > 1
+      ? translate(lang, 'overriddenMany', { n: overrides.length })
+      : m.status_by
+        ? translate(lang, 'overridden', { name: m.name, who: m.status_by, status })
+        : translate(lang, 'overriddenAnon', { name: m.name, status }),
+    undefined,
+    7000,
+  )
+}
 
 // ---------------------------------------------------------------------------
 // 啟動
@@ -178,7 +230,9 @@ function subscribe(code: string): void {
   channel.on('broadcast', { event: 'member' }, ({ payload }) => {
     const incoming = payload as Member | undefined
     if (!incoming?.id) return
-    members.value = applyRemoteMember(members.value, incoming)
+    const before = members.value
+    members.value = applyRemoteMember(before, incoming)
+    announceOverrides(before, members.value)
     persistSoon()
   })
   // 名單被房主換掉、有人被刪除：這些改的是整份名單，直接重新拉快照。
@@ -208,6 +262,7 @@ function stopTimers(): void {
 }
 
 export function leaveRoom(): void {
+  recentlyChanged.clear()
   void persistNow()
   stopTimers()
   channel?.unsubscribe()
@@ -265,7 +320,9 @@ export async function reconcile(): Promise<void> {
     const snap = await api.getRoom(code)
     if (!snap) throw new AppError('room-not-found')
     room.value = snap.room
-    members.value = mergeMembers(members.value, snap.members, pendingAddIds(outbox.value))
+    const before = members.value
+    members.value = mergeMembers(before, snap.members, pendingAddIds(outbox.value))
+    announceOverrides(before, members.value)
     await persistNow()
     refreshConnection()
   } catch (e) {
@@ -295,7 +352,9 @@ export async function flushOutbox(): Promise<void> {
           : await api.setStatus(op.code, op.memberId, op.status, op.rev, op.by)
 
         if (op.code === currentCode) {
-          members.value = applyRemoteMember(members.value, saved)
+          const before = members.value
+          members.value = applyRemoteMember(before, saved)
+          announceOverrides(before, members.value)
           persistSoon()
         }
         broadcast('member', saved)
@@ -339,6 +398,7 @@ export async function setStatus(memberId: string, status: MemberStatus): Promise
   const by = identity.value.checkerName || null
   const { members: next, rev } = applyStatusLocally(members.value, memberId, status, by)
   members.value = next
+  rememberChange(memberId)
   haptic()
   persistSoon()
 
@@ -498,6 +558,18 @@ export async function replaceRoster(drafts: readonly DraftMember[]): Promise<voi
     return
   }
   await ownerAction(() => api.replaceRoster(r.code, identity.value.ownerKey, drafts))
+}
+
+export async function setMemberGroup(memberId: string, groupLabel: string | null): Promise<void> {
+  const r = room.value
+  if (!r) return
+  const label = groupLabel?.trim().slice(0, 20) || null
+  if (!isSupabaseConfigured) {
+    members.value = members.value.map((m) => (m.id === memberId ? { ...m, group_label: label } : m))
+    await persistNow()
+    return
+  }
+  await ownerAction(() => api.setMemberGroup(r.code, identity.value.ownerKey, memberId, label))
 }
 
 export async function removeMember(memberId: string): Promise<void> {

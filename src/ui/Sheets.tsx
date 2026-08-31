@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  addWalkIn, copyCurrentRoom, deleteCurrentRoom, identity, leaveRoom, members,
+  addWalkIn, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
   prefs, removeMember, renameRoom, replaceRoster, room, saveRosterAs, savedRosters,
-  setCheckerName, setPrefs, setRoomClosed, setStatus, showToast,
+  setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatus, showToast,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { csvFilename, downloadFile, toCsv } from '../lib/export'
@@ -249,6 +249,14 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
           <span><strong>{t('exportCsv')}</strong></span>
         </button>
 
+        <button class="menu-item" onClick={() => { onClose(); navigate(`/b/${current.code}`) }}>
+          <IconList />
+          <span>
+            <strong>{t('boardMode')}</strong>
+            <span class="sub">{t('boardHint')}</span>
+          </span>
+        </button>
+
         <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
           <IconList />
           <span>
@@ -377,6 +385,35 @@ export function MemberSheet({ member, owner, onClose }: {
                 <span><strong>{t('markExcused')}</strong></span>
               </button>
             )}
+          </>
+        )}
+
+        {owner && groups.value.length > 0 && (
+          <>
+            <div class="menu-divider" />
+            <div class="field" style="padding: 0 12px 8px">
+              <span class="label">{t('changeGroup')}</span>
+              <div class="groups">
+                {groups.value.map((g) => (
+                  <button
+                    key={g}
+                    class="group-chip"
+                    aria-pressed={member.group_label === g}
+                    onClick={() => { void setMemberGroup(member.id, g); onClose() }}
+                  >
+                    {g}
+                  </button>
+                ))}
+                {member.group_label && (
+                  <button
+                    class="group-chip"
+                    onClick={() => { void setMemberGroup(member.id, null); onClose() }}
+                  >
+                    {t('removeFromGroup')}
+                  </button>
+                )}
+              </div>
+            </div>
           </>
         )}
 

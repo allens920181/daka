@@ -97,6 +97,36 @@ ok('[主揪] 已到全部歸零、請假保留 → 未到 4', (await A.p.locator
 const newCode = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`[主揪] 回程是新的房號 ${newCode}`, newCode !== code)
 
+// --- 衝突提示：我改的被別人蓋掉時，要看得見 ---
+// 先給同工一個名字，這樣提示才會說「已由 陳姐 改為…」而不是「已被其他人」。
+await B.p.goto(URL); await B.p.waitForTimeout(900)
+await B.p.locator('button[aria-label="設定"]').click(); await B.p.waitForTimeout(500)
+await B.p.locator('#checker-name').fill('陳姐')
+await B.p.locator('#checker-name').blur(); await B.p.waitForTimeout(400)
+await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(300)
+await B.p.goto(`${URL}#/r/${newCode}`); await B.p.waitForTimeout(1800)
+
+// 主揪先把第一個人標成已到
+await A.p.locator('.member-main').nth(0).click(); await A.p.waitForTimeout(1400)
+ok('[主揪] 標記已到', (await A.p.locator('.member').nth(0).getAttribute('class'))?.includes('is-arrived'))
+
+// 同工把同一個人改回未到（rev 較大，會贏）
+await reconcile(B)
+await B.p.locator('.member-main').nth(0).click(); await B.p.waitForTimeout(1400)
+ok('[同工] 改回未到', !(await B.p.locator('.member').nth(0).getAttribute('class'))?.includes('is-arrived'))
+
+// 主揪對帳後應該被告知自己那筆被蓋掉了
+await reconcile(A); await A.p.waitForTimeout(600)
+const notice = await A.p.locator('.toast-text').textContent().catch(() => '')
+ok(`[主揪] 收到衝突提示：「${notice}」`, /已由\s*陳姐\s*改為未到/.test(notice ?? ''))
+ok('[主揪] 該列確實變回未到', !(await A.p.locator('.member').nth(0).getAttribute('class'))?.includes('is-arrived'))
+
+// 別人改別人的不該打擾我
+await A.p.waitForTimeout(7200)
+await B.p.locator('.member-main').nth(2).click(); await B.p.waitForTimeout(1200)
+await reconcile(A); await A.p.waitForTimeout(600)
+ok('[主揪] 別人改我沒碰過的人，不跳提示', (await A.p.locator('.toast').count()) === 0)
+
 console.log('\n--- page errors ---')
 const all = [...A.errs, ...B.errs]
 console.log(all.length ? all.join('\n') : '(none)')

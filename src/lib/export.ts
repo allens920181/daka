@@ -50,13 +50,14 @@ export function csvFilename(room: Room): string {
  * 給主揪貼回 LINE 的文字。這是點名結束時最常用的動作，
  * 所以未到名單放在最前面、而且只列人名，方便直接唸出來。
  */
-export function toShareText(room: Room, members: readonly Member[]): string {
-  const s = summarize(members)
-  const missing = members.filter((m) => m.status === 'pending')
-  const excused = members.filter((m) => m.status === 'excused')
+export function toShareText(room: Room, members: readonly Member[], group?: string | null): string {
+  const scoped = group ? members.filter((m) => m.group_label === group) : members
+  const s = summarize(scoped)
+  const missing = scoped.filter((m) => m.status === 'pending')
+  const excused = scoped.filter((m) => m.status === 'excused')
 
   const lines = [
-    room.name,
+    group ? `${room.name} · ${group}` : room.name,
     `已到 ${s.arrivedHeadcount} / ${s.headcount} 人`,
   ]
   if (missing.length > 0) {
