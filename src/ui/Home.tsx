@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { connection, forgetRecentRoom, recentRooms } from '../lib/store'
+import { connection, forgetRecentRoom, myRooms, recentRooms, session } from '../lib/store'
 import { findConfusables, isValidRoomCode, normalizeRoomCode, CODE_LENGTH } from '../lib/code'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
@@ -78,6 +78,29 @@ export function Home({ onSettings }: { onSettings: () => void }) {
             </button>
           </div>
         </div>
+
+        {session.value && (
+          <div class="field">
+            <span class="label">{t('myRooms')}</span>
+            {myRooms.value.length === 0 ? (
+              <p class="note">{t('myRoomsEmpty')}</p>
+            ) : (
+              <div class="stack" style="gap:8px">
+                {myRooms.value.map((r) => (
+                  <button key={r.code} class="recent-item" onClick={() => navigate(`/r/${r.code}`)}>
+                    <div style="flex:1; min-width:0">
+                      <div class="recent-name">{r.name}</div>
+                      <div class="recent-meta mono">
+                        {r.code} · {t('roomStat', { arrived: r.arrivedHeadcount, total: r.headcount })}
+                      </div>
+                    </div>
+                    <span class="tag tag-owner">{t('owner')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div class="field">
           <span class="label">{t('recentRooms')}</span>

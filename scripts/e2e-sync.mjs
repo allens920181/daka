@@ -1,6 +1,6 @@
 // 兩台裝置同步的端對端測試。
 //
-// 這不需要真的 Supabase 專案：scripts/fake-postgrest.mjs 會把 RPC 轉發到
+// 這不需要真的 Supabase 專案：scripts/fake-supabase.mjs 會把 RPC 轉發到
 // 本機 PostgreSQL，所以驗的是「真的 SQL + 真的瀏覽器」。Realtime 廣播沒有
 // 被涵蓋（本機沒有 realtime 伺服器），驗的是定期對帳這條保底路徑——那本來
 // 就是正確性的依據，廣播只是讓它更快。

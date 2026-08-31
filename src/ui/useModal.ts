@@ -30,12 +30,19 @@ export function useModal(
       target?.focus()
     }
 
+    // 背後的內容要退出無障礙樹與 Tab 順序。只做視覺遮罩不夠：
+    // 螢幕閱讀器仍讀得到底下的按鈕，使用者會聽到一個他碰不到的「分享」。
+    //
+    // 唯一的例外是 Toast。它在 z 軸上高於模態層，可能是誤觸後唯一的復原
+    // 機會（設計規範 §3.7）；而且 inert 會把它移出無障礙樹，連 aria-live
+    // 的播報都會被吃掉。
     const inerted: HTMLElement[] = []
     const root = layer.current?.parentElement?.parentElement
     const overlay = layer.current?.parentElement
     if (root && overlay) {
       for (const child of Array.from(root.children)) {
         if (child === overlay || !(child instanceof HTMLElement)) continue
+        if (child.classList.contains('toast-wrap')) continue
         if (child.hasAttribute('inert')) continue
         child.setAttribute('inert', '')
         inerted.push(child)

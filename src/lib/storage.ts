@@ -12,6 +12,7 @@ const K_IDENTITY = 'identity'
 const K_OUTBOX = 'outbox'
 const K_RECENT = 'recentRooms'
 const K_PREFS = 'prefs'
+const K_SESSION = 'session'
 const roomKey = (code: string) => `room:${code.toUpperCase()}`
 
 export interface Prefs {
@@ -57,6 +58,23 @@ export async function loadIdentity(): Promise<Identity> {
 
 export async function saveIdentity(identity: Identity): Promise<void> {
   await safeSet(K_IDENTITY, identity)
+}
+
+/** 登入的工作階段。與其他狀態一樣放 IndexedDB。 */
+export async function loadSession<T>(): Promise<T | undefined> {
+  return safeGet<T>(K_SESSION)
+}
+
+export async function saveSession(value: unknown): Promise<void> {
+  if (value === null) {
+    try {
+      await del(K_SESSION)
+    } catch {
+      /* 同上 */
+    }
+    return
+  }
+  await safeSet(K_SESSION, value)
 }
 
 export async function loadPrefs(): Promise<Prefs> {

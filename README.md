@@ -12,6 +12,7 @@
 - **分車分組。** 名單貼上「【第一車】」就自動分段；選了某一車之後所有數字只算那一車。
 - **看板模式。** 平板放門邊大字顯示，螢幕不會自動關掉。
 - **不會被默默蓋掉。** 你剛點的被別人改了，會明講「已由陳姐改為未到」。
+- **換手機不會弄丟。** 主揪可以登入，房間與常用名單跟著帳號走。**協助點名的人永遠不用登入。**
 
 - [`docs/product-direction.md`](docs/product-direction.md) — 產品方向與架構決策
 - [`docs/design/`](docs/design/) — 設計規範：[基礎](docs/design/01-foundations.md)、[品牌](docs/design/02-brand.md)、[Token](docs/design/03-tokens.md)、[元件](docs/design/04-components/)、[模式](docs/design/05-patterns.md)、[內容](docs/design/06-content.md)、[品質](docs/design/07-quality.md)、[貢獻](docs/design/08-contributing.md)；另有[視覺對照頁](https://claude.ai/code/artifact/9df0f69b-dc39-4fc6-928f-e62be58ef97f)
@@ -56,6 +57,7 @@ LINE 接龍長什麼樣就貼什麼樣，不用先整理：
 
 1. 到 [supabase.com](https://supabase.com) 開一個免費專案。
 2. Dashboard → **SQL Editor** → 把 [`supabase/schema.sql`](supabase/schema.sql) 整份貼上執行。可重複執行，之後要升級再貼一次就好。
+   （`supabase/schema.local-auth.sql` **不要**貼——那是本機測試用的替身，正式專案已內建 `auth`。）
 3. Dashboard → **Settings → API**，複製 `Project URL` 與 `anon public` key。
 4. GitHub repo → **Settings → Secrets and variables → Actions**，新增：
    - `SUPABASE_URL`
@@ -64,6 +66,23 @@ LINE 接龍長什麼樣就貼什麼樣，不用先整理：
 6. 推到 `main`，Actions 會自動建置並部署。
 
 本機開發的話，複製 `.env.example` 成 `.env.local` 填同樣兩個值。
+
+### 讓登入信寄出六碼驗證碼
+
+**這一步不做的話，主揪登入時會收到一條連結而不是驗證碼，然後卡住。**
+
+Supabase 預設的 Magic Link 信件模板只有連結。到 Dashboard → **Authentication → Email Templates → Magic Link**，把內容改成含 `{{ .Token }}`：
+
+```html
+<h2>點名房間登入驗證碼</h2>
+<p>你的驗證碼是：</p>
+<p style="font-size:28px;font-weight:700;letter-spacing:6px">{{ .Token }}</p>
+<p>這組碼一小時內有效。如果不是你要登入，忽略這封信就好。</p>
+```
+
+用驗證碼而不是魔術連結是刻意的：連結在信件 App 的內建瀏覽器開啟時會落在另一個瀏覽器工作階段，是很常見的失敗模式；輸入六碼永遠在同一台裝置上完成。
+
+另外注意 Supabase 內建的寄信服務**額度很低**（免費方案每小時只有個位數封）。主揪一年登入幾次沒問題，但不要拿它當一般的通知管道。要更穩的話在 Authentication → SMTP Settings 接自己的寄信服務。
 
 ### 免費方案會被暫停
 
@@ -81,7 +100,12 @@ Supabase 免費專案閒置一段時間會自動暫停，而「一個月出遊�
 - **房號就是密碼。** 拿到 6 碼房號的人就能看名單、能點名。這是「掃 QR 就能用、不用註冊」的代價，也是刻意的取捨。
 - **房號有 6 碼、31 個字元**（排除易混淆的 `0 O 1 I L`），約 8.9 億組合。對「幾十人的教會活動、30 天後刪除」是合理的，但**它不是高強度機密，別放敏感資料**。
 - **anon key 是公開的。** 它會被打包進 JS，任何人都看得到。真正保護資料的是 RLS——三張資料表都開啟 RLS 且**不建立任何 policy**，所以拿著 anon key 也無法直接讀寫任何一列；所有存取都必須經過要求房號的 RPC 函式。
-- **破壞性操作需要 `owner_key`**（改名單、複製、關閉、刪除），只有開房的那台裝置有。它存在該裝置的 IndexedDB 裡，換手機就沒了。
+- **破壞性操作需要「擁有權」**（改名單、複製、關閉、刪除），而擁有權有兩條路：
+  - `owner_key` —— 開房那台裝置的隨機字串，存在它自己的 IndexedDB
+  - `owner_id` —— 主揪登入後的帳號
+  任一相符即可。所以**從來不登入的人完全不受影響**，登入的人換手機也拿得回房間。
+- **登入只給主揪。** 協助點名的人永遠不需要帳號——掃 QR 就能點是這個產品的生命線。
+- **函式授權是真的。** PostgreSQL 預設把 EXECUTE 授予 PUBLIC，schema 先全部收回再逐一授予，所以「只有清單上的函式對外開放」是被強制的，不是紙上規定。
 - **房間 30 天後自動刪除**，連同名單與點名紀錄。這是刻意的：名單是個資，不該無限期留著。
 - **單機模式的資料只在瀏覽器裡。** 清快取、換手機、無痕模式都會讓它消失。活動結束記得匯出。
 
@@ -138,7 +162,7 @@ docs/design/         設計規範（模組化，見上）
 scripts/
   design-audit.mjs   設計規範的執行期檢查
   e2e-local.mjs      單機模式端對端
-  fake-postgrest.mjs 同步測試用的假後端
+  fake-supabase.mjs 同步測試用的假後端
   e2e-sync.mjs       兩台裝置同步測試
 supabase/
   schema.sql      要貼到 Supabase 的那份
@@ -175,23 +199,25 @@ docs/
 
 ## 已知限制
 
-- 常用名單不跨裝置。
-- 沒有帳號系統，所以換手機就拿不回房主權限。
-- 沒有歷史活動查詢與出席統計（Phase 3，前置條件是主揪帳號）。
+- 出席統計與月報還沒做（Phase 3 剩下的部分）。
+- 登入信件靠 Supabase 內建寄信服務，額度低且可能進垃圾郵件；正式使用建議接自己的 SMTP。
+- 沒有「把房間轉讓給別的主揪」的功能。
 - 舊版的單檔 `index.html` 還在 git 歷史裡（commit `63eeaf1`）。
 
 ### 驗證多人同步（選用）
 
-不需要真的 Supabase 專案也能測「兩台裝置看到同一份名單」——用本機 PostgreSQL 加一個 PostgREST 相容的轉發器：
+不需要真的 Supabase 專案也能測「兩台裝置看到同一份名單」——用本機 PostgreSQL 加一個 PostgREST 與 GoTrue 的轉發器：
 
 ```bash
 # 1. 準備本機資料庫
 createdb daka
-psql -d daka -c "create role anon nologin; grant usage on schema public to anon;"
+psql -d daka -c "create role anon nologin; create role authenticated nologin;
+                 grant usage on schema public to anon, authenticated;"
+psql -d daka -f supabase/schema.local-auth.sql   # auth 替身，只有本機需要
 psql -d daka -f supabase/schema.sql
 
 # 2. 起轉發器
-node scripts/fake-postgrest.mjs   # 監聽 :54321
+node scripts/fake-supabase.mjs   # 監聽 :54321
 
 # 3. 用它建置並預覽
 VITE_BASE=/ VITE_SUPABASE_URL=http://127.0.0.1:54321 \
@@ -202,6 +228,13 @@ VITE_BASE=/ npx vite preview --outDir dist-sync --port 4180 --host 127.0.0.1
 node scripts/e2e-sync.mjs
 ```
 
-涵蓋：分享連結加入同一間房、雙向即時反映、兩人同時點同一人不重複計算、離線點名後恢復連線自動補上、複製房間保留請假並重置已到。
+```bash
+# 帳號流程（換手機還管不管得動）
+node scripts/e2e-account.mjs
+```
+
+涵蓋：分享連結加入同一間房、雙向即時反映、兩人同時點同一人不重複計算、離線點名後恢復連線自動補上、複製房間保留請假並重置已到、我改的被別人蓋掉時會被告知、以及登入後換一台裝置仍然管得動自己的房間。
+
+`scripts/fake-supabase.mjs` 同時模擬 PostgREST 與 GoTrue，驗證碼固定 `123456`。它是測試替身，**不要拿去對外服務**。
 
 （Realtime 廣播沒被涵蓋，本機沒有 realtime 伺服器。測的是每 15 秒的定期對帳——那本來就是正確性的依據，廣播只是讓它更快。）

@@ -45,6 +45,19 @@ export interface DraftMember {
   status?: MemberStatus
 }
 
+/** 「我的活動」清單的一列。由 my_rooms() 回傳，附帶統計避免前端逐一再查。 */
+export interface OwnedRoom {
+  code: string
+  name: string
+  created_at: string
+  expires_at: string
+  closed_at: string | null
+  people: number
+  arrived: number
+  headcount: number
+  arrivedHeadcount: number
+}
+
 export interface SavedRoster {
   id: string
   name: string

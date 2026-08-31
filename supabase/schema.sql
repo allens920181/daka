@@ -10,8 +10,12 @@
 --  2. RPC 函式是 SECURITY DEFINER，並且都要求傳入房號（code）才給資料。
 --     → 房號就是密碼。拿到房號的人＝可以看名單、可以點名。這正是產品要的
 --       「掃 QR 就能點名，不用註冊」。
---  3. 破壞性操作（改名單、複製、關閉、刪除）另外要求 owner_key，
---     只有開房的那台裝置有。
+--  3. 破壞性操作（改名單、複製、關閉、刪除）需要「擁有權」，而擁有權有兩種：
+--     a) owner_key —— 開房那台裝置產生的隨機字串，存在它自己的 IndexedDB
+--     b) owner_id  —— 主揪登入後的 auth.uid()
+--     兩者任一相符即可。這讓「從來不登入的人」完全不受影響，而登入的人
+--     換手機也拿得回自己的房間。
+--     協助點名的人永遠不需要帳號，這是產品的生命線。
 --  4. 房號是 6 碼、31 個不易混淆的字元（去掉 0/O/1/I/L），約 8.9 億組合。
 --     這對「幾十人的教會活動、30 天後自動刪除」是合理的；但它不是高強度
 --     機密，別放敏感資料。房間預設 30 天後過期，purge_expired() 會清掉。
@@ -31,10 +35,13 @@ create table if not exists public.rooms (
   created_at  timestamptz not null default now(),
   expires_at  timestamptz not null default now() + interval '30 days',
   closed_at   timestamptz,
-  copied_from uuid        references public.rooms(id) on delete set null
+  copied_from uuid        references public.rooms(id) on delete set null,
+  -- 主揪登入後才有值。沒登入的房間永遠只靠 owner_key。
+  owner_id    uuid        references auth.users(id) on delete set null
 );
 
 create index if not exists rooms_expires_at_idx on public.rooms (expires_at);
+create index if not exists rooms_owner_id_idx    on public.rooms (owner_id, created_at desc);
 
 create table if not exists public.room_members (
   id           uuid primary key default gen_random_uuid(),
@@ -57,13 +64,14 @@ create table if not exists public.room_members (
 
 create index if not exists room_members_room_idx on public.room_members (room_id, sort_order, created_at);
 
--- 常用名單：綁在裝置自己的 owner_key 上，不跨裝置共用。
+-- 常用名單：沒登入時綁裝置的 owner_key；登入後綁 owner_id，跟著帳號跨裝置。
 create table if not exists public.saved_rosters (
   id         uuid primary key default gen_random_uuid(),
   owner_key  text        not null check (length(owner_key) between 20 and 100),
   name       text        not null check (length(name) between 1 and 80),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  owner_id   uuid        references auth.users(id) on delete cascade
 );
 
 create index if not exists saved_rosters_owner_idx on public.saved_rosters (owner_key, updated_at desc);
@@ -81,9 +89,12 @@ create table if not exists public.saved_roster_members (
 
 create index if not exists saved_roster_members_roster_idx on public.saved_roster_members (roster_id, sort_order);
 
--- 從舊版升級用：這兩個欄位是後來才加的（重複執行安全）。
+-- 從舊版升級用：這些欄位是後來才加的（重複執行安全）。
 alter table public.room_members         add column if not exists phone text;
 alter table public.saved_roster_members add column if not exists phone text;
+alter table public.rooms                add column if not exists owner_id uuid references auth.users(id) on delete set null;
+alter table public.saved_rosters        add column if not exists owner_id uuid references auth.users(id) on delete cascade;
+create index if not exists saved_rosters_owner_id_idx on public.saved_rosters (owner_id, updated_at desc);
 
 -- ---------------------------------------------------------------------------
 -- RLS：全部開啟、不給 policy ⇒ anon / authenticated 都無法直接存取。
@@ -112,7 +123,7 @@ set search_path = public, pg_temp
 as $$
   select jsonb_build_object(
     'room', (
-      select to_jsonb(r) - 'owner_key'
+      select to_jsonb(r) - 'owner_key' - 'owner_id'
       from public.rooms r
       where r.id = p_room_id
     ),
@@ -138,7 +149,10 @@ as $$
     and r.expires_at > now();
 $$;
 
--- 依房號 + owner_key 取得房間 id；驗證失敗就丟錯。
+-- 取得房間 id，並驗證呼叫者是擁有者。驗證失敗就丟錯。
+--
+-- 擁有權有兩條路：裝置的 owner_key，或登入後的 auth.uid()。
+-- 任一相符即可——這讓不登入的人照舊能用，登入的人換手機也拿得回房間。
 create or replace function public._owned_room_id(p_code text, p_owner_key text)
 returns uuid
 language plpgsql
@@ -148,12 +162,16 @@ set search_path = public, pg_temp
 as $$
 declare
   v_id uuid;
+  v_uid uuid := auth.uid();
 begin
   select r.id into v_id
   from public.rooms r
   where r.code = upper(trim(p_code))
     and r.expires_at > now()
-    and r.owner_key = p_owner_key;
+    and (
+      r.owner_key = p_owner_key
+      or (v_uid is not null and r.owner_id = v_uid)
+    );
 
   if v_id is null then
     raise exception 'room_not_found_or_not_owner' using errcode = '42501';
@@ -220,12 +238,13 @@ as $$
 declare
   v_id uuid;
 begin
-  insert into public.rooms (code, name, note, owner_key)
+  insert into public.rooms (code, name, note, owner_key, owner_id)
   values (
     upper(btrim(p_code)),
     left(btrim(p_name), 80),
     nullif(left(btrim(coalesce(p_note, '')), 200), ''),
-    p_owner_key
+    p_owner_key,
+    auth.uid()
   )
   returning id into v_id;
 
@@ -459,8 +478,9 @@ declare
   v_src uuid := public._owned_room_id(p_code, p_owner_key);
   v_new uuid;
 begin
-  insert into public.rooms (code, name, note, owner_key, copied_from)
-  select upper(btrim(p_new_code)), left(btrim(p_new_name), 80), r.note, r.owner_key, r.id
+  insert into public.rooms (code, name, note, owner_key, copied_from, owner_id)
+  select upper(btrim(p_new_code)), left(btrim(p_new_name), 80), r.note, r.owner_key, r.id,
+         coalesce(r.owner_id, auth.uid())
   from public.rooms r
   where r.id = v_src
   returning id into v_new;
@@ -545,6 +565,7 @@ set search_path = public, pg_temp
 as $$
 declare
   v_id uuid;
+  v_uid uuid := auth.uid();
 begin
   if length(coalesce(p_owner_key, '')) < 20 then
     raise exception 'bad_owner_key' using errcode = '22023';
@@ -563,7 +584,8 @@ begin
   if p_roster_id is not null then
     update public.saved_rosters
        set name = left(btrim(p_name), 80), updated_at = now()
-     where id = p_roster_id and owner_key = p_owner_key
+     where id = p_roster_id
+       and (owner_key = p_owner_key or (v_uid is not null and owner_id = v_uid))
     returning id into v_id;
 
     if v_id is null then
@@ -572,12 +594,13 @@ begin
 
     delete from public.saved_roster_members where roster_id = v_id;
   else
-    if (select count(*) from public.saved_rosters where owner_key = p_owner_key) >= 50 then
+    if (select count(*) from public.saved_rosters
+         where owner_key = p_owner_key or (v_uid is not null and owner_id = v_uid)) >= 50 then
       raise exception 'too_many_rosters' using errcode = '22023';
     end if;
 
-    insert into public.saved_rosters (owner_key, name)
-    values (p_owner_key, left(btrim(p_name), 80))
+    insert into public.saved_rosters (owner_key, name, owner_id)
+    values (p_owner_key, left(btrim(p_name), 80), v_uid)
     returning id into v_id;
   end if;
 
@@ -603,6 +626,7 @@ begin
 end;
 $$;
 
+-- 登入後看帳號的名單（跨裝置）；沒登入就看這台裝置的。
 create or replace function public.list_rosters(p_owner_key text)
 returns jsonb
 language sql
@@ -622,7 +646,10 @@ as $$
       ), '[]'::jsonb)
     ) as x
     from public.saved_rosters r
-    where r.owner_key = p_owner_key
+    where case
+      when auth.uid() is not null then r.owner_id = auth.uid()
+      else r.owner_key = p_owner_key and r.owner_id is null
+    end
   ) s;
 $$;
 
@@ -632,10 +659,88 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
+declare
+  v_uid uuid := auth.uid();
 begin
-  delete from public.saved_rosters where id = p_roster_id and owner_key = p_owner_key;
+  delete from public.saved_rosters
+   where id = p_roster_id
+     and (owner_key = p_owner_key or (v_uid is not null and owner_id = v_uid));
   return found;
 end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 帳號（只有主揪需要；協助點名的人永遠不用登入）
+-- ---------------------------------------------------------------------------
+
+-- 登入後把這台裝置本來就擁有的房間與常用名單轉到帳號名下。
+--
+-- 只認 owner_key —— 也就是「這台裝置本來就能管的東西」。它不能用來
+-- 認領別人的房間，因為 owner_key 從不外流（快照與分享連結都不含它）。
+-- owner_key 保留不清除：萬一之後登出，這台裝置仍然管得動自己開的房間。
+create or replace function public.claim_mine(p_owner_key text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_rooms integer;
+  v_rosters integer;
+begin
+  if v_uid is null then
+    raise exception 'not_signed_in' using errcode = '42501';
+  end if;
+  if length(coalesce(p_owner_key, '')) < 20 then
+    raise exception 'bad_owner_key' using errcode = '22023';
+  end if;
+
+  update public.rooms
+     set owner_id = v_uid
+   where owner_key = p_owner_key and owner_id is null and expires_at > now();
+  get diagnostics v_rooms = row_count;
+
+  update public.saved_rosters
+     set owner_id = v_uid
+   where owner_key = p_owner_key and owner_id is null;
+  get diagnostics v_rosters = row_count;
+
+  return jsonb_build_object('rooms', v_rooms, 'rosters', v_rosters);
+end;
+$$;
+
+-- 我開過的活動，跨裝置。附帶人數統計，避免前端為每個房間再打一次。
+create or replace function public.my_rooms(p_limit int default 50)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(jsonb_agg(x order by x ->> 'created_at' desc), '[]'::jsonb)
+  from (
+    select jsonb_build_object(
+      'code',       r.code,
+      'name',       r.name,
+      'created_at', r.created_at,
+      'expires_at', r.expires_at,
+      'closed_at',  r.closed_at,
+      'people',     (select count(*) from public.room_members m where m.room_id = r.id),
+      'arrived',    (select count(*) from public.room_members m
+                      where m.room_id = r.id and m.status = 'arrived'),
+      'headcount',  (select coalesce(sum(1 + m.companions), 0) from public.room_members m
+                      where m.room_id = r.id),
+      'arrivedHeadcount', (select coalesce(sum(1 + m.companions), 0) from public.room_members m
+                            where m.room_id = r.id and m.status = 'arrived')
+    ) as x
+    from public.rooms r
+    where auth.uid() is not null
+      and r.owner_id = auth.uid()
+      and r.expires_at > now()
+    order by r.created_at desc
+    limit least(greatest(coalesce(p_limit, 50), 1), 200)
+  ) s;
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -675,6 +780,11 @@ $$;
 -- 授權：只有這些函式對外開放
 -- ---------------------------------------------------------------------------
 
+-- PostgreSQL 預設會把函式的 EXECUTE 授予 PUBLIC，那會讓下面這份清單形同
+-- 虛設——沒列進來的函式照樣叫得動。先全部收回，明確授權才會真的是「只有
+-- 這些」。（內部輔助函式仍由 SECURITY DEFINER 以擁有者身分執行，不受影響。）
+revoke execute on all functions in schema public from public;
+
 grant execute on function public.create_room(text, text, text, jsonb, text)      to anon, authenticated;
 grant execute on function public.get_room(text)                                  to anon, authenticated;
 grant execute on function public.set_member_status(text, uuid, text, bigint, text) to anon, authenticated;
@@ -689,6 +799,8 @@ grant execute on function public.delete_room(text, text)                        
 grant execute on function public.save_roster(text, text, jsonb, uuid)            to anon, authenticated;
 grant execute on function public.list_rosters(text)                              to anon, authenticated;
 grant execute on function public.delete_roster(text, uuid)                       to anon, authenticated;
+grant execute on function public.claim_mine(text)                                to authenticated;
+grant execute on function public.my_rooms(int)                                   to authenticated;
 grant execute on function public.purge_expired()                                 to anon, authenticated;
 grant execute on function public.ping()                                          to anon, authenticated;
 

@@ -2,9 +2,10 @@ import { computed, signal } from '@preact/signals'
 import type { RealtimeChannel } from '@supabase/realtime-js'
 import type {
   ConnectionState, DraftMember, Identity, Member, MemberStatus,
-  PendingOp, Room, SavedRoster,
+  OwnedRoom, PendingOp, Room, SavedRoster,
 } from './types'
 import { AppError, api, isSupabaseConfigured, realtimeChannel } from './supabase'
+import { AuthError, currentSession, requestCode, restoreSession, signOut as authSignOut, verifyCode, type Session } from './auth'
 import { generateId, generateRoomCode, normalizeRoomCode } from './code'
 import { applyRemoteMember, applyStatusLocally, detectOverrides, mergeMembers, summarize } from './merge'
 import { groupsOf } from './parse'
@@ -25,6 +26,10 @@ export const prefs = signal<Prefs>(DEFAULT_PREFS)
 export const identity = signal<Identity>({ ownerKey: '', checkerName: '' })
 export const recentRooms = signal<RecentRoom[]>([])
 export const savedRosters = signal<SavedRoster[]>([])
+/** 主揪帳號。null = 沒登入（協助點名的人永遠是這個狀態）。 */
+export const session = signal<Session | null>(null)
+/** 我開過的活動，跨裝置。只有登入後才有內容。 */
+export const myRooms = signal<OwnedRoom[]>([])
 
 export const room = signal<Room | null>(null)
 export const members = signal<Member[]>([])
@@ -46,7 +51,10 @@ export const pendingUploads = computed(() =>
 )
 export const isOwner = computed(() => {
   const code = room.value?.code
-  return code ? recentRooms.value.some((r) => r.code === code && r.isOwner) : false
+  if (!code) return false
+  // 本機開的，或帳號名下的——換手機登入後也要管得動。
+  return recentRooms.value.some((r) => r.code === code && r.isOwner)
+    || myRooms.value.some((r) => r.code === code)
 })
 
 let currentCode: string | null = null
@@ -110,6 +118,7 @@ function announceOverrides(before: readonly Member[], after: readonly Member[]):
 
 export async function boot(): Promise<void> {
   identity.value = await loadIdentity()
+  session.value = await restoreSession()
   prefs.value = await loadPrefs()
   recentRooms.value = await loadRecentRooms()
   outbox.value = await loadOutbox()
@@ -120,6 +129,53 @@ export async function boot(): Promise<void> {
   booted.value = true
   void flushOutbox()
   void refreshRosters()
+  void refreshMyRooms()
+}
+
+// ---------------------------------------------------------------------------
+// 主揪帳號
+// ---------------------------------------------------------------------------
+
+export { AuthError, requestCode }
+
+/**
+ * 驗證六碼並登入。
+ *
+ * 登入後立刻認領這台裝置本來就擁有的房間與常用名單——否則使用者會登入完
+ * 卻發現「我的活動」是空的，然後以為壞掉了。
+ */
+export async function signIn(email: string, code: string): Promise<{ rooms: number; rosters: number }> {
+  const s = await verifyCode(email, code)
+  session.value = s
+  let claimed = { rooms: 0, rosters: 0 }
+  try {
+    claimed = await api.claimMine(identity.value.ownerKey)
+  } catch {
+    /* 認領失敗不該讓登入失敗；下次啟動還會再試。 */
+  }
+  await refreshMyRooms()
+  await refreshRosters()
+  return claimed
+}
+
+export async function signOut(): Promise<void> {
+  await authSignOut()
+  session.value = null
+  myRooms.value = []
+  // 常用名單在未登入時是看裝置的，重新拉一次才會正確。
+  await refreshRosters()
+}
+
+export async function refreshMyRooms(): Promise<void> {
+  if (!isSupabaseConfigured || !currentSession()) {
+    myRooms.value = []
+    return
+  }
+  try {
+    myRooms.value = await api.myRooms()
+  } catch {
+    /* 拿不到我的活動不影響點名，靜默失敗。 */
+  }
 }
 
 function handleOnline(): void {
@@ -491,6 +547,7 @@ export async function createRoom(name: string, drafts: readonly DraftMember[]): 
       const snap = await api.createRoom(code, title, identity.value.ownerKey, drafts)
       await saveRoom(snap.room, snap.members)
       recentRooms.value = await rememberRoom({ code, name: title, isOwner: true, lastSeen: Date.now() })
+      void refreshMyRooms()
       return code
     } catch (e) {
       if (e instanceof AppError && e.kind === 'code-taken') continue
@@ -526,6 +583,7 @@ export async function copyCurrentRoom(newName: string): Promise<string> {
       const snap = await api.copyRoom(r.code, identity.value.ownerKey, code, title)
       await saveRoom(snap.room, snap.members)
       recentRooms.value = await rememberRoom({ code, name: title, isOwner: true, lastSeen: Date.now() })
+      void refreshMyRooms()
       return code
     } catch (e) {
       if (e instanceof AppError && e.kind === 'code-taken') continue
@@ -613,7 +671,10 @@ export async function setRoomClosed(closed: boolean): Promise<void> {
 export async function deleteCurrentRoom(): Promise<void> {
   const r = room.value
   if (!r) return
-  if (isSupabaseConfigured) await api.deleteRoom(r.code, identity.value.ownerKey)
+  if (isSupabaseConfigured) {
+    await api.deleteRoom(r.code, identity.value.ownerKey)
+    void refreshMyRooms()
+  }
   await forgetRoom(r.code)
   recentRooms.value = await dropRecentRoom(r.code)
   leaveRoom()

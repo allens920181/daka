@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  addWalkIn, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
-  prefs, removeMember, renameRoom, replaceRoster, room, saveRosterAs, savedRosters,
-  setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatus, showToast,
+  AuthError, addWalkIn, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
+  prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
+  session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatus, showToast,
+  signIn, signOut,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { csvFilename, downloadFile, toCsv } from '../lib/export'
@@ -467,10 +468,36 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const t = useT()
   const p = prefs.value
   const [name, setName] = useState(identity.value.checkerName)
+  const [signingIn, setSigningIn] = useState(false)
+
+  // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
+  // 留在設定面板上會讓人以為沒成功。
+  if (signingIn) {
+    return <SignInSheet onCancel={() => setSigningIn(false)} onDone={onClose} />
+  }
 
   return (
     <Sheet title={t('settings')} onClose={onClose}>
       <div class="stack">
+        {isSupabaseConfigured && (
+          <div class="field">
+            <span class="label">{t('account')}</span>
+            {session.value ? (
+              <div class="row">
+                <span class="hint" style="flex:1">
+                  {t('signedInAs', { email: session.value.email })}
+                </span>
+                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
+              </div>
+            ) : (
+              <>
+                <button class="btn btn-block" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
+                <span class="hint">{t('signInWhy')}</span>
+              </>
+            )}
+          </div>
+        )}
+
         <div class="field">
           <label class="label" for="checker-name">{t('yourName')}</label>
           <input
@@ -532,6 +559,131 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
         {isSupabaseConfigured && savedRosters.value.length > 0 && (
           <p class="hint">{t('savedRosters')}：{savedRosters.value.length}</p>
+        )}
+      </div>
+    </Sheet>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * 主揪登入。兩步：寄六碼到 Email、輸入六碼。
+ *
+ * 用驗證碼而不是魔術連結：魔術連結在信件 App 的內建瀏覽器開啟時，
+ * 會落在另一個瀏覽器工作階段，是很常見的失敗模式。
+ */
+export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone: () => void }) {
+  const t = useT()
+  const [step, setStep] = useState<'email' | 'code'>('email')
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function describe(e: unknown): string {
+    if (!(e instanceof AuthError)) return t('errUnknown')
+    switch (e.kind) {
+      case 'offline': return t('errOffline')
+      case 'bad-code': return t('errBadOtp')
+      case 'rate-limited': return t('errRateLimited')
+      case 'not-configured': return t('errNotConfigured')
+      default: return t('errUnknown')
+    }
+  }
+
+  async function send() {
+    setWorking(true)
+    setError(null)
+    try {
+      await requestCode(email)
+      setStep('code')
+    } catch (e) {
+      setError(describe(e))
+    }
+    setWorking(false)
+  }
+
+  async function verify() {
+    setWorking(true)
+    setError(null)
+    try {
+      const claimed = await signIn(email, code)
+      onDone()
+      showToast(
+        claimed.rooms + claimed.rosters > 0
+          ? t('claimed', { rooms: claimed.rooms, rosters: claimed.rosters })
+          : t('claimedNothing'),
+      )
+      return
+    } catch (e) {
+      setError(describe(e))
+    }
+    setWorking(false)
+  }
+
+  return (
+    <Sheet title={t('signIn')} onClose={onCancel}>
+      <div class="stack">
+        <p class="hint">{t('signInWhy')}</p>
+
+        {step === 'email' ? (
+          <>
+            <div class="field">
+              <label class="label" for="signin-email">{t('emailLabel')}</label>
+              <input
+                id="signin-email"
+                class="input"
+                type="email"
+                inputMode="email"
+                autocomplete="email"
+                value={email}
+                placeholder={t('emailPlaceholder')}
+                onInput={(e) => { setEmail((e.currentTarget as HTMLInputElement).value); setError(null) }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && email.includes('@')) void send() }}
+              />
+            </div>
+            {error && <p class="note note-warn">{error}</p>}
+            <button
+              class="btn btn-primary btn-block btn-lg"
+              disabled={working || !email.includes('@')}
+              onClick={() => { void send() }}
+            >
+              {working ? t('loading') : t('sendCode')}
+            </button>
+          </>
+        ) : (
+          <>
+            <p class="note">{t('codeSent', { email })}</p>
+            <div class="field">
+              <label class="label" for="signin-code">{t('codeLabel')}</label>
+              <input
+                id="signin-code"
+                class="input code-input"
+                inputMode="numeric"
+                autocomplete="one-time-code"
+                maxLength={6}
+                value={code}
+                placeholder="——————"
+                onInput={(e) => {
+                  setCode((e.currentTarget as HTMLInputElement).value.replace(/\D/g, '').slice(0, 6))
+                  setError(null)
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && code.length === 6) void verify() }}
+              />
+            </div>
+            {error && <p class="note note-warn">{error}</p>}
+            <button
+              class="btn btn-primary btn-block btn-lg"
+              disabled={working || code.length !== 6}
+              onClick={() => { void verify() }}
+            >
+              {working ? t('loading') : t('verify')}
+            </button>
+            <button class="btn btn-block" disabled={working} onClick={() => { void send() }}>
+              {t('resend')}
+            </button>
+          </>
         )}
       </div>
     </Sheet>

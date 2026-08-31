@@ -183,3 +183,78 @@ select public.set_member_group('GRP234','wrong-key-xxxxxxxxxxxxxxx',
   (public.get_room('GRP234') #>> '{members,0,id}')::uuid, '第九車');
 \set ON_ERROR_STOP on
 reset role;
+
+-- ========== 16. 帳號：雙重擁有權、認領、我的活動 ==========
+-- 需要先跑 supabase/schema.local-auth.sql（本機的 auth 替身）。
+\echo '--- 16. 帳號 ---'
+reset role;
+insert into auth.users (id, email) values
+  ('11111111-2222-3333-4444-555555555555', 'organizer@example.com'),
+  ('99999999-8888-7777-6666-555555555555', 'someone-else@example.com')
+on conflict do nothing;
+
+set role anon;
+\echo '(1) 未登入時開房，owner_id 為空、行為與從前相同'
+select public.create_room('ACC234','秋季旅遊','ownerkey-iiiiiiiiiiiiiiiiiii',
+  '[{"name":"甲"},{"name":"乙"}]'::jsonb) #>> '{room,code}' as made;
+select (public.get_room('ACC234') -> 'room') ? 'owner_id' as leaks_owner_id;
+select public.rename_room('ACC234','ownerkey-iiiiiiiiiiiiiiiiiii','改名成功') #>> '{room,name}' as device_owner_works;
+
+\echo '(2) 登入後認領這台裝置的房間'
+reset role;
+set role authenticated;
+set request.jwt.claims = '{"sub":"11111111-2222-3333-4444-555555555555"}';
+select public.claim_mine('ownerkey-iiiiiiiiiiiiiiiiiii') as claimed;
+select jsonb_array_length(public.my_rooms()) as my_rooms_count;
+select public.my_rooms() #>> '{0,code}' as my_first_room;
+
+\echo '(3) 換一台新裝置（不同 owner_key）但同一個帳號，仍然管得動'
+select public.rename_room('ACC234','ownerkey-BRAND-NEW-DEVICE-xxx','從新手機改名') #>> '{room,name}' as new_device_works;
+
+\echo '(4) 別人的帳號管不動'
+set request.jwt.claims = '{"sub":"99999999-8888-7777-6666-555555555555"}';
+select jsonb_array_length(public.my_rooms()) as other_user_sees;
+\set ON_ERROR_STOP off
+select public.rename_room('ACC234','ownerkey-BRAND-NEW-DEVICE-xxx','亂改');
+\set ON_ERROR_STOP on
+
+\echo '(5) 原本那台裝置即使登出，靠 owner_key 仍然管得動'
+reset request.jwt.claims;
+reset role;
+set role anon;
+select public.rename_room('ACC234','ownerkey-iiiiiiiiiiiiiiiiiii','裝置金鑰仍有效') #>> '{room,name}' as device_key_still_works;
+
+\echo '(6) 常用名單：登入後跟著帳號，未登入的看不到'
+reset role;
+set role authenticated;
+set request.jwt.claims = '{"sub":"11111111-2222-3333-4444-555555555555"}';
+select public.save_roster('ownerkey-BRAND-NEW-DEVICE-xxx','青年團契','[{"name":"甲"}]'::jsonb) #>> '{roster,name}' as saved_signed_in;
+select jsonb_array_length(public.list_rosters('ownerkey-BRAND-NEW-DEVICE-xxx')) as signed_in_sees;
+reset request.jwt.claims;
+reset role;
+set role anon;
+select jsonb_array_length(public.list_rosters('ownerkey-BRAND-NEW-DEVICE-xxx')) as anon_sees_none;
+
+\echo '(7) 未登入不能認領（在授權層就被擋下，連函式都進不去）'
+\set ON_ERROR_STOP off
+select public.claim_mine('ownerkey-iiiiiiiiiiiiiiiiiii');
+\set ON_ERROR_STOP on
+reset role;
+
+-- ========== 17. 授權模型：只有清單上的函式對外開放 ==========
+-- PostgreSQL 預設會把 EXECUTE 授予 PUBLIC，schema.sql 明確收回。
+\echo '--- 17. 未列入授權的函式應該叫不動 ---'
+reset role;
+reset request.jwt.claims;
+set role anon;
+\set ON_ERROR_STOP off
+select public._room_id('AAAAAA');            -- 內部輔助函式
+select public._room_snapshot(gen_random_uuid());
+select public.my_rooms();                    -- 只授權給 authenticated
+select public.claim_mine('ownerkey-xxxxxxxxxxxxxxxxxxxx');
+\set ON_ERROR_STOP on
+\echo '--- 但一般點名流程照常 ---'
+select public.create_room('PRM234','授權測試','ownerkey-jjjjjjjjjjjjjjjjjjj',
+  '[{"name":"甲"}]'::jsonb) #>> '{room,code}' as still_works;
+select public.get_room('PRM234') #>> '{members,0,name}' as read_works;
+reset role;

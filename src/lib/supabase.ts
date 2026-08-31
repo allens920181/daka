@@ -1,14 +1,10 @@
 import { RealtimeClient, type RealtimeChannel } from '@supabase/realtime-js'
-import type { DraftMember, Member, MemberStatus, RoomSnapshot, SavedRoster } from './types'
+import type { DraftMember, Member, MemberStatus, OwnedRoom, RoomSnapshot, SavedRoster } from './types'
 
-const url = import.meta.env.VITE_SUPABASE_URL?.trim()
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
+import { REQUEST_TIMEOUT_MS, SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from './config'
+import { accessToken } from './auth'
 
-/**
- * 沒設定 Supabase 時整個應用仍然可用，只是退回單機模式。
- * 這很重要：第一次部署、或使用者還沒開專案時，不該看到一個壞掉的網站。
- */
-export const isSupabaseConfigured = Boolean(url && anonKey)
+export { isSupabaseConfigured }
 
 /**
  * 這裡刻意不用 @supabase/supabase-js，直接打 PostgREST 的 RPC 端點：
@@ -18,14 +14,12 @@ export const isSupabaseConfigured = Boolean(url && anonKey)
  * 2. 更重要的是 supabase-js 沒有預設逾時。收訊爛的時候一個請求可以吊住
  *    很久，把整條待送佇列卡死。自己發 fetch 才能掛 AbortSignal.timeout。
  */
-const REST_TIMEOUT_MS = 12_000
-
 let realtime: RealtimeClient | null = null
 
 export function realtimeChannel(topic: string): RealtimeChannel | null {
   if (!isSupabaseConfigured) return null
-  realtime ??= new RealtimeClient(`${(url as string).replace(/^http/, 'ws')}/realtime/v1`, {
-    params: { apikey: anonKey as string },
+  realtime ??= new RealtimeClient(`${SUPABASE_URL.replace(/^http/, 'ws')}/realtime/v1`, {
+    params: { apikey: SUPABASE_ANON_KEY },
   })
   return realtime.channel(topic, { config: { broadcast: { self: false } } })
 }
@@ -65,17 +59,21 @@ function classify(error: { message?: string; code?: string } | null): AppError {
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   if (!isSupabaseConfigured) throw new AppError('not-configured')
 
+  // 登入後帶使用者的 JWT，資料庫端的 auth.uid() 才認得出是誰。
+  // 沒登入就帶 anon key，行為與從前完全相同。
+  const token = await accessToken()
+
   let res: Response
   try {
-    res = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+    res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
       method: 'POST',
       headers: {
-        apikey: anonKey as string,
-        Authorization: `Bearer ${anonKey as string}`,
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token ?? SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(args),
-      signal: AbortSignal.timeout(REST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
   } catch (e) {
     // 逾時與斷線都當成離線：待送佇列會留著，恢復連線後重試。
@@ -153,6 +151,11 @@ export const api = {
     }),
 
   listRosters: (ownerKey: string) => rpc<SavedRoster[]>('list_rosters', { p_owner_key: ownerKey }),
+
+  claimMine: (ownerKey: string) =>
+    rpc<{ rooms: number; rosters: number }>('claim_mine', { p_owner_key: ownerKey }),
+
+  myRooms: () => rpc<OwnedRoom[]>('my_rooms', { p_limit: 50 }),
 
   deleteRoster: (ownerKey: string, rosterId: string) =>
     rpc<boolean>('delete_roster', { p_owner_key: ownerKey, p_roster_id: rosterId }),
