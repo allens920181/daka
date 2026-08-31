@@ -159,3 +159,32 @@ describe('parseRoster 電話', () => {
     expect(parseRoster(round).members).toEqual(parseRoster(original).members)
   })
 })
+
+describe('parseRoster 請假狀態', () => {
+  it('名單上寫請假的人直接是請假狀態，不會混進未到', () => {
+    const m = parseRoster('陳大同（請假）').members[0]
+    expect(m).toMatchObject({ name: '陳大同', note: '請假', status: 'excused' })
+  })
+
+  it('認得多種說法', () => {
+    for (const word of ['請假', '不去', '不參加', '取消', '缺席', 'absent', 'Excused']) {
+      expect(parseRoster(`王小明（${word}）`).members[0]?.status).toBe('excused')
+    }
+  })
+
+  it('一般備註不會被誤判', () => {
+    for (const word of ['素食', '坐前排', '晚點到', '會遲到']) {
+      expect(parseRoster(`王小明（${word}）`).members[0]?.status).toBeUndefined()
+    }
+  })
+
+  it('長句子不誤判：「請假單已交但還是會去」', () => {
+    const m = parseRoster('王小明（請假單已交但還是會去）').members[0]
+    expect(m?.status).toBeUndefined()
+    expect(m?.note).toBe('請假單已交但還是會去')
+  })
+
+  it('沒有備註時沒有 status 欄位', () => {
+    expect(parseRoster('王小明').members[0]?.status).toBeUndefined()
+  })
+})

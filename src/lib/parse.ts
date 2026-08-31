@@ -1,4 +1,4 @@
-import type { DraftMember } from './types'
+import type { DraftMember, MemberStatus } from './types'
 
 export interface ParseResult {
   members: DraftMember[]
@@ -75,6 +75,24 @@ function splitInlineNumbering(line: string): string[] {
   return parts
 }
 
+/**
+ * 名單上寫「（請假）」的人，狀態就該直接是請假，而不是備註。
+ * 否則他會混在未到清單裡被打電話——而他早就說過不去了。
+ * 只認短備註，避免「請假單已交但還是會去」這種句子被誤判。
+ */
+const EXCUSED_WORDS = ['請假', '不去', '不參加', '不能去', '不出席', '取消', '缺席', '退出']
+const EXCUSED_WORDS_EN = ['absent', 'excused', 'cancel', 'not going', 'no show']
+
+function statusFromNote(note: string | null): MemberStatus | undefined {
+  if (!note) return undefined
+  const trimmed = note.trim()
+  if (trimmed.length > 8) return undefined
+  const lower = trimmed.toLowerCase()
+  const hit = EXCUSED_WORDS.some((w) => trimmed.includes(w)) ||
+              EXCUSED_WORDS_EN.some((w) => lower.includes(w))
+  return hit ? 'excused' : undefined
+}
+
 function parseEntry(raw: string): DraftMember | null {
   let s = raw.replace(LEADING_MARKER, '').trim()
   if (!s) return null
@@ -114,12 +132,16 @@ function parseEntry(raw: string): DraftMember | null {
   // 只剩符號或數字的行不算名字（例如貼進來的空編號、分隔線）。
   if (!name || !/[\p{L}\p{N}]/u.test(name) || /^[\d\s.\-_=~]+$/.test(name)) return null
 
+  const trimmedNote = note ? note.slice(0, 200) : null
+  const status = statusFromNote(trimmedNote)
+
   return {
     name: name.slice(0, 60),
-    note: note ? note.slice(0, 200) : null,
+    note: trimmedNote,
     phone,
     companions: Math.min(Math.max(companions, 0), 99),
     group_label: null,
+    ...(status ? { status } : {}),
   }
 }
 

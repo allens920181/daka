@@ -179,7 +179,7 @@ begin
     raise exception 'too_many_members' using errcode = '22023';
   end if;
 
-  insert into public.room_members (room_id, name, note, phone, companions, group_label, sort_order)
+  insert into public.room_members (room_id, name, note, phone, companions, group_label, sort_order, status)
   select
     p_room_id,
     left(btrim(e.value ->> 'name'), 60),
@@ -187,7 +187,9 @@ begin
     nullif(left(btrim(coalesce(e.value ->> 'phone', '')), 30), ''),
     least(greatest(coalesce((e.value ->> 'companions')::int, 0), 0), 99),
     nullif(left(btrim(coalesce(e.value ->> 'group_label', '')), 20), ''),
-    e.ordinality::int
+    e.ordinality::int,
+    -- 名單上就寫請假的人直接標成請假，不要混進未到清單。
+    case when e.value ->> 'status' = 'excused' then 'excused' else 'pending' end
   from jsonb_array_elements(p_members) with ordinality as e(value, ordinality)
   where btrim(coalesce(e.value ->> 'name', '')) <> '';
 end;
@@ -415,7 +417,10 @@ begin
 end;
 $$;
 
--- 複製房間：同一份名單、狀態全部歸零。回程點名靠這個。
+-- 複製房間：同一份名單、已到狀態歸零。回程點名靠這個。
+--
+-- 請假的人不歸零：他整趟都不會出現，回程當然也不在。把他重設成未到
+-- 只會讓人在休息站打電話給一個從來沒上車的人。
 -- 新房間沿用同一個 owner_key，所以還是同一個人管。
 create or replace function public.copy_room(
   p_code      text,
@@ -438,8 +443,9 @@ begin
   where r.id = v_src
   returning id into v_new;
 
-  insert into public.room_members (room_id, name, note, phone, companions, group_label, sort_order)
-  select v_new, m.name, m.note, m.phone, m.companions, m.group_label, m.sort_order
+  insert into public.room_members (room_id, name, note, phone, companions, group_label, sort_order, status)
+  select v_new, m.name, m.note, m.phone, m.companions, m.group_label, m.sort_order,
+         case when m.status = 'excused' then 'excused' else 'pending' end
   from public.room_members m
   where m.room_id = v_src;
 

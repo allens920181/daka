@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@preact/signals": "^2.0.0",
-    "@supabase/supabase-js": "^2.112.4",
+    "@supabase/realtime-js": "^2.112.4",
     "idb-keyval": "^6.2.2",
     "preact": "^10.29.8",
     "qrcode": "^1.5.4"

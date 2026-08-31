@@ -41,6 +41,8 @@ export interface DraftMember {
   phone: string | null
   companions: number
   group_label: string | null
+  /** 名單上就註明請假的人，一開始就不該進「未到」清單。省略時為 pending。 */
+  status?: MemberStatus
 }
 
 export interface SavedRoster {

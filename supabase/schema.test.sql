@@ -150,3 +150,17 @@ select public.create_room('WXY234','電話測試','ownerkey-eeeeeeeeeeeeeeeeeee'
 select public.add_member('WXY234','李美花',null,0,null,null,'0987654321') ->> 'phone' as added_phone;
 select public.copy_room('WXY234','ownerkey-eeeeeeeeeeeeeeeeeee','ZAB345','回程') #>> '{members,0,phone}' as copied_phone;
 reset role;
+
+-- ========== 14. 請假狀態：匯入時保留，複製房間時不歸零 ==========
+\echo '--- 14. 名單上寫請假的人，回程仍是請假；已到的才重置 ---'
+set role anon;
+select public.create_room('EXC234','請假測試','ownerkey-fffffffffffffffffff',
+  '[{"name":"甲","status":"excused"},{"name":"乙"},{"name":"丙"}]'::jsonb) is not null as made;
+select string_agg((e->>'name') || '=' || (e->>'status'), ', ' order by e->>'name') as after_import
+  from jsonb_array_elements(public.get_room('EXC234')->'members') e;
+select public.set_member_status('EXC234',
+  (public.get_room('EXC234') #>> '{members,1,id}')::uuid, 'arrived', 100, '陳姐') ->> 'status' as marked;
+select public.copy_room('EXC234','ownerkey-fffffffffffffffffff','CPY234','回程') is not null as copied;
+select string_agg((e->>'name') || '=' || (e->>'status'), ', ' order by e->>'name') as after_copy
+  from jsonb_array_elements(public.get_room('CPY234')->'members') e;
+reset role;

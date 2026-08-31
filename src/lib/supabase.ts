@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { RealtimeClient, type RealtimeChannel } from '@supabase/realtime-js'
 import type { DraftMember, Member, MemberStatus, RoomSnapshot, SavedRoster } from './types'
 
 const url = import.meta.env.VITE_SUPABASE_URL?.trim()
@@ -10,12 +10,25 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
  */
 export const isSupabaseConfigured = Boolean(url && anonKey)
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(url as string, anonKey as string, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      realtime: { params: { eventsPerSecond: 20 } },
-    })
-  : null
+/**
+ * 這裡刻意不用 @supabase/supabase-js，直接打 PostgREST 的 RPC 端點：
+ *
+ * 1. 這個應用只用到 rpc() 與 realtime channel，完整 client 會把 auth、
+ *    storage、functions 一起打包進來——首次載入是在訊號差的現場發生的。
+ * 2. 更重要的是 supabase-js 沒有預設逾時。收訊爛的時候一個請求可以吊住
+ *    很久，把整條待送佇列卡死。自己發 fetch 才能掛 AbortSignal.timeout。
+ */
+const REST_TIMEOUT_MS = 12_000
+
+let realtime: RealtimeClient | null = null
+
+export function realtimeChannel(topic: string): RealtimeChannel | null {
+  if (!isSupabaseConfigured) return null
+  realtime ??= new RealtimeClient(`${(url as string).replace(/^http/, 'ws')}/realtime/v1`, {
+    params: { apikey: anonKey as string },
+  })
+  return realtime.channel(topic, { config: { broadcast: { self: false } } })
+}
 
 export type AppErrorKind =
   | 'not-configured'
@@ -50,15 +63,34 @@ function classify(error: { message?: string; code?: string } | null): AppError {
 }
 
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
-  if (!supabase) throw new AppError('not-configured')
+  if (!isSupabaseConfigured) throw new AppError('not-configured')
+
+  let res: Response
   try {
-    const { data, error } = await supabase.rpc(fn, args)
-    if (error) throw classify(error)
-    return data as T
+    res = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: {
+        apikey: anonKey as string,
+        Authorization: `Bearer ${anonKey as string}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(args),
+      signal: AbortSignal.timeout(REST_TIMEOUT_MS),
+    })
   } catch (e) {
-    if (e instanceof AppError) throw e
+    // 逾時與斷線都當成離線：待送佇列會留著，恢復連線後重試。
+    const name = (e as Error)?.name
+    if (name === 'TimeoutError' || name === 'AbortError') throw new AppError('offline', 'timeout')
     throw classify(e as { message?: string })
   }
+
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { message?: string; code?: string } | null
+    if (res.status >= 500) throw new AppError('offline', `server ${res.status}`)
+    throw classify(body ?? { message: `http ${res.status}` })
+  }
+
+  return (await res.json()) as T
 }
 
 const draftPayload = (members: readonly DraftMember[]) =>
@@ -68,6 +100,7 @@ const draftPayload = (members: readonly DraftMember[]) =>
     phone: m.phone,
     companions: m.companions,
     group_label: m.group_label,
+    status: m.status ?? 'pending',
   }))
 
 export const api = {

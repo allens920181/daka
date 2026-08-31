@@ -1,10 +1,10 @@
 import { computed, signal } from '@preact/signals'
-import type { RealtimeChannel } from '@supabase/supabase-js'
+import type { RealtimeChannel } from '@supabase/realtime-js'
 import type {
   ConnectionState, DraftMember, Identity, Member, MemberStatus,
   PendingOp, Room, SavedRoster,
 } from './types'
-import { AppError, api, isSupabaseConfigured, supabase } from './supabase'
+import { AppError, api, isSupabaseConfigured, realtimeChannel } from './supabase'
 import { generateId, generateRoomCode, normalizeRoomCode } from './code'
 import { applyRemoteMember, applyStatusLocally, mergeMembers, summarize } from './merge'
 import { countForRoom, dequeue, enqueue, flushOrder, pendingAddIds } from './outbox'
@@ -153,8 +153,8 @@ function refreshConnection(): void {
 // ---------------------------------------------------------------------------
 
 function subscribe(code: string): void {
-  if (!supabase) return
-  channel = supabase.channel(`room:${code}`, { config: { broadcast: { self: false } } })
+  channel = realtimeChannel(`room:${code}`)
+  if (!channel) return
   channel.on('broadcast', { event: 'member' }, ({ payload }) => {
     const incoming = payload as Member | undefined
     if (!incoming?.id) return
@@ -388,7 +388,7 @@ function toMembers(roomId: string, drafts: readonly DraftMember[]): Member[] {
   return drafts.map((d, i) => ({
     id: generateId(), room_id: roomId, name: d.name, note: d.note, phone: d.phone,
     companions: d.companions, group_label: d.group_label, sort_order: i + 1,
-    status: 'pending' as const, status_at: null, status_by: null, rev: 0, created_at: now,
+    status: d.status ?? 'pending', status_at: null, status_by: null, rev: 0, created_at: now,
   }))
 }
 
@@ -428,8 +428,11 @@ export async function copyCurrentRoom(newName: string): Promise<string> {
   if (!isSupabaseConfigured) {
     const code = generateRoomCode()
     const copy: Room = { ...localRoom(code, title), copied_from: r.id }
+    // 請假的人在回程一樣不會出現，保留狀態；已到的才歸零。
     const drafts = members.value.map<DraftMember>((m) => ({
-      name: m.name, note: m.note, phone: m.phone, companions: m.companions, group_label: m.group_label,
+      name: m.name, note: m.note, phone: m.phone,
+      companions: m.companions, group_label: m.group_label,
+      ...(m.status === 'excused' ? { status: 'excused' as const } : {}),
     }))
     await saveRoom(copy, toMembers(copy.id, drafts))
     recentRooms.value = await rememberRoom({ code, name: title, isOwner: true, lastSeen: Date.now() })
