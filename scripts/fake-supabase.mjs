@@ -75,8 +75,66 @@ async function withClient(role, uid, run) {
   }
 }
 
+/**
+ * 假的 Google OAuth。
+ *
+ * 目的是讓端對端測試跑到**真的 PKCE 形狀**：導向 authorize → 帶著 ?code= 回來
+ * → 拿 code 換 token。真正的 Google 同意畫面當然不在這裡，所以 authorize 直接
+ * 302 回去。測試要指定用哪個帳號時，用 OAuth 本來就有的 `login_hint`。
+ *
+ * 這不是安全的實作，是測試替身：code 就是 email 的 base64，verifier 不驗。
+ */
+const pkceCodes = new Map()
+
+/**
+ * 下一次 authorize 要當成誰登入。
+ *
+ * 真的 Google 是使用者在同意畫面上選的，測試沒有那一步，所以用一個明顯只給
+ * 測試用的控制端點來指定。刻意**不**讓前端傳 login_hint——那會讓正式程式碼
+ * 為了測試而多一個它其實不知道答案的參數。
+ */
+let nextGoogleUser = 'google-user@example.com'
+
+async function handleAuthorize(req, res, url) {
+  const redirect = url.searchParams.get('redirect_to')
+  if (!redirect) return json(res, 400, { msg: 'redirect_to required' })
+  if (!url.searchParams.get('code_challenge')) {
+    // 真的 GoTrue 在沒有 challenge 時會走 implicit flow；我們刻意不支援，
+    // 這樣前端要是哪天改回 implicit，測試會馬上紅。
+    return json(res, 400, { msg: 'this fake only implements PKCE' })
+  }
+  const email = (url.searchParams.get('login_hint') ?? nextGoogleUser).toLowerCase()
+  const code = 'authcode_' + Math.random().toString(36).slice(2)
+  pkceCodes.set(code, email)
+
+  const back = new URL(redirect)
+  back.searchParams.set('code', code)
+  res.writeHead(302, { ...CORS, Location: back.toString() })
+  return res.end()
+}
+
 async function handleAuth(req, res, path) {
   const body = await readBody(req)
+
+  if (path.startsWith('token') && String(body.auth_code ?? '')) {
+    // grant_type=pkce
+    if (!body.code_verifier) return json(res, 400, { msg: 'code_verifier required' })
+    const email = pkceCodes.get(body.auth_code)
+    // code 只能用一次——真的 GoTrue 也是這樣，前端不清網址就會踩到。
+    pkceCodes.delete(body.auth_code)
+    if (!email) return json(res, 403, { msg: 'invalid or already used auth code' })
+    const id = await withClient('postgres', null, async (client) => {
+      const found = await client.query('select id from auth.users where email = $1', [email])
+      return found.rows[0]?.id
+        ?? (await client.query('insert into auth.users (email) values ($1) returning id', [email])).rows[0].id
+    })
+    return json(res, 200, {
+      access_token: TOKEN_PREFIX + id,
+      refresh_token: 'refresh_' + id,
+      expires_in: 3600,
+      user: { id, email },
+    })
+  }
 
   if (path === 'otp') {
     if (!body.email) return json(res, 400, { msg: 'email required' })
@@ -147,6 +205,13 @@ async function handleRpc(req, res, fn) {
 http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end() }
   try {
+    const url = new URL(req.url ?? '/', 'http://127.0.0.1:54321')
+    // 測試專用：指定下一次 Google 登入是誰。正式的 GoTrue 沒有這個端點。
+    if (url.pathname === '/__test/google-user') {
+      nextGoogleUser = String((await readBody(req)).email ?? nextGoogleUser).toLowerCase()
+      return json(res, 200, { email: nextGoogleUser })
+    }
+    if (url.pathname === '/auth/v1/authorize') return await handleAuthorize(req, res, url)
     const auth = req.url?.match(/^\/auth\/v1\/(.+)$/)
     if (auth) return await handleAuth(req, res, auth[1])
     const rpc = req.url?.match(/^\/rest\/v1\/rpc\/(\w+)$/)
@@ -156,5 +221,5 @@ http.createServer(async (req, res) => {
     return json(res, 500, { message: String(e?.message ?? e) })
   }
 }).listen(54321, '127.0.0.1', () => {
-  console.log('fake Supabase (REST + Auth) on :54321 · 驗證碼固定為', FIXED_CODE)
+  console.log('fake Supabase (REST + Auth + 假 Google OAuth) on :54321 · 驗證碼固定為', FIXED_CODE)
 })

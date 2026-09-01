@@ -4,20 +4,21 @@ import {
   prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
   peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
   shareOnEnter, showToast, type Peer,
-  signIn, signOut,
+  signIn, signOut, startGoogleSignIn,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
+import { inAppBrowser } from '../lib/config'
 import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
 import { formatDate } from '../lib/format'
 import { rosterToText } from '../lib/parse'
 import type { Member } from '../lib/types'
-import { joinUrl, navigate } from '../router'
+import { currentRoute, joinUrl, navigate } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLeave, IconList, IconLock,
-  IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
+  IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
 } from './icons'
 import { useT } from './t'
 
@@ -775,7 +776,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
  */
 export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone: () => void }) {
   const t = useT()
-  const [step, setStep] = useState<'email' | 'code'>('email')
+  // Google 是主要路徑，Email 驗證碼是備援——按了「改用 Email」才會展開。
+  const [step, setStep] = useState<'choose' | 'email' | 'code'>('choose')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [working, setWorking] = useState(false)
@@ -788,7 +790,20 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
       case 'bad-code': return t('errBadOtp')
       case 'rate-limited': return t('errRateLimited')
       case 'not-configured': return t('errNotConfigured')
+      case 'oauth-lost': return t('errOauthLost')
       default: return t('errUnknown')
+    }
+  }
+
+  async function google() {
+    setWorking(true)
+    setError(null)
+    try {
+      // 這一行之後整個分頁就被導走了，正常情況不會回到這裡。
+      await startGoogleSignIn(currentRoute())
+    } catch (e) {
+      setError(describe(e))
+      setWorking(false)
     }
   }
 
@@ -827,7 +842,35 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
       <div class="stack">
         <p class="hint">{t('signInWhy')}</p>
 
-        {step === 'email' ? (
+        {step === 'choose' ? (
+          <>
+            {/*
+              照 Google 自己的按鈕規範，不是這個系統的 .btn-primary。
+              四色的 G 必須維持原色，放在品牌 teal 上既違反他們的規範，
+              藍色與綠色的對比也不夠。
+            */}
+            <button
+              class="btn btn-google btn-block btn-lg"
+              disabled={working}
+              onClick={() => { void google() }}
+            >
+              <IconGoogle /> {working ? t('loading') : t('signInGoogle')}
+            </button>
+
+            {/*
+              Google 在 LINE／FB／IG 的內建瀏覽器裡會直接擋掉 OAuth
+              （disallowed_useragent），而主揪很可能就是從 LINE 群裡點自己的
+              分享連結進來的。偵測是靠 UA 猜的，會猜錯，所以按鈕不停用——
+              只是先說一聲，並把備援擺在旁邊。
+            */}
+            {inAppBrowser() && <p class="note note-warn">{t('inAppBrowserWarn')}</p>}
+            {error && <p class="note note-warn">{error}</p>}
+
+            <button class="btn btn-block" disabled={working} onClick={() => setStep('email')}>
+              {t('signInWithEmail')}
+            </button>
+          </>
+        ) : step === 'email' ? (
           <>
             <div class="field">
               <label class="label" for="signin-email">{t('emailLabel')}</label>
@@ -850,6 +893,9 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
               onClick={() => { void send() }}
             >
               {working ? t('loading') : t('sendCode')}
+            </button>
+            <button class="btn btn-block" disabled={working} onClick={() => { setStep('choose'); setError(null) }}>
+              {t('back')}
             </button>
           </>
         ) : (

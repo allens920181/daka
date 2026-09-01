@@ -88,6 +88,21 @@ export const IconPrinter = ({ size = 20, ...r }: P) => (
   </svg>
 )
 
+/**
+ * Google 的四色 G。
+ *
+ * 這是整個系統裡唯一不用 currentColor 的圖示，也是唯一的具名例外：Google 的
+ * 品牌規範要求標記維持原色與比例，不得改色或改形。它只出現在登入按鈕上。
+ */
+export const IconGoogle = ({ size = 20, ...r }: P) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden {...r}>
+    <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h11.8a10 10 0 0 1-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.5 6.6-16.3z" />
+    <path fill="#34A853" d="M24 46c6 0 11-2 14.5-5.2l-7.1-5.5a13 13 0 0 1-19.4-6.9H4.7v5.7A22 22 0 0 0 24 46z" />
+    <path fill="#FBBC05" d="M12 28.4a13 13 0 0 1 0-8.4v-5.7H4.7a22 22 0 0 0 0 19.8L12 28.4z" />
+    <path fill="#EA4335" d="M24 10.8c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3A21 21 0 0 0 24 2 22 22 0 0 0 4.7 14.3l7.3 5.7A13 13 0 0 1 24 10.8z" />
+  </svg>
+)
+
 export const IconTrash = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <polyline points="3 6 5 6 21 6" />

@@ -27,19 +27,50 @@ async function phone(name) {
   return { name, ctx, page, errs }
 }
 
-async function signIn(d) {
+/**
+ * 走完整條 Google 登入：按下按鈕 → 分頁被導去 authorize → 帶著 ?code= 回來 →
+ * App 重新啟動、發現網址上有 code、換成 token。
+ *
+ * 真的 Google 同意畫面不在這裡（假後端直接 302 回來），但 PKCE 的形狀是真的：
+ * 前端真的產 verifier、真的算 challenge、真的拿 code 去換。
+ */
+async function signInWithGoogle(d) {
   await d.page.goto(URL); await d.page.waitForTimeout(900)
   await d.page.locator('button[aria-label="設定"]').click(); await d.page.waitForTimeout(500)
   await d.page.getByRole('button', { name: /^登入$/ }).click(); await d.page.waitForTimeout(400)
-  await d.page.locator('#signin-email').fill(EMAIL)
+  await d.page.getByRole('button', { name: /用 Google 登入/ }).click()
+  // 導走 → 回來 → 重新啟動 → 換 token → 認領資產
+  await d.page.waitForURL((u) => !u.searchParams.has('code'), { timeout: 15000 }).catch(() => {})
+  await d.page.waitForTimeout(2200)
+}
+
+/** 備援路徑：Email 六碼驗證碼。 */
+async function signInWithEmail(d, email) {
+  await d.page.goto(URL); await d.page.waitForTimeout(900)
+  await d.page.locator('button[aria-label="設定"]').click(); await d.page.waitForTimeout(500)
+  await d.page.getByRole('button', { name: /^登入$/ }).click(); await d.page.waitForTimeout(400)
+  await d.page.getByRole('button', { name: /改用 Email/ }).click(); await d.page.waitForTimeout(300)
+  await d.page.locator('#signin-email').fill(email)
   await d.page.getByRole('button', { name: /寄驗證碼/ }).click(); await d.page.waitForTimeout(900)
   await d.page.locator('#signin-code').fill('123456')
   await d.page.locator('.sheet').getByRole('button', { name: /^登入$/ }).click()
   await d.page.waitForTimeout(1800)
 }
 
+/** 告訴假後端下一次 Google 登入是誰（真的 Google 是在同意畫面上選的）。 */
+async function useGoogleAccount(email) {
+  const res = await fetch('http://127.0.0.1:54321/__test/google-user', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) throw new Error('fake backend did not accept the test account')
+}
+
 const A = await phone('舊手機')
 const B = await phone('新手機')
+
+// 每次執行用不同的帳號，跑幾次都不會互相影響。
+await useGoogleAccount(EMAIL)
 
 // --- 舊手機：沒登入就開房，行為與從前完全相同 ---
 await A.page.goto(URL); await A.page.waitForTimeout(900)
@@ -65,8 +96,29 @@ ok('[新手機] 未登入時看不到房主功能', (await B.page.getByRole('but
 ok('[新手機] 但複製回程房對所有人開放', (await B.page.getByRole('button', { name: /複製這間房/ }).count()) === 1)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
+// --- 登入面板：Google 是主要路徑，Email 是備援 ---
+await A.page.goto(URL); await A.page.waitForTimeout(900)
+await A.page.locator('button[aria-label="設定"]').click(); await A.page.waitForTimeout(500)
+await A.page.getByRole('button', { name: /^登入$/ }).click(); await A.page.waitForTimeout(400)
+ok('登入面板第一顆是 Google',
+  (await A.page.locator('.sheet .btn').first().textContent())?.includes('Google'))
+// Google 的按鈕照他們自己的規範走（白底、四色 G），不是這個系統的 .btn-primary
+// ——四色的 G 放在品牌 teal 上既違反 Google 規範，藍綠兩色的對比也不夠。
+ok('Google 按鈕用的是 Google 自己的樣式', (await A.page.locator('.sheet .btn-google').count()) === 1)
+ok('登入面板沒有系統的主要按鈕', (await A.page.locator('.sheet .btn-primary').count()) === 0)
+ok('Email 備援看得到（不是死路）', (await A.page.getByRole('button', { name: /改用 Email/ }).count()) === 1)
+await A.page.getByRole('button', { name: /改用 Email/ }).click(); await A.page.waitForTimeout(300)
+ok('切到 Email 之後看得到輸入框', (await A.page.locator('#signin-email').count()) === 1)
+ok('Email 這一步回得去', (await A.page.getByRole('button', { name: /^返回$/ }).count()) === 1)
+await A.page.getByRole('button', { name: /^返回$/ }).click(); await A.page.waitForTimeout(300)
+ok('回到選擇畫面', (await A.page.getByRole('button', { name: /用 Google 登入/ }).count()) === 1)
+await A.page.keyboard.press('Escape'); await A.page.waitForTimeout(400)
+
 // --- 舊手機登入 → 認領 ---
-await signIn(A)
+await signInWithGoogle(A)
+// 回呼的 code 一定要從網址上清掉：留著的話使用者重新整理就會拿一個用過的 code
+// 再換一次，然後看到一個沒頭沒尾的錯誤。
+ok(`登入後網址上沒有殘留的 code：${A.page.url()}`, !/[?&]code=/.test(A.page.url()))
 const toast = await A.page.locator('.toast-text').textContent().catch(() => '')
 ok(`[舊手機] 登入後接管本機資產：「${toast}」`, /1 個房間/.test(toast ?? ''))
 await A.page.waitForTimeout(400)
@@ -76,7 +128,7 @@ ok(`[舊手機] 我的活動列出「${mine}」`, mine === '秋季旅遊 · 出�
 ok('[舊手機] 附帶已到人頭統計', (await A.page.locator('.recent-meta').first().textContent())?.includes('/ 4'))
 
 // --- 新手機登入同一個帳號 → 拿得回房間 ---
-await signIn(B)
+await signInWithGoogle(B)
 await B.page.waitForTimeout(600)
 ok('[新手機] 登入後看得到同一場活動', await B.page.getByText('秋季旅遊 · 出發').first().isVisible())
 await B.page.getByText('秋季旅遊 · 出發').first().click(); await B.page.waitForTimeout(1800)
@@ -106,7 +158,14 @@ await A.page.locator('.topbar button[aria-label="管理"]').click(); await A.pag
 ok('[舊手機] 登出後仍管得動自己開的房間（裝置金鑰還在）',
   await A.page.getByRole('button', { name: /編輯名單/ }).isVisible())
 
-const errs = [...A.errs, ...B.errs]
+// --- 備援路徑仍然通：Google 在內建瀏覽器裡會被擋，那時這條是唯一的路 ---
+const C = await phone('備援手機')
+await signInWithEmail(C, `fallback+${Date.now()}@example.com`)
+await C.page.waitForTimeout(600)
+ok('[備援手機] 用 Email 驗證碼一樣登得進去',
+  (await C.page.getByText('我的活動').count()) > 0)
+
+const errs = [...A.errs, ...B.errs, ...C.errs]
 ok('無 JS 錯誤', errs.length === 0)
 if (errs.length) console.log(errs.join('\n'))
 await browser.close()

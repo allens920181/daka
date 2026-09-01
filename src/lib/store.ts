@@ -5,7 +5,11 @@ import type {
   OwnedRoom, PendingOp, Room, SavedRoster,
 } from './types'
 import { AppError, api, isSupabaseConfigured, realtimeChannel, setPresenceKey } from './supabase'
-import { AuthError, currentSession, requestCode, restoreSession, signOut as authSignOut, verifyCode, type Session } from './auth'
+import {
+  AuthError, completeGoogleSignIn as authCompleteGoogle, currentSession, requestCode,
+  restoreSession, signOut as authSignOut, startGoogleSignIn, takeOAuthCallback, takeOAuthReturn,
+  verifyCode, type OAuthCallback, type Session,
+} from './auth'
 import { generateId, generateRoomCode, normalizeRoomCode } from './code'
 import { applyRemoteMember, applyStatusLocally, detectOverrides, mergeMembers, summarize } from './merge'
 import { groupsOf } from './parse'
@@ -166,10 +170,16 @@ export async function boot(): Promise<void> {
   outbox.value = await loadOutbox()
   applyTheme()
   applyLang()
+  // OAuth 回呼要在最早的時候從網址上拿走並清掉：留著的話使用者重新整理就會
+  // 拿一個已經用過的 code 再換一次，然後看到一個沒頭沒尾的錯誤。
+  const callback = takeOAuthCallback()
   window.addEventListener('online', handleOnline)
   window.addEventListener('offline', handleOffline)
   document.addEventListener('visibilitychange', handleVisibility)
   booted.value = true
+
+  // Google 登入的第二段。第一段把整個分頁導走了，所以這裡是重新啟動之後才跑。
+  if (callback) void finishGoogleSignIn(callback)
   void flushOutbox()
   void refreshRosters()
   void refreshMyRooms()
@@ -187,10 +197,12 @@ export { AuthError, requestCode }
  * 登入後立刻認領這台裝置本來就擁有的房間與常用名單——否則使用者會登入完
  * 卻發現「我的活動」是空的，然後以為壞掉了。
  */
-export async function signIn(email: string, code: string): Promise<{ rooms: number; rosters: number }> {
-  const s = await verifyCode(email, code)
+export interface Claimed { rooms: number; rosters: number }
+
+/** 登入成功之後都要做的事：認領這台裝置的資產、把清單拉回來。 */
+async function afterSignIn(s: Session): Promise<Claimed> {
   session.value = s
-  let claimed = { rooms: 0, rosters: 0 }
+  let claimed: Claimed = { rooms: 0, rosters: 0 }
   try {
     claimed = await api.claimMine(identity.value.ownerKey)
   } catch {
@@ -199,6 +211,61 @@ export async function signIn(email: string, code: string): Promise<{ rooms: numb
   await refreshMyRooms()
   await refreshRosters()
   return claimed
+}
+
+/** Email 六碼驗證碼（備援路徑）。 */
+export async function signIn(email: string, code: string): Promise<Claimed> {
+  return afterSignIn(await verifyCode(email, code))
+}
+
+/**
+ * Google 登入的第二段：拿網址上的 code 換 token。
+ *
+ * 第一段（`startGoogleSignIn`）會把整個分頁導走，所以這一段是在**重新啟動後**
+ * 才跑的——App 從零開始載入，然後發現網址上有一個 code。
+ */
+export { startGoogleSignIn }
+
+/**
+ * 從 Google 回來之後把登入走完。
+ *
+ * 這不是使用者按了什麼才跑的——他按下「用 Google 登入」之後整個分頁就被導走了，
+ * 回來時 App 是從零載入的。所以成功與失敗都只能用 Toast 講，而且一定要講：
+ * 什麼都不說的話，使用者會看到一個「好像沒登入成功」的首頁。
+ */
+async function finishGoogleSignIn(callback: OAuthCallback): Promise<void> {
+  const lang = prefs.value.lang
+  // 直接動 location 而不是 import router：資料層不該反過來相依於路由層，
+  // 而這裡要的只是「把 hash 換回去、不要留一筆歷史」。
+  const back = takeOAuthReturn()
+  if (back && back !== '/') window.location.replace(`#${back}`)
+
+  if (!callback.code) {
+    // 使用者在 Google 那一頭按取消不是錯誤，不要當錯誤講。
+    const cancelled = /access_denied|cancel/i.test(callback.error ?? '')
+    if (!cancelled) showToast(translate(lang, 'errGoogleFailed'), undefined, 7000)
+    return
+  }
+
+  try {
+    const claimed = await completeGoogleSignIn(callback.code)
+    showToast(
+      claimed.rooms + claimed.rosters > 0
+        ? translate(lang, 'claimed', { rooms: claimed.rooms, rosters: claimed.rosters })
+        : translate(lang, 'claimedNothing'),
+    )
+  } catch (e) {
+    const kind = e instanceof AuthError ? e.kind : 'unknown'
+    showToast(
+      translate(lang, kind === 'oauth-lost' ? 'errOauthLost'
+        : kind === 'offline' ? 'errOffline' : 'errGoogleFailed'),
+      undefined, 7000,
+    )
+  }
+}
+
+export async function completeGoogleSignIn(authCode: string): Promise<Claimed> {
+  return afterSignIn(await authCompleteGoogle(authCode))
 }
 
 export async function signOut(): Promise<void> {

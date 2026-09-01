@@ -12,7 +12,7 @@
 - **分車分組。** 名單貼上「【第一車】」就自動分段；選了某一車之後所有數字只算那一車。
 - **看板模式。** 平板放門邊大字顯示，螢幕不會自動關掉。
 - **不會被默默蓋掉。** 你剛點的被別人改了，會明講「已由陳姐改為未到」。
-- **換手機不會弄丟。** 主揪可以登入，房間與常用名單跟著帳號走。**協助點名的人永遠不用登入。**
+- **換手機不會弄丟。** 主揪用 Google 登入，房間與常用名單跟著帳號走。**協助點名的人永遠不用登入。**
 
 - [`docs/product-direction.md`](docs/product-direction.md) — 產品方向與架構決策
 - [`docs/design/`](docs/design/) — 設計規範：[基礎](docs/design/01-foundations.md)、[品牌](docs/design/02-brand.md)、[Token](docs/design/03-tokens.md)、[元件](docs/design/04-components/)、[模式](docs/design/05-patterns.md)、[內容](docs/design/06-content.md)、[品質](docs/design/07-quality.md)、[貢獻](docs/design/08-contributing.md)；另有[視覺對照頁](https://claude.ai/code/artifact/9df0f69b-dc39-4fc6-928f-e62be58ef97f)
@@ -68,9 +68,36 @@ LINE 接龍長什麼樣就貼什麼樣，不用先整理：
 
 本機開發的話，複製 `.env.example` 成 `.env.local` 填同樣兩個值。
 
-### 讓登入信寄出六碼驗證碼
+### 開啟 Google 登入（主揪登入用）
 
-**這一步不做的話，主揪登入時會收到一條連結而不是驗證碼，然後卡住。**
+**只有主揪需要登入，協助點名的人永遠不用。** 這一步不做的話，主揪還是可以用
+下面的 Email 備援登入，只是多幾個步驟。
+
+1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) →
+   建立專案 → **OAuth 同意畫面**（外部、填好應用程式名稱與支援信箱）。
+2. **憑證 → 建立憑證 → OAuth 用戶端 ID → 網頁應用程式**。
+   「已授權的重新導向 URI」填 Supabase 給你的那一個：
+   `https://<你的專案>.supabase.co/auth/v1/callback`
+   （**不是**你的 GitHub Pages 網址——這一格常填錯。）
+3. 複製用戶端 ID 與密鑰，貼到 Supabase Dashboard →
+   **Authentication → Providers → Google**，啟用。
+4. Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**
+   加入你的站台網址（結尾要有斜線），例如
+   `https://<你的帳號>.github.io/daka/`。本機開發再加 `http://127.0.0.1:4173/daka/`。
+
+登入走的是 **PKCE**：回呼帶的是 `?code=`（query）而不是 `#access_token=`（hash）。
+這個 App 用 hash 路由，implicit flow 的 token 會跟路由打架；PKCE 順帶讓 token
+從來不出現在網址列與瀏覽紀錄裡。
+
+> **內建瀏覽器的限制。** Google 會在 App 的內建瀏覽器（LINE、FB、IG）裡直接
+> 擋掉 OAuth（`disallowed_useragent`）。主揪很可能就是從 LINE 群裡點自己的
+> 分享連結進來的，正好踩到。App 偵測到疑似內建瀏覽器時會先說一聲，並把
+> Email 備援擺在旁邊——這也是備援不能拿掉的原因。
+
+### 讓登入信寄出六碼驗證碼（Email 備援用）
+
+**只在你要保留 Email 備援時才需要**（建議保留，理由見上）。不做的話，走備援
+路徑的人會收到一條連結而不是驗證碼，然後卡住。
 
 Supabase 預設的 Magic Link 信件模板只有連結。到 Dashboard → **Authentication → Email Templates → Magic Link**，把內容改成含 `{{ .Token }}`：
 
@@ -83,7 +110,7 @@ Supabase 預設的 Magic Link 信件模板只有連結。到 Dashboard → **Aut
 
 用驗證碼而不是魔術連結是刻意的：連結在信件 App 的內建瀏覽器開啟時會落在另一個瀏覽器工作階段，是很常見的失敗模式；輸入六碼永遠在同一台裝置上完成。
 
-另外注意 Supabase 內建的寄信服務**額度很低**（免費方案每小時只有個位數封）。主揪一年登入幾次沒問題，但不要拿它當一般的通知管道。要更穩的話在 Authentication → SMTP Settings 接自己的寄信服務。
+另外注意 Supabase 內建的寄信服務**額度很低**（免費方案每小時只有個位數封）。這正是把 Google 設成主要登入方式的原因之一——備援路徑用不到幾次，額度就不是問題了。真的要靠 Email 的話，在 Authentication → SMTP Settings 接自己的寄信服務。
 
 ### 免費方案會被暫停
 
@@ -205,7 +232,8 @@ docs/
 ## 已知限制
 
 - 出席統計與月報還沒做（Phase 3 剩下的部分）。
-- 登入信件靠 Supabase 內建寄信服務，額度低且可能進垃圾郵件；正式使用建議接自己的 SMTP。
+- Google 在 App 的內建瀏覽器（LINE、FB、IG）裡會擋掉登入；App 會先提示，並提供 Email 備援。
+- Email 備援靠 Supabase 內建寄信服務，額度低且可能進垃圾郵件；常用的話建議接自己的 SMTP。
 - 沒有「把房間轉讓給別的主揪」的功能。主揪不在時，現場的人可以自己「複製這間房」開一間新的來點（他會是新房間的主揪），但原房的管理權還是拿不到。
 - 舊版的單檔 `index.html` 還在 git 歷史裡（commit `63eeaf1`）。
 
@@ -240,6 +268,10 @@ node scripts/e2e-account.mjs
 
 涵蓋：分享連結加入同一間房、雙向即時反映、兩人同時點同一人不重複計算、離線點名後恢復連線自動補上、複製房間保留請假並重置已到、我改的被別人蓋掉時會被告知、以及登入後換一台裝置仍然管得動自己的房間。
 
-`scripts/fake-supabase.mjs` 同時模擬 PostgREST 與 GoTrue，驗證碼固定 `123456`。它是測試替身，**不要拿去對外服務**。
+`scripts/fake-supabase.mjs` 同時模擬 PostgREST、GoTrue 與一個假的 Google OAuth
+（authorize 直接 302 回來，但 PKCE 的形狀是真的：真的產 verifier、真的算
+challenge、真的拿 code 換 token，而且 code 只能用一次）。驗證碼固定 `123456`。
+測試要指定用哪個 Google 帳號時打 `POST /__test/google-user`——正式的 GoTrue
+沒有這個端點。它是測試替身，**不要拿去對外服務**。
 
 （Realtime 廣播沒被涵蓋，本機沒有 realtime 伺服器。測的是每 15 秒的定期對帳——那本來就是正確性的依據，廣播只是讓它更快。）

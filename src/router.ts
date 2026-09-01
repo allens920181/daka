@@ -19,6 +19,11 @@ export function useRoute(): string {
   return path
 }
 
+/** 目前的路由。OAuth 導走之前要記下來，回來才知道該把人放回哪裡。 */
+export function currentRoute(): string {
+  return currentPath()
+}
+
 export function navigate(to: string, opts?: { replace?: boolean }): void {
   if (opts?.replace) window.location.replace(`#${to}`)
   else window.location.hash = to

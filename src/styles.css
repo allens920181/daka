@@ -47,6 +47,16 @@
      夠分明（18:1），深色時底色只比它蓋住的名單列亮 1.12:1，靠邊框定義。 */
   --toast-line: #10171a;
 
+  /* --- Google 登入按鈕：第三方品牌規範，具名例外 -----------------------
+     這四個值來自 Google 自己的 Sign-in with Google 按鈕規範，不是我們的色票，
+     所以不參與這個系統的任何配色決定，也不得用在別的地方。
+     為什麼不用 --btn-primary：Google 的標記必須維持原色，而四色的 G 放在
+     品牌 teal 上既違反他們的規範，藍色與綠色的對比也不夠。 */
+  --google-bg: #ffffff;
+  --google-ink: #1f1f1f;
+  --google-line: #747775;
+  --google-bg-active: #f2f2f2;
+
   /* --- 字級（八階，不得新增）------------------------------------------- */
   --fs-1: 11px;   /* 等寬微標籤，唯一允許小於 13px 的用途 */
   --fs-2: 13px;
@@ -145,6 +155,10 @@
     --toast-ink: #e9eef0;
     --toast-action: #5fd8df;
     --toast-line: #69868d;
+    --google-bg: #131314;
+    --google-ink: #e3e3e3;
+    --google-line: #8e918f;
+    --google-bg-active: #1e1f20;
 
     --scrim: rgba(0, 0, 0, .62);
 
@@ -187,6 +201,10 @@
   --toast-ink: #e9eef0;
   --toast-action: #5fd8df;
   --toast-line: #69868d;
+  --google-bg: #131314;
+  --google-ink: #e3e3e3;
+  --google-line: #8e918f;
+  --google-bg-active: #1e1f20;
 
   --scrim: rgba(0, 0, 0, .62);
 
@@ -263,6 +281,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn:disabled { opacity: var(--op-disabled); cursor: not-allowed; transform: none; }
 
 .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/*
+ * Google 登入按鈕。照 Google 自己的按鈕規範走，不是這個系統的樣式。
+ * 深色時底色只比面板亮 1.10:1，跟 Toast 一樣靠邊框定義形狀（邊框 5.8:1）。
+ */
+.btn-google {
+  background: var(--google-bg); color: var(--google-ink);
+  border-color: var(--google-line); font-weight: 600;
+}
+.btn-google:active { background: var(--google-bg-active); }
+
 /* 切換鍵的「開」狀態（底部動作列的「只看未到」）。用色塊而不是 .btn-primary：
    它不是「這個畫面最主要的動作」，只是一個開關現在是開著的。 */
 .btn.is-on {
