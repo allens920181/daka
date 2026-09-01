@@ -81,6 +81,35 @@ select (select snap #>> '{room,name}' from c) as new_name,
 \echo '--- 原房間狀態不受影響 ---'
 select public.get_room('K7F2QM') #>> '{members,0,status}' as source_still_arrived;
 
+\echo '--- 6b. 只要拿得到房號就能複製，而且新房是複製者自己的 ---'
+-- 主揪不在／手機沒電／在山區沒訊號時，現場要有人開得出回程房。複製對來源房
+-- 完全無害（一個字都不改），名單本來就對所有拿得到房號的人可見。
+create temp table c2 as select public.copy_room(
+  'K7F2QM','ownerkey-HELPER-not-the-owner','H7KPQR','回程（同工開的）') as snap;
+select (select jsonb_array_length(snap -> 'members') from c2) as helper_copied_members;
+
+\echo '--- 複製者是新房的主揪（改得動新房）---'
+select public.rename_room('H7KPQR','ownerkey-HELPER-not-the-owner','同工改新房名')
+  #>> '{room,name}' as helper_owns_new_room;
+
+\echo '--- 但拿不到原房的任何管理權（應該失敗）---'
+\set ON_ERROR_STOP off
+select public.rename_room('K7F2QM','ownerkey-HELPER-not-the-owner','同工亂改原房');
+select public.set_room_closed('K7F2QM','ownerkey-HELPER-not-the-owner',true);
+select public.delete_room('K7F2QM','ownerkey-HELPER-not-the-owner');
+\set ON_ERROR_STOP on
+
+\echo '--- 原房的主揪也還是管得動原房 ---'
+select public.rename_room('K7F2QM','ownerkey-aaaaaaaaaaaaaaaaaaaa','秋季旅遊 · 出發（改）')
+  #>> '{room,name}' as source_owner_unaffected;
+
+\echo '--- 打錯房號要丟錯，不能靜靜開出一間空房（應該失敗）---'
+\set ON_ERROR_STOP off
+select public.copy_room('ZZZZZZ','ownerkey-aaaaaaaaaaaaaaaaaaaa','NPQR23','不該存在');
+\set ON_ERROR_STOP on
+-- anon 讀不到表（RLS 零政策就是這個目的），改用 get_room 確認那間房不存在。
+select public.get_room('NPQR23') is null as empty_room_was_not_created;
+
 -- ========== 7. 關閉房間後不能點名 ==========
 \echo '--- 7. 關閉後點名應失敗 ---'
 select public.set_room_closed('K7F2QM','ownerkey-aaaaaaaaaaaaaaaaaaaa',true) #>> '{room,closed_at}' is not null as closed;

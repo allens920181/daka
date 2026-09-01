@@ -59,7 +59,10 @@ ok('[舊手機] 未登入時首頁沒有「我的活動」', (await A.page.getBy
 await B.page.goto(`${URL}#/r/${code}`); await B.page.waitForTimeout(1800)
 ok('[新手機] 用房號進得去（協助點名不需要帳號）', await B.page.locator('.topbar-name').isVisible())
 await B.page.locator('.topbar button[aria-label="管理"]').click(); await B.page.waitForTimeout(500)
-ok('[新手機] 未登入時看不到房主功能', (await B.page.getByRole('button', { name: /複製這間房/ }).count()) === 0)
+// 「複製這間房」刻意對所有人開放（見 schema.sql 的 copy_room），所以不能拿它
+// 當房主功能的探針。改用真正只有房主做得到的「編輯名單」。
+ok('[新手機] 未登入時看不到房主功能', (await B.page.getByRole('button', { name: /編輯名單/ }).count()) === 0)
+ok('[新手機] 但複製回程房對所有人開放', (await B.page.getByRole('button', { name: /複製這間房/ }).count()) === 1)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
 // --- 舊手機登入 → 認領 ---
@@ -78,7 +81,7 @@ await B.page.waitForTimeout(600)
 ok('[新手機] 登入後看得到同一場活動', await B.page.getByText('秋季旅遊 · 出發').first().isVisible())
 await B.page.getByText('秋季旅遊 · 出發').first().click(); await B.page.waitForTimeout(1800)
 await B.page.locator('.topbar button[aria-label="管理"]').click(); await B.page.waitForTimeout(600)
-ok('[新手機] 現在看得到房主功能了', await B.page.getByRole('button', { name: /複製這間房/ }).isVisible())
+ok('[新手機] 現在看得到房主功能了', await B.page.getByRole('button', { name: /編輯名單/ }).isVisible())
 
 // 真的改得動（這是「換手機拿得回房間」的實證）
 await B.page.getByRole('button', { name: /重新命名/ }).click(); await B.page.waitForTimeout(400)
@@ -101,7 +104,7 @@ ok('[舊手機] 登出後「我的活動」消失', (await A.page.getByText('我
 await A.page.goto(`${URL}#/r/${code}`); await A.page.waitForTimeout(1800)
 await A.page.locator('.topbar button[aria-label="管理"]').click(); await A.page.waitForTimeout(600)
 ok('[舊手機] 登出後仍管得動自己開的房間（裝置金鑰還在）',
-  await A.page.getByRole('button', { name: /複製這間房/ }).isVisible())
+  await A.page.getByRole('button', { name: /編輯名單/ }).isVisible())
 
 const errs = [...A.errs, ...B.errs]
 ok('無 JS 錯誤', errs.length === 0)

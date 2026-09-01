@@ -324,23 +324,31 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
           </span>
         </button>
 
+        <div class="menu-divider" />
+
+        {/*
+          複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
+          沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
+          方向書明列的核心情境，現場卻只能重貼一次 LINE 接龍重開房。
+          複製對來源房完全無害（一個字都不改），而名單本來就對所有拿得到房號
+          的人可見，所以把它鎖在擁有權後面沒有保護到任何東西。
+        */}
+        <button
+          class="menu-item"
+          onClick={() => {
+            setValue(current.name.includes(t('returnTrip')) ? current.name : `${current.name} · ${t('returnTrip')}`)
+            setMode('copy')
+          }}
+        >
+          <IconDuplicate />
+          <span>
+            <strong>{t('copyRoom')}</strong>
+            <span class="sub">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</span>
+          </span>
+        </button>
+
         {owner && (
           <>
-            <div class="menu-divider" />
-            <button
-              class="menu-item"
-              onClick={() => {
-                setValue(current.name.includes(t('returnTrip')) ? current.name : `${current.name} · ${t('returnTrip')}`)
-                setMode('copy')
-              }}
-            >
-              <IconDuplicate />
-              <span>
-                <strong>{t('copyRoom')}</strong>
-                <span class="sub">{t('copyRoomHint')}</span>
-              </span>
-            </button>
-
             <button
               class="menu-item"
               onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}

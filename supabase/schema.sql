@@ -463,9 +463,22 @@ $$;
 -- 請假的人不歸零：他整趟都不會出現，回程當然也不在。把他重設成未到
 -- 只會讓人在休息站打電話給一個從來沒上車的人。
 -- 新房間沿用同一個 owner_key，所以還是同一個人管。
+-- 複製一間房（回程用）。
+--
+-- 刻意「只要拿得到房號就能複製」，不檢查來源房的擁有權——`p_owner_key` 在這裡
+-- 是「新房間要記在誰名下」，不是「證明你是舊房間的主人」。
+--
+-- 理由：複製對來源房完全無害（一個字都不改），而名單本來就對所有拿得到房號的
+-- 人可見（README「房號就是密碼」是刻意的取捨）。把它鎖在擁有權後面沒有保護到
+-- 任何東西，卻讓三個真實劇本無解——主揪臨時不能來、手機在遊覽車上沒電、在山區
+-- 沒訊號被降級成協助者。那時候「回程再點一次」是產品方向書明列的核心情境，
+-- 現場卻只能重貼一次 LINE 接龍重開房。
+--
+-- 新房間的 owner_key / owner_id 一律寫呼叫者自己的，所以複製的人拿到的是一間
+-- 屬於他自己的新房，對原房仍然沒有任何管理權。
 create or replace function public.copy_room(
   p_code      text,
-  p_owner_key text,
+  p_owner_key text,   -- 新房間的擁有者（呼叫者自己），不是來源房的驗證
   p_new_code  text,
   p_new_name  text
 )
@@ -475,12 +488,18 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_src uuid := public._owned_room_id(p_code, p_owner_key);
+  v_src uuid := public._room_id(p_code);
   v_new uuid;
 begin
+  -- _room_id 找不到時回 null（不丟錯）。少了這個檢查，打錯房號會靜靜開出
+  -- 一間沒有半個人的空房。
+  if v_src is null then
+    raise exception 'room_not_found' using errcode = 'P0002';
+  end if;
+
   insert into public.rooms (code, name, note, owner_key, copied_from, owner_id)
-  select upper(btrim(p_new_code)), left(btrim(p_new_name), 80), r.note, r.owner_key, r.id,
-         coalesce(r.owner_id, auth.uid())
+  select upper(btrim(p_new_code)), left(btrim(p_new_name), 80), r.note, p_owner_key, r.id,
+         auth.uid()
   from public.rooms r
   where r.id = v_src
   returning id into v_new;
