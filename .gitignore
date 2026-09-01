@@ -1,11 +1,10 @@
 node_modules/
-dist/
-dist-ssr/
+# 所有建置產物。用萬用字元而不是一條一條列：dist-prod/ 曾經因為「還沒被加進
+# 這份清單」而被 git add -A 掃進 commit，混進一個已合併的 PR 裡。每開一個新的
+# 輸出目錄就要記得回來補一行，這件事遲早會再漏一次。
+dist*/
 *.local
 .env
 .env.local
 .DS_Store
 .vite/
-dist-sync/
-dist-netlify/
-dist-prod/
