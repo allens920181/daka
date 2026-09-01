@@ -109,6 +109,50 @@ describe('設計規範與實作的一致性', () => {
     expect(missing).toEqual([])
   })
 
+  /**
+   * 文案表必須跟 i18n.ts 對得起來。
+   *
+   * 這條是被真實漂移逼出來的：§1.2 早就寫下「失敗訊息不得承諾沒有發生的事」，
+   * 並點名「恢復連線後會自動上傳」是不該講的話；`errOffline` 也照著改了。
+   * 但 §6.2 的錯誤訊息表仍然把那句話當成正確示範放著——上面五個檢查驗的是
+   * token、class、檔案路徑，沒有一個會看使用者真正讀到的字。
+   *
+   * 判定範圍刻意窄：只認「剛好有一格是 zh 的 key」的表格列，最後一格就是那個
+   * key 的值。示例表（§6.1 的「這樣寫／不這樣寫」）沒有 key 格，不會被誤判。
+   */
+  it('文案表引用的 i18n key 都存在，且表上的字就是實際字串', () => {
+    const source = readFileSync(join(ROOT, 'src/lib/i18n.ts'), 'utf8')
+    const zhBlock = source.slice(source.indexOf('const zh = {'), source.indexOf('} as const'))
+    const zh = new Map<string, string>()
+    for (const m of zhBlock.matchAll(/^  ([a-zA-Z][a-zA-Z0-9]*): '((?:[^'\\]|\\.)*)',$/gm)) {
+      zh.set(m[1] as string, (m[2] as string).replace(/\\'/g, "'"))
+    }
+    expect(zh.size).toBeGreaterThan(50)
+
+    const wrong: string[] = []
+    let checked = 0
+    for (const { path, text } of docs) {
+      for (const line of stripFences(text).split('\n')) {
+        if (!line.startsWith('|')) continue
+        const cells = line.split('|').slice(1, -1).map((c) => c.trim())
+        const keys = cells.flatMap((c) => {
+          const m = c.match(/^`([a-zA-Z][a-zA-Z0-9]*)`$/)
+          return m?.[1] && zh.has(m[1]) ? [m[1]] : []
+        })
+        if (keys.length !== 1) continue
+        const key = keys[0] as string
+        // 表上允許用 **粗體** 強調，比對前拆掉
+        const shown = (cells[cells.length - 1] ?? '').replace(/\*\*/g, '')
+        checked++
+        if (shown !== zh.get(key)) {
+          wrong.push(`${rel(path)} → ${key}\n    表上：${shown}\n    實際：${zh.get(key)}`)
+        }
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(10)
+    expect(wrong).toEqual([])
+  })
+
   it('每個元件家族都用了規格模板的必要欄位', () => {
     const families = markdownFiles(join(DESIGN, '04-components')).filter((p) => !p.endsWith('README.md'))
     const incomplete: string[] = []
