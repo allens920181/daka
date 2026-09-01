@@ -1,7 +1,23 @@
 import type { DraftMember, MemberStatus } from './types'
 
+/**
+ * 一位成員在原始文字裡的來源位置。
+ *
+ * 用來支援預覽的「移除」：文字仍然是唯一的真相，移除是去改那段文字，而不是
+ * 在解析結果上動手腳。一行可能因為行內編號（「1.王小明 2.李美花」）產生
+ * 多位成員，所以要記到 part 這一層。
+ */
+export interface MemberSource {
+  /** 在 text.split(/\r?\n/) 裡的索引。 */
+  line: number
+  /** 在 splitInlineNumbering(line) 裡的索引。 */
+  part: number
+}
+
 export interface ParseResult {
   members: DraftMember[]
+  /** 與 members 平行：每一位在原始文字裡的位置。 */
+  sources: MemberSource[]
   /** 解析到的分組名稱，依出現順序。 */
   groups: string[]
   /** 出現超過一次的名字。不會自動去重（同名的人是真實存在的），只提醒。 */
@@ -84,7 +100,12 @@ function extractPhone(input: string): { phone: string | null; rest: string } {
   return { phone: null, rest: input }
 }
 
-function splitInlineNumbering(line: string): string[] {
+/**
+ * 行內編號的切點。回傳的是索引而不是字串，因為 removeParsedMember 要拿這些
+ * 索引去切**使用者原本打的那一行**，而切點是在正規化過的文字上算出來的。
+ * （normalizeWidth 全部是一對一的字元替換，長度與位置都不變，所以索引通用。）
+ */
+function inlineBoundaries(line: string): number[] {
   const starts: number[] = []
   INLINE_MARKER.lastIndex = 0
   let m: RegExpExecArray | null
@@ -94,15 +115,22 @@ function splitInlineNumbering(line: string): string[] {
     INLINE_MARKER.lastIndex = m.index + m[0].length
   }
   // 至少要兩個編號才敢切，避免把「房2號」之類的名字切壞。
-  if (starts.length < 2) return [line]
+  if (starts.length < 2) return []
 
-  const parts: string[] = []
+  const cuts: number[] = []
   const first = starts[0] ?? 0
-  if (first > 0) parts.push(line.slice(0, first))
-  for (let i = 0; i < starts.length; i++) {
-    parts.push(line.slice(starts[i] ?? 0, starts[i + 1] ?? line.length))
-  }
-  return parts
+  if (first > 0) cuts.push(0)
+  for (const st of starts) cuts.push(st)
+  return cuts
+}
+
+function sliceAt(line: string, cuts: readonly number[]): string[] {
+  if (cuts.length === 0) return [line]
+  return cuts.map((c, i) => line.slice(c, cuts[i + 1] ?? line.length))
+}
+
+function splitInlineNumbering(line: string): string[] {
+  return sliceAt(line, inlineBoundaries(line))
 }
 
 /**
@@ -198,10 +226,13 @@ function parseEntry(raw: string): DraftMember | null {
 export function parseRoster(input: string): ParseResult {
   const text = normalizeWidth(input ?? '')
   const members: DraftMember[] = []
+  const sources: MemberSource[] = []
   let skipped = 0
   let group: string | null = null
 
-  for (const line of text.split(/\r?\n/)) {
+  const lines = text.split(/\r?\n/)
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li] ?? ''
     if (!line.trim()) continue
 
     const header = groupHeader(line)
@@ -210,11 +241,15 @@ export function parseRoster(input: string): ParseResult {
       continue
     }
 
-    for (const part of splitInlineNumbering(line)) {
+    const parts = splitInlineNumbering(line)
+    for (let pi = 0; pi < parts.length; pi++) {
+      const part = parts[pi] ?? ''
       if (!part.trim()) continue
       const entry = parseEntry(part)
-      if (entry) members.push(group ? { ...entry, group_label: group } : entry)
-      else skipped++
+      if (entry) {
+        members.push(group ? { ...entry, group_label: group } : entry)
+        sources.push({ line: li, part: pi })
+      } else skipped++
     }
   }
 
@@ -222,7 +257,40 @@ export function parseRoster(input: string): ParseResult {
   for (const m of members) counts.set(m.name, (counts.get(m.name) ?? 0) + 1)
   const duplicateNames = [...counts.entries()].filter(([, n]) => n > 1).map(([n]) => n)
 
-  return { members, groups: groupsOf(members), duplicateNames, skipped }
+  return { members, sources, groups: groupsOf(members), duplicateNames, skipped }
+}
+
+/**
+ * 從原始文字裡拿掉某一位成員，回傳新的文字。
+ *
+ * 解析器刻意不自動猜（「秋季旅遊報名」該不該算一個人，機器判斷不了），所以
+ * 這裡的作法是把決定權交回去：預覽上看到不對的那一列，按一下就從文字裡消失。
+ * 文字仍然是唯一的真相——改完重新解析，其他人的位置自然跟著更新。
+ *
+ * `splitInlineNumbering` 切出來的每一段都是原字串的連續切片，接回去會完全
+ * 還原原本那一行，所以這裡不會弄壞使用者貼進來的格式。
+ */
+export function removeParsedMember(input: string, at: MemberSource): string {
+  const raw = input ?? ''
+  const nl = raw.includes('\r\n') ? '\r\n' : '\n'
+  const lines = raw.split(/\r?\n/)
+  const line = lines[at.line]
+  if (line === undefined) return raw
+
+  // 解析走的是正規化過的文字，但這裡要改的是使用者原本打的字。切點在正規化
+  // 後的行上算（全形「１．」要正規化成「1.」才認得出是編號），再拿同一組索引
+  // 去切原字串——normalizeWidth 是一對一的字元替換，位置不會跑掉。
+  const cuts = inlineBoundaries(normalizeWidth(line))
+  if (cuts.length === 0) {
+    lines.splice(at.line, 1)
+    return lines.join(nl)
+  }
+
+  const parts = sliceAt(line, cuts)
+  const rest = parts.filter((_, i) => i !== at.part).join('')
+  if (!rest.trim()) lines.splice(at.line, 1)
+  else lines[at.line] = rest
+  return lines.join(nl)
 }
 
 /** 名單裡出現過的分組，依第一次出現的順序。 */

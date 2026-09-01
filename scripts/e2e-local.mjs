@@ -35,6 +35,24 @@ await p.locator('#roster-text').fill(`秋季旅遊報名
 await p.waitForTimeout(400)
 const previewRows = await p.locator('.preview-row').count()
 ok(`解析預覽 ${previewRows} 列（標題行也算一人，共 9）`, previewRows === 9)
+
+// #4 解析器刻意不猜「秋季旅遊報名」是不是人名，但預覽以前只給看不給改——猜錯
+// 的那幾列會一路留到現場與紙本，變成永遠不會被打勾的幽靈成員，於是「還有 N
+// 位沒到」永遠歸不了零。每一列現在都拿得掉，而且文字才是唯一的真相。
+ok('第一列是被誤判成人的標題行',
+   (await p.locator('.preview-row').first().textContent())?.includes('秋季旅遊報名'))
+await p.locator('.preview-row').first().locator('.preview-remove').click()
+await p.waitForTimeout(400)
+ok('移除之後預覽剩 8 列', (await p.locator('.preview-row').count()) === 8)
+ok('移除是去改文字，不是只改預覽',
+   !((await p.locator('#roster-text').inputValue()).includes('秋季旅遊報名')))
+ok('其他人一個都沒少',
+   (await p.locator('#roster-text').inputValue()).includes('王小明')
+   && (await p.locator('#roster-text').inputValue()).includes('陳怡君'))
+// 復原：把它加回去，讓後面的斷言仍然跑在 9 個人的名單上。
+await p.locator('#roster-text').fill('秋季旅遊報名\n' + await p.locator('#roster-text').inputValue())
+await p.waitForTimeout(400)
+ok('補回去之後又是 9 列', (await p.locator('.preview-row').count()) === 9)
 ok('同名警告出現', await p.locator('.note-warn').first().isVisible())
 
 

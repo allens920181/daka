@@ -792,10 +792,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .preview-row {
   display: flex; align-items: center; gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--rule);
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border-bottom: 1px solid var(--rule);
   font-size: var(--fs-3);
 }
 .preview-row:last-child { border-bottom: none; }
+/* 移除鍵。這是「解析器猜錯了」唯一的出口，不能小到按不到——48px 觸控目標，
+   但視覺上收斂（--ink-3），因為多數列不需要動它。 */
+.preview-remove { color: var(--ink-3); flex: none; }
+.preview-remove:active { background: var(--surface-2); }
 .preview-index { font-size: var(--fs-1); color: var(--ink-3); min-width: 22px; font-variant-numeric: tabular-nums; }
 
 /* === 提示框 ============================================================== */

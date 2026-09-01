@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseRoster, rosterToText } from './parse'
+import { parseRoster, removeParsedMember, rosterToText } from './parse'
 
 const names = (s: string) => parseRoster(s).members.map((m) => m.name)
 
@@ -79,7 +79,7 @@ describe('parseRoster', () => {
   })
 
   it('空輸入回傳空名單', () => {
-    expect(parseRoster('')).toEqual({ members: [], groups: [], duplicateNames: [], skipped: 0 })
+    expect(parseRoster('')).toEqual({ members: [], sources: [], groups: [], duplicateNames: [], skipped: 0 })
     expect(parseRoster('   \n  \n')).toMatchObject({ members: [] })
   })
 
@@ -106,6 +106,70 @@ describe('parseRoster', () => {
     expect(r.members[2]).toMatchObject({ companions: 1 })
     expect(r.members[3]).toMatchObject({ note: '請假' })
     expect(r.members[6]).toMatchObject({ companions: 2 })
+  })
+})
+
+describe('removeParsedMember', () => {
+  /** 從解析結果裡找出叫這個名字的那一位，回傳移除之後的文字。 */
+  const drop = (text: string, name: string) => {
+    const r = parseRoster(text)
+    const i = r.members.findIndex((m) => m.name === name)
+    expect(i).toBeGreaterThanOrEqual(0)
+    return removeParsedMember(text, r.sources[i]!)
+  }
+
+  it('拿掉獨佔一行的人，整行消失', () => {
+    expect(drop('王小明\n李美花\n張三', '李美花')).toBe('王小明\n張三')
+  })
+
+  it('接龍的標題行被當成人時也刪得掉', () => {
+    // 解析器刻意不自動猜「秋季旅遊報名」是不是人名，決定權交回使用者。
+    const text = '秋季旅遊報名\n1.王小明\n2.李美花'
+    expect(drop(text, '秋季旅遊報名')).toBe('1.王小明\n2.李美花')
+  })
+
+  it('一行有多人時只拿掉那一個，其他人與格式都留著', () => {
+    expect(drop('1.王小明 2.李美花 3.張三', '李美花')).toBe('1.王小明 3.張三')
+  })
+
+  it('一行多人時刪到剩最後一個，那一行還在', () => {
+    const once = drop('1.王小明 2.李美花', '王小明')
+    expect(once.trim()).toBe('2.李美花')
+  })
+
+  it('一行多人時全部刪光，整行才消失', () => {
+    let text = '甲\n1.王小明 2.李美花\n乙'
+    text = drop(text, '王小明')
+    text = drop(text, '李美花')
+    expect(text).toBe('甲\n乙')
+  })
+
+  it('全形編號也切得對（不會把整行連坐刪掉）', () => {
+    // 切點是在正規化後的文字上算的，但要切的是使用者原本打的字。
+    const text = '１．王小明　２．李美花'
+    const after = drop(text, '李美花')
+    expect(after).toContain('王小明')
+    expect(after).not.toContain('李美花')
+  })
+
+  it('刪掉分組裡的人不會動到分組標題', () => {
+    const text = '【第一車】\n王小明\n李美花'
+    expect(drop(text, '王小明')).toBe('【第一車】\n李美花')
+  })
+
+  it('刪完之後重新解析，剩下的人位置仍然正確', () => {
+    let text = '甲\n乙\n丙\n丁'
+    text = drop(text, '乙')
+    text = drop(text, '丁')
+    expect(parseRoster(text).members.map((m) => m.name)).toEqual(['甲', '丙'])
+  })
+
+  it('保留 CRLF 換行', () => {
+    expect(drop('甲\r\n乙\r\n丙', '乙')).toBe('甲\r\n丙')
+  })
+
+  it('越界的來源位置不會壞掉', () => {
+    expect(removeParsedMember('甲\n乙', { line: 99, part: 0 })).toBe('甲\n乙')
   })
 })
 

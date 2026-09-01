@@ -1,7 +1,8 @@
 import { useMemo } from 'preact/hooks'
-import { parseRoster } from '../lib/parse'
+import { parseRoster, removeParsedMember } from '../lib/parse'
 import type { DraftMember, SavedRoster } from '../lib/types'
 import { rosterToText } from '../lib/parse'
+import { IconClose } from './icons'
 import { useT } from './t'
 
 /**
@@ -64,6 +65,12 @@ export function RosterInput({
             </span>
           </div>
 
+          {/*
+            每一列都可以拿掉。解析器刻意不自動猜（「秋季旅遊報名」該不該算一個
+            人，機器判斷不了），但以前預覽只給看不給改——猜錯的那幾列會一路
+            留到現場與紙本，變成永遠不會被打勾的幽靈成員，於是「還有 N 位沒到」
+            永遠歸不了零。文字仍然是唯一的真相：移除是去改那段文字。
+          */}
           <div class="preview">
             {result.members.map((m, i) => (
               <div class="preview-row" key={`${m.name}-${i}`}>
@@ -72,6 +79,16 @@ export function RosterInput({
                 {m.phone && <span class="chip chip-data">{m.phone}</span>}
                 {m.companions > 0 && <span class="chip chip-count">+{m.companions}</span>}
                 {m.note && <span class="chip chip-note">{m.note}</span>}
+                <button
+                  class="icon-btn preview-remove"
+                  aria-label={t('removeFromPreview', { name: m.name })}
+                  onClick={() => {
+                    const src = result.sources[i]
+                    if (src) onText(removeParsedMember(text, src))
+                  }}
+                >
+                  <IconClose size={20} />
+                </button>
               </div>
             ))}
           </div>
