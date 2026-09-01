@@ -1,16 +1,33 @@
 import type { Member, Room } from './types'
+import type { Lang, MessageKey } from './i18n'
+import { translate } from './i18n'
 import { summarize } from './merge'
 import { formatTime } from './format'
 
-const STATUS_LABEL: Record<Member['status'], string> = {
-  arrived: '已到',
-  pending: '未到',
-  excused: '請假',
+const STATUS_KEY: Record<Member['status'], MessageKey> = {
+  arrived: 'arrived',
+  pending: 'missing',
+  excused: 'excused',
 }
 
 function csvCell(value: string | number | null): string {
   const s = value === null ? '' : String(value)
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+/**
+ * 強制讓試算表把這一格當成文字。
+ *
+ * 電話存的是純數字（06-content §6.5），CSV 又沒有型別，於是 Excel、Numbers、
+ * Google 試算表都會把 `0912345678` 判成數字——開起來變成 912345678，開頭那個 0
+ * 沒了。那是主揪唯一拿來打電話找人的欄位，等於匯出即損壞。
+ *
+ * 加引號沒有用：Excel 的 CSV 匯入不看引號就做型別推斷。`="…"` 是三家都認得、
+ * 而且會原樣顯示成文字的寫法。代價是拿去餵程式的人會多讀到這層包裝，但這個
+ * 檔案的收件人是試算表，不是程式。
+ */
+function csvText(value: string): string {
+  return value === '' ? '' : `="${value.replace(/"/g, '""')}"`
 }
 
 function localTime(iso: string | null): string {
@@ -22,21 +39,22 @@ function localTime(iso: string | null): string {
 }
 
 /** CSV。開頭加 BOM，Excel 開啟中文才不會變亂碼。活動名稱放在檔名，不佔資料列。 */
-export function toCsv(members: readonly Member[]): string {
-  const rows = [
-    ['姓名', '狀態', '時間', '點名者', '電話', '攜伴', '分組', '備註'],
-    ...members.map((m) => [
-      m.name,
-      STATUS_LABEL[m.status],
-      localTime(m.status_at),
-      m.status_by ?? '',
-      m.phone ?? '',
-      m.companions,
-      m.group_label ?? '',
-      m.note ?? '',
-    ]),
-  ]
-  const body = rows.map((r) => r.map(csvCell).join(',')).join('\r\n')
+export function toCsv(members: readonly Member[], lang: Lang): string {
+  const t = (key: MessageKey) => translate(lang, key)
+  const header = (['csvName', 'csvStatus', 'csvTime', 'csvBy', 'csvPhone', 'csvCompanions', 'csvGroup', 'csvNote'] as const)
+    .map((k) => csvCell(t(k)))
+  const rows = members.map((m) => [
+    csvCell(m.name),
+    csvCell(t(STATUS_KEY[m.status])),
+    csvCell(localTime(m.status_at)),
+    csvCell(m.status_by ?? ''),
+    // 電話這一格走 csvText：其餘欄位是文字沒錯，但只有它是「看起來像數字的文字」。
+    csvText(m.phone ?? ''),
+    csvCell(m.companions),
+    csvCell(m.group_label ?? ''),
+    csvCell(m.note ?? ''),
+  ])
+  const body = [header, ...rows].map((r) => r.join(',')).join('\r\n')
   return `﻿${body}\r\n`
 }
 
@@ -54,36 +72,42 @@ export function csvFilename(room: Room): string {
 export function toShareText(
   room: Room,
   scoped: readonly Member[],
+  lang: Lang,
   groupLabel?: string | null,
   now: Date = new Date(),
 ): string {
+  const t = (key: MessageKey, vars?: Record<string, string | number>) => translate(lang, key, vars)
   const s = summarize(scoped)
   const missing = scoped.filter((m) => m.status === 'pending')
   const excused = scoped.filter((m) => m.status === 'excused')
+  const names = (list: readonly Member[]) =>
+    list
+      .map((m) => (m.companions > 0 ? `${m.name}${t('withCompanions', { n: m.companions })}` : m.name))
+      .join(t('listSeparator'))
 
   const lines = [
     groupLabel ? `${room.name} · ${groupLabel}` : room.name,
     // 時間是這段文字唯一會過期的東西，所以要寫出來：貼進 LINE 群之後，
     // 辦公室看到的必須知道這是幾點的狀態，而不是一份不知何時的名單。
-    `${formatTime(now)} · 已到 ${s.arrivedHeadcount} / ${s.expectedHeadcount} 人`,
+    `${formatTime(now)} · ${t('shareArrived', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`,
   ]
   if (missing.length > 0) {
     // 沒分車就一行列完；有分車就按車分行——20 個名字擠成一句，現場沒有人
     // 唸得出來是哪一車的誰。
-    const byGroup = groupLabel ? [] : splitByGroup(missing)
+    const byGroup = groupLabel ? [] : splitByGroup(missing, t('ungrouped'))
     if (byGroup.length > 1) {
-      lines.push(`未到 ${heads(missing)} 位：`)
+      lines.push(t('shareMissingHeader', { n: heads(missing) }))
       for (const [name, list] of byGroup) {
-        lines.push(`　${name}（${heads(list)}）：${names(list)}`)
+        lines.push(t('shareGroupLine', { name, n: heads(list), names: names(list) }))
       }
     } else {
-      lines.push(`未到 ${heads(missing)} 位：${names(missing)}`)
+      lines.push(t('shareMissingLine', { n: heads(missing), names: names(missing) }))
     }
   } else {
-    lines.push('全部到齊')
+    lines.push(t('allHere'))
   }
   if (excused.length > 0) {
-    lines.push(`請假 ${heads(excused)} 位：${names(excused)}`)
+    lines.push(t('shareExcusedLine', { n: heads(excused), names: names(excused) }))
   }
   return lines.join('\n')
 }
@@ -100,25 +124,20 @@ function heads(list: readonly Member[]): number {
   return list.reduce((n, m) => n + 1 + m.companions, 0)
 }
 
-function names(list: readonly Member[]): string {
-  return list.map((m) => (m.companions > 0 ? `${m.name}＋${m.companions}` : m.name)).join('、')
-}
 
 /** 依分組切開，保留第一次出現的順序；沒有分組的人排在最後。 */
-function splitByGroup(members: readonly Member[]): [string, Member[]][] {
+function splitByGroup(members: readonly Member[], ungrouped: string): [string, Member[]][] {
   const out = new Map<string, Member[]>()
   for (const m of members) {
-    const key = m.group_label ?? UNGROUPED_LABEL
+    const key = m.group_label ?? ungrouped
     const list = out.get(key)
     if (list) list.push(m)
     else out.set(key, [m])
   }
   const entries = [...out.entries()]
   return entries.sort((a, b) =>
-    a[0] === UNGROUPED_LABEL ? 1 : b[0] === UNGROUPED_LABEL ? -1 : 0)
+    a[0] === ungrouped ? 1 : b[0] === ungrouped ? -1 : 0)
 }
-
-const UNGROUPED_LABEL = '未分組'
 
 /** 觸發瀏覽器下載。 */
 export function downloadFile(filename: string, content: string, mime = 'text/csv;charset=utf-8'): void {

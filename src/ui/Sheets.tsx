@@ -350,7 +350,7 @@ export function ManageSheet({ owner, group, onClose }: {
 
         <button
           class="menu-item"
-          onClick={() => downloadFile(csvFilename(current), toCsv(members.value))}
+          onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
         >
           <IconDownload />
           <span><strong>{t('exportCsv')}</strong></span>
@@ -474,17 +474,17 @@ export function ManageSheet({ owner, group, onClose }: {
           onClose={() => setConfirming(null)}
           onConfirm={() => { void run(() => setRoomClosed(true)) }}
         >
-          <pre class="result-preview">{toShareText(current, members.value)}</pre>
+          <pre class="result-preview">{toShareText(current, members.value, prefs.value.lang)}</pre>
           <div class="row" style="margin-bottom:12px">
             <button
               class="btn btn-block"
-              onClick={() => { void copyText(toShareText(current, members.value), t('summaryCopied'), t('copyFailed')) }}
+              onClick={() => { void copyText(toShareText(current, members.value, prefs.value.lang), t('summaryCopied'), t('copyFailed')) }}
             >
               <IconCopy /> {t('copySummary')}
             </button>
             <button
               class="btn btn-block"
-              onClick={() => downloadFile(csvFilename(current), toCsv(members.value))}
+              onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
             >
               <IconDownload /> {t('exportCsv')}
             </button>

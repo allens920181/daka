@@ -164,6 +164,26 @@ const zh = {
   expiresOn: '{date} 自動刪除',
 
   // 匯出
+  /*
+   * 這幾個 key 是「離開這個 App 之後別人讀到的字」：貼進 LINE 群的那段文字、
+   * 下載下來的 CSV 表頭。它們一度直接寫死在 export.ts 裡，於是英文使用者按下
+   * Copy result 交出去的是一整段中文——而收到的人沒有介面可以切語言。
+   */
+  shareArrived: '已到 {arrived} / {total} 人',
+  shareMissingHeader: '未到 {n} 位：',
+  shareMissingLine: '未到 {n} 位：{names}',
+  shareGroupLine: '　{name}（{n}）：{names}',
+  shareExcusedLine: '請假 {n} 位：{names}',
+  /** 名字之間的分隔符。中文用頓號，英文用逗號加空格。 */
+  listSeparator: '、',
+  csvName: '姓名',
+  csvStatus: '狀態',
+  csvTime: '時間',
+  csvBy: '點名者',
+  csvPhone: '電話',
+  csvCompanions: '攜伴',
+  csvGroup: '分組',
+  csvNote: '備註',
   export: '匯出',
   exportCsv: '下載 CSV',
   copySummary: '複製結果',
@@ -382,8 +402,8 @@ const en: Record<MessageKey, string> = {
 
   manage: 'Manage',
   copyRoom: 'Duplicate room',
-  copyRoomHint: 'Same roster, all statuses reset. Use this for the return trip.',
-  copyRoomHintHelper: "Same roster, all statuses reset. You'll be the organiser of the new room.",
+  copyRoomHint: 'Same roster, statuses reset. For the return trip.',
+  copyRoomHintHelper: "Same roster, statuses reset. You'll own the new room.",
   copyRoomName: 'Name the new room',
   returnTrip: 'Return',
   editRoster: 'Edit roster',
@@ -392,7 +412,7 @@ const en: Record<MessageKey, string> = {
   closeRoom: 'Close room',
   closeRoomHint: 'No more check-ins, but the record stays.',
   finishRound: 'Finish this round',
-  finishRoundHint: 'Press this once the bus leaves. No more check-ins after.',
+  finishRoundHint: 'Once the bus leaves. No more check-ins after.',
   finishRoundBody: 'The record stays. Take the result with you first:',
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
@@ -402,6 +422,20 @@ const en: Record<MessageKey, string> = {
   leaveRoom: 'Leave room',
   expiresOn: 'Auto-deleted on {date}',
 
+  shareArrived: '{arrived} / {total} here',
+  shareMissingHeader: '{n} missing:',
+  shareMissingLine: '{n} missing: {names}',
+  shareGroupLine: '  {name} ({n}): {names}',
+  shareExcusedLine: '{n} excused: {names}',
+  listSeparator: ', ',
+  csvName: 'Name',
+  csvStatus: 'Status',
+  csvTime: 'Time',
+  csvBy: 'Checked by',
+  csvPhone: 'Phone',
+  csvCompanions: 'Companions',
+  csvGroup: 'Group',
+  csvNote: 'Note',
   export: 'Export',
   exportCsv: 'Download CSV',
   copySummary: 'Copy result',
@@ -469,7 +503,7 @@ const en: Record<MessageKey, string> = {
   removeFromGroup: 'Remove from group',
   groupCount: '{name}: {n} missing',
   boardMode: 'Board mode',
-  boardHint: 'Big display for a tablet at the door. The screen stays awake.',
+  boardHint: 'For a tablet at the door. The screen stays awake.',
   exitBoard: 'Exit board',
   printRoster: 'Print paper roster',
   printHint: 'A blank tick-list, for when a phone dies.',

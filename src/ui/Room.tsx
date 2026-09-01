@@ -2,7 +2,7 @@ import { Fragment } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
-  calledAt, markCalled, room, setStatusWithUndo, shareOnEnter, showToast,
+  calledAt, markCalled, prefs, room, setStatusWithUndo, shareOnEnter, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
 import { isExcusedNote } from '../lib/parse'
@@ -141,7 +141,7 @@ export function Room({ code }: { code: string }) {
     if (!current) return
     try {
       // scoped 已經是「目前這一車」的名單；標題用看得懂的字，不是內部哨符。
-      await navigator.clipboard.writeText(toShareText(current, scoped, groupLabel))
+      await navigator.clipboard.writeText(toShareText(current, scoped, prefs.value.lang, groupLabel))
       showToast(t('summaryCopied'))
     } catch {
       // 剪貼簿在部分瀏覽器需要使用者手勢或權限，失敗時不能靜默——
