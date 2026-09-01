@@ -1,0 +1,35 @@
+{
+  "name": "daka-rollcall",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "團體現場多人同步點名工具",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "audit:design": "node scripts/design-audit.mjs",
+    "e2e": "node scripts/e2e-local.mjs"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.0.0",
+    "@supabase/realtime-js": "^2.112.4",
+    "idb-keyval": "^6.2.2",
+    "preact": "^10.29.8",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/qrcode": "^1.5.5",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^3.2.0",
+    "playwright": "^1.56.0",
+    "pg": "^8.13.0",
+    "wait-on": "^8.0.0"
+  }
+}

@@ -1,0 +1,1141 @@
+/* ===========================================================================
+   點名房間 · 樣式
+
+   這個檔案是 docs/design-system.md 的實作。所有數值都必須來自下面的 token；
+   要新增一個字級或間距，先改規範文件。
+   scripts/design-audit.mjs 會在真實瀏覽器裡驗對比、觸控尺寸與字級。
+   =========================================================================== */
+
+:root {
+  /* --- 表面與文字 ------------------------------------------------------ */
+  --paper: #f5f7f8;
+  --surface: #ffffff;
+  --surface-2: #eceff1;
+  --surface-3: #dfe4e6;
+  /*
+   * 「浮在凹槽上」的那一階。分段控制是全站唯一靠高度（而不是顏色）表示選中的
+   * 元件：軌道用 --surface-2，選中的那一格要比軌道亮。
+   *
+   * 不能直接用 --surface：這套色階在明暗兩邊的方向是相反的。淺色是
+   * surface(白) > paper > surface-2 > surface-3；深色是
+   * surface-3 > surface-2 > surface > paper。用 --surface 的話，深色下選中的那格
+   * 會比軌道**暗**（實測 1.12:1，方向反了），加上 --el-1 是純黑陰影在深底上等於
+   * 不存在——「被選到的那一格」看起來反而像沒被選到。
+   */
+  --raised: #ffffff;
+  --ink: #10171a;
+  --ink-2: #4a5a5e;
+  --ink-3: #5f6f73;          /* 最淺的可用文字色 */
+  --rule: #d7dee0;
+  --rule-strong: #b5c0c3;
+  /* 「未到」的空心圈。--rule-strong 只有 1.86:1，逆光下等於不存在，而這個圈
+     是名單上唯一表示「這個人還沒上車」的形狀。非文字元件的門檻是 3:1。 */
+  --check-line: #7d8f93;
+
+  /* --- 品牌與互動 ------------------------------------------------------ */
+  --accent: #0e5e63;         /* 淡底上的強調文字也用這個 */
+  --accent-ink: #ffffff;
+  --accent-soft: #e2f0f0;
+  --accent-strong: #0c8a93;  /* 焦點框、載入。不得用於一般文字 */
+
+  /* --- 點名狀態（只用於名單成員）--------------------------------------- */
+  --st-pending: #a84d06;
+  --st-arrived: #1c7a44;
+  --st-arrived-soft: #e3f2e8;
+  --st-arrived-line: #a9d7bc;
+
+  /* --- 系統回饋（只用於系統訊息）--------------------------------------- */
+  --fb-warn: #a84d06;
+  --fb-warn-soft: #fbecdd;
+  --fb-error: #a02b22;
+  --fb-error-soft: #f9e6e4;
+
+  /* --- Toast：獨立表面，不參與明暗反轉 --------------------------------- */
+  --toast-bg: #10171a;
+  --toast-ink: #f5f7f8;
+  --toast-action: #5fd8df;
+  /* Toast 是誤觸的安全網，必須看得出它是一塊獨立的東西。淺色時深底自己就
+     夠分明（18:1），深色時底色只比它蓋住的名單列亮 1.12:1，靠邊框定義。 */
+  --toast-line: #10171a;
+
+  /* --- Google 登入按鈕：第三方品牌規範，具名例外 -----------------------
+     這四個值來自 Google 自己的 Sign-in with Google 按鈕規範，不是我們的色票，
+     所以不參與這個系統的任何配色決定，也不得用在別的地方。
+     為什麼不用 --btn-primary：Google 的標記必須維持原色，而四色的 G 放在
+     品牌 teal 上既違反他們的規範，藍色與綠色的對比也不夠。 */
+  --google-bg: #ffffff;
+  --google-ink: #1f1f1f;
+  --google-line: #747775;
+  --google-bg-active: #f2f2f2;
+
+  /* --- 字級（八階，不得新增）------------------------------------------- */
+  --fs-1: 11px;   /* 等寬微標籤，唯一允許小於 13px 的用途 */
+  --fs-2: 13px;
+  --fs-3: 15px;
+  --fs-4: 17px;   /* 內文、姓名、所有輸入框（iOS 低於 16px 會放大頁面）*/
+  --fs-5: 20px;
+  --fs-6: 26px;
+  --fs-7: 34px;
+  --fs-8: 44px;
+
+  /* --- 看板字級：另一套尺度 --------------------------------------------
+     觀看距離從 30 公分變成 3 公尺，八階字級在這個情境不夠用。
+     這是規範裡的具名例外，見 docs/design/03-tokens.md §4.1。 */
+  /* 看板字級：三階具名例外，只能用在 .board。取 vw 與 vh 的較大者——只掛 vw
+     的話，直立手機（390px 寬）上最大的數字只有 52px，而那台手機的高度有
+     844px 完全沒用到。橫放的平板則由 vw 主導。 */
+  --bfs-1: clamp(18px, max(2.4vw, 2.6vh), 34px);   /* 標籤 */
+  --bfs-2: clamp(26px, max(3.6vw, 4vh), 54px);     /* 未到的名字 */
+  --bfs-3: clamp(52px, max(11vw, 10vh), 168px);    /* 主角數字 */
+
+  /* --- 間距（4px 基準）------------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* --- 圓角 ------------------------------------------------------------ */
+  --r-1: 8px;
+  --r-2: 12px;
+  --r-3: 18px;
+  --r-full: 999px;
+
+  /* --- 陰影 ------------------------------------------------------------ */
+  --el-1: 0 1px 2px rgba(16, 23, 26, .06);
+  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(16, 23, 26, .06);
+  --el-3: 0 -8px 40px rgba(16, 23, 26, .18);
+
+  /* --- 不透明度與遮罩 --------------------------------------------------- */
+  --op-disabled: .5;
+  --op-muted: .62;   /* 請假的列：在場但不需要行動 */
+  --scrim: rgba(9, 16, 18, .45);
+
+  /* --- 觸控 ------------------------------------------------------------ */
+  --tap-min: 48px;
+  --tap-row: 64px;
+  --tap-lg: 56px;
+
+  /* --- 動態 ------------------------------------------------------------ */
+  --dur-1: 120ms;    /* 按壓回饋 */
+  --dur-2: 200ms;    /* 進場、離場、狀態轉換 */
+  --dur-3: 320ms;    /* 較大位移 */
+  --dur-ambient: 1100ms; /* 持續性指示（同步中的脈動）*/
+  --ease: cubic-bezier(.2, .8, .3, 1);
+
+  /* --- 層級（只有這四層，不得插值）------------------------------------- */
+  --z-sticky: 20;    /* 頂欄 */
+  --z-dock: 30;      /* 底部動作列 */
+  --z-modal: 40;     /* 面板、確認對話框 */
+  --z-toast: 50;     /* Toast：永遠在最上層，它可能是唯一的復原機會 */
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #0d1315;
+    --surface: #151e21;
+    --surface-2: #1d282b;
+    --surface-3: #263336;
+    --raised: #263336;
+    --ink: #e9eef0;
+    --ink-2: #a4b3b6;
+    --ink-3: #8b9b9f;
+    --rule: #29373a;
+    --rule-strong: #3b4b4f;
+    --check-line: #6b8085;
+
+    --accent: #3fbfc7;
+    --accent-ink: #06232a;
+    --accent-soft: #11292c;
+    --accent-strong: #5fd8df;
+
+    --st-pending: #e0913f;
+    --st-arrived: #55bd7c;
+    --st-arrived-soft: #12291d;
+    --st-arrived-line: #2b5c3e;
+
+    --fb-warn: #e0913f;
+    --fb-warn-soft: #2a2013;
+    --fb-error: #e5736a;
+    --fb-error-soft: #2e1a18;
+
+    --toast-bg: #1d282b;
+    --toast-ink: #e9eef0;
+    --toast-action: #5fd8df;
+    --toast-line: #69868d;
+    --google-bg: #131314;
+    --google-ink: #e3e3e3;
+    --google-line: #8e918f;
+    --google-bg-active: #1e1f20;
+
+    --scrim: rgba(0, 0, 0, .62);
+
+    --el-1: 0 1px 2px rgba(0, 0, 0, .4);
+    --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(0, 0, 0, .35);
+    --el-3: 0 -8px 40px rgba(0, 0, 0, .5);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --paper: #0d1315;
+  --surface: #151e21;
+  --surface-2: #1d282b;
+  --surface-3: #263336;
+  --raised: #263336;
+  --ink: #e9eef0;
+  --ink-2: #a4b3b6;
+  --ink-3: #8b9b9f;
+  --rule: #29373a;
+  --rule-strong: #3b4b4f;
+  --check-line: #6b8085;
+
+  --accent: #3fbfc7;
+  --accent-ink: #06232a;
+  --accent-soft: #11292c;
+  --accent-strong: #5fd8df;
+
+  --st-pending: #e0913f;
+  --st-arrived: #55bd7c;
+  --st-arrived-soft: #12291d;
+  --st-arrived-line: #2b5c3e;
+
+  --fb-warn: #e0913f;
+  --fb-warn-soft: #2a2013;
+  --fb-error: #e5736a;
+  --fb-error-soft: #2e1a18;
+
+  --toast-bg: #1d282b;
+  --toast-ink: #e9eef0;
+  --toast-action: #5fd8df;
+  --toast-line: #69868d;
+  --google-bg: #131314;
+  --google-ink: #e3e3e3;
+  --google-line: #8e918f;
+  --google-bg-active: #1e1f20;
+
+  --scrim: rgba(0, 0, 0, .62);
+
+  --el-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(0, 0, 0, .35);
+  --el-3: 0 -8px 40px rgba(0, 0, 0, .5);
+
+  color-scheme: dark;
+}
+
+/* === 基礎 ================================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  /* 刻意不載入網路字型：字型檔會擋住爛網路上的首次渲染。 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Helvetica Neue', sans-serif;
+  font-size: var(--fs-3);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+#app { min-height: 100%; }
+
+h1, h2, h3 { margin: 0; font-weight: 700; line-height: 1.25; text-wrap: balance; }
+p { margin: 0; }
+button, input, textarea, select { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--accent-strong);
+  outline-offset: 2px;
+  border-radius: var(--r-1);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* === 版面 ================================================================ */
+
+.shell { max-width: 640px; margin: 0 auto; padding: 0 var(--sp-4); }
+.stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+.row { display: flex; align-items: center; gap: var(--sp-2); }
+.spacer { flex: 1; }
+
+/* === 按鈕 ================================================================ */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-height: var(--tap-min); padding: 0 var(--sp-4);
+  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
+  background: var(--surface); color: var(--ink);
+  font-size: var(--fs-4); font-weight: 600; cursor: pointer;
+  transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
+  touch-action: manipulation;
+  /* 按鈕上的字不換行。「臨時加人」被主按鈕擠成兩行時，那一顆看起來就不像
+     一個可以按的東西，而是一段被擠壞的文字。放不下要縮的是內距，不是行數。 */
+  white-space: nowrap;
+}
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: var(--op-disabled); cursor: not-allowed; transform: none; }
+
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/*
+ * Google 登入按鈕。照 Google 自己的按鈕規範走，不是這個系統的樣式。
+ * 深色時底色只比面板亮 1.10:1，跟 Toast 一樣靠邊框定義形狀（邊框 5.8:1）。
+ */
+.btn-google {
+  background: var(--google-bg); color: var(--google-ink);
+  border-color: var(--google-line); font-weight: 600;
+}
+.btn-google:active { background: var(--google-bg-active); }
+
+/* 切換鍵的「開」狀態（底部動作列的「只看未到」）。用色塊而不是 .btn-primary：
+   它不是「這個畫面最主要的動作」，只是一個開關現在是開著的。 */
+.btn.is-on {
+  background: var(--accent-soft); border-color: var(--accent);
+  color: var(--accent); font-weight: 700;
+}
+.btn-ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-danger { color: var(--fb-error); border-color: var(--rule); }
+.btn-danger:hover { background: var(--fb-error-soft); }
+.btn-block { width: 100%; }
+.btn-lg { min-height: var(--tap-lg); }
+/* 小尺寸只縮字級與內距，高度仍守 48px 下限。 */
+.btn-sm { padding: 0 var(--sp-3); font-size: var(--fs-3); font-weight: 500; }
+
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--tap-min); height: var(--tap-min); flex: none;
+  border: none; border-radius: var(--r-2); background: transparent;
+  color: var(--ink-2); cursor: pointer; touch-action: manipulation;
+  transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+.icon-btn:active { transform: scale(.94); }
+
+/* === 輸入 ================================================================ */
+
+.field { display: flex; flex-direction: column; gap: var(--sp-1); }
+.label { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
+.hint { font-size: var(--fs-2); color: var(--ink-3); line-height: 1.5; }
+
+.input, .textarea {
+  width: 100%; padding: var(--sp-3) var(--sp-3);
+  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
+  background: var(--surface); color: var(--ink);
+  font-size: var(--fs-4);
+}
+.input:focus, .textarea:focus {
+  border-color: var(--accent); outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.textarea { min-height: 200px; resize: vertical; line-height: 1.7; }
+
+.code-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-6); font-weight: 700; letter-spacing: .34em;
+  text-align: center; text-transform: uppercase;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-5);
+}
+
+/* === 首頁 ================================================================ */
+
+.home-head { padding: var(--sp-6) 0 var(--sp-5); }
+.home-title { font-size: var(--fs-6); letter-spacing: -.01em; }
+.home-tagline { color: var(--ink-2); font-size: var(--fs-3); margin-top: var(--sp-1); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: var(--r-3); padding: var(--sp-4); box-shadow: var(--el-1);
+}
+.card-title { font-size: var(--fs-4); font-weight: 700; margin-bottom: var(--sp-3); }
+
+.recent-item {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%;
+  min-height: var(--tap-row); padding: var(--sp-2) var(--sp-3);
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: var(--r-2); cursor: pointer; text-align: left;
+  color: inherit; font: inherit;
+}
+.recent-item:hover { border-color: var(--rule-strong); }
+.recent-name { font-weight: 600; font-size: var(--fs-4); }
+/* 11px 只留給等寬微標籤；這一行有日期與統計要讀，用 13px。分隔點用 ::before
+   產生，才不會在只有一段時多出一個孤兒點。 */
+.recent-meta {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2);
+  font-size: var(--fs-2); color: var(--ink-3);
+}
+.recent-meta > span + span::before { content: "· "; }
+
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 2px var(--sp-2); border-radius: var(--r-full);
+  font-size: var(--fs-2); font-weight: 600;
+  background: var(--surface-2); color: var(--ink-2);
+}
+.tag-owner { background: var(--accent-soft); color: var(--accent); }
+
+/* === 頂欄 ================================================================ */
+
+.topbar {
+  position: sticky; top: 0; z-index: var(--z-sticky);
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  padding-top: env(safe-area-inset-top);
+}
+.topbar-inner { display: flex; align-items: center; gap: var(--sp-1); min-height: var(--tap-lg); }
+/* 頂欄標題是一顆按鈕（點了回到名單頂端），但要長得像標題。 */
+.topbar-title {
+  min-width: 0; flex: 1;
+  border: none; background: transparent; color: inherit;
+  font: inherit; text-align: left; padding: 0; cursor: pointer;
+  min-height: var(--tap-min);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.topbar-name {
+  font-size: var(--fs-4); font-weight: 700; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.topbar-sub { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-2); color: var(--ink-3); }
+
+/* 計分區捲出畫面時的精簡計數。這個數字不能消失。 */
+.topbar-count {
+  display: inline-flex; align-items: baseline; gap: var(--sp-1);
+  font-size: var(--fs-2); font-weight: 700; color: var(--st-pending);
+  white-space: nowrap;
+}
+.topbar-count.done { color: var(--st-arrived); }
+.topbar-count.closed { color: var(--ink-2); }
+
+/* 計分區捲出畫面之後，頂欄的大小關係對調。 */
+.topbar.handover .topbar-name { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
+.topbar.handover .topbar-count { font-size: var(--fs-5); line-height: 1.1; }
+.topbar.handover .topbar-sub { font-size: var(--fs-3); }
+/* 接手時空間讓給人數，同步狀態收成一顆圓點（aria-label 仍在）。 */
+.topbar.handover .sync-text { position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.topbar.handover .sync { flex: none; }
+/* 捲動後頂欄接手時，數字同樣要帶著「哪一車」一起走。 */
+.topbar-scope {
+  color: var(--accent); font-weight: 700;
+}
+.topbar-scope::after { content: " · "; color: var(--ink-3); font-weight: 400; }
+
+.sync { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-2); font-weight: 600; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
+.sync-online { color: var(--st-arrived); }
+/* 「未到」（--st-pending）與「離線」（--fb-warn）本來是同一個琥珀色，而它們
+   唯一會同框的地方就是頂欄那一行。離線是系統狀態不是點名狀態，改用中性色，
+   並把圓點畫成空心以示「還沒接上」。 */
+.sync-offline { color: var(--ink-2); }
+.sync-offline .sync-dot {
+  background: transparent; border: 2px solid currentColor;
+  width: 9px; height: 9px;
+}
+.sync-syncing { color: var(--accent); }
+.sync-local { color: var(--ink-3); }
+@media (prefers-reduced-motion: no-preference) {
+  .sync-syncing .sync-dot { animation: pulse var(--dur-ambient) ease-in-out infinite; }
+}
+@keyframes pulse { 50% { opacity: .3; } }
+
+/* === 計數區 ============================================================== */
+
+.scoreboard {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-4) 0 var(--sp-3);
+}
+.score-main { align-self: baseline; }
+.score-main { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.score-number {
+  font-size: var(--fs-8); font-weight: 800; line-height: 1;
+  letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  color: var(--st-pending);
+}
+/* 全部到齊時大字換成一句話，字級降一階才放得下四個中文字。 */
+.score-number.score-done { font-size: var(--fs-7); color: var(--st-arrived); }
+.score-text { display: flex; flex-direction: column; min-width: 0; }
+.score-label { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
+/* 選了分組之後，計分區的數字必須自己說是哪一車。 */
+.score-scope {
+  font-size: var(--fs-2); font-weight: 700; color: var(--accent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.score-heads {
+  margin-left: auto; font-size: var(--fs-4); font-weight: 700;
+  color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+
+/*
+ * 進度條是計分區的下緣，不自己佔一列。
+ * 控制項的節奏用兩個值而不是一個：同一群內 8px，跨群 24px。五段等距的橫條
+ * 會讓所有東西看起來一樣重要，也就是一樣不重要——志工第一次拿到手機，要在
+ * 兩秒內看出「上面是答案、下面是切片」。
+ */
+.progress {
+  height: 6px; border-radius: var(--r-full);
+  background: var(--surface-3); overflow: hidden;
+  margin-bottom: var(--sp-5);
+}
+.progress-fill {
+  height: 100%; background: var(--st-arrived); border-radius: var(--r-full);
+  transition: width var(--dur-2) var(--ease);
+}
+
+/* === 篩選與搜尋 ========================================================== */
+
+.segmented {
+  display: flex; gap: var(--sp-1); padding: var(--sp-1);
+  background: var(--surface-2); border-radius: var(--r-2);
+  margin-bottom: var(--sp-2);
+  overflow-x: auto; scrollbar-width: none;
+}
+.segmented::-webkit-scrollbar { display: none; }
+.segment {
+  flex: 1 0 auto; min-height: var(--tap-min); padding: 0 var(--sp-3);
+  border: none; border-radius: var(--r-1); background: transparent;
+  color: var(--ink-2); font-size: var(--fs-3); font-weight: 600;
+  cursor: pointer; touch-action: manipulation; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
+}
+.segment[aria-pressed='true'] { background: var(--raised); color: var(--ink); box-shadow: var(--el-1); }
+.segment .count { font-variant-numeric: tabular-nums; color: var(--ink-3); font-weight: 500; }
+.segment[aria-pressed='true'] .count { color: var(--accent); }
+
+/* --- 分組（分車）------------------------------------------------------ */
+
+.groups {
+  display: flex; gap: var(--sp-2); margin-bottom: var(--sp-2);
+  overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+}
+/*
+ * 捲軸是藏起來的，所以最後一顆晶片被切在畫面邊緣時，看起來像數字被削掉一半，
+ * 而不是「還有東西可以往右滑」。右緣淡出把那條硬邊變成明確的邀請。
+ *
+ * 晶片改印人頭之後這件事更常發生：兩位數比一位數寬，「全部 11｜第一車 4｜
+ * 第二車 6｜未分組 1」在 390px 上就排不下了。
+ *
+ * 三顆以內一定排得下，不淡出——沒有東西可捲的時候淡出只會讓最後一顆看起來壞掉。
+ * 用 currentColor 而不是色票：遮罩只讀 alpha，這裡沒有任何顏色決定。
+ */
+.groups:has(> :nth-child(4)) {
+  mask-image: linear-gradient(to right, currentColor calc(100% - 16px), transparent 100%);
+}
+.groups::-webkit-scrollbar { display: none; }
+.group-chip {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  min-height: var(--tap-min); padding: 0 var(--sp-3); flex: 0 0 auto;
+  border: 1px solid var(--rule-strong); border-radius: var(--r-full);
+  background: var(--surface); color: var(--ink-2);
+  font-size: var(--fs-3); font-weight: 600; cursor: pointer;
+  white-space: nowrap; touch-action: manipulation;
+}
+.group-chip[aria-pressed='true'] {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+}
+/* 每一車還有幾個沒到——這是選車的人真正在看的數字。 */
+.group-n {
+  font-variant-numeric: tabular-nums; font-weight: 700;
+  color: var(--st-pending);
+}
+.group-n.done { color: var(--st-arrived); }
+
+/* 看全部時標出分組交界，現場才知道哪裡是第二車的開頭。 */
+.group-divider {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-1) var(--sp-1);
+  font-size: var(--fs-2); font-weight: 700; color: var(--ink-3);
+}
+.group-divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--rule);
+}
+
+/* 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。 */
+.search-wrap { position: relative; padding: 0 0 var(--sp-2); }
+/* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
+   留自訂的那顆：它有 48px 的觸控目標與無障礙名稱，原生那顆兩者都沒有。 */
+.search-wrap input[type='search']::-webkit-search-cancel-button,
+.search-wrap input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.search-clear {
+  position: absolute; right: var(--sp-1); top: 50%; transform: translateY(-50%);
+  width: var(--tap-min); height: var(--tap-min); border: none; background: transparent;
+  color: var(--ink-3); font-size: var(--fs-5); cursor: pointer; border-radius: var(--r-1);
+}
+
+/* === 名單列 ============================================================== */
+
+/* 名單前一定要有跨群的間距，不管上面最後一段是搜尋框還是分段控制。 */
+.list { margin-top: var(--sp-3); }
+
+/*
+ * 底部留白要同時讓開底部動作列（88px）與可能疊在它上面的 Toast（約 60px）。
+ * 少留的話，名單最後一兩列會永遠被蓋住——而收尾時要找的正是最後那幾個人。
+ * 176px = 88 + 88，落在 4px 階上。
+ */
+.list { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: 176px; }
+
+/*
+ * 平板橫向：名單排成兩欄。
+ *
+ * 看板模式才是平板的正式定位，但 #/r/<房號> 在平板上完全可達——掃 QR 進來的
+ * 就是這個畫面，而教會團體最常有的閒置裝置正好是平板。1024×768 橫放時只看得到
+ * 3 個人（比手機還少），左右各空 208px。
+ *
+ * grid 是列優先流動，所以 sort_order 的閱讀順序不變；列高與內容也完全不動。
+ */
+@media (min-width: 700px) and (orientation: landscape) {
+  .shell { max-width: 900px; }
+  .dock-inner { max-width: 900px; }
+  .list {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--sp-2) var(--sp-3);
+  }
+  /* 分組標題要橫跨整列，不然「第二車」會縮在半欄裡看起來像一個人。 */
+  .group-divider { grid-column: 1 / -1; }
+}
+
+.member {
+  display: flex; align-items: stretch;
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: var(--r-2); overflow: hidden;
+}
+.member-main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-3);
+  min-height: var(--tap-row); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-3);
+  border: none; background: transparent; color: inherit;
+  text-align: left; cursor: pointer; font: inherit; touch-action: manipulation;
+}
+.member-main:active { background: var(--surface-2); }
+
+/* 狀態同時用顏色與形狀表達：逆光下顏色會失真，色盲者看不出色相。 */
+.member.is-arrived { background: var(--st-arrived-soft); border-color: var(--st-arrived-line); }
+/*
+ * 請假的列要「在場但不需要行動」，但不能用整列 opacity 做——那會把 13px 的
+ * 說明文字壓到 2.5:1，而且自動檢查驗不到（getComputedStyle 讀不到祖先的
+ * opacity）。改成逐項指定顏色，每一項自己都達標。
+ */
+.member.is-excused { background: var(--surface); }
+.member.is-excused .member-name { color: var(--ink-2); }
+.member.is-excused .member-meta { color: var(--ink-3); }
+/* 請假的圈用虛線表達就夠了。再壓暗會把它推到 2:1——而它是名單上唯一表示
+   「這個人的狀態」的形狀，不能比背景還淡。 */
+.member.is-excused .check { border-color: var(--check-line); }
+
+.check {
+  width: 30px; height: 30px; flex: none; border-radius: 50%;
+  border: 2px solid var(--check-line);
+  display: grid; place-items: center; color: transparent;
+  transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+.member.is-arrived .check { background: var(--st-arrived); border-color: var(--st-arrived); color: var(--surface); }
+.member.is-excused .check { border-style: dashed; }
+
+.member-body { min-width: 0; flex: 1; }
+/*
+ * 姓名比按鈕大一階。這一行在一場點名裡會被讀 80 次，而底部那顆按鈕只按一次，
+ * 兩者卻同樣是 --fs-4。行高也要自己定：繼承 body 的 1.55 會讓 64px 的列裡
+ * 多出一截沒有用的空白，而名字與備註之間反而擠在一起。
+ */
+.member-name {
+  font-size: var(--fs-5); font-weight: 600; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.member.is-excused .member-name { text-decoration: line-through; text-decoration-thickness: 1px; }
+.member-meta {
+  display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap;
+  font-size: var(--fs-2); color: var(--ink-3); margin-top: 1px;
+}
+
+/*
+ * 右側動作區。撥號鍵整場點名都在，而它就貼在「整列＝切換已到」的熱區旁邊：
+ * 拇指往右偏一點就變成打電話給人家。相鄰的觸控目標之間至少要有 8px，而且
+ * 切換區與動作區之間要有一條看得見的界線。
+ */
+.member-side {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 0 var(--sp-2) 0 var(--sp-1);
+  border-left: 1px solid var(--rule);
+}
+.member.is-arrived .member-side { border-left-color: var(--st-arrived-line); }
+.call-btn { color: var(--accent); }
+/* 已經打過的號碼收斂成中性色：那一格的意思從「該打這個」變成「打過了」。 */
+.call-btn.is-called { color: var(--ink-3); }
+.chip-called { background: var(--surface-2); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* 關閉之後整列不能點：說出來，不要只是沒反應。 */
+.member-main:disabled { cursor: default; }
+.member-main:disabled:active { background: transparent; }
+
+/* --- Chip：三種語意，不得混用 --- */
+.chip {
+  display: inline-flex; align-items: center;
+  padding: 1px var(--sp-2); border-radius: var(--r-1);
+  font-size: var(--fs-2); font-weight: 600;
+  background: var(--surface-2); color: var(--ink-2);
+}
+/* 已到列的底色 --st-arrived-soft 和 --accent-soft 亮度差只有 1.01:1，
+   光靠底色的話這個 chip 在已到的列裡整個溶掉。用邊框定義形狀。 */
+.chip-count {
+  background: var(--accent-soft); color: var(--accent);
+  border: 1px solid var(--accent); padding: 0 var(--sp-2);
+}
+/* 同名的人才會出現的辨識晶片（分車或電話尾碼）。要比備註更顯眼，
+   因為它存在的唯一理由就是「讓你分得出這兩個陳怡君」。 */
+.chip-tell {
+  background: var(--accent-soft); color: var(--accent); font-weight: 700;
+  border: 1px solid var(--accent); padding: 0 var(--sp-2);
+}
+.chip-note { background: var(--surface-2); color: var(--ink-2); }
+.chip-data {
+  background: var(--surface-2); color: var(--ink-2); font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* 結束之後的定格結果橫幅。 */
+.banner-result {
+  display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+}
+.banner-result-text { flex: 1; min-width: 0; font-weight: 700; }
+
+/* 結束對話框裡的結果預覽：就是等一下要貼回 LINE 的那段文字，原樣呈現。 */
+.result-preview {
+  margin: 0 0 var(--sp-3); padding: var(--sp-3);
+  background: var(--surface-2); border-radius: var(--r-2);
+  font: inherit; font-size: var(--fs-2); color: var(--ink-2);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 180px; overflow-y: auto; text-align: left;
+}
+
+/* 管理面板頂端的身分列：協助者從掃 QR 直接進房，這是他唯一會看到「我是誰、
+   我少了什麼」的地方。 */
+.role-line {
+  display: flex; align-items: center; gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.role-name {
+  flex: 1; min-width: 0; text-align: left;
+  min-height: var(--tap-min); padding: 0 var(--sp-2);
+  border: none; background: transparent; cursor: pointer;
+  font: inherit; font-size: var(--fs-3); font-weight: 600; color: var(--accent);
+  border-radius: var(--r-1);
+}
+.role-name:active { background: var(--surface-2); }
+
+/* === 狀態畫面 ============================================================ */
+
+.empty {
+  text-align: center; padding: var(--sp-7) var(--sp-5); color: var(--ink-3);
+  background: var(--surface); border: 1px dashed var(--rule-strong);
+  border-radius: var(--r-3);
+}
+.empty-big { font-size: var(--fs-4); font-weight: 600; color: var(--ink-2); margin-bottom: var(--sp-1); }
+.center-note { text-align: center; padding: var(--sp-7) var(--sp-5); color: var(--ink-3); }
+
+/* --- 載入骨架：顯示即將出現的形狀，而不是一句「載入中」 --- */
+.skeleton-row {
+  height: var(--tap-row); border-radius: var(--r-2);
+  background: var(--surface); border: 1px solid var(--rule);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-row { animation: breathe var(--dur-ambient) ease-in-out infinite; }
+  .skeleton-row:nth-child(2) { animation-delay: 90ms; }
+  .skeleton-row:nth-child(3) { animation-delay: 180ms; }
+  .skeleton-row:nth-child(4) { animation-delay: 270ms; }
+  .skeleton-row:nth-child(5) { animation-delay: 360ms; }
+}
+@keyframes breathe { 50% { opacity: .55; } }
+
+/* === 底部動作列 ========================================================== */
+
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-dock);
+  padding: var(--sp-2) var(--sp-4) calc(var(--sp-2) + env(safe-area-inset-bottom));
+  background: var(--paper);
+  box-shadow: var(--el-2);
+}
+/*
+ * 主按鈕吃掉剩下的寬度，次要按鈕按自己的字寬佔位——反過來（主按鈕 width:100%）
+ * 會把次要按鈕壓到換行，於是「臨時加人」在每一張房間截圖裡都斷成兩行。
+ */
+.dock-inner { max-width: 640px; margin: 0 auto; display: flex; gap: var(--sp-2); }
+.dock-inner > .btn { flex: none; }
+.dock-inner > .btn-block { flex: 1 1 auto; min-width: 0; width: auto; }
+
+/* === 面板 ================================================================ */
+
+/* 遮罩層。overlay-bottom 用於面板，overlay-center 用於確認對話框。 */
+.overlay {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: var(--scrim);
+  display: flex; justify-content: center;
+}
+.overlay-bottom { align-items: flex-end; }
+.overlay-center { align-items: center; padding: var(--sp-4); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .overlay { animation: fade var(--dur-2) var(--ease); }
+  .sheet { animation: rise var(--dur-2) var(--ease); }
+  .dialog { animation: pop var(--dur-2) var(--ease); }
+  .toast { animation: rise var(--dur-2) var(--ease); }
+}
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { transform: translateY(24px); opacity: 0; } }
+@keyframes pop { from { transform: scale(.96); opacity: 0; } }
+
+.sheet {
+  width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto;
+  box-shadow: var(--el-3);
+  border-radius: var(--r-3) var(--r-3) 0 0;
+  padding: var(--sp-2) var(--sp-4) calc(var(--sp-5) + env(safe-area-inset-bottom));
+
+  /*
+   * 下緣的捲動陰影。管理面板在 390×844 上內容有 950px、看得見 743px——「刪除
+   * 房間」永遠在摺線下，中英文都一樣（英文只是多切一項）。面板本來就會捲，
+   * 問題是它完全沒說：底邊剛好是螢幕邊緣，切斷的那一列看起來像壞掉而不是
+   * 「還有」。
+   *
+   * 兩層漸層的老技巧：遮蓋層 background-attachment: local 跟著內容捲，陰影層
+   * scroll 固定不動。捲到底時遮蓋層蓋住陰影，陰影自己消失——不需要 JS，也不會
+   * 在捲到底之後還把「刪除房間」壓得灰灰的。
+   */
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(transparent, var(--paper)),
+    linear-gradient(transparent, var(--rule));
+  background-repeat: no-repeat;
+  background-size: 100% 24px, 100% 10px;
+  background-position: 0 100%, 0 100%;
+  background-attachment: local, scroll;
+}
+.sheet-grip {
+  width: 38px; height: 4px; border-radius: var(--r-full);
+  background: var(--rule-strong); margin: var(--sp-1) auto var(--sp-3);
+}
+.sheet-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.sheet-title { font-size: var(--fs-5); }
+
+.menu { display: flex; flex-direction: column; gap: 2px; }
+/*
+ * 圖示對齊標題那一行，不是整列的中線：有副說明的項目會長成兩三行，用
+ * align-items: center 的話圖示會浮到中間，整條圖示欄上下跳動，就失去
+ * 「一眼掃過去分辨」的功能。svg 高 20px、標題行高約 24px，補 2px 置中。
+ */
+.menu-item {
+  display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%;
+  min-height: var(--tap-lg); padding: var(--sp-2) var(--sp-3);
+  border: none; border-radius: var(--r-2); background: transparent;
+  color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  text-decoration: none;
+}
+.menu-item > svg { flex: none; margin-top: 2px; }
+/* 只有一行的項目維持垂直置中，才不會看起來黏在上緣。 */
+.menu-item > span { flex: 1; min-width: 0; }
+.menu-item:hover { background: var(--surface-2); }
+.menu-item strong { font-weight: 600; font-size: var(--fs-3); }
+.menu-item .sub { display: block; font-size: var(--fs-2); color: var(--ink-3); font-weight: 400; }
+.menu-item.danger { color: var(--fb-error); }
+.menu-divider { height: 1px; background: var(--rule); margin: var(--sp-2) 0; }
+
+/* --- 確認對話框：不可逆動作的最後一道關卡 --- */
+.dialog {
+  width: 100%; max-width: 420px;
+  background: var(--surface); border-radius: var(--r-3);
+  box-shadow: var(--el-3); padding: var(--sp-5) var(--sp-4) var(--sp-4);
+}
+.dialog-title { font-size: var(--fs-5); margin-bottom: var(--sp-2); }
+.dialog-body { font-size: var(--fs-3); color: var(--ink-2); line-height: 1.65; margin-bottom: var(--sp-4); }
+.dialog-actions { display: flex; gap: var(--sp-2); }
+
+/* === 分享 ================================================================ */
+
+.code-display {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-7); font-weight: 700; letter-spacing: .18em;
+  text-align: center; padding: var(--sp-4) var(--sp-2) var(--sp-4) var(--sp-5);
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: var(--r-2); color: var(--ink);
+}
+.qr-card {
+  /* QR 一律白底黑碼：掃描器要的是對比，不是配色。 */
+  background: #fff; padding: var(--sp-3); border-radius: var(--r-2);
+  display: grid; place-items: center; border: 1px solid var(--rule);
+}
+.qr-card img { display: block; width: 100%; max-width: 240px; height: auto; }
+
+/* === 名單解析預覽 ======================================================== */
+
+.preview {
+  max-height: 260px; overflow-y: auto;
+  border: 1px solid var(--rule); border-radius: var(--r-2);
+  background: var(--surface);
+}
+.preview-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--fs-3);
+}
+.preview-row:last-child { border-bottom: none; }
+/* 移除鍵。這是「解析器猜錯了」唯一的出口，不能小到按不到——48px 觸控目標，
+   但視覺上收斂（--ink-3），因為多數列不需要動它。 */
+.preview-remove { color: var(--ink-3); flex: none; }
+.preview-remove:active { background: var(--surface-2); }
+.preview-index { font-size: var(--fs-1); color: var(--ink-3); min-width: 22px; font-variant-numeric: tabular-nums; }
+
+/* === 提示框 ============================================================== */
+
+.note {
+  padding: var(--sp-3); border-radius: var(--r-2);
+  font-size: var(--fs-2); line-height: 1.6;
+  background: var(--surface-2); color: var(--ink-2);
+}
+.note-warn { background: var(--fb-warn-soft); color: var(--fb-warn); }
+.note-error { background: var(--fb-error-soft); color: var(--fb-error); }
+
+.banner {
+  display: flex; align-items: flex-start; gap: var(--sp-2);
+  padding: var(--sp-3); border-radius: var(--r-2);
+  font-size: var(--fs-2); line-height: 1.6; margin-bottom: var(--sp-3);
+}
+.banner-warn { background: var(--fb-warn-soft); color: var(--fb-warn); }
+.banner-muted { background: var(--surface-2); color: var(--ink-2); }
+
+/* === Toast =============================================================== */
+
+.toast-wrap {
+  position: fixed; left: 0; right: 0; bottom: calc(88px + env(safe-area-inset-bottom));
+  z-index: var(--z-toast); display: flex; justify-content: center; padding: 0 var(--sp-4);
+  pointer-events: none;
+}
+/*
+ * 面板開著的時候 Toast 改貼上緣。
+ *
+ * 下緣的 88px 是為了讓開底部動作列，但面板是從下緣長上來的：Toast 於是落在
+ * 選單列之間，蓋住「結束這一輪」49px，而且 .toast 是 pointer-events: auto，
+ * 那五秒內那一列按不下去。深色下更難看出它是外來的——Toast 底色和
+ * .menu-item:hover 同一個 --surface-2，圓角與左右內縮也同一套。
+ *
+ * 上緣是面板頂端以上的遮罩區（面板最高 88vh），那裡本來就沒有東西可以按。
+ * Toast 仍然是 z-toast 最上層，仍然保有五秒的復原機會。
+ */
+:root[data-modal] .toast-wrap {
+  bottom: auto; top: calc(var(--sp-3) + env(safe-area-inset-top));
+}
+.toast {
+  display: flex; align-items: center; gap: var(--sp-3);
+  max-width: 560px; width: 100%; pointer-events: auto;
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border-radius: var(--r-2);
+  background: var(--toast-bg); color: var(--toast-ink);
+  border: 1px solid var(--toast-line);
+  box-shadow: var(--el-3); font-size: var(--fs-3);
+}
+.toast-text { flex: 1; min-width: 0; }
+/* 帶「復原」的 Toast 是誤觸的安全機制，不得低調化。 */
+.toast-action {
+  flex: none; min-height: 44px; padding: 0 var(--sp-3);
+  border: 1px solid currentColor; border-radius: var(--r-1);
+  background: transparent; color: var(--toast-action);
+  font-size: var(--fs-3); font-weight: 700; cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ===========================================================================
+   列印：手機沒電時的紙本備援。
+   印出來的是一份可以用筆勾的空白名單，不是螢幕的複製品——
+   已經點過的狀態不印，因為紙本的用途是「從頭重點一次」。
+   =========================================================================== */
+/* 螢幕上不存在的東西：只有紙本需要抬頭與電話。 */
+.print-head, .print-phone { display: none; }
+
+@page {
+  size: A4 portrait;
+  margin: 12mm 10mm 14mm;
+}
+
+@media print {
+  :root {
+    --paper: #fff; --surface: #fff; --surface-2: #fff; --surface-3: #fff; --raised: #fff;
+    --ink: #000; --ink-2: #333; --ink-3: #555;
+    --rule: #999; --rule-strong: #666; --check-line: #000;
+    --st-arrived-soft: #fff; --st-arrived-line: #999;
+  }
+  body { background: #fff; color: #000; font-size: 11pt; }
+
+  .topbar, .dock, .toast-wrap, .overlay, .segmented, .search-wrap,
+  .progress, .member-side, .icon-btn, .btn, .groups,
+  .scoreboard, .banner { display: none !important; }
+
+  /*
+   * 抬頭。以前這裡印的是借來的計分區文字（「還有 12 位沒到」）——一個離開
+   * 印表機就過期的數字，而活動名稱與房號反而被藏起來。手機沒電時拿著這張紙
+   * 的人要知道：這是哪一場、房號多少、誰在點、幾號。
+   */
+  .print-head { display: block; margin-bottom: 6pt; border-bottom: 1.5pt solid #000; }
+  .print-title { font-size: 17pt; font-weight: 700; margin: 0 0 2pt; }
+  .print-meta {
+    display: flex; gap: 12pt; flex-wrap: wrap;
+    font-size: 10pt; color: #333; margin: 0 0 3pt;
+  }
+  .print-blanks { font-size: 10pt; color: #000; margin: 0 0 6pt; }
+
+  /* 分組在紙本上是小標題，每一組從新的區塊開始。 */
+  .group-divider {
+    display: block; font-size: 12pt; font-weight: 700; color: #000;
+    padding: 8pt 0 3pt; border-bottom: 1pt solid #000;
+    break-after: avoid; break-inside: avoid;
+  }
+  .group-divider::after { display: none; }
+
+  .shell { max-width: none; padding: 0; }
+
+  /*
+   * 兩欄。單欄時每一列只用掉 15% 的行寬，20 個人就印成 5 張 A4——而這是
+   * 「手機沒電」時的備援，張數愈少愈可能真的被帶在身上。
+   */
+  .list { padding-bottom: 0; gap: 0; display: block; columns: 2; column-gap: 10mm; }
+
+  .member {
+    break-inside: avoid; border: none; border-bottom: 1pt dotted #999;
+    border-radius: 0; background: #fff !important;
+    display: flex; align-items: baseline;
+  }
+  .member.is-arrived, .member.is-excused { background: #fff !important; opacity: 1; }
+  .member-main { min-height: 0; padding: 4pt 0; flex: 1; }
+  /* 紙本一律印空白格子讓人用筆勾 */
+  .check { width: 12pt; height: 12pt; border: 1pt solid #000; border-radius: 2pt;
+           background: #fff !important; color: transparent !important; opacity: 1; }
+  .check svg { display: none; }
+  .member-name { font-size: 11pt; color: #000; }
+  .member.is-excused .member-name { text-decoration: line-through; color: #333; }
+  .member-meta { color: #555; font-size: 8.5pt; }
+  .chip, .chip-count, .chip-note, .chip-tell, .chip-data {
+    background: none !important; border: none !important; padding: 0 !important;
+    color: #333 !important; font-weight: 400;
+  }
+  .chip::after { content: "　"; }
+
+  /*
+   * 每一車從新的一欄開始。一欄一車，剛好可以撕開分給兩個顧車的人——這比
+   * 「兩欄平均分配、第一車被切成一半」更接近紙本真正的用途。
+   */
+  .group-divider { break-before: column; }
+  .group-divider:first-child { break-before: avoid; }
+
+  /* 電話印在右側：收尾時「看到未到 → 打電話」是唯一的下一步。 */
+  .print-phone {
+    display: inline; font-size: 9pt; color: #333; white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+}
+
+/* ===========================================================================
+   看板模式：平板放在門邊給大家看。
+   唯讀——不做點名，避免路過的人靠上去就改了狀態。
+   =========================================================================== */
+
+.board {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: var(--sp-4) var(--sp-5) calc(var(--sp-4) + env(safe-area-inset-bottom));
+  background: var(--paper);
+}
+
+.board-head { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
+.board-title {
+  font-size: var(--bfs-1); font-weight: 700; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.board-scope {
+  flex: none; font-size: var(--bfs-1); font-weight: 800; color: var(--accent);
+  padding: 0 var(--sp-3); border: 2px solid var(--accent); border-radius: var(--r-full);
+  white-space: nowrap;
+}
+.board-sync {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  margin-left: auto; flex: none;
+}
+.board-sync .sync-dot { width: 14px; height: 14px; }
+/* 3 公尺外分不出顏色差別，所以圓點旁邊一定要有字。 */
+.board-sync-text { font-size: var(--bfs-1); font-weight: 700; }
+
+.board-center {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--sp-2);
+  text-align: center; min-height: 0;
+}
+
+/*
+ * 主角。看板最大的字要回答車長真正的問題——「還缺誰」，不是「已經到幾個」。
+ * 全部到齊之後才換成那句話。
+ */
+.board-hero {
+  display: flex; align-items: baseline; justify-content: center; gap: var(--sp-3);
+  font-size: var(--bfs-3); font-weight: 800; line-height: 1;
+  letter-spacing: -.02em; color: var(--st-pending);
+  font-variant-numeric: tabular-nums; margin: 0;
+}
+.board-hero-unit { font-size: var(--bfs-1); font-weight: 700; letter-spacing: 0; }
+/* 「全部到齊」是四個中文字，用主角字級會撐破一行。 */
+.board-hero.done { color: var(--st-arrived); font-size: var(--bfs-2); }
+
+.board-sub {
+  font-size: var(--bfs-1); font-weight: 700; color: var(--ink-2);
+  font-variant-numeric: tabular-nums; margin: 0;
+}
+
+.board-label { font-size: var(--bfs-1); font-weight: 600; color: var(--ink-2); }
+
+/*
+ * 未到者的名字。以前這裡固定 38vh 又 overflow: auto——最需要看板的那一刻
+ * （還有 20 個人沒上車）正好是它把名字切掉的時候，而三公尺外沒有人能捲動。
+ * 改成吃掉中間所有剩餘空間；人多時自動降一階字級，讓更多名字進得來。
+ */
+.board-names {
+  display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
+  gap: var(--sp-2) var(--sp-5);
+  list-style: none; margin: var(--sp-3) 0; padding: 0;
+  flex: 1; min-height: 0; overflow-y: auto; width: 100%;
+}
+.board-names li {
+  font-size: var(--bfs-2); font-weight: 600; color: var(--ink);
+  display: inline-flex; align-items: baseline; gap: var(--sp-1);
+}
+.board-names.dense li { font-size: var(--bfs-1); }
+.board-plus { font-size: var(--bfs-1); color: var(--accent); font-weight: 700; }
+
+.board-foot { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; flex: none; }
+.board-foot .groups { margin-bottom: 0; flex: 1; min-width: 0; }
+/* 看板是給三公尺外看的，但晶片是走過去用手按的——放大一階就夠，不必到 bfs。 */
+.board-foot .group-chip { font-size: var(--fs-4); min-height: var(--tap-lg); }
+
+/*
+ * 直立手機上分組列會被「離開看板」擠到只剩半個晶片寬。看板本來就是給平板的，
+ * 但手機也擋不住有人這樣用——窄螢幕時讓兩者各佔一行。
+ * 640px 是全站唯一的斷點（見 05-patterns.md §5.1）。
+ */
+@media (max-width: 640px) {
+  .board-foot { flex-direction: column; align-items: stretch; }
+  .board-foot .groups { width: 100%; flex: none; }
+  .board-foot > .btn { width: 100%; }
+}

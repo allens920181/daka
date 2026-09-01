@@ -1,0 +1,40 @@
+# 瀏覽器端的品質檢查：設計規範 + 單機模式端對端。
+#
+# 刻意跟 deploy.yml 分開、也不擋部署：這兩個檢查要跑真的瀏覽器，比較慢也
+# 比較容易受環境影響。出遊當天早上不該因為一個像素差就上不了線——但違反
+# 規範仍然要在 commit 上留下紅叉，讓人看得見。
+name: Quality
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  browser-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # 這兩個檢查跑單機模式即可，不需要 Supabase。
+      - run: npm run build
+
+      - name: Serve dist
+        run: |
+          npx vite preview --port 4173 --host 127.0.0.1 &
+          npx wait-on http://127.0.0.1:4173/daka/ --timeout 30000
+
+      - name: 設計規範檢查（docs/design-system.md §12）
+        run: npm run audit:design
+
+      - name: 端對端（單機模式）
+        run: npm run e2e

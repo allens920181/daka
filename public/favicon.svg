@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="點名房間">
+  <rect width="512" height="512" rx="112" fill="#0E5E63"/>
+  <g fill="#FFFFFF">
+    <rect x="92" y="122" width="60" height="60" rx="16"/>
+    <rect x="186" y="138" width="234" height="28" rx="14"/>
+    <rect x="92" y="226" width="60" height="60" rx="16"/>
+    <rect x="186" y="242" width="234" height="28" rx="14"/>
+  </g>
+  <g fill="none" stroke="#0E5E63" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="107,152 119,165 138,139"/>
+    <polyline points="107,256 119,269 138,243"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-width="11" opacity="0.5">
+    <rect x="97.5" y="335.5" width="49" height="49" rx="12"/>
+  </g>
+  <rect x="186" y="346" width="234" height="28" rx="14" fill="#FFFFFF" opacity="0.5"/>
+</svg>
