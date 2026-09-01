@@ -17,7 +17,7 @@ export function NewRoom() {
 
   const drafts = draftsFrom(text)
 
-  // 開房失敗（訊號差時很常見）之後只要切去 LINE 再切回來，PWA 就可能已經
+  // 開空間失敗（訊號差時很常見）之後只要切去 LINE 再切回來，PWA 就可能已經
   // 重載。那份剛貼好的 200 人名單不能就這樣沒了。
   useEffect(() => {
     let alive = true
@@ -113,7 +113,7 @@ export function NewRoom() {
 }
 
 /**
- * 錯誤訊息。`where` 決定同一種錯誤要怎麼講——「連不上網路」在開房、進房、
+ * 錯誤訊息。`where` 決定同一種錯誤要怎麼講——「連不上網路」在開空間、進空間、
  * 改名單三個地方的後果完全不同，共用一句話一定會有兩個地方在說謊。
  */
 export function errorMessage(
@@ -130,7 +130,7 @@ export function errorMessage(
     case 'room-not-found': return t('errRoomNotFound')
     case 'room-closed': return t('errRoomClosed')
     case 'not-owner': return t('errNotOwner')
-    // 單機模式下輸入別人的房號：問題不在房號，在這個站台沒有雲端。
+    // 單機模式下輸入別人的代碼：問題不在代碼，在這個站台沒有雲端。
     case 'not-configured': return where === 'join' ? t('errJoinLocalOnly') : t('errNotConfigured')
     case 'too-many-members': return t('errTooMany')
     default: return t('errUnknown')

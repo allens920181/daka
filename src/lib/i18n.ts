@@ -7,15 +7,15 @@ const zh = {
   tagline: '大家一起點同一份名單',
 
   // 首頁
-  openRoom: '開啟房間',
-  joinRoom: '加入房間',
+  openRoom: '開啟空間',
+  joinRoom: '加入空間',
   /* 標籤問問題，placeholder 給例子。原本兩處共用同一個字串，19 字的問句上下相隔
      20px 完整重複兩遍。重複的是例子，不是問句，所以例子搬到 placeholder 就結案。 */
   roomNameLabel: '這場活動叫什麼？',
   roomNamePlaceholder: '例如：秋季旅遊 · 出發',
-  codePlaceholder: '輸入 6 碼房號',
-  recentRooms: '最近的房間',
-  noRecentRooms: '還沒有房間。開一間，或用房號加入別人的。',
+  codePlaceholder: '輸入 6 碼代碼',
+  recentRooms: '最近的空間',
+  noRecentRooms: '還沒有開過空間。開一個，或用代碼加入別人的。',
   owner: '我開的',
   helper: '協助點名',
   create: '建立',
@@ -69,10 +69,10 @@ const zh = {
   someone: '有一位',
   draftRestored: '這是你上次還沒開成的名單。',
   draftDiscard: '清掉重來',
-  dropClosed: '{name} 沒有存到：這間房已經關閉了',
+  dropClosed: '{name} 沒有存到：這個空間已經關閉了',
   dropNotOwner: '{name} 沒有存到：這台裝置沒有權限改這份名單',
   dropTooMany: '{name} 沒有加進去：名單人數已達上限',
-  dropGone: '{name} 沒有存到：這間房在伺服器上已經不在了',
+  dropGone: '{name} 沒有存到：這個空間在伺服器上已經不在了',
   dropMore: '另有 {n} 筆',
   addWalkIn: '臨時加人',
   walkInPlaceholder: '沒報名但到場的人',
@@ -87,7 +87,7 @@ const zh = {
   onlyMissing: '只看未到',
   showAll: '看全部',
   removeFromPreview: '把「{name}」從名單移除',
-  signOutWhat: '登出後，這支手機自己開的房間照樣管得動；用帳號接過來的活動會暫時看不到，重新登入就會回來。',
+  signOutWhat: '登出後，這支手機自己開的空間照樣管得動；用帳號接過來的活動會暫時看不到，重新登入就會回來。',
   roomClosedShort: '已關閉',
   printTotal: '共 {people} 人（{heads} 人頭）',
   printBlanks: '日期：＿＿＿＿＿＿　　點名者：＿＿＿＿＿＿　　完成時間：＿＿＿＿＿＿',
@@ -97,9 +97,9 @@ const zh = {
   youAre: '你是 {name}',
   setYourName: '寫上你的名字 ›',
   /*
-   * 這句話一度是假的：它說「複製房間」只有主揪做得到，但「再開一間」刻意對所有人
+   * 這句話一度是假的：它說「複製空間」只有主揪做得到，但「再開一個」刻意對所有人
    * 開放（Sheets.tsx 的 owner 區塊從「編輯名單」才開始），同一個面板上方 3px 還對
-   * 協助者寫著「你會是新房間的主揪」。開頭的「你是協助點名的人：」也在複述正上方
+   * 協助者寫著「你會是新空間的主揪」。開頭的「你是協助點名的人：」也在複述正上方
    * 那顆「協助點名」藥丸。留下的是協助者真正做不到、而且會需要去找主揪的那兩件事。
    */
   helperLimits: '編輯名單、結束這一輪只有主揪做得到。',
@@ -113,20 +113,20 @@ const zh = {
   // 分享
   share: '分享',
   shareTitle: '讓其他人加入',
-  shareHint: '把房號或 QR 給他們，不用註冊、不用安裝。',
-  whoIsHere: '現在在這間房裡',
-  onlyYouHere: '目前只有你。把房號或 QR 給協助點名的人，他們進來後會出現在這裡。',
+  shareHint: '把代碼或 QR 給他們，不用註冊、不用安裝。',
+  whoIsHere: '現在在這個空間裡',
+  onlyYouHere: '目前只有你。把代碼或 QR 給協助點名的人，他們進來後會出現在這裡。',
   peersHere: '{n} 支手機：{names}',
   peersAllAnon: '都還沒寫名字',
   peersPlusAnon: '，另外 {n} 支沒寫名字',
   shareLink: '傳給別人',
   shareLinkText: '一起點名',
-  /* 單機模式下這三句取代整個分享面板：發出去的房號對任何人都沒有用。 */
-  shareLocalTitle: '這間房只有你看得到',
-  shareLocalBody: '這支手機沒連上雲端，名單只存在這裡。把房號或連結給別人，他們會看到「找不到這個房號」。',
+  /* 單機模式下這三句取代整個分享面板：發出去的代碼對任何人都沒有用。 */
+  shareLocalTitle: '這個空間只有你看得到',
+  shareLocalBody: '這支手機沒連上雲端，名單只存在這裡。把代碼或連結給別人，他們會看到「找不到這個代碼」。',
   shareLocalHow: '多人一起點，要先設定雲端連線（見專案 README）。你還是可以自己點完，用「複製結果」或列印交出名單。',
-  roomCode: '房號',
-  copyCode: '複製房號',
+  roomCode: '代碼',
+  copyCode: '複製代碼',
   copyLink: '複製連結',
   copied: '已複製',
   scanToJoin: '掃描加入',
@@ -134,33 +134,33 @@ const zh = {
   // 管理
   manage: '管理',
   /*
-   * 不叫「複製這間房」。「複製」在這個 app 的其他五個地方都指複製到剪貼簿
-   * （複製結果、複製房號、複製連結、已複製、結果已複製），只有這裡指「開一間
-   * 新的」——而且按下「複製這間房」的當下，底部動作列的「複製結果」就在同一個
-   * 畫面上。用「開」和首頁的「開啟房間」對齊：這個 app 裡「開」＝生出一間房。
+   * 不叫「複製這個空間」。「複製」在這個 app 的其他五個地方都指複製到剪貼簿
+   * （複製結果、複製代碼、複製連結、已複製、結果已複製），只有這裡指「開一個
+   * 新的」——而且按下「複製這個空間」的當下，底部動作列的「複製結果」就在同一個
+   * 畫面上。用「開」和首頁的「開啟空間」對齊：這個 app 裡「開」＝生出一個空間。
    * 英文不必跟著改：Copy／Duplicate 本來就是兩個詞，英文沒有這個碰撞。
    */
-  copyRoom: '再開一間',
+  copyRoom: '再開一個',
   copyRoomHint: '同一份名單、狀態全部歸零。回程點名用這個。',
-  copyRoomHintHelper: '同一份名單、狀態全部歸零。你會是新房間的主揪。',
-  copyRoomName: '新房間叫什麼？',
+  copyRoomHintHelper: '同一份名單、狀態全部歸零。你會是新空間的主揪。',
+  copyRoomName: '新空間叫什麼？',
   returnTrip: '回程',
   editRoster: '編輯名單',
   editRosterWarning: '換掉名單會清除目前所有點名紀錄，確定嗎？',
   rename: '重新命名',
-  closeRoom: '關閉房間',
+  closeRoom: '關閉空間',
   closeRoomHint: '關閉後就不能再點名，但紀錄還在。',
-  /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉房間」——
+  /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉空間」——
      使用者心裡想的是「這件事做完了」，不是「把一個容器關起來」。 */
   finishRound: '結束這一輪',
   finishRoundHint: '車開了就按這個。結束後不能再點名。',
   finishRoundBody: '紀錄還在。先帶走結果：',
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
-  roomClosed: '這間房已關閉',
-  deleteRoom: '刪除房間',
+  roomClosed: '這個空間已關閉',
+  deleteRoom: '刪除空間',
   deleteRoomWarning: '刪除後無法復原，所有點名紀錄都會消失。確定嗎？',
-  leaveRoom: '離開房間',
+  leaveRoom: '離開空間',
   expiresOn: '{date} 自動刪除',
 
   // 匯出
@@ -198,21 +198,21 @@ const zh = {
   localOnlyHint: '這台裝置還沒設定雲端，名單只存在這支手機，其他人看不到。',
 
   // 錯誤
-  errRoomNotFound: '找不到這個房號。請確認有沒有打錯。',
-  errConfusable: '房號不會用到 {chars} 這些字元，請再確認一次。',
-  errBadCode: '房號是 6 碼英數字。',
-  errNotOwner: '只有開啟這間房的裝置可以做這件事。',
-  errRoomClosed: '這間房已經關閉了。',
+  errRoomNotFound: '找不到這個代碼。請確認有沒有打錯。',
+  errConfusable: '代碼不會用到 {chars} 這些字元，請再確認一次。',
+  errBadCode: '代碼是 6 碼英數字。',
+  errNotOwner: '只有開啟這個空間的裝置可以做這件事。',
+  errRoomClosed: '這個空間已經關閉了。',
   /*
-   * 這句話只用在「動作真的失敗了」的地方——開房、進房、改名單、寄驗證碼。
+   * 這句話只用在「動作真的失敗了」的地方——開空間、進空間、改名單、寄驗證碼。
    * 它一度寫成「你可以繼續點名，恢復連線後會自動上傳」，但那五個呼叫點沒有
-   * 一個把東西排進待送佇列：房沒開成、名單沒換成、驗證碼沒寄出。畫面上真正
+   * 一個把東西排進待送佇列：空間沒開成、名單沒換成、驗證碼沒寄出。畫面上真正
    * 會自動上傳的只有點名，而那件事由同步指示（SyncBadge）負責說。
    */
   errOffline: '目前連不上網路，這個動作沒有完成。',
-  errOfflineCreate: '目前連不上網路，房間沒有開成。你貼的名單還留著，連上網再按一次就好。',
-  errJoinLocalOnly: '這個網站沒有連上雲端，房間只存在開啟它的那支手機裡，加不進來。',
-  errJoinOffline: '目前連不上網路，還沒辦法把這間房載下來。連上網再試一次。',
+  errOfflineCreate: '目前連不上網路，空間沒有開成。你貼的名單還留著，連上網再按一次就好。',
+  errJoinLocalOnly: '這個網站沒有連上雲端，空間只存在開啟它的那支手機裡，加不進來。',
+  errJoinOffline: '目前連不上網路，還沒辦法把這個空間載下來。連上網再試一次。',
   errUnknown: '出了點問題，請再試一次。',
   errNotConfigured: '還沒設定雲端連線，目前是單機模式。',
   errGoogleFailed: 'Google 登入沒有完成。可以再試一次，或改用 Email 驗證碼。',
@@ -236,7 +236,7 @@ const zh = {
   signInGoogle: '用 Google 登入',
   signInWithEmail: '改用 Email 驗證碼',
   inAppBrowserWarn: '你現在是在 App 的內建瀏覽器裡（例如 LINE）。Google 在這裡常常會擋下登入——真的卡住的話，用右上角的選單「用瀏覽器開啟」，或改用下面的 Email 驗證碼。',
-  signInWhy: '登入後，換手機也管得動你開的房間，常用名單跟著走。協助點名的人不用登入。',
+  signInWhy: '登入後，換手機也管得動你開的空間，常用名單跟著走。協助點名的人不用登入。',
   emailLabel: 'Email',
   emailPlaceholder: 'you@example.com',
   sendCode: '寄驗證碼',
@@ -244,10 +244,10 @@ const zh = {
   codeLabel: '六碼驗證碼',
   verify: '登入',
   resend: '重寄',
-  claimed: '已把這台裝置的 {rooms} 個房間、{rosters} 份常用名單接到你的帳號。',
+  claimed: '已把這台裝置的 {rooms} 個空間、{rosters} 份常用名單接到你的帳號。',
   claimedNothing: '登入成功。',
   myRooms: '我的活動',
-  myRoomsEmpty: '還沒有活動。開啟房間之後它就會出現在這裡，換手機也找得到。',
+  myRoomsEmpty: '還沒有活動。開啟空間之後它就會出現在這裡，換手機也找得到。',
   roomStat: '{arrived} / {total} 人',
   errBadOtp: '驗證碼不對或已過期，請再試一次。',
   errRateLimited: '寄太多次了，請等幾分鐘再試。',

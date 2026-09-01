@@ -1,7 +1,7 @@
 /**
- * 房號：6 碼，31 個字元的字母表。
+ * 代碼：6 碼，31 個字元的字母表。
  * 刻意排除 0 / O / 1 / I / L —— 這幾個在手寫、口述、小螢幕上最容易搞錯。
- * 因為它們永遠不會出現在房號裡，使用者一旦打出來就一定是打錯，可以明確告知。
+ * 因為它們永遠不會出現在代碼裡，使用者一旦打出來就一定是打錯，可以明確告知。
  */
 export const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
 export const CODE_LENGTH = 6
@@ -53,7 +53,7 @@ export function findConfusables(input: string): string[] {
   return [...seen]
 }
 
-/** 房主金鑰：只存在開房的那台裝置，用來授權破壞性操作。 */
+/** 擁有者金鑰：只存在開空間的那台裝置，用來授權破壞性操作。 */
 export function generateOwnerKey(): string {
   const buf = new Uint8Array(24)
   crypto.getRandomValues(buf)

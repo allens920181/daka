@@ -594,7 +594,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /*
  * 平板橫向：名單排成兩欄。
  *
- * 看板模式才是平板的正式定位，但 #/r/<房號> 在平板上完全可達——掃 QR 進來的
+ * 看板模式才是平板的正式定位，但 #/r/<代碼> 在平板上完全可達——掃 QR 進來的
  * 就是這個畫面，而教會團體最常有的閒置裝置正好是平板。1024×768 橫放時只看得到
  * 3 個人（比手機還少），左右各空 208px。
  *
@@ -723,7 +723,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   max-height: 180px; overflow-y: auto; text-align: left;
 }
 
-/* 管理面板頂端的身分列：協助者從掃 QR 直接進房，這是他唯一會看到「我是誰、
+/* 管理面板頂端的身分列：協助者從掃 QR 直接進空間，這是他唯一會看到「我是誰、
    我少了什麼」的地方。 */
 .role-line {
   display: flex; align-items: center; gap: var(--sp-2);
@@ -772,7 +772,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 /*
  * 主按鈕吃掉剩下的寬度，次要按鈕按自己的字寬佔位——反過來（主按鈕 width:100%）
- * 會把次要按鈕壓到換行，於是「臨時加人」在每一張房間截圖裡都斷成兩行。
+ * 會把次要按鈕壓到換行，於是「臨時加人」在每一張空間截圖裡都斷成兩行。
  */
 .dock-inner { max-width: 640px; margin: 0 auto; display: flex; gap: var(--sp-2); }
 .dock-inner > .btn { flex: none; }
@@ -807,13 +807,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
   /*
    * 下緣的捲動陰影。管理面板在 390×844 上內容有 950px、看得見 743px——「刪除
-   * 房間」永遠在摺線下，中英文都一樣（英文只是多切一項）。面板本來就會捲，
+   * 空間」永遠在摺線下，中英文都一樣（英文只是多切一項）。面板本來就會捲，
    * 問題是它完全沒說：底邊剛好是螢幕邊緣，切斷的那一列看起來像壞掉而不是
    * 「還有」。
    *
    * 兩層漸層的老技巧：遮蓋層 background-attachment: local 跟著內容捲，陰影層
    * scroll 固定不動。捲到底時遮蓋層蓋住陰影，陰影自己消失——不需要 JS，也不會
-   * 在捲到底之後還把「刪除房間」壓得灰灰的。
+   * 在捲到底之後還把「刪除空間」壓得灰灰的。
    */
   background-color: var(--paper);
   background-image:
@@ -988,8 +988,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
   /*
    * 抬頭。以前這裡印的是借來的計分區文字（「還有 12 位沒到」）——一個離開
-   * 印表機就過期的數字，而活動名稱與房號反而被藏起來。手機沒電時拿著這張紙
-   * 的人要知道：這是哪一場、房號多少、誰在點、幾號。
+   * 印表機就過期的數字，而活動名稱與代碼反而被藏起來。手機沒電時拿著這張紙
+   * 的人要知道：這是哪一場、代碼多少、誰在點、幾號。
    */
   .print-head { display: block; margin-bottom: 6pt; border-bottom: 1.5pt solid #000; }
   .print-title { font-size: 17pt; font-weight: 700; margin: 0 0 2pt; }

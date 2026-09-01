@@ -111,9 +111,9 @@ export async function saveOutbox(ops: PendingOp[]): Promise<void> {
 }
 
 /**
- * 開房畫面的草稿。
+ * 開空間畫面的草稿。
  *
- * 主揪常常是在遊覽車上、訊號最差的地方貼那份 200 人的名單。開房失敗之後
+ * 主揪常常是在遊覽車上、訊號最差的地方貼那份 200 人的名單。開空間失敗之後
  * 只要切去 LINE 看一眼再切回來，PWA 就可能已經重載，貼好的名單整份消失。
  * 存下來，錯誤訊息才敢說「你貼的名單還留著」。
  */
@@ -148,7 +148,7 @@ export async function loadRecentRooms(): Promise<RecentRoom[]> {
 
 export async function rememberRoom(entry: RecentRoom): Promise<RecentRoom[]> {
   const list = (await loadRecentRooms()).filter((r) => r.code !== entry.code)
-  // 保留 isOwner：重新加入自己開的房間時不該把管理身分弄丟。
+  // 保留 isOwner：重新加入自己開的空間時不該把管理身分弄丟。
   const next = [entry, ...list].slice(0, 12)
   await safeSet(K_RECENT, next)
   return next

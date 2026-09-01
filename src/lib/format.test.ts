@@ -28,7 +28,7 @@ describe('formatDate', () => {
     expect(formatDate(AT, 'en', NOW)).toBe('Sep 30')
   })
 
-  it('跨年時補上年份，才不會把去年的房間看成今天的', () => {
+  it('跨年時補上年份，才不會把去年的空間看成今天的', () => {
     expect(formatDate(new Date(2025, 8, 30), 'zh', NOW)).toBe('2025/9/30')
     expect(formatDate(new Date(2025, 8, 30), 'en', NOW)).toBe('Sep 30, 2025')
   })

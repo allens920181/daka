@@ -35,7 +35,7 @@ export function pendingAddIds(queue: readonly PendingOp[]): Set<string> {
   return new Set(queue.filter((q) => q.kind === 'add').map((q) => q.memberId))
 }
 
-/** 佇列裡屬於這個房間的筆數，用來顯示「離線中，N 筆待上傳」。 */
+/** 佇列裡屬於這個空間的筆數，用來顯示「離線中，N 筆待上傳」。 */
 export function countForRoom(queue: readonly PendingOp[], code: string): number {
   return queue.filter((q) => q.code === code).length
 }

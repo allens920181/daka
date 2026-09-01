@@ -76,7 +76,7 @@ describe('mergeMembers', () => {
     expect(merged.map((m) => m.id)).toEqual(['a', 'walkin'])
   })
 
-  it('房主刪掉的人不會被復活', () => {
+  it('擁有者刪掉的人不會被復活', () => {
     const local = [member('a'), member('removed')]
     const remote = [member('a')]
     expect(mergeMembers(local, remote, new Set(['other'])).map((m) => m.id)).toEqual(['a'])

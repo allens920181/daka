@@ -27,25 +27,25 @@ const reconcile = async (d) => {
   await d.p.waitForTimeout(900)
 }
 
-// --- 主揪開房 ---
+// --- 主揪開空間 ---
 await A.p.goto(URL); await A.p.waitForTimeout(1000)
 ok('[主揪] 連上雲端（不是單機模式）', (await A.p.locator('.banner-muted').count()) === 0)
-await A.p.getByRole('button', { name: /開啟房間/ }).first().click(); await A.p.waitForTimeout(300)
+await A.p.getByRole('button', { name: /開啟空間/ }).first().click(); await A.p.waitForTimeout(300)
 await A.p.locator('#room-name').fill('秋季旅遊 · 出發')
 await A.p.locator('#roster-text').fill('王小明 0912345678\n李美花 +1\n陳大同（請假）\n張三\n李四')
 await A.p.waitForTimeout(300)
 await A.p.getByRole('button', { name: /建立/ }).click(); await A.p.waitForTimeout(1600)
 const code = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
-ok(`[主揪] 房間建立於伺服器，房號 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
+ok(`[主揪] 空間建立於伺服器，代碼 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
 // 5 列裡陳大同請假，剩 4 列＝5 個人頭（李美花＋1）。大字是人頭不是列數。
 ok('[主揪] 未到 5 人頭（請假的不算）', (await A.p.locator('.score-number').textContent()) === '5')
 
 // --- 同工用連結加入 ---
 await B.p.goto(`${URL}#/j/${code}`); await B.p.waitForTimeout(2000)
-ok('[同工] 用分享連結進到同一間房', (await B.p.locator('.topbar-name').textContent()) === '秋季旅遊 · 出發')
+ok('[同工] 用分享連結進到同一個空間', (await B.p.locator('.topbar-name').textContent()) === '秋季旅遊 · 出發')
 ok('[同工] 看到同一份名單（5 人）', (await B.p.locator('.member').count()) === 5)
 ok('[同工] 未到也是 5', (await B.p.locator('.score-number').textContent()) === '5')
-ok('[同工] 標示為協助點名而非房主', (await B.p.locator('.topbar button[aria-label="管理"]').count()) === 1)
+ok('[同工] 標示為協助點名而非擁有者', (await B.p.locator('.topbar button[aria-label="管理"]').count()) === 1)
 
 // --- 主揪點名 → 同工對帳後看到 ---
 await A.p.locator('.member-main').nth(0).click(); await A.p.waitForTimeout(1200)
@@ -90,17 +90,17 @@ ok('[主揪] 恢復連線後自動補上，全部到齊',
    (await A.p.locator('.score-number').textContent())?.trim() === '全部到齊')
 ok('[同工] 同步狀態回到已同步', /已同步/.test((await B.p.locator('.sync').textContent()) || ''))
 
-// --- 再開一間（回程）---
+// --- 再開一個（回程）---
 await A.p.locator('.topbar button[aria-label="管理"]').click(); await A.p.waitForTimeout(600)
-await A.p.getByRole('button', { name: /再開一間/ }).click(); await A.p.waitForTimeout(400)
+await A.p.getByRole('button', { name: /再開一個/ }).click(); await A.p.waitForTimeout(400)
 const prefill = await A.p.locator('#copy-name').inputValue()
-ok(`[主揪] 新房名預帶「回程」：${prefill}`, prefill.includes('回程'))
+ok(`[主揪] 新空間名預帶「回程」：${prefill}`, prefill.includes('回程'))
 await A.p.getByRole('button', { name: '確定' }).click(); await A.p.waitForTimeout(2200)
-ok('[主揪] 進入新房間', (await A.p.locator('.topbar-name').textContent())?.includes('回程'))
+ok('[主揪] 進入新空間', (await A.p.locator('.topbar-name').textContent())?.includes('回程'))
 ok('[主揪] 回程名單一樣是 5 人', (await A.p.locator('.member').count()) === 5)
 ok('[主揪] 已到全部歸零、請假保留 → 未到 5 人頭', (await A.p.locator('.score-number').textContent()) === '5')
 const newCode = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
-ok(`[主揪] 回程是新的房號 ${newCode}`, newCode !== code)
+ok(`[主揪] 回程是新的代碼 ${newCode}`, newCode !== code)
 
 // --- 衝突提示：我改的被別人蓋掉時，要看得見 ---
 // 先給同工一個名字，這樣提示才會說「已由 陳姐 改為…」而不是「已被其他人」。
@@ -111,11 +111,11 @@ await B.p.locator('#checker-name').blur(); await B.p.waitForTimeout(400)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(300)
 await B.p.goto(`${URL}#/r/${newCode}`); await B.p.waitForTimeout(1800)
 
-// 複製回程房會換一組新房號，而五支協助的手機還開著舊房——他們的畫面完全
-// 沒有變化，會繼續在舊房打勾。複製完的下一個動作 100% 是把新房號發出去，
+// 複製回程空間會換一組新代碼，而五支協助的手機還開著舊空間——他們的畫面完全
+// 沒有變化，會繼續在舊空間打勾。複製完的下一個動作 100% 是把新代碼發出去，
 // 所以分享面板要自己打開。
 ok('[主揪] 複製完自動打開分享面板', (await A.p.locator('.sheet-title').textContent())?.includes('加入'))
-ok('[主揪] 面板裡是新房號', (await A.p.locator('.code-display').textContent())?.trim() === newCode)
+ok('[主揪] 面板裡是新代碼', (await A.p.locator('.code-display').textContent())?.trim() === newCode)
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 
 // 主揪先把第一個人標成已到
@@ -140,7 +140,7 @@ await reconcile(A); await A.p.waitForTimeout(600)
 ok('[主揪] 別人改我沒碰過的人，不跳提示', (await A.p.locator('.toast').count()) === 0)
 
 // --- 伺服器永久拒絕的點名不能無聲消失（#39）---------------------------------
-// 情境：同工在車門口離線點了一個人，主揪這時把房間關掉。同工一連上網，那一筆
+// 情境：同工在車門口離線點了一個人，主揪這時把空間關掉。同工一連上網，那一筆
 // 就會被伺服器以 room_closed 拒絕。舊行為是靜靜地從佇列刪掉，同步指示接著翻成
 // 綠色的「已同步」——同工看著自己剛點的那個人，完全不知道伺服器沒收到。
 await reconcile(A)
@@ -152,7 +152,7 @@ await target.locator('.member-main').click(); await B.p.waitForTimeout(700)
 ok(`[同工] 離線先點了「${targetName}」，本地已入列`,
    /待上傳/.test((await B.p.locator('.sync').textContent()) || ''))
 
-// 主揪關閉房間
+// 主揪關閉空間
 await A.p.locator('.topbar button[aria-label="管理"]').click(); await A.p.waitForTimeout(600)
 await A.p.getByRole('button', { name: /結束這一輪/ }).click(); await A.p.waitForTimeout(700)
 await A.p.getByRole('button', { name: /^結束這一輪$/ }).last().click(); await A.p.waitForTimeout(1600)
@@ -165,7 +165,7 @@ await B.p.waitForTimeout(3000)
 const dropNotice = (await B.p.locator('.toast-text').textContent().catch(() => '')) ?? ''
 ok(`[同工] 被拒絕的點名有當面說：「${dropNotice}」`,
    dropNotice.includes('沒有存到') && (targetName ? dropNotice.includes(targetName) : true))
-ok('[同工] 訊息說得出原因（房間已關閉）', /關閉/.test(dropNotice))
+ok('[同工] 訊息說得出原因（空間已關閉）', /關閉/.test(dropNotice))
 
 // --- presence：不知道就不要說（#5）-----------------------------------------
 // 這個假後端只有 REST，沒有 Realtime——正好模擬「公司防火牆擋 WebSocket」那種
@@ -173,36 +173,36 @@ ok('[同工] 訊息說得出原因（房間已關閉）', /關閉/.test(dropNoti
 // 說「目前只有你」。沒把握就整區不顯示。
 await A.p.locator('.topbar button[aria-label="分享"]').click(); await A.p.waitForTimeout(1500)
 ok('[主揪] 同步指示是已同步（REST 通）', /已同步/.test((await A.p.locator('.sync').textContent()) || ''))
-ok('[主揪] 但 presence 沒通，就不顯示「現在在這間房裡」',
-   (await A.p.getByText('現在在這間房裡').count()) === 0)
-ok('[主揪] 更不會說「目前只有你」（那時 B 明明就在房裡）',
+ok('[主揪] 但 presence 沒通，就不顯示「現在在這個空間裡」',
+   (await A.p.getByText('現在在這個空間裡').count()) === 0)
+ok('[主揪] 更不會說「目前只有你」（那時 B 明明就在這個空間裡）',
    (await A.p.getByText('目前只有你').count()) === 0)
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 
-// --- 主揪不在時，現場的人也開得出回程房（#25）-------------------------------
+// --- 主揪不在時，現場的人也開得出回程空間（#25）-------------------------------
 // 主揪臨時不能來、手機在遊覽車上沒電、在山區沒訊號被降級——三個都是真實劇本，
-// 而那時候「回程再點一次」是產品方向書明列的核心情境。複製對來源房完全無害
-// （一個字都不改），名單本來就對所有拿得到房號的人可見，所以鎖在擁有權後面
+// 而那時候「回程再點一次」是產品方向書明列的核心情境。複製對來源空間完全無害
+// （一個字都不改），名單本來就對所有拿得到代碼的人可見，所以鎖在擁有權後面
 // 沒有保護到任何東西。
 await B.p.locator('.topbar button[aria-label="管理"]').click(); await B.p.waitForTimeout(700)
-ok('[同工] 管理面板裡有「再開一間」', (await B.p.getByRole('button', { name: /再開一間/ }).count()) > 0)
-ok('[同工] 副標說清楚新房是誰的',
-   ((await B.p.getByRole('button', { name: /再開一間/ }).textContent()) || '').includes('你會是新房間的主揪'))
-await B.p.getByRole('button', { name: /再開一間/ }).click(); await B.p.waitForTimeout(500)
+ok('[同工] 管理面板裡有「再開一個」', (await B.p.getByRole('button', { name: /再開一個/ }).count()) > 0)
+ok('[同工] 副標說清楚新空間是誰的',
+   ((await B.p.getByRole('button', { name: /再開一個/ }).textContent()) || '').includes('你會是新空間的主揪'))
+await B.p.getByRole('button', { name: /再開一個/ }).click(); await B.p.waitForTimeout(500)
 await B.p.locator('#copy-name').fill('回程（同工開的）')
 await B.p.getByRole('button', { name: '確定' }).click(); await B.p.waitForTimeout(2500)
-ok('[同工] 進到自己開的回程房', (await B.p.locator('.topbar-name').textContent())?.includes('同工開的'))
+ok('[同工] 進到自己開的回程空間', (await B.p.locator('.topbar-name').textContent())?.includes('同工開的'))
 ok('[同工] 名單一起複製過來', (await B.p.locator('.member').count()) === 5)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(500)
-// 複製的人是新房的主揪：管理功能要出現。
+// 複製的人是新空間的主揪：管理功能要出現。
 await B.p.locator('.topbar button[aria-label="管理"]').click(); await B.p.waitForTimeout(700)
-ok('[同工] 在新房裡是主揪', (await B.p.locator('.role-line .tag-owner').count()) === 1)
-ok('[同工] 新房裡有房主才有的「編輯名單」', (await B.p.getByRole('button', { name: /編輯名單/ }).count()) > 0)
+ok('[同工] 在新空間裡是主揪', (await B.p.locator('.role-line .tag-owner').count()) === 1)
+ok('[同工] 新空間裡有擁有者才有的「編輯名單」', (await B.p.getByRole('button', { name: /編輯名單/ }).count()) > 0)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
 
 // --- 掃 QR 時連不上：要說話，不能永遠留在骨架上（#23）---------------------
 // reconcile() 把 offline 自己吞掉（它是背景對帳，不該讓畫面爆掉），於是第一次
-// 進房又拿不到快照時 room 一直是 null，畫面停在載入骨架上一個字都沒有。站在
+// 進空間又拿不到快照時 room 一直是 null，畫面停在載入骨架上一個字都沒有。站在
 // 車門口掃 QR 的協助者看到的就是永遠的空白。
 const C = await mk('新同工')
 // 先把 App 載進來（協助者通常是先開得了網頁，訊號才在車上斷掉的），再斷網。
@@ -213,7 +213,7 @@ await C.p.evaluate((c) => { window.location.hash = `#/j/${c}` }, code)
 await C.p.waitForTimeout(4000)
 const joinErr = ((await C.p.locator('.note-warn').textContent().catch(() => '')) ?? '').trim()
 ok(`[新同工] 離線掃碼時有話說：「${joinErr}」`, joinErr.length > 0)
-ok('[新同工] 說的是連不上而不是「找不到房號」', /連不上網路/.test(joinErr))
+ok('[新同工] 說的是連不上而不是「找不到代碼」', /連不上網路/.test(joinErr))
 ok('[新同工] 不會卡在空白骨架', (await C.p.locator('.skeleton-row').count()) === 0)
 ok('[新同工] 有一顆回得去的按鈕', (await C.p.getByRole('button', { name: /回|返/ }).count()) > 0)
 await C.ctx.setOffline(false)

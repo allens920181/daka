@@ -50,11 +50,11 @@ export function Room({ code }: { code: string }) {
         setStatus('error')
       })
     return () => { alive = false; leaveRoom() }
-    // t 隨語言變動，但重新進房沒有意義；只依 code。
+    // t 隨語言變動，但重新進空間沒有意義；只依 code。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
 
-  // 剛從「再開一間」進來的話，直接把分享面板打開。
+  // 剛從「再開一個」進來的話，直接把分享面板打開。
   useEffect(() => {
     if (status !== 'ready') return
     if (shareOnEnter.value !== code) return
@@ -161,7 +161,7 @@ export function Room({ code }: { code: string }) {
     <>
       {/*
         捲動之後計分區離開畫面，未到人數由頂欄接手。接手時它就是這個畫面上
-        唯一不能消失的數字，所以字級要和房間名對調——房間名此刻只是脈絡，
+        唯一不能消失的數字，所以字級要和空間名對調——空間名此刻只是脈絡，
         「還有幾個沒到」才是使用者盯著的東西。
       */}
       <div class={scoreVisible ? 'topbar' : 'topbar handover'}>
@@ -243,9 +243,9 @@ export function Room({ code }: { code: string }) {
         {/*
           紙本備援的抬頭。只在列印時出現。
           以前列印是把螢幕的計分區借來當標題，於是紙上印的是「還有 12 位沒到」
-          ——一個離開印表機就過期的數字，而真正需要的活動名稱與房號反而被
+          ——一個離開印表機就過期的數字，而真正需要的活動名稱與代碼反而被
           display:none 掉了。手機沒電時拿著這張紙的人要知道：這是哪一場、
-          房號多少、誰在點、幾號。
+          代碼多少、誰在點、幾號。
         */}
         <div class="print-head" aria-hidden="true">
           <h1 class="print-title">{current.name}</h1>
@@ -258,7 +258,7 @@ export function Room({ code }: { code: string }) {
         </div>
 
         {/*
-          結束之後橫幅印的是定格的結果，不是一句「這間房已關閉」——那時候要
+          結束之後橫幅印的是定格的結果，不是一句「這個空間已關閉」——那時候要
           回答的問題已經不是「還能不能點」，而是「這一場最後是幾個人」。
           再附一顆「複製結果」，因為結束之後才想到要貼回 LINE 是常態。
         */}

@@ -1,4 +1,4 @@
-// 主揪帳號的端對端測試：換手機之後還管不管得動自己的房間。
+// 主揪帳號的端對端測試：換手機之後還管不管得動自己的空間。
 //
 // 用 scripts/fake-supabase.mjs 當後端（REST + Auth 都轉發到本機 PostgreSQL），
 // 不需要真的 Supabase 專案。驗證碼固定 123456。
@@ -72,28 +72,28 @@ const B = await phone('新手機')
 // 每次執行用不同的帳號，跑幾次都不會互相影響。
 await useGoogleAccount(EMAIL)
 
-// --- 舊手機：沒登入就開房，行為與從前完全相同 ---
+// --- 舊手機：沒登入就開空間，行為與從前完全相同 ---
 await A.page.goto(URL); await A.page.waitForTimeout(900)
-await A.page.getByRole('button', { name: /開啟房間/ }).first().click(); await A.page.waitForTimeout(300)
+await A.page.getByRole('button', { name: /開啟空間/ }).first().click(); await A.page.waitForTimeout(300)
 await A.page.locator('#room-name').fill('秋季旅遊 · 出發')
 await A.page.locator('#roster-text').fill('王小明\n李美花 +1\n陳大同')
 await A.page.waitForTimeout(300)
 await A.page.getByRole('button', { name: /建立/ }).click(); await A.page.waitForTimeout(1400)
 const code = (await A.page.locator('.topbar-sub .mono').first().textContent())?.trim()
-ok(`[舊手機] 未登入就開好房間 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code ?? ''))
+ok(`[舊手機] 未登入就開好空間 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code ?? ''))
 await A.page.locator('.member-main').nth(0).click(); await A.page.waitForTimeout(1200)
 
 await A.page.goto(URL); await A.page.waitForTimeout(1000)
 ok('[舊手機] 未登入時首頁沒有「我的活動」', (await A.page.getByText('我的活動').count()) === 0)
 
-// --- 新手機：沒登入，用房號進得去（協助點名），但管不動 ---
+// --- 新手機：沒登入，用代碼進得去（協助點名），但管不動 ---
 await B.page.goto(`${URL}#/r/${code}`); await B.page.waitForTimeout(1800)
-ok('[新手機] 用房號進得去（協助點名不需要帳號）', await B.page.locator('.topbar-name').isVisible())
+ok('[新手機] 用代碼進得去（協助點名不需要帳號）', await B.page.locator('.topbar-name').isVisible())
 await B.page.locator('.topbar button[aria-label="管理"]').click(); await B.page.waitForTimeout(500)
-// 「再開一間」刻意對所有人開放（見 schema.sql 的 copy_room），所以不能拿它
-// 當房主功能的探針。改用真正只有房主做得到的「編輯名單」。
-ok('[新手機] 未登入時看不到房主功能', (await B.page.getByRole('button', { name: /編輯名單/ }).count()) === 0)
-ok('[新手機] 但複製回程房對所有人開放', (await B.page.getByRole('button', { name: /再開一間/ }).count()) === 1)
+// 「再開一個」刻意對所有人開放（見 schema.sql 的 copy_room），所以不能拿它
+// 當擁有者功能的探針。改用真正只有擁有者做得到的「編輯名單」。
+ok('[新手機] 未登入時看不到擁有者功能', (await B.page.getByRole('button', { name: /編輯名單/ }).count()) === 0)
+ok('[新手機] 但複製回程空間對所有人開放', (await B.page.getByRole('button', { name: /再開一個/ }).count()) === 1)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
 // --- 登入面板：Google 是主要路徑，Email 是備援 ---
@@ -120,33 +120,33 @@ await signInWithGoogle(A)
 // 再換一次，然後看到一個沒頭沒尾的錯誤。
 ok(`登入後網址上沒有殘留的 code：${A.page.url()}`, !/[?&]code=/.test(A.page.url()))
 const toast = await A.page.locator('.toast-text').textContent().catch(() => '')
-ok(`[舊手機] 登入後接管本機資產：「${toast}」`, /1 個房間/.test(toast ?? ''))
+ok(`[舊手機] 登入後接管本機資產：「${toast}」`, /1 個空間/.test(toast ?? ''))
 await A.page.waitForTimeout(400)
 ok('[舊手機] 首頁出現「我的活動」', await A.page.getByText('我的活動').isVisible())
 const mine = await A.page.locator('.recent-item .recent-name').first().textContent()
 ok(`[舊手機] 我的活動列出「${mine}」`, mine === '秋季旅遊 · 出發')
 ok('[舊手機] 附帶已到人頭統計', (await A.page.locator('.recent-meta').first().textContent())?.includes('/ 4'))
 
-// --- 新手機登入同一個帳號 → 拿得回房間 ---
+// --- 新手機登入同一個帳號 → 拿得回空間 ---
 await signInWithGoogle(B)
 await B.page.waitForTimeout(600)
 ok('[新手機] 登入後看得到同一場活動', await B.page.getByText('秋季旅遊 · 出發').first().isVisible())
 await B.page.getByText('秋季旅遊 · 出發').first().click(); await B.page.waitForTimeout(1800)
 await B.page.locator('.topbar button[aria-label="管理"]').click(); await B.page.waitForTimeout(600)
-ok('[新手機] 現在看得到房主功能了', await B.page.getByRole('button', { name: /編輯名單/ }).isVisible())
+ok('[新手機] 現在看得到擁有者功能了', await B.page.getByRole('button', { name: /編輯名單/ }).isVisible())
 
-// 真的改得動（這是「換手機拿得回房間」的實證）
+// 真的改得動（這是「換手機拿得回空間」的實證）
 await B.page.getByRole('button', { name: /重新命名/ }).click(); await B.page.waitForTimeout(400)
 await B.page.locator('.sheet input.input').fill('從新手機改的名字')
 await B.page.locator('.sheet').getByRole('button', { name: /^儲存$/ }).click(); await B.page.waitForTimeout(1500)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(400)
-ok('[新手機] 改得動房間名稱', (await B.page.locator('.topbar-name').textContent()) === '從新手機改的名字')
+ok('[新手機] 改得動空間名稱', (await B.page.locator('.topbar-name').textContent()) === '從新手機改的名字')
 
 // --- 舊手機對帳後看得到新手機的改動 ---
 await A.page.goto(`${URL}#/r/${code}`); await A.page.waitForTimeout(2000)
 ok('[舊手機] 看得到新手機改的名字', (await A.page.locator('.topbar-name').textContent()) === '從新手機改的名字')
 
-// --- 登出：本機開的房間仍然管得動（owner_key 還在）---
+// --- 登出：本機開的空間仍然管得動（owner_key 還在）---
 await A.page.goto(URL); await A.page.waitForTimeout(900)
 await A.page.locator('button[aria-label="設定"]').click(); await A.page.waitForTimeout(500)
 ok('[舊手機] 設定顯示已登入的 Email', (await A.page.getByText(EMAIL).count()) > 0)
@@ -155,7 +155,7 @@ await A.page.keyboard.press('Escape'); await A.page.waitForTimeout(500)
 ok('[舊手機] 登出後「我的活動」消失', (await A.page.getByText('我的活動').count()) === 0)
 await A.page.goto(`${URL}#/r/${code}`); await A.page.waitForTimeout(1800)
 await A.page.locator('.topbar button[aria-label="管理"]').click(); await A.page.waitForTimeout(600)
-ok('[舊手機] 登出後仍管得動自己開的房間（裝置金鑰還在）',
+ok('[舊手機] 登出後仍管得動自己開的空間（裝置金鑰還在）',
   await A.page.getByRole('button', { name: /編輯名單/ }).isVisible())
 
 // --- 備援路徑仍然通：Google 在內建瀏覽器裡會被擋，那時這條是唯一的路 ---

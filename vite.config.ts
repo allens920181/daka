@@ -16,7 +16,7 @@ export default defineConfig({
       manifest: {
         name: '誰沒到',
         short_name: '誰沒到',
-        description: '團體現場多人同步點名：開一間房，大家一起點同一份名單。',
+        description: '團體現場多人同步點名：大家一起點同一份名單。',
         lang: 'zh-TW',
         start_url: base,
         scope: base,

@@ -79,7 +79,7 @@ describe('pendingAddIds', () => {
 })
 
 describe('countForRoom', () => {
-  it('只算這個房間的', () => {
+  it('只算這個空間的', () => {
     const other: PendingOp = { ...status('m9', 1), code: 'BBBBBB' }
     expect(countForRoom([status('m1', 1), status('m2', 2), other], 'AAAAAA')).toBe(2)
   })
