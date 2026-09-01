@@ -4,7 +4,7 @@
  */
 const zh = {
   appName: '誰沒到',
-  tagline: '開一間房，大家一起點同一份名單',
+  tagline: '大家一起點同一份名單',
 
   // 首頁
   openRoom: '開啟房間',
@@ -201,7 +201,7 @@ const zh = {
   errRoomNotFound: '找不到這個房號。請確認有沒有打錯。',
   errConfusable: '房號不會用到 {chars} 這些字元，請再確認一次。',
   errBadCode: '房號是 6 碼英數字。',
-  errNotOwner: '只有開這間房的裝置可以做這件事。',
+  errNotOwner: '只有開啟這間房的裝置可以做這件事。',
   errRoomClosed: '這間房已經關閉了。',
   /*
    * 這句話只用在「動作真的失敗了」的地方——開房、進房、改名單、寄驗證碼。
@@ -211,7 +211,7 @@ const zh = {
    */
   errOffline: '目前連不上網路，這個動作沒有完成。',
   errOfflineCreate: '目前連不上網路，房間沒有開成。你貼的名單還留著，連上網再按一次就好。',
-  errJoinLocalOnly: '這個網站沒有連上雲端，房間只存在開房的那支手機裡，加不進來。',
+  errJoinLocalOnly: '這個網站沒有連上雲端，房間只存在開啟它的那支手機裡，加不進來。',
   errJoinOffline: '目前連不上網路，還沒辦法把這間房載下來。連上網再試一次。',
   errUnknown: '出了點問題，請再試一次。',
   errNotConfigured: '還沒設定雲端連線，目前是單機模式。',
@@ -247,7 +247,7 @@ const zh = {
   claimed: '已把這台裝置的 {rooms} 個房間、{rosters} 份常用名單接到你的帳號。',
   claimedNothing: '登入成功。',
   myRooms: '我的活動',
-  myRoomsEmpty: '還沒有活動。開一間房，它就會出現在這裡，換手機也找得到。',
+  myRoomsEmpty: '還沒有活動。開啟房間之後它就會出現在這裡，換手機也找得到。',
   roomStat: '{arrived} / {total} 人',
   errBadOtp: '驗證碼不對或已過期，請再試一次。',
   errRateLimited: '寄太多次了，請等幾分鐘再試。',
@@ -292,7 +292,7 @@ export type MessageKey = keyof typeof zh
 
 const en: Record<MessageKey, string> = {
   appName: 'RollRoom',
-  tagline: 'Open a room, everyone checks the same list',
+  tagline: 'Everyone checks the same list',
 
   openRoom: 'Open a room',
   joinRoom: 'Join a room',

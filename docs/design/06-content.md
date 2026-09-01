@@ -27,7 +27,7 @@
 | 離線 | `errOffline` | 目前連不上網路，這個動作沒有完成。 |
 | 房號錯 | `errRoomNotFound` | 找不到這個房號。請確認有沒有打錯。 |
 | 房號含易混淆字元 | `errConfusable` | 房號不會用到 {chars} 這些字元，請再確認一次。 |
-| 非房主 | `errNotOwner` | 只有開這間房的裝置可以做這件事。 |
+| 非房主 | `errNotOwner` | 只有開啟這間房的裝置可以做這件事。 |
 | 房間已關閉 | `errRoomClosed` | 這間房已經關閉了。 |
 | 未知錯誤 | `errUnknown` | 出了點問題，請再試一次。 |
 
