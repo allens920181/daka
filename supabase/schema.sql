@@ -806,7 +806,15 @@ $$;
 -- PostgreSQL 預設會把函式的 EXECUTE 授予 PUBLIC，那會讓下面這份清單形同
 -- 虛設——沒列進來的函式照樣叫得動。先全部收回，明確授權才會真的是「只有
 -- 這些」。（內部輔助函式仍由 SECURITY DEFINER 以擁有者身分執行，不受影響。）
-revoke execute on all functions in schema public from public;
+--
+-- **anon / authenticated 也要一起收回。** Supabase 的專案帶著
+-- `alter default privileges in schema public grant execute on functions
+--  to anon, authenticated, ...`，所以新建的函式會自動被授予 anon——只從 PUBLIC
+-- 收回在乾淨的 PostgreSQL 上看起來是對的（本機測試就這樣過了），推上真的
+-- Supabase 之後 claim_mine 與 my_rooms 明明只 grant to authenticated，anon 卻
+-- 照樣叫得動。兩者的函式本體都會擋下未登入者，所以沒有外洩，但那份清單
+-- 必須是可信的，否則下一個只 grant to authenticated 的函式就不一定安全。
+revoke execute on all functions in schema public from public, anon, authenticated;
 
 grant execute on function public.create_room(text, text, text, jsonb, text)      to anon, authenticated;
 grant execute on function public.get_room(text)                                  to anon, authenticated;
