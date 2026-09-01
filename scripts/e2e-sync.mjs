@@ -7,9 +7,13 @@
 //
 // 執行方式見 README「開發」一節。
 import { chromium } from 'playwright'
+// 瀏覽器路徑不寫死：CI 用 `npx playwright install` 裝到 Playwright 自己找得到的
+// 地方，只有沙箱／本機需要覆寫。寫死的話 CI 一定啟動不了（另外兩支腳本
+// design-audit.mjs 與 e2e-account.mjs 本來就是這樣寫的）。
+const BROWSER = process.env.CHROMIUM_PATH
 const URL = 'http://127.0.0.1:4180/'
 const ok = (l, c) => { console.log((c ? '  PASS  ' : '  FAIL  ') + l); if (!c) process.exitCode = 1 }
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+const b = await chromium.launch(BROWSER ? { executablePath: BROWSER } : {})
 
 // 兩個獨立的瀏覽器 context = 兩台不同的手機（各自的 IndexedDB）
 const mk = async (name) => {

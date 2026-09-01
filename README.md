@@ -206,6 +206,22 @@ npm run audit:design
 npm run e2e
 ```
 
+兩件會讓人卡住的事：
+
+- **`npm run e2e` 測的是單機模式**，所以建置時不能帶 Supabase 設定。有
+  `.env.local` 的話（README 前面教你建的那個）產出的是雲端版，測試會在第二項
+  就停下來並告訴你怎麼重建——Vite 會自動讀 `.env.local`，只清環境變數不夠，
+  那個檔要暫時移開。
+- **瀏覽器路徑**由 Playwright 自己解析（`npx playwright install chromium` 之後
+  就找得到）。只有在瀏覽器裝在別處時才需要覆寫：
+
+  ```bash
+  CHROMIUM_PATH=/path/to/chrome npm run e2e
+  ```
+
+  四支腳本（`design-audit` / `e2e-local` / `e2e-sync` / `e2e-account`）都吃這個
+  變數。**不要在腳本裡寫死路徑**——寫死過一次，CI 就再也啟動不了瀏覽器。
+
 驗證資料庫（需要本機 PostgreSQL）：
 
 ```bash
