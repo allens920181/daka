@@ -90,10 +90,10 @@ ok('[舊手機] 未登入時首頁沒有「我的活動」', (await A.page.getBy
 await B.page.goto(`${URL}#/r/${code}`); await B.page.waitForTimeout(1800)
 ok('[新手機] 用房號進得去（協助點名不需要帳號）', await B.page.locator('.topbar-name').isVisible())
 await B.page.locator('.topbar button[aria-label="管理"]').click(); await B.page.waitForTimeout(500)
-// 「複製這間房」刻意對所有人開放（見 schema.sql 的 copy_room），所以不能拿它
+// 「再開一間」刻意對所有人開放（見 schema.sql 的 copy_room），所以不能拿它
 // 當房主功能的探針。改用真正只有房主做得到的「編輯名單」。
 ok('[新手機] 未登入時看不到房主功能', (await B.page.getByRole('button', { name: /編輯名單/ }).count()) === 0)
-ok('[新手機] 但複製回程房對所有人開放', (await B.page.getByRole('button', { name: /複製這間房/ }).count()) === 1)
+ok('[新手機] 但複製回程房對所有人開放', (await B.page.getByRole('button', { name: /再開一間/ }).count()) === 1)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
 // --- 登入面板：Google 是主要路徑，Email 是備援 ---

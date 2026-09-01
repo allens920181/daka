@@ -512,6 +512,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
   display: flex; gap: var(--sp-2); margin-bottom: var(--sp-2);
   overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
 }
+/*
+ * 捲軸是藏起來的，所以最後一顆晶片被切在畫面邊緣時，看起來像數字被削掉一半，
+ * 而不是「還有東西可以往右滑」。右緣淡出把那條硬邊變成明確的邀請。
+ *
+ * 晶片改印人頭之後這件事更常發生：兩位數比一位數寬，「全部 11｜第一車 4｜
+ * 第二車 6｜未分組 1」在 390px 上就排不下了。
+ *
+ * 三顆以內一定排得下，不淡出——沒有東西可捲的時候淡出只會讓最後一顆看起來壞掉。
+ * 用 currentColor 而不是色票：遮罩只讀 alpha，這裡沒有任何顏色決定。
+ */
+.groups:has(> :nth-child(4)) {
+  mask-image: linear-gradient(to right, currentColor calc(100% - 16px), transparent 100%);
+}
 .groups::-webkit-scrollbar { display: none; }
 .group-chip {
   display: inline-flex; align-items: center; gap: var(--sp-2);

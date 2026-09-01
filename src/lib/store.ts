@@ -783,7 +783,7 @@ export async function createRoom(name: string, drafts: readonly DraftMember[]): 
   throw new AppError('unknown', 'could not allocate a room code')
 }
 
-/** 複製房間：同一份名單、狀態歸零。這是回程點名的做法。 */
+/** 再開一間：同一份名單、狀態歸零。這是回程點名的做法。 */
 export async function copyCurrentRoom(newName: string): Promise<string> {
   const r = room.value
   if (!r) throw new AppError('room-not-found')

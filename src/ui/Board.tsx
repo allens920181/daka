@@ -90,7 +90,7 @@ export function Board({ code }: { code: string }) {
             {/* 數字自己一個字級，標籤跟在後面——把整句「還有 24 位沒到」都放大到
                 主角字級的話，一行就吃掉整個看板的寬度。 */}
             <p class="board-hero">
-              {s.pending}
+              {s.pendingHeadcount}
               <span class="board-hero-unit">{t('missingUnit')}</span>
             </p>
             <ul class={`board-names${missing.length > 12 ? ' dense' : ''}`}>
@@ -114,7 +114,7 @@ export function Board({ code }: { code: string }) {
             <button
               class="group-chip"
               aria-pressed={group === null}
-              aria-label={t('groupCount', { name: t('allGroups'), n: summarize(all).pending })}
+              aria-label={t('groupCount', { name: t('allGroups'), n: summarize(all).pendingHeadcount })}
               onClick={() => setGroup(null)}
             >
               {t('allGroups')}
@@ -124,7 +124,7 @@ export function Board({ code }: { code: string }) {
                 key={g}
                 class="group-chip"
                 aria-pressed={group === g}
-                aria-label={t('groupCount', { name: g, n: summarize(all.filter((m) => m.group_label === g)).pending })}
+                aria-label={t('groupCount', { name: g, n: summarize(all.filter((m) => m.group_label === g)).pendingHeadcount })}
                 onClick={() => setGroup(g)}
               >
                 {g}

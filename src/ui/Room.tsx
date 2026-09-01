@@ -53,7 +53,7 @@ export function Room({ code }: { code: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
 
-  // 剛從「複製這間房」進來的話，直接把分享面板打開。
+  // 剛從「再開一間」進來的話，直接把分享面板打開。
   useEffect(() => {
     if (status !== 'ready') return
     if (shareOnEnter.value !== code) return
@@ -189,7 +189,7 @@ export function Room({ code }: { code: string }) {
               ) : (
                 <span class={allHere ? 'topbar-count done' : 'topbar-count'}>
                   {group !== null && <span class="topbar-scope">{groupLabel}</span>}
-                  {allHere ? t('allHere') : t('missingCount', { n: s.pending })}
+                  {allHere ? t('allHere') : t('missingCount', { n: s.pendingHeadcount })}
                 </span>
               )}
               <SyncBadge />
@@ -233,7 +233,7 @@ export function Room({ code }: { code: string }) {
               {t('closedResult', {
                 summary: allHere
                   ? `${t('allHere')} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`
-                  : `${t('missingCount', { n: s.pending })} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`,
+                  : `${t('missingCount', { n: s.pendingHeadcount })} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`,
               })}
             </span>
             <button class="btn btn-sm" onClick={() => { void copySummary() }}>
@@ -242,6 +242,18 @@ export function Room({ code }: { code: string }) {
           </div>
         )}
 
+        {/*
+          答案用人頭，切片用列數。
+
+          大字回答的是「還有幾個人沒上車」——遊覽車上要對的是人頭，所以它和右邊的
+          分母、進度條、分組晶片、貼回 LINE 的文字一律是 pendingHeadcount。這裡曾經
+          用 s.pending（列數）：畫面上會出現 44px 的「8 位沒到」配著「0 / 11 人」，
+          沒有人到，兩個數字卻差 3，而「位」本來就是人的量詞。差額是李美花＋1、
+          李四＋2，但畫面上沒有任何字說得出這件事。
+
+          下面那排分段控制維持列數：它的職責是「按下去會看到幾列」，寫人頭反而會
+          騙人——按「未到 8」就是會看到 8 列。
+        */}
         <div class="scoreboard" ref={scoreboardRef}>
           <div class="score-main">
             {allHere ? (
@@ -249,7 +261,7 @@ export function Room({ code }: { code: string }) {
               <span class="score-number score-done">{t('allHere')}</span>
             ) : (
               <>
-                <span class="score-number">{s.pending}</span>
+                <span class="score-number">{s.pendingHeadcount}</span>
                 <span class="score-text">
                   <span class="score-label">{t('missingUnit')}</span>
                   {group !== null && <span class="score-scope">{groupLabel}</span>}
@@ -283,14 +295,14 @@ export function Room({ code }: { code: string }) {
             <button
               class="group-chip"
               aria-pressed={group === null}
-              aria-label={t('groupCount', { name: t('allGroups'), n: summarize(all).pending })}
+              aria-label={t('groupCount', { name: t('allGroups'), n: summarize(all).pendingHeadcount })}
               onClick={() => setGroup(null)}
             >
               {t('allGroups')}
               {/* 「全部」也帶一個數字，這一列的數字才加得起來：各車的未到數
                   相加要等於它。少了它，志工看到「第一車 2、第二車 4」和下面
                   的「未到 7」對不上，會開始找那個不存在的差額。 */}
-              <span class={allHere ? 'group-n done' : 'group-n'}>{summarize(all).pending}</span>
+              <span class={allHere ? 'group-n done' : 'group-n'}>{summarize(all).pendingHeadcount}</span>
             </button>
             {groupList.map((g) => {
               const gs = summarize(all.filter((m) => m.group_label === g))
@@ -300,10 +312,10 @@ export function Room({ code }: { code: string }) {
                   class="group-chip"
                   aria-pressed={group === g}
                   onClick={() => setGroup(g)}
-                  aria-label={t('groupCount', { name: g, n: gs.pending })}
+                  aria-label={t('groupCount', { name: g, n: gs.pendingHeadcount })}
                 >
                   {g}
-                  <span class={gs.pending === 0 ? 'group-n done' : 'group-n'}>{gs.pending}</span>
+                  <span class={gs.pending === 0 ? 'group-n done' : 'group-n'}>{gs.pendingHeadcount}</span>
                 </button>
               )
             })}
@@ -314,10 +326,10 @@ export function Room({ code }: { code: string }) {
                   class="group-chip"
                   aria-pressed={group === UNGROUPED}
                   onClick={() => setGroup(UNGROUPED)}
-                  aria-label={t('groupCount', { name: t('ungrouped'), n: gs.pending })}
+                  aria-label={t('groupCount', { name: t('ungrouped'), n: gs.pendingHeadcount })}
                 >
                   {t('ungrouped')}
-                  <span class={gs.pending === 0 ? 'group-n done' : 'group-n'}>{gs.pending}</span>
+                  <span class={gs.pending === 0 ? 'group-n done' : 'group-n'}>{gs.pendingHeadcount}</span>
                 </button>
               )
             })()}
@@ -359,7 +371,7 @@ export function Room({ code }: { code: string }) {
                 <>
                   <p class="empty-big">{t('emptyList')}</p>
                   <p class="hint">
-                    {s.pending > 0 ? t('emptySearchHint', { n: s.pending }) : t('emptySearchHintDone')}
+                    {s.pending > 0 ? t('emptySearchHint', { n: s.pendingHeadcount }) : t('emptySearchHintDone')}
                   </p>
                 </>
               ) : (

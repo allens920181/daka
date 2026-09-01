@@ -88,6 +88,59 @@ describe('toShareText', () => {
     expect(text).toContain('請假 1 位：陳大同')
   })
 
+  /*
+   * 這一段文字是整個產品唯一會被「沒裝這個 App 的人」讀到的東西，而它一度用列數
+   * 報未到：「已到 2 / 11 人」（人頭）下面接「未到 6 位」（列數），少報了 3 個人。
+   * 底下四條把單位釘死——原本的測試只斷言「已到 x / y 人」那一行，所以攔不到。
+   */
+  it('未到人數是人頭不是列數', () => {
+    const text = toShareText(room, [
+      member('李美花', { companions: 1 }),
+      member('李四', { companions: 2 }),
+      member('張三'),
+    ])
+    expect(text).toContain('未到 6 位：')
+    expect(text).not.toContain('未到 3 位')
+  })
+
+  it('名字後面補上攜伴數，讀的人自己加得回來', () => {
+    const text = toShareText(room, [member('李美花', { companions: 1 }), member('張三')])
+    expect(text).toContain('未到 3 位：李美花＋1、張三')
+  })
+
+  it('分組括號裡也是人頭', () => {
+    const text = toShareText(room, [
+      member('李美花', { group_label: '第一車', companions: 1 }),
+      member('王小明', { group_label: '第一車' }),
+      member('李四', { group_label: '第二車', companions: 2 }),
+    ])
+    expect(text).toContain('　第一車（3）：李美花＋1、王小明')
+    expect(text).toContain('　第二車（3）：李四＋2')
+  })
+
+  it('請假人數也是人頭', () => {
+    const text = toShareText(room, [
+      member('王小明', { status: 'arrived' }),
+      member('陳大同', { status: 'excused', companions: 3 }),
+    ])
+    expect(text).toContain('請假 4 位：陳大同＋3')
+  })
+
+  it('已到人頭 + 未到人頭 = 分母（這就是列數版本做不到的事）', () => {
+    const text = toShareText(room, [
+      member('王小明', { status: 'arrived', companions: 1 }),
+      member('李美花', { companions: 1 }),
+      member('李四', { companions: 2 }),
+      member('陳大同', { status: 'excused' }),
+    ])
+    const arrived = Number(/已到 (\d+) \//.exec(text)?.[1])
+    const total = Number(/已到 \d+ \/ (\d+) 人/.exec(text)?.[1])
+    const missing = Number(/未到 (\d+) 位/.exec(text)?.[1])
+    expect(arrived).toBe(2)
+    expect(missing).toBe(5)
+    expect(arrived + missing).toBe(total)
+  })
+
   it('請假者的攜伴也一起扣掉', () => {
     const text = toShareText(room, [
       member('王小明', { status: 'arrived' }),

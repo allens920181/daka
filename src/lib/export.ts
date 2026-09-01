@@ -72,20 +72,36 @@ export function toShareText(
     // 唸得出來是哪一車的誰。
     const byGroup = groupLabel ? [] : splitByGroup(missing)
     if (byGroup.length > 1) {
-      lines.push(`未到 ${missing.length} 位：`)
+      lines.push(`未到 ${heads(missing)} 位：`)
       for (const [name, list] of byGroup) {
-        lines.push(`　${name}（${list.length}）：${list.map((m) => m.name).join('、')}`)
+        lines.push(`　${name}（${heads(list)}）：${names(list)}`)
       }
     } else {
-      lines.push(`未到 ${missing.length} 位：${missing.map((m) => m.name).join('、')}`)
+      lines.push(`未到 ${heads(missing)} 位：${names(missing)}`)
     }
   } else {
     lines.push('全部到齊')
   }
   if (excused.length > 0) {
-    lines.push(`請假 ${excused.length} 位：${excused.map((m) => m.name).join('、')}`)
+    lines.push(`請假 ${heads(excused)} 位：${names(excused)}`)
   }
   return lines.join('\n')
+}
+
+/**
+ * 這段文字裡的每個數字都是人頭，不是列數。
+ *
+ * 它一度寫成 missing.length：於是「已到 2 / 11 人」（人頭）下面接著「未到 6 位」
+ * （列數），同一段六行文字裡兩種單位。李美花帶 1 位、李四帶 2 位，真正沒到的是
+ * 9 個人——貼進 LINE 群的那段字把少報的 3 個人交了出去，而讀它的人沒有介面可以
+ * 察覺。名字後面補上「＋N」，讓讀的人自己就能把數字加回來。
+ */
+function heads(list: readonly Member[]): number {
+  return list.reduce((n, m) => n + 1 + m.companions, 0)
+}
+
+function names(list: readonly Member[]): string {
+  return list.map((m) => (m.companions > 0 ? `${m.name}＋${m.companions}` : m.name)).join('、')
 }
 
 /** 依分組切開，保留第一次出現的順序；沒有分組的人排在最後。 */
