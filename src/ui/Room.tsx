@@ -283,6 +283,7 @@ export function Room({ code }: { code: string }) {
             <button
               class="group-chip"
               aria-pressed={group === null}
+              aria-label={t('groupCount', { name: t('allGroups'), n: summarize(all).pending })}
               onClick={() => setGroup(null)}
             >
               {t('allGroups')}
@@ -299,7 +300,7 @@ export function Room({ code }: { code: string }) {
                   class="group-chip"
                   aria-pressed={group === g}
                   onClick={() => setGroup(g)}
-                  aria-label={t('groupCount', { name: g, arrived: gs.arrived, total: gs.people })}
+                  aria-label={t('groupCount', { name: g, n: gs.pending })}
                 >
                   {g}
                   <span class={gs.pending === 0 ? 'group-n done' : 'group-n'}>{gs.pending}</span>
@@ -313,7 +314,7 @@ export function Room({ code }: { code: string }) {
                   class="group-chip"
                   aria-pressed={group === UNGROUPED}
                   onClick={() => setGroup(UNGROUPED)}
-                  aria-label={t('groupCount', { name: t('ungrouped'), arrived: gs.arrived, total: gs.people })}
+                  aria-label={t('groupCount', { name: t('ungrouped'), n: gs.pending })}
                 >
                   {t('ungrouped')}
                   <span class={gs.pending === 0 ? 'group-n done' : 'group-n'}>{gs.pending}</span>
@@ -323,7 +324,7 @@ export function Room({ code }: { code: string }) {
           </div>
         )}
 
-        <div class="segmented" role="group" aria-label={t('all')}>
+        <div class="segmented" role="group" aria-label={t('filter')}>
           <Segment active={filter === 'all'} onClick={() => setFilter('all')} label={t('all')} count={s.people} />
           <Segment active={filter === 'pending'} onClick={() => setFilter('pending')} label={t('missing')} count={s.pending} />
           <Segment active={filter === 'arrived'} onClick={() => setFilter('arrived')} label={t('arrived')} count={s.arrived} />
@@ -417,7 +418,7 @@ export function Room({ code }: { code: string }) {
             aria-pressed={filter === 'pending'}
             onClick={() => setFilter(filter === 'pending' ? 'all' : 'pending')}
           >
-            {filter === 'pending' ? t('showAll') : t('onlyMissing', { n: s.pending })}
+            {filter === 'pending' ? t('showAll') : t('onlyMissing')}
           </button>
           <button class="btn" onClick={() => { void copySummary() }}>
             <IconCopy /> {t('copySummary')}

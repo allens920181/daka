@@ -9,7 +9,10 @@ const zh = {
   // 首頁
   openRoom: '開啟房間',
   joinRoom: '加入房間',
-  roomNamePlaceholder: '這場活動叫什麼？例如：秋季旅遊 · 出發',
+  /* 標籤問問題，placeholder 給例子。原本兩處共用同一個字串，19 字的問句上下相隔
+     20px 完整重複兩遍。重複的是例子，不是問句，所以例子搬到 placeholder 就結案。 */
+  roomNameLabel: '這場活動叫什麼？',
+  roomNamePlaceholder: '例如：秋季旅遊 · 出發',
   codePlaceholder: '輸入 6 碼房號',
   recentRooms: '最近的房間',
   noRecentRooms: '還沒有房間。開一間，或用房號加入別人的。',
@@ -24,9 +27,11 @@ const zh = {
   pasteRoster: '貼上名單',
   pastePlaceholder: '一行一個名字。可以直接貼 LINE 接龍，編號、（備註）、+1 攜伴都會自動辨識。',
   parsePreview: '解析結果',
-  parsedCount: '解析出 {n} 人',
-  parsedHeads: '共 {n} 人次（含攜伴）',
-  duplicateWarning: '有同名的人：{names}。他們各自獨立，不會互相影響，建議加註記區分。',
+  /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。
+     「人次」不是贅詞而是單位標記：9 是列數、12 是人頭數，全站最容易搞混的兩個量。 */
+  parsedCount: '{n} 人',
+  parsedHeads: '含攜伴 {n} 人次',
+  duplicateWarning: '有同名的人：{names}。點一個不會動到另一個，建議加註記區分。',
   skippedLines: '{n} 行看起來不是姓名，已略過',
   emptyRoster: '請先貼上名單',
   savedRosters: '常用名單',
@@ -43,7 +48,9 @@ const zh = {
   all: '全部',
   searchPlaceholder: '搜尋姓名…',
   allHere: '全部到齊',
-  missingCount: '還有 {n} 位沒到',
+  /* 頂欄接手計分區時要跟計分區逐字相同（大字＋「位沒到」）。這個 key 也用在
+     結束後的橫幅，事情都結束了，「還有」本來就不該在那裡。 */
+  missingCount: '{n} 位沒到',
   /** 計分區的大數字自己就是數量，標籤只補單位，不再把數字寫第二次。 */
   missingUnit: '位沒到',
   headcount: '{arrived} / {total} 人',
@@ -77,7 +84,7 @@ const zh = {
   backToTop: '回到名單頂端',
   calledAt: '已撥 {time}',
   callAgainMember: '再打給 {name}（{time} 撥過）',
-  onlyMissing: '只看未到 {n}',
+  onlyMissing: '只看未到',
   showAll: '看全部',
   removeFromPreview: '把「{name}」從名單移除',
   signOutWhat: '登出後，這支手機自己開的房間照樣管得動；用帳號接過來的活動會暫時看不到，重新登入就會回來。',
@@ -89,7 +96,13 @@ const zh = {
   downloaded: '已下載 {name}',
   youAre: '你是 {name}',
   setYourName: '寫上你的名字 ›',
-  helperLimits: '你是協助點名的人：複製房間、改名單、關閉房間這些只有主揪做得到。需要的話請主揪處理。',
+  /*
+   * 這句話一度是假的：它說「複製房間」只有主揪做得到，但複製這間房刻意對所有人
+   * 開放（Sheets.tsx 的 owner 區塊從「編輯名單」才開始），同一個面板上方 3px 還對
+   * 協助者寫著「你會是新房間的主揪」。開頭的「你是協助點名的人：」也在複述正上方
+   * 那顆「協助點名」藥丸。留下的是協助者真正做不到、而且會需要去找主揪的那兩件事。
+   */
+  helperLimits: '編輯名單、結束這一輪只有主揪做得到。',
   remove: '移除',
   removeMember: '從名單移除',
   removeMemberSub: '這個動作不能復原',
@@ -100,7 +113,7 @@ const zh = {
   // 分享
   share: '分享',
   shareTitle: '讓其他人加入',
-  shareHint: '把房號、QR 或連結給協助點名的人。他們不用註冊、不用安裝。',
+  shareHint: '把房號或 QR 給他們，不用註冊、不用安裝。',
   whoIsHere: '現在在這間房裡',
   onlyYouHere: '目前只有你。把房號或 QR 給協助點名的人，他們進來後會出現在這裡。',
   peersHere: '{n} 支手機：{names}',
@@ -110,8 +123,8 @@ const zh = {
   shareLinkText: '一起點名',
   /* 單機模式下這三句取代整個分享面板：發出去的房號對任何人都沒有用。 */
   shareLocalTitle: '這間房只有你看得到',
-  shareLocalBody: '這台裝置沒有連上雲端，名單只存在這支手機裡。把房號或連結給別人，他們會看到「找不到這個房號」。',
-  shareLocalHow: '要讓五個人同時點同一份名單，需要先設定雲端連線（見專案的 README）。現在仍然可以自己點完，再用「複製結果」或列印把名單交出去。',
+  shareLocalBody: '這支手機沒連上雲端，名單只存在這裡。把房號或連結給別人，他們會看到「找不到這個房號」。',
+  shareLocalHow: '多人一起點，要先設定雲端連線（見專案 README）。你還是可以自己點完，用「複製結果」或列印交出名單。',
   roomCode: '房號',
   copyCode: '複製房號',
   copyLink: '複製連結',
@@ -133,8 +146,8 @@ const zh = {
   /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉房間」——
      使用者心裡想的是「這件事做完了」，不是「把一個容器關起來」。 */
   finishRound: '結束這一輪',
-  finishRoundHint: '車開了就按這個。會先讓你把結果帶走。',
-  finishRoundBody: '結束後就不能再點名，紀錄還在。趁現在把結果帶走：',
+  finishRoundHint: '車開了就按這個。結束後不能再點名。',
+  finishRoundBody: '紀錄還在。先帶走結果：',
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
   roomClosed: '這間房已關閉',
@@ -183,7 +196,7 @@ const zh = {
   settings: '設定',
   callMember: '打電話給 {name}',
   haptics: '震動回饋',
-  hapticsHint: '點名時輕震一下。逆光下看不清畫面時，手感是第二個確認。部分裝置不支援。',
+  hapticsHint: '點名時輕震一下，不用盯著畫面也知道點到了。部分裝置不支援。',
   on: '開',
   off: '關',
   overridden: '{name} 已由{who}改為{status}',
@@ -196,7 +209,7 @@ const zh = {
   signInGoogle: '用 Google 登入',
   signInWithEmail: '改用 Email 驗證碼',
   inAppBrowserWarn: '你現在是在 App 的內建瀏覽器裡（例如 LINE）。Google 在這裡常常會擋下登入——真的卡住的話，用右上角的選單「用瀏覽器開啟」，或改用下面的 Email 驗證碼。',
-  signInWhy: '登入之後，換手機也管得動你開的房間，常用名單也跟著走。協助點名的人不用登入。',
+  signInWhy: '登入後，換手機也管得動你開的房間，常用名單跟著走。協助點名的人不用登入。',
   emailLabel: 'Email',
   emailPlaceholder: 'you@example.com',
   sendCode: '寄驗證碼',
@@ -212,16 +225,21 @@ const zh = {
   errBadOtp: '驗證碼不對或已過期，請再試一次。',
   errRateLimited: '寄太多次了，請等幾分鐘再試。',
   group: '分組',
+  /* 分段控制那一組原本的 aria-label 是 t('all')，於是螢幕閱讀器唸出「全部」群組、
+     裡面第一顆也是「全部」。旁邊分組列用的是 t('group')，這裡照著補。 */
+  filter: '篩選',
   allGroups: '全部',
   ungrouped: '未分組',
   changeGroup: '改分組',
   removeFromGroup: '移出分組',
-  groupCount: '{name}：已到 {arrived} / {total}',
+  /* 晶片上印的是未到數，aria-label 卻唸「已到 0 / 4」——看到的和聽到的不是同一個
+     數字。晶片的數字不加文字標籤（見 roll-call.md），文字說明就得說明那個數字。 */
+  groupCount: '{name}：{n} 位沒到',
   boardMode: '看板模式',
-  boardHint: '平板大字顯示，放在門邊給大家看。螢幕不會自動關閉。',
+  boardHint: '平板大字，放門邊給大家看。螢幕不自動關閉。',
   exitBoard: '離開看板',
   printRoster: '列印紙本名單',
-  printHint: '印出可以用筆勾的空白名單，當作手機沒電時的備援。',
+  printHint: '印出空白名單備用，手機沒電時用筆勾。',
 
   // 通用
   cancel: '取消',
@@ -235,7 +253,11 @@ const zh = {
   themeDark: '深色',
   themeSystem: '跟隨系統',
   yourName: '你的名字',
-  yourNameHint: '選填。填了之後其他人會看到「由你點的」。',
+  /* 引號在這個 app 的用法是「照抄你會在畫面上看到的字」（shareLocalBody 引
+     errRoomNotFound、confirmRemoveMemberBody 引 markExcused）。但「由你點的」
+     全專案 grep 不到——名字下面真正出現的是 checkedBy「王小明 於 02:58」。
+     英文版一直是對的（who checked each name），這裡把中文補上。 */
+  yourNameHint: '選填。填了之後其他人會看到是你點的。',
   loading: '載入中…',
 } as const
 
@@ -247,7 +269,8 @@ const en: Record<MessageKey, string> = {
 
   openRoom: 'Open a room',
   joinRoom: 'Join a room',
-  roomNamePlaceholder: "What's this event? e.g. Autumn trip · Departure",
+  roomNameLabel: "What's this event?",
+  roomNamePlaceholder: 'e.g. Autumn trip · Departure',
   codePlaceholder: 'Enter the 6-character code',
   recentRooms: 'Recent rooms',
   noRecentRooms: 'No rooms yet. Open one, or join with a code.',
@@ -261,9 +284,9 @@ const en: Record<MessageKey, string> = {
   pasteRoster: 'Paste the roster',
   pastePlaceholder: 'One name per line. Numbering, (notes) and +1 companions are picked up automatically.',
   parsePreview: 'Preview',
-  parsedCount: '{n} people',
-  parsedHeads: '{n} heads including companions',
-  duplicateWarning: 'Duplicate names: {names}. They stay independent, but a note helps tell them apart.',
+  parsedCount: '{n} names',
+  parsedHeads: '{n} heads incl. companions',
+  duplicateWarning: 'Duplicate names: {names}. Checking one never moves the other; a note helps tell them apart.',
   skippedLines: '{n} lines skipped (not names)',
   emptyRoster: 'Paste a roster first',
   savedRosters: 'Saved rosters',
@@ -279,7 +302,7 @@ const en: Record<MessageKey, string> = {
   all: 'All',
   searchPlaceholder: 'Search names…',
   allHere: 'Everyone is here',
-  missingCount: '{n} still missing',
+  missingCount: '{n} missing',
   missingUnit: 'still missing',
   headcount: '{arrived} / {total}',
   withCompanions: '+{n}',
@@ -311,7 +334,7 @@ const en: Record<MessageKey, string> = {
   backToTop: 'Back to top',
   calledAt: 'called {time}',
   callAgainMember: 'Call {name} again (tried {time})',
-  onlyMissing: 'Only missing ({n})',
+  onlyMissing: 'Only missing',
   showAll: 'Show all',
   removeFromPreview: 'Remove “{name}” from the list',
   signOutWhat: "After signing out you keep control of rooms this phone opened; events you took over with the account disappear until you sign in again.",
@@ -323,7 +346,7 @@ const en: Record<MessageKey, string> = {
   downloaded: 'Downloaded {name}',
   youAre: "You're {name}",
   setYourName: 'Add your name \u203a',
-  helperLimits: "You're helping with the roll call. Copying, editing the list and closing the room are the organiser's to do — ask them if you need one.",
+  helperLimits: "Editing the roster and finishing the round are the organiser's to do.",
   remove: 'Remove',
   removeMember: 'Remove from list',
   removeMemberSub: "This can't be undone",
@@ -333,7 +356,7 @@ const en: Record<MessageKey, string> = {
 
   share: 'Share',
   shareTitle: 'Let others join',
-  shareHint: 'Give helpers the code, the QR or the link. No sign-up, no install.',
+  shareHint: 'Give them the code or the QR. No sign-up, no install.',
   whoIsHere: 'In this room now',
   onlyYouHere: "Just you so far. Give helpers the code or QR — they'll show up here once they join.",
   peersHere: '{n} phones: {names}',
@@ -342,8 +365,8 @@ const en: Record<MessageKey, string> = {
   shareLink: 'Send it',
   shareLinkText: 'Help me check names',
   shareLocalTitle: 'Only you can see this room',
-  shareLocalBody: "This device has no cloud, so the list lives only on this phone. Anyone you give the code to will just see \u201cthat code doesn't match a room\u201d.",
-  shareLocalHow: 'Sharing one list across several phones needs a cloud connection (see the README). You can still finish the roll call here and hand the result over with Copy or print.',
+  shareLocalBody: "This phone has no cloud set up, so the list lives only here. Anyone you give the code to will just see \u201cthat code doesn't match a room\u201d.",
+  shareLocalHow: 'Sharing one list across phones needs a cloud connection (see the README). You can still finish here and hand the result over with Copy or print.',
   roomCode: 'Room code',
   copyCode: 'Copy code',
   copyLink: 'Copy link',
@@ -362,8 +385,8 @@ const en: Record<MessageKey, string> = {
   closeRoom: 'Close room',
   closeRoomHint: 'No more check-ins, but the record stays.',
   finishRound: 'Finish this round',
-  finishRoundHint: 'Press this once the bus leaves. You get the result first.',
-  finishRoundBody: "No more check-ins after this; the record stays. Take the result with you now:",
+  finishRoundHint: 'Press this once the bus leaves. No more check-ins after.',
+  finishRoundBody: 'The record stays. Take the result with you first:',
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
   roomClosed: 'This room is closed',
@@ -403,7 +426,7 @@ const en: Record<MessageKey, string> = {
   settings: 'Settings',
   callMember: 'Call {name}',
   haptics: 'Haptic feedback',
-  hapticsHint: 'A short buzz on each check-in — useful when you cannot see the screen. Not supported on every device.',
+  hapticsHint: 'A short buzz on each check-in, so you need not watch the screen. Not supported on every device.',
   on: 'On',
   off: 'Off',
   overridden: '{name} was set to {status} by {who}',
@@ -432,16 +455,17 @@ const en: Record<MessageKey, string> = {
   errBadOtp: 'That code is wrong or expired. Try again.',
   errRateLimited: 'Too many attempts. Wait a few minutes.',
   group: 'Group',
+  filter: 'Filter',
   allGroups: 'All',
   ungrouped: 'No group',
   changeGroup: 'Change group',
   removeFromGroup: 'Remove from group',
-  groupCount: '{name}: {arrived} / {total} here',
+  groupCount: '{name}: {n} missing',
   boardMode: 'Board mode',
   boardHint: 'Big display for a tablet at the door. The screen stays awake.',
   exitBoard: 'Exit board',
   printRoster: 'Print paper roster',
-  printHint: 'A blank tick-list to keep as a backup if a phone dies.',
+  printHint: 'A blank tick-list, for when a phone dies.',
 
   cancel: 'Cancel',
   confirm: 'Confirm',
@@ -461,7 +485,7 @@ const en: Record<MessageKey, string> = {
 export const messages = { zh, en } as const
 export type Lang = keyof typeof messages
 
-/** t('missingCount', { n: 3 }) → 「還有 3 位沒到」 */
+/** t('missingCount', { n: 3 }) → 「3 位沒到」 */
 export function translate(lang: Lang, key: MessageKey, vars?: Record<string, string | number>): string {
   const raw: string = messages[lang][key] ?? messages.zh[key]
   if (!vars) return raw

@@ -109,11 +109,24 @@ export function Board({ code }: { code: string }) {
       <div class="board-foot">
         {groupList.length > 0 && (
           <div class="groups" role="group" aria-label={t('group')}>
-            <button class="group-chip" aria-pressed={group === null} onClick={() => setGroup(null)}>
+            {/* 看板的晶片刻意不印數字（版面留給人名），但沒有數字不等於沒有名稱：
+                roll-call.md 要求每顆晶片都要帶 aria-label，房間畫面已經照做。 */}
+            <button
+              class="group-chip"
+              aria-pressed={group === null}
+              aria-label={t('groupCount', { name: t('allGroups'), n: summarize(all).pending })}
+              onClick={() => setGroup(null)}
+            >
               {t('allGroups')}
             </button>
             {groupList.map((g) => (
-              <button key={g} class="group-chip" aria-pressed={group === g} onClick={() => setGroup(g)}>
+              <button
+                key={g}
+                class="group-chip"
+                aria-pressed={group === g}
+                aria-label={t('groupCount', { name: g, n: summarize(all.filter((m) => m.group_label === g)).pending })}
+                onClick={() => setGroup(g)}
+              >
                 {g}
               </button>
             ))}

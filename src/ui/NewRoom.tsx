@@ -77,7 +77,7 @@ export function NewRoom() {
         )}
 
         <div class="field">
-          <label class="label" for="room-name">{t('roomNamePlaceholder')}</label>
+          <label class="label" for="room-name">{t('roomNameLabel')}</label>
           <input
             id="room-name"
             class="input"
@@ -104,7 +104,7 @@ export function NewRoom() {
             disabled={working || drafts.length === 0}
             onClick={() => { void submit() }}
           >
-            {working ? t('loading') : `${t('create')}（${drafts.length}）`}
+            {working ? t('loading') : drafts.length ? `${t('create')} ${drafts.length}` : t('create')}
           </button>
         </div>
       </div>

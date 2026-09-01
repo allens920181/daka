@@ -259,7 +259,7 @@ export function ManageSheet({ owner, group, onClose }: {
               disabled={working || drafts.length === 0}
               onClick={() => setConfirming('replaceRoster')}
             >
-              {working ? t('loading') : `${t('save')}（${drafts.length}）`}
+              {working ? t('loading') : drafts.length ? `${t('save')} ${drafts.length}` : t('save')}
             </button>
           </div>
         </div>
@@ -642,7 +642,6 @@ export function AddWalkInSheet({ group, onClose }: { group: string | null; onClo
   return (
     <Sheet title={t('addWalkIn')} onClose={onClose}>
       <div class="stack">
-        <p class="hint">{t('walkInPlaceholder')}</p>
         {group && <p class="note">{t('walkInIntoGroup', { group })}</p>}
         <RosterInput text={text} onText={setText} />
         <button
@@ -650,7 +649,7 @@ export function AddWalkInSheet({ group, onClose }: { group: string | null; onClo
           disabled={drafts.length === 0}
           onClick={() => { void add() }}
         >
-          {`${t('add')}（${drafts.length}）`}
+          {drafts.length ? `${t('add')} ${drafts.length}` : t('add')}
         </button>
       </div>
     </Sheet>
