@@ -260,9 +260,6 @@ export function Room({ code }: { code: string }) {
           <span class="score-heads">
             {t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}
           </span>
-          <button class="btn btn-sm score-copy" onClick={() => { void copySummary() }} aria-label={t('copySummary')}>
-            <IconCopy /> <span class="score-copy-text">{t('copySummary')}</span>
-          </button>
         </div>
 
         {/*
@@ -398,27 +395,39 @@ export function Room({ code }: { code: string }) {
       </div>
 
       {/*
-        底部動作列沒有主要按鈕，這是刻意的。
-        `.btn-primary` 的定義是「這個畫面最主要的動作」（04-components/actions.md），
-        而這個畫面最主要的動作是點名單上的名字——它不在動作列裡。分享是活動前
-        用一次的東西，把它畫成全畫面最亮的物件（深色模式下特別明顯）等於整場
-        點名都在指著一個不該按的按鈕。位置不動（01-foundations §1.3：位置穩定
-        贏），只是不再喊那麼大聲。
+        底部動作列裝的是「收尾時真正要按的兩個動作」。
+
+        以前是「分享」＋「臨時加人」。但五支手機裡有四支是掃 QR 進來的協助者，
+        他們永遠不需要分享，卻整場都被那顆按鈕佔著最好的拇指位置；而收尾時真正
+        要做的是「只看未到」再一個一個打電話，那時你已經捲過 80 個人，得一路
+        捲回頂端才按得到篩選。
+
+        這推翻了 01-foundations §1.3 原本的「位置穩定贏」——那條規則保護的是
+        肌肉記憶，但一次性的活動裡沒有人會產生肌肉記憶，前提本來就不成立。
+        兩個槽位仍然永遠固定、不隨狀態變動，換掉的是內容。
+
+        分享退回頂欄那顆已經存在的圖示鍵（活動前用一次，一次點擊仍然到得了）；
+        臨時加人移進管理面板（一場活動 0-2 次，而「只看未到」是整個收尾都在用）。
+        這裡沒有 .btn-primary：這個畫面最主要的動作是點名單上的名字。
       */}
       <div class="dock">
         <div class="dock-inner">
-          <button class="btn btn-block" onClick={() => setSheet('share')}>
-            <IconShare /> {t('share')}
+          <button
+            class={filter === 'pending' ? 'btn btn-block is-on' : 'btn btn-block'}
+            aria-pressed={filter === 'pending'}
+            onClick={() => setFilter(filter === 'pending' ? 'all' : 'pending')}
+          >
+            {filter === 'pending' ? t('showAll') : t('onlyMissing', { n: s.pending })}
           </button>
-          <button class="btn" disabled={closed} onClick={() => setSheet('walkin')}>
-            {t('addWalkIn')}
+          <button class="btn" onClick={() => { void copySummary() }}>
+            <IconCopy /> {t('copySummary')}
           </button>
         </div>
       </div>
 
       {sheet === 'share' && <ShareSheet code={current.code} onClose={() => setSheet(null)} />}
       {sheet === 'manage' && (
-        <ManageSheet owner={isOwner.value} onClose={() => setSheet(null)} />
+        <ManageSheet owner={isOwner.value} group={group} onClose={() => setSheet(null)} />
       )}
       {sheet === 'walkin' && <AddWalkInSheet group={group} onClose={() => setSheet(null)} />}
       {sheet && typeof sheet === 'object' && (

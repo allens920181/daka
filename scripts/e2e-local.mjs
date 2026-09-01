@@ -168,13 +168,30 @@ ok(`請假不重複印：「${excusedText.trim()}」`, (excusedText.match(/請�
 
 // #10 臨時加人：站在你面前的人不該被算成「未到」，而且要說一聲。
 const beforeMissing = await p.locator('.score-number').textContent()
-await p.getByRole('button',{name:/臨時/}).click(); await p.waitForTimeout(500)
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button',{name:/臨時加人/}).click(); await p.waitForTimeout(500)
 await p.locator('#roster-text').fill('路上遇到的人'); await p.waitForTimeout(400)
 await p.getByRole('button',{name:/加入名單/}).click(); await p.waitForTimeout(1200)
 ok(`臨時加人不會讓未到數變多（${beforeMissing} → ${await p.locator('.score-number').textContent()}）`,
    (await p.locator('.score-number').textContent()) === beforeMissing)
 const walkToast = (await p.locator('.toast-text').textContent().catch(() => '')) ?? ''
 ok(`加完有說一聲：「${walkToast}」`, walkToast.includes('路上遇到的人') && walkToast.includes('已到'))
+
+// #16 底部動作列裝的是「收尾時真正要按的兩個動作」。以前是分享＋臨時加人，
+// 但五支手機裡有四支是掃 QR 進來的協助者，他們永遠不需要分享；而收尾時真正要
+// 做的是「只看未到」，那時你已經捲過 80 個人，得一路捲回頂端才按得到篩選。
+const dockLabels = await p.locator('.dock .btn').allTextContents()
+ok(`底部動作列：${dockLabels.map(x=>x.trim()).join(' ｜ ')}`,
+   dockLabels.length === 2 && dockLabels[0].includes('只看未到') && dockLabels[1].includes('複製結果'))
+ok('分享不在動作列（退回頂欄那顆圖示鍵）',
+   !dockLabels.join('').includes('分享') && (await p.locator('.topbar button[aria-label="分享"]').count()) === 1)
+await p.locator('.dock .btn').first().click(); await p.waitForTimeout(400)
+ok('按下之後真的只剩未到', (await p.locator('.member.is-arrived').count()) === 0)
+ok('與上面的分段控制同步',
+   (await p.locator('.segmented button[aria-pressed=true]').textContent())?.includes('未到'))
+ok('切換鍵自己顯示為開啟', (await p.locator('.dock .btn').first().getAttribute('aria-pressed')) === 'true')
+await p.locator('.dock .btn').first().click(); await p.waitForTimeout(400)
+ok('再按一次回到全部', (await p.locator('.dock .btn').first().textContent())?.includes('看全部') === false)
 
 // #36 刪除是唯一不可復原的動作，不能一按就沒。
 await p.locator('.member').filter({ hasText: '王小明' }).locator('.icon-btn').last().click()

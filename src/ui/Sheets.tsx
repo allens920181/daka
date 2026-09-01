@@ -17,7 +17,7 @@ import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLeave, IconList, IconLock,
-  IconPhone, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
+  IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
 } from './icons'
 import { useT } from './t'
 
@@ -121,10 +121,15 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings'
+type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings' | 'walkin'
 type Confirming = null | 'delete' | 'replaceRoster' | 'finish'
 
-export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () => void }) {
+export function ManageSheet({ owner, group, onClose }: {
+  owner: boolean
+  /** 目前正在看的那一車。臨時加人要繼承它。 */
+  group: string | null
+  onClose: () => void
+}) {
   const t = useT()
   const [mode, setMode] = useState<ManageMode>('menu')
   const [confirming, setConfirming] = useState<Confirming>(null)
@@ -279,6 +284,7 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
   }
 
   if (mode === 'settings') return <SettingsSheet onClose={onClose} />
+  if (mode === 'walkin') return <AddWalkInSheet group={group} onClose={onClose} />
 
   const expires = formatDate(current.expires_at, prefs.value.lang)
   const myName = identity.value.checkerName.trim()
@@ -300,6 +306,19 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
       <div class="menu">
+        {/* 臨時加人從底部動作列搬到這裡：一場活動用 0-2 次，而動作列的兩個
+            槽位讓給了整個收尾都在用的「只看未到」與「複製結果」。
+            協助者站在車門口也用得到，所以不放在 owner 區塊裡。 */}
+        {!closed && (
+          <button class="menu-item" onClick={() => setMode('walkin')}>
+            <IconPlus />
+            <span>
+              <strong>{t('addWalkIn')}</strong>
+              <span class="sub">{t('walkInPlaceholder')}</span>
+            </span>
+          </button>
+        )}
+
         <button
           class="menu-item"
           onClick={() => downloadFile(csvFilename(current), toCsv(members.value))}

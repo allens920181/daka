@@ -263,6 +263,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn:disabled { opacity: var(--op-disabled); cursor: not-allowed; transform: none; }
 
 .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/* 切換鍵的「開」狀態（底部動作列的「只看未到」）。用色塊而不是 .btn-primary：
+   它不是「這個畫面最主要的動作」，只是一個開關現在是開著的。 */
+.btn.is-on {
+  background: var(--accent-soft); border-color: var(--accent);
+  color: var(--accent); font-weight: 700;
+}
 .btn-ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
 .btn-ghost:hover { background: var(--surface-2); }
 .btn-danger { color: var(--fb-error); border-color: var(--rule); }
@@ -434,14 +440,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   margin-left: auto; font-size: var(--fs-4); font-weight: 700;
   color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-/* 「複製結果」是收尾動作，留在計分區這一列——那是數字所在的地方，也是
-   收尾時眼睛本來就在看的地方。窄螢幕上收成純圖示（aria-label 保留）。 */
-.score-copy { flex: none; padding: 0 var(--sp-3); }
-@media (max-width: 359px) {
-  .score-copy-text { position: absolute; width: 1px; height: 1px;
-    padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .score-copy { padding: 0 var(--sp-2); }
-}
+
 
 /*
  * 進度條是計分區的下緣，不自己佔一列。
@@ -536,6 +535,26 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 176px = 88 + 88，落在 4px 階上。
  */
 .list { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: 176px; }
+
+/*
+ * 平板橫向：名單排成兩欄。
+ *
+ * 看板模式才是平板的正式定位，但 #/r/<房號> 在平板上完全可達——掃 QR 進來的
+ * 就是這個畫面，而教會團體最常有的閒置裝置正好是平板。1024×768 橫放時只看得到
+ * 3 個人（比手機還少），左右各空 208px。
+ *
+ * grid 是列優先流動，所以 sort_order 的閱讀順序不變；列高與內容也完全不動。
+ */
+@media (min-width: 700px) and (orientation: landscape) {
+  .shell { max-width: 900px; }
+  .dock-inner { max-width: 900px; }
+  .list {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--sp-2) var(--sp-3);
+  }
+  /* 分組標題要橫跨整列，不然「第二車」會縮在半欄裡看起來像一個人。 */
+  .group-divider { grid-column: 1 / -1; }
+}
 
 .member {
   display: flex; align-items: stretch;
