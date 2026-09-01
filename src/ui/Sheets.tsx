@@ -7,7 +7,7 @@ import {
   signIn, signOut,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { csvFilename, downloadFile, toCsv } from '../lib/export'
+import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
 import { formatDate } from '../lib/format'
 import { rosterToText } from '../lib/parse'
 import type { Member } from '../lib/types'
@@ -122,7 +122,7 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 // ---------------------------------------------------------------------------
 
 type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings'
-type Confirming = null | 'delete' | 'replaceRoster'
+type Confirming = null | 'delete' | 'replaceRoster' | 'finish'
 
 export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () => void }) {
   const t = useT()
@@ -364,11 +364,18 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
               <span><strong>{t('rename')}</strong></span>
             </button>
 
-            <button class="menu-item" onClick={() => { void run(() => setRoomClosed(!closed)) }}>
+            <button
+              class="menu-item"
+              onClick={() => {
+                // 重新開啟不是破壞性動作，直接做；結束才要走流程。
+                if (closed) { void run(() => setRoomClosed(false)); return }
+                setConfirming('finish')
+              }}
+            >
               <IconLock />
               <span>
-                <strong>{closed ? t('reopenRoom') : t('closeRoom')}</strong>
-                {!closed && <span class="sub">{t('closeRoomHint')}</span>}
+                <strong>{closed ? t('reopenRoom') : t('finishRound')}</strong>
+                {!closed && <span class="sub">{t('finishRoundHint')}</span>}
               </span>
             </button>
           </>
@@ -396,6 +403,38 @@ export function ManageSheet({ owner, onClose }: { owner: boolean; onClose: () =>
 
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
       <p class="hint" style="margin-top:14px">{t('expiresOn', { date: expires })}</p>
+
+      {/*
+        「車開了」是唯一一次所有人的注意力同時落在同一件事上，也是唯一一次能把
+        結果送出去的機會。以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、
+        下載 CSV 在面板第一項、關閉房間在第九項），結果多數房間從未被關閉也從未
+        被匯出，30 天後靜靜消失。把結果攤在確認鍵前面，順手就交出去了。
+      */}
+      {confirming === 'finish' && (
+        <ConfirmDialog
+          title={t('finishRound')}
+          body={t('finishRoundBody')}
+          confirmLabel={t('finishRound')}
+          onClose={() => setConfirming(null)}
+          onConfirm={() => { void run(() => setRoomClosed(true)) }}
+        >
+          <pre class="result-preview">{toShareText(current, members.value)}</pre>
+          <div class="row" style="margin-bottom:12px">
+            <button
+              class="btn btn-block"
+              onClick={() => { void copyText(toShareText(current, members.value), t('summaryCopied'), t('copyFailed')) }}
+            >
+              <IconCopy /> {t('copySummary')}
+            </button>
+            <button
+              class="btn btn-block"
+              onClick={() => downloadFile(csvFilename(current), toCsv(members.value))}
+            >
+              <IconDownload /> {t('exportCsv')}
+            </button>
+          </div>
+        </ConfirmDialog>
+      )}
 
       {confirming === 'delete' && (
         <ConfirmDialog

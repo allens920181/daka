@@ -48,7 +48,7 @@ export function Sheet({
  * 初始焦點放在「取消」：破壞性動作不該讓 Enter 直接送出。
  */
 export function ConfirmDialog({
-  title, body, confirmLabel, danger = false, onConfirm, onClose,
+  title, body, confirmLabel, danger = false, onConfirm, onClose, children,
 }: {
   title: string
   body: string
@@ -56,6 +56,8 @@ export function ConfirmDialog({
   danger?: boolean
   onConfirm: () => void
   onClose: () => void
+  /** 決定之前要先看到的東西（例如結束這一輪時的結果預覽），放在說明與按鈕之間。 */
+  children?: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)
   useModal(panel, onClose)
@@ -76,6 +78,7 @@ export function ConfirmDialog({
       >
         <h2 class="dialog-title" id="dialog-title">{title}</h2>
         <p class="dialog-body" id="dialog-body">{body}</p>
+        {children}
         <div class="dialog-actions">
           <button class="btn btn-block" onClick={onClose}>{t('cancel')}</button>
           <button

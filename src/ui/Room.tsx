@@ -222,7 +222,25 @@ export function Room({ code }: { code: string }) {
           <p class="print-blanks">{t('printBlanks')}</p>
         </div>
 
-        {closed && <p class="banner banner-warn" style="margin-top:12px">{t('roomClosed')}</p>}
+        {/*
+          結束之後橫幅印的是定格的結果，不是一句「這間房已關閉」——那時候要
+          回答的問題已經不是「還能不能點」，而是「這一場最後是幾個人」。
+          再附一顆「複製結果」，因為結束之後才想到要貼回 LINE 是常態。
+        */}
+        {closed && (
+          <div class="banner banner-warn banner-result" style="margin-top:12px">
+            <span class="banner-result-text">
+              {t('closedResult', {
+                summary: allHere
+                  ? `${t('allHere')} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`
+                  : `${t('missingCount', { n: s.pending })} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`,
+              })}
+            </span>
+            <button class="btn btn-sm" onClick={() => { void copySummary() }}>
+              <IconCopy /> {t('copySummary')}
+            </button>
+          </div>
+        )}
 
         <div class="scoreboard" ref={scoreboardRef}>
           <div class="score-main">

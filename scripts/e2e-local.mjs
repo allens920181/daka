@@ -251,6 +251,28 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉對話框，房間仍在', (await p.locator('[role=alertdialog]').count())===0
    && (await p.locator('.member').count())===3)
 
+// --- #20 結束這一輪：把結果攤在確認鍵前面 ---
+// 以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、下載 CSV 在面板第一項、
+// 關閉房間在第九項），結果多數房間從未被關閉也從未被匯出，30 天後靜靜消失。
+await p.locator('.member-main').first().click(); await p.waitForTimeout(600)
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+ok('「關閉房間」改叫「結束這一輪」', (await p.getByRole('button',{name:/結束這一輪/}).count()) > 0)
+await p.getByRole('button',{name:/結束這一輪/}).click(); await p.waitForTimeout(600)
+const finishPreview = (await p.locator('.result-preview').textContent()) ?? ''
+ok(`確認鍵前面就看得到結果：「${finishPreview.split('\n')[1]}」`,
+   finishPreview.includes('確認對話框測試') && /已到 1 \/ 3 人/.test(finishPreview))
+ok('對話框裡就能複製結果', (await p.getByRole('button',{name:/複製結果/}).count()) > 0)
+ok('對話框裡就能下載 CSV', (await p.getByRole('button',{name:/下載 CSV/}).count()) > 0)
+await p.getByRole('button',{name:/^結束這一輪$/}).last().click(); await p.waitForTimeout(1200)
+await p.keyboard.press('Escape'); await p.waitForTimeout(500)
+// 結束之後要回答的問題已經不是「還能不能點」，而是「這一場最後是幾個人」。
+const closedBanner = (await p.locator('.banner-result-text').textContent()) ?? ''
+ok(`結束後橫幅印的是定格結果：「${closedBanner}」`,
+   closedBanner.includes('已結束') && closedBanner.includes('1 / 3'))
+ok('結束後仍然複製得到結果', (await p.locator('.banner-result .btn').count()) === 1)
+ok('結束後戳名字沒有作用', await p.locator('.member-main').first().isDisabled())
+ok('頂欄說得出已關閉', (await p.locator('.topbar-count.closed').count()) === 1)
+
 // --- 設定：震動開關 ---
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 await p.goto(URL); await p.waitForTimeout(800)

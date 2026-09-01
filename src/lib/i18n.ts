@@ -119,6 +119,12 @@ const zh = {
   rename: '重新命名',
   closeRoom: '關閉房間',
   closeRoomHint: '關閉後就不能再點名，但紀錄還在。',
+  /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉房間」——
+     使用者心裡想的是「這件事做完了」，不是「把一個容器關起來」。 */
+  finishRound: '結束這一輪',
+  finishRoundHint: '車開了就按這個。會先讓你把結果帶走。',
+  finishRoundBody: '結束後就不能再點名，紀錄還在。趁現在把結果帶走：',
+  closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
   roomClosed: '這間房已關閉',
   deleteRoom: '刪除房間',
@@ -328,6 +334,10 @@ const en: Record<MessageKey, string> = {
   rename: 'Rename',
   closeRoom: 'Close room',
   closeRoomHint: 'No more check-ins, but the record stays.',
+  finishRound: 'Finish this round',
+  finishRoundHint: 'Press this once the bus leaves. You get the result first.',
+  finishRoundBody: "No more check-ins after this; the record stays. Take the result with you now:",
+  closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
   roomClosed: 'This room is closed',
   deleteRoom: 'Delete room',

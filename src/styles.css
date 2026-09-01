@@ -631,6 +631,21 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+/* 結束之後的定格結果橫幅。 */
+.banner-result {
+  display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+}
+.banner-result-text { flex: 1; min-width: 0; font-weight: 700; }
+
+/* 結束對話框裡的結果預覽：就是等一下要貼回 LINE 的那段文字，原樣呈現。 */
+.result-preview {
+  margin: 0 0 var(--sp-3); padding: var(--sp-3);
+  background: var(--surface-2); border-radius: var(--r-2);
+  font: inherit; font-size: var(--fs-2); color: var(--ink-2);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 180px; overflow-y: auto; text-align: left;
+}
+
 /* 管理面板頂端的身分列：協助者從掃 QR 直接進房，這是他唯一會看到「我是誰、
    我少了什麼」的地方。 */
 .role-line {
