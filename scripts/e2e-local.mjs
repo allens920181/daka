@@ -16,7 +16,26 @@ const ok = (label, cond) => { console.log((cond ? '  PASS  ' : '  FAIL  ') + lab
 
 await p.goto(URL); await p.waitForTimeout(1200)
 ok('首頁載入', await p.locator('.home-title').isVisible())
-ok('顯示單機模式提示', (await p.locator('.banner-muted').count()) > 0)
+
+// 這一整套測的是單機模式。如果建置時有 .env.local（或 VITE_SUPABASE_* 環境
+// 變數），產出的會是雲端版：首頁沒有單機橫幅，接著開房會去打真的 Supabase，
+// 於是在「等房號出現」那一行掛 30 秒才超時——看起來像測試壞了，其實是建錯版本。
+// 早一步講清楚，省下那 30 秒和一次誤判。
+if ((await p.locator('.banner-muted').count()) === 0) {
+  console.error(`
+  這份 dist 是「雲端版」，但 e2e-local 測的是單機模式。
+  多半是 .env.local 或 VITE_SUPABASE_* 環境變數被吃進建置了。
+  重新建一份不帶設定的：
+
+      env -u VITE_SUPABASE_URL -u VITE_SUPABASE_ANON_KEY \
+        npx vite build --mode production
+      npx vite preview --port 4173
+
+  （Vite 會自動讀 .env.local，所以只清環境變數不夠，該檔也要暫時移開。）
+`)
+  process.exit(1)
+}
+ok('顯示單機模式提示', true)
 
 
 // 開房
