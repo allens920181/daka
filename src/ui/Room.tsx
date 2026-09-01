@@ -12,7 +12,7 @@ import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
 import { AddWalkInSheet, ManageSheet, MemberSheet, ShareSheet } from './Sheets'
-import { IconBack, IconCheck, IconCopy, IconMore, IconPhone, IconShare } from './icons'
+import { IconBack, IconCheck, IconCopy, IconMore, IconPhone, IconSearch, IconShare } from './icons'
 import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived' | 'excused'
@@ -30,6 +30,7 @@ export function Room({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
   // 分車：選了某一車之後，計數與名單都只算那一車——
   // 顧第一車的人要看的是「我這台還有幾個沒上」。
   const [group, setGroup] = useState<string | null>(null)
@@ -195,6 +196,14 @@ export function Room({ code }: { code: string }) {
               <SyncBadge />
             </div>
           </button>
+          <button
+            class={searchOpen ? 'icon-btn is-on' : 'icon-btn'}
+            onClick={() => setSearchOpen((v) => !v)}
+            aria-label={t('searchPlaceholder')}
+            aria-expanded={searchOpen}
+          >
+            <IconSearch />
+          </button>
           <button class="icon-btn" onClick={() => setSheet('share')} aria-label={t('share')}>
             <IconShare />
           </button>
@@ -202,6 +211,32 @@ export function Room({ code }: { code: string }) {
             <IconMore />
           </button>
         </div>
+        {/*
+          搜尋框長在頂欄裡，不在名單上方。
+          兩個理由，都是量出來的：80 人的名單首屏只看得到 5 個人名，而搜尋框
+          連間距吃掉 76px（正好一列人名）；而且它原本會跟著名單捲走——真正需要
+          搜尋的時刻是你已經捲過 60 個人、有人報上名字，那時要用它得先捲回
+          17 個螢幕（roll-call.md 的「頂欄標題可點回到頂端」就是為了這件事）。
+          頂欄是 sticky，搬進來之後兩個問題一起消失。
+        */}
+        {searchOpen && (
+          <div class="search-wrap">
+            <input
+              class="input"
+              type="search"
+              value={query}
+              placeholder={t('searchPlaceholder')}
+              aria-label={t('searchPlaceholder')}
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              ref={(el) => el?.focus()}
+              onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); setSearchOpen(false) } }}
+            />
+            {query && (
+              <button class="search-clear" onClick={() => setQuery('')} aria-label={t('cancel')}>×</button>
+            )}
+          </div>
+        )}
       </div>
 
       <div class="shell">
@@ -342,20 +377,6 @@ export function Room({ code }: { code: string }) {
           <Segment active={filter === 'arrived'} onClick={() => setFilter('arrived')} label={t('arrived')} count={s.arrived} />
           {s.excused > 0 && (
             <Segment active={filter === 'excused'} onClick={() => setFilter('excused')} label={t('excused')} count={s.excused} />
-          )}
-        </div>
-
-        <div class="search-wrap">
-          <input
-            class="input"
-            type="search"
-            value={query}
-            placeholder={t('searchPlaceholder')}
-            aria-label={t('searchPlaceholder')}
-            onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
-          />
-          {query && (
-            <button class="search-clear" onClick={() => setQuery('')} aria-label={t('cancel')}>×</button>
           )}
         </div>
 

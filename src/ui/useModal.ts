@@ -13,6 +13,9 @@ const FOCUSABLE =
  * 3. Esc 關閉
  * 4. 背景加 inert —— 只做視覺遮罩不夠，螢幕閱讀器仍讀得到底下的按鈕
  */
+/** 目前開著幾層模態。面板之上可以再疊確認對話框，所以不能用布林。 */
+let openModals = 0
+
 export function useModal(
   layer: RefObject<HTMLElement>,
   onClose: () => void,
@@ -73,8 +76,21 @@ export function useModal(
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
+    // Toast 固定在畫面下緣 88px（讓開底部動作列），但面板是從下緣長上來的，
+    // 於是 Toast 正好落在選單中間——實測它蓋住「結束這一輪」49px，而且
+    // .toast 是 pointer-events: auto，那五秒內那一列按不下去。
+    // 標記模態層開啟，讓 CSS 把 Toast 移到上緣的遮罩區。用計數器是因為面板
+    // 之上還會疊確認對話框，關掉對話框時面板還開著。
+    openModals += 1
+    document.documentElement.dataset.modal = 'open'
+
     return () => {
       document.removeEventListener('keydown', onKey)
+      openModals -= 1
+      if (openModals <= 0) {
+        openModals = 0
+        delete document.documentElement.dataset.modal
+      }
       document.body.style.overflow = prevOverflow
       for (const el of inerted) el.removeAttribute('inert')
       restoreTo?.focus?.()

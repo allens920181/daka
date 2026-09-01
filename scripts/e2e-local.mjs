@@ -93,7 +93,10 @@ await p.getByRole('button', { name: /^未到/ }).click(); await p.waitForTimeout
 ok('未到篩選顯示 6 人', (await p.locator('.member').count()) === 6)
 await p.getByRole('button', { name: /^全部/ }).click(); await p.waitForTimeout(300)
 
-// 搜尋
+// 搜尋。搜尋框搬進了頂欄（sticky），要先按圖示打開——它原本佔掉首屏 76px，
+// 而且會跟著名單捲走，真正需要它的時候（捲過 60 個人）反而按不到。
+await p.getByRole('button', { name: /搜尋姓名/ }).click(); await p.waitForTimeout(300)
+ok('搜尋框打開後自動聚焦', await p.evaluate(() => document.activeElement?.getAttribute('type') === 'search'))
 await p.locator('input[type=search]').fill('陳怡君'); await p.waitForTimeout(300)
 ok('搜尋同名找到 2 人', (await p.locator('.member').count()) === 2)
 await p.locator('input[type=search]').fill('0912'); await p.waitForTimeout(300)
@@ -196,6 +199,40 @@ ok(`臨時加人不會讓未到數變多（${beforeMissing} → ${await p.locato
 const walkToast = (await p.locator('.toast-text').textContent().catch(() => '')) ?? ''
 ok(`加完有說一聲：「${walkToast}」`, walkToast.includes('路上遇到的人') && walkToast.includes('已到'))
 
+// #17 Toast 固定在下緣 88px（讓開底部動作列），但面板也是從下緣長上來的：
+// Toast 於是落在選單列之間，實測蓋住「結束這一輪」49px，而且 .toast 是
+// pointer-events: auto，那五秒內那一列按不下去。面板開著時要移到上緣的遮罩區。
+await p.locator('.member-main').first().click(); await p.waitForTimeout(300)
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+const toastVsMenu = await p.evaluate(() => {
+  const toast = document.querySelector('.toast')
+  if (!toast) return { noToast: true }
+  const tr = toast.getBoundingClientRect()
+  const rows = [...document.querySelectorAll('.sheet .menu-item')]
+  const covered = rows.filter((el) => {
+    const b = el.getBoundingClientRect()
+    return Math.min(b.bottom, tr.bottom) - Math.max(b.top, tr.top) > 0
+  })
+  // 被蓋住的那一列，中心點實際上點得到誰？
+  const stolen = covered.filter((el) => {
+    const b = el.getBoundingClientRect()
+    return !el.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2))
+  })
+  return { top: Math.round(tr.top), covered: covered.map((e) => e.innerText.split('\n')[0]), stolen: stolen.length }
+})
+ok(`面板開著時 Toast 在上緣（top=${toastVsMenu.top}）`, !toastVsMenu.noToast && toastVsMenu.top < 120)
+ok(`Toast 沒有蓋住任何選單列（${toastVsMenu.covered.join('、') || '無'}）`, toastVsMenu.covered.length === 0)
+ok('也沒有攔截任何一列的點擊', toastVsMenu.stolen === 0)
+// 面板關掉之後要回到下緣，否則會擋住頂欄
+await p.keyboard.press('Escape'); await p.waitForTimeout(500)
+await p.locator('.member-main').nth(1).click(); await p.waitForTimeout(400)
+const toastBack = await p.evaluate(() => {
+  const t = document.querySelector('.toast')
+  return t ? Math.round(t.getBoundingClientRect().top) : -1
+})
+ok(`面板關掉後 Toast 回到下緣（top=${toastBack}）`, toastBack > 400)
+await p.locator('.toast-action').click().catch(() => {}); await p.waitForTimeout(400)
+
 // #16 底部動作列裝的是「收尾時真正要按的兩個動作」。以前是分享＋臨時加人，
 // 但五支手機裡有四支是掃 QR 進來的協助者，他們永遠不需要分享；而收尾時真正要
 // 做的是「只看未到」，那時你已經捲過 80 個人，得一路捲回頂端才按得到篩選。
@@ -249,6 +286,7 @@ ok('點頂欄回到名單頂端', (await p.evaluate(() => window.scrollY)) < 10)
 // 搜尋框只留一顆清除鍵：原生那顆沒有 48px 觸控目標也沒有無障礙名稱。
 // Chrome 的 getComputedStyle 對這個 pseudo-element 會回傳宿主元素的值，驗不到，
 // 所以直接確認規則還在樣式表裡（防的是「有人把它刪掉」）。
+await p.getByRole('button', { name: /搜尋姓名/ }).click(); await p.waitForTimeout(300)
 await p.locator('input[type=search]').fill('同工'); await p.waitForTimeout(300)
 ok('自訂清除鍵有 48px 觸控目標與無障礙名稱', await p.evaluate(() => {
   const b = document.querySelector('.search-clear')
@@ -457,6 +495,39 @@ ok('離開看板回到房間', await p.locator('.topbar-name').isVisible() && (a
 
 
 
+
+// ---- 80 人名單的首屏產出 ----
+// roll-call.md 寫著「首屏本來就有 45–50% 的高度被控制項吃掉——80 人的名單一屏
+// 只看得到 4 個人；省下的每一格都直接變成人名」。這一段把那句話變成可量的東西。
+await p.goto(URL); await p.waitForTimeout(600)
+await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(400)
+await p.locator('#room-name').fill('員工旅遊 · 出發')
+await p.locator('#roster-text').fill(
+  ['【第一車】', ...Array.from({length:40},(_,i)=>`第一車學員${String(i+1).padStart(2,'0')}`),
+   '【第二車】', ...Array.from({length:40},(_,i)=>`第二車學員${String(i+1).padStart(2,'0')}`)].join('\n'))
+await p.waitForTimeout(800)
+await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(2200)
+const fold = await p.evaluate(() => {
+  const dockTop = document.querySelector('.dock')?.getBoundingClientRect().top ?? innerHeight
+  const rows = [...document.querySelectorAll('.member')]
+  return {
+    firstNameTop: Math.round(rows[0].getBoundingClientRect().top),
+    visible: rows.filter((e) => e.getBoundingClientRect().bottom <= dockTop).length,
+    searchInFlow: !!document.querySelector('.shell .search-wrap'),
+  }
+})
+ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 6)
+ok('搜尋框不在名單流裡（它佔的 76px 等於一列人名）', !fold.searchInFlow)
+// 捲到名單深處，搜尋鈕必須還按得到——這是把它搬進頂欄的另一半理由。
+await p.mouse.wheel(0, 3000); await p.waitForTimeout(500)
+ok('捲過 3000px 之後搜尋鈕仍在畫面上',
+   await p.getByRole('button', { name: /搜尋姓名/ }).isVisible())
+await p.getByRole('button', { name: /搜尋姓名/ }).click(); await p.waitForTimeout(300)
+await p.keyboard.type('第二車學員37'); await p.waitForTimeout(500)
+ok('深處也搜得到人', (await p.locator('.member').count()) === 1)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 收起搜尋並還原名單', (await p.locator('input[type=search]').count()) === 0
+   && (await p.locator('.member').count()) === 80)
 
 ok('沒有 JS 錯誤', errs.length === 0)
 if (errs.length) console.log(errs.join('\n'))

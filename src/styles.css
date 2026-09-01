@@ -12,6 +12,17 @@
   --surface: #ffffff;
   --surface-2: #eceff1;
   --surface-3: #dfe4e6;
+  /*
+   * 「浮在凹槽上」的那一階。分段控制是全站唯一靠高度（而不是顏色）表示選中的
+   * 元件：軌道用 --surface-2，選中的那一格要比軌道亮。
+   *
+   * 不能直接用 --surface：這套色階在明暗兩邊的方向是相反的。淺色是
+   * surface(白) > paper > surface-2 > surface-3；深色是
+   * surface-3 > surface-2 > surface > paper。用 --surface 的話，深色下選中的那格
+   * 會比軌道**暗**（實測 1.12:1，方向反了），加上 --el-1 是純黑陰影在深底上等於
+   * 不存在——「被選到的那一格」看起來反而像沒被選到。
+   */
+  --raised: #ffffff;
   --ink: #10171a;
   --ink-2: #4a5a5e;
   --ink-3: #5f6f73;          /* 最淺的可用文字色 */
@@ -129,6 +140,7 @@
     --surface: #151e21;
     --surface-2: #1d282b;
     --surface-3: #263336;
+    --raised: #263336;
     --ink: #e9eef0;
     --ink-2: #a4b3b6;
     --ink-3: #8b9b9f;
@@ -175,6 +187,7 @@
   --surface: #151e21;
   --surface-2: #1d282b;
   --surface-3: #263336;
+  --raised: #263336;
   --ink: #e9eef0;
   --ink-2: #a4b3b6;
   --ink-3: #8b9b9f;
@@ -502,7 +515,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   cursor: pointer; touch-action: manipulation; white-space: nowrap;
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
 }
-.segment[aria-pressed='true'] { background: var(--surface); color: var(--ink); box-shadow: var(--el-1); }
+.segment[aria-pressed='true'] { background: var(--raised); color: var(--ink); box-shadow: var(--el-1); }
 .segment .count { font-variant-numeric: tabular-nums; color: var(--ink-3); font-weight: 500; }
 .segment[aria-pressed='true'] .count { color: var(--accent); }
 
@@ -554,7 +567,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
   content: ""; flex: 1; height: 1px; background: var(--rule);
 }
 
-.search-wrap { position: relative; margin-bottom: var(--sp-5); }
+/* 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。 */
+.search-wrap { position: relative; padding: 0 0 var(--sp-2); }
 /* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
    留自訂的那顆：它有 48px 的觸控目標與無障礙名稱，原生那顆兩者都沒有。 */
 .search-wrap input[type='search']::-webkit-search-cancel-button,
@@ -910,6 +924,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
   z-index: var(--z-toast); display: flex; justify-content: center; padding: 0 var(--sp-4);
   pointer-events: none;
 }
+/*
+ * 面板開著的時候 Toast 改貼上緣。
+ *
+ * 下緣的 88px 是為了讓開底部動作列，但面板是從下緣長上來的：Toast 於是落在
+ * 選單列之間，蓋住「結束這一輪」49px，而且 .toast 是 pointer-events: auto，
+ * 那五秒內那一列按不下去。深色下更難看出它是外來的——Toast 底色和
+ * .menu-item:hover 同一個 --surface-2，圓角與左右內縮也同一套。
+ *
+ * 上緣是面板頂端以上的遮罩區（面板最高 88vh），那裡本來就沒有東西可以按。
+ * Toast 仍然是 z-toast 最上層，仍然保有五秒的復原機會。
+ */
+:root[data-modal] .toast-wrap {
+  bottom: auto; top: calc(var(--sp-3) + env(safe-area-inset-top));
+}
 .toast {
   display: flex; align-items: center; gap: var(--sp-3);
   max-width: 560px; width: 100%; pointer-events: auto;
@@ -947,7 +975,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 @media print {
   :root {
-    --paper: #fff; --surface: #fff; --surface-2: #fff; --surface-3: #fff;
+    --paper: #fff; --surface: #fff; --surface-2: #fff; --surface-3: #fff; --raised: #fff;
     --ink: #000; --ink-2: #333; --ink-3: #555;
     --rule: #999; --rule-strong: #666; --check-line: #000;
     --st-arrived-soft: #fff; --st-arrived-line: #999;
