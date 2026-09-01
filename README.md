@@ -60,13 +60,52 @@ LINE 接龍長什麼樣就貼什麼樣，不用先整理：
 2. Dashboard → **SQL Editor** → 把 [`supabase/schema.sql`](supabase/schema.sql) 整份貼上執行。可重複執行，之後要升級再貼一次就好。
    （`supabase/schema.local-auth.sql` **不要**貼——那是本機測試用的替身，正式專案已內建 `auth`。）
 3. Dashboard → **Settings → API**，複製 `Project URL` 與 `anon public` key。
-4. GitHub repo → **Settings → Secrets and variables → Actions**，新增：
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-5. GitHub repo → **Settings → Pages → Source** 選 **GitHub Actions**。
-6. 推到 `main`，Actions 會自動建置並部署。
+4. 照下面「上線」挑一種部署方式，把這兩個值填進去。
+
+這兩個值會被編進前端 bundle，這是 Supabase 的設計：anon key 不是機密，真正的
+防線是資料庫的 RLS（全開、零 policy）＋ SECURITY DEFINER 的 RPC，見
+`supabase/schema.sql` 開頭。
 
 本機開發的話，複製 `.env.example` 成 `.env.local` 填同樣兩個值。
+
+---
+
+## 上線
+
+兩條路，擇一即可。**Netlify 比較省事**：網域是根目錄，分享連結短，也不用管
+`base` 路徑。
+
+### A. Netlify（建議）
+
+1. Netlify → **Add new site → Import an existing project** → 選這個 repo。
+2. build 設定不用改——[`netlify.toml`](netlify.toml) 已經寫好了
+   （`npm run build`、發佈 `dist`、`VITE_BASE=/`、SPA rewrite、sw.js 不快取）。
+3. **Site configuration → Environment variables** 新增：
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+
+   注意這裡的前綴是 `VITE_`（Netlify 直接把它們當建置環境變數），
+   跟 GitHub Actions 那條路用的 secret 名稱不一樣。
+4. Deploy。之後推到 `main` 會自動重建。
+
+**即使走 Netlify，GitHub secrets 還是要設。** `.github/workflows/keep-supabase-awake.yml`
+每週打一次 `ping()`：Supabase 免費方案閒置一段時間會把專案暫停，而這個產品
+「一年用三次」正好會踩到——沒設的話某天出遊當天會發現後端睡著了。它讀的是
+`SUPABASE_URL` / `SUPABASE_ANON_KEY`（**沒有** `VITE_` 前綴），設在
+GitHub repo → **Settings → Secrets and variables → Actions**。
+
+### B. GitHub Pages
+
+1. GitHub repo → **Settings → Secrets and variables → Actions** 新增
+   `SUPABASE_URL` 與 `SUPABASE_ANON_KEY`。
+2. **Settings → Pages → Source** 選 **GitHub Actions**。
+3. 推到 `main`，Actions 會自動建置並部署到 `https://<你的帳號>.github.io/daka/`。
+
+Pages 服務在 `/<repo>/` 底下，所以 `vite.config.ts` 的預設 `base` 是 `/daka/`；
+改 repo 名稱或用自訂網域時用 `VITE_BASE` 覆寫。
+
+> 兩邊同時開著也沒問題，但那是兩個不同的來源（origin），下面 Google 登入的
+> **Redirect URLs 要把兩個都加進去**，而且各自的 PWA 會被當成兩個 App。
 
 ### 開啟 Google 登入（主揪登入用）
 
@@ -82,8 +121,12 @@ LINE 接龍長什麼樣就貼什麼樣，不用先整理：
 3. 複製用戶端 ID 與密鑰，貼到 Supabase Dashboard →
    **Authentication → Providers → Google**，啟用。
 4. Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**
-   加入你的站台網址（結尾要有斜線），例如
-   `https://<你的帳號>.github.io/daka/`。本機開發再加 `http://127.0.0.1:4173/daka/`。
+   加入你的站台網址（**結尾要有斜線**）。App 送出的是 `origin + BASE_URL`：
+   - Netlify：`https://<站台名>.netlify.app/`
+   - GitHub Pages：`https://<你的帳號>.github.io/daka/`
+   - 本機：`http://127.0.0.1:4173/daka/`
+
+   兩邊都部署的話兩個都要加，少一個那一邊就登不進去。
 
 登入走的是 **PKCE**：回呼帶的是 `?code=`（query）而不是 `#access_token=`（hash）。
 這個 App 用 hash 路由，implicit flow 的 token 會跟路由打架；PKCE 順帶讓 token
@@ -221,7 +264,7 @@ docs/
 - **不用 `@supabase/supabase-js`，直接 `fetch` 打 PostgREST。** 一來完整 client 會把用不到的 auth/storage/functions 打包進來（主 bundle 從 315KB 降到 132KB），二來——更重要——`supabase-js` 沒有預設逾時，收訊差時一個請求可以把整條待送佇列吊死。自己發 fetch 才能掛 `AbortSignal.timeout`。
 - **用 last-write-wins，不用 CRDT。** 這個領域的操作幾乎單調（人上了車就不會下車），狀態只是一個列舉值。`rev = max(已見過的 rev + 1, epoch ms)` 就夠了，而且出事時看資料就知道為什麼。
 - **即時同步靠 Realtime 廣播，正確性靠定期對帳。** 廣播是盡力而為；每 15 秒與回到前景時各拉一次快照，保證收斂。
-- **hash 路由。** GitHub Pages 對未知路徑回 404、沒有 SPA fallback，分享連結必須是 `#/j/房號` 才一定打得開。
+- **hash 路由。** GitHub Pages 對未知路徑回 404、沒有 SPA fallback，分享連結必須是 `#/j/房號` 才一定打得開。Netlify 有 rewrite（見 `netlify.toml`），但路由維持 hash：分享連結要在兩種部署上都成立，而且 PKCE 回呼帶的是 `?code=` 而不是 hash，兩者不會互相干擾。
 
 ### 常用名單
 

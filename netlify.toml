@@ -1,0 +1,61 @@
+# ============================================================================
+#  Netlify 部署設定
+#
+#  接法：Netlify → Add new site → Import an existing project → 選這個 repo。
+#  下面的 build 設定會被自動套用，只剩兩個 secret 要在 Netlify UI 填：
+#    Site configuration → Environment variables
+#      VITE_SUPABASE_URL       https://<專案>.supabase.co
+#      VITE_SUPABASE_ANON_KEY  <anon public key>
+#
+#  這兩個值會被編進前端 bundle，這是 Supabase 的設計：anon key 不是機密，
+#  真正的防線是資料庫的 RLS（全開、零 policy）＋ SECURITY DEFINER 的 RPC。
+#  見 supabase/schema.sql 開頭的安全模型。
+# ============================================================================
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # GitHub Pages 服務在 /<repo>/ 底下，所以 vite.config.ts 的預設 base 是
+  # '/daka/'。Netlify 服務在網域根目錄，base 必須改成 '/'——它同時決定了
+  # PWA manifest 的 start_url / scope 與 service worker 的 navigateFallback，
+  # 漏了這個，安裝到主畫面的 App 一開就會 404。
+  VITE_BASE = "/"
+  NODE_VERSION = "22"
+
+# 這個 App 用 hash 路由（#/r/ROOMCODE），所以分享連結本身不需要 rewrite。
+# 但直接打 /r/ABC123 這種路徑（有人手改網址、或舊連結）仍然要回到 index.html
+# 而不是 404。Netlify 會先找實體檔案，所以資產與 sw.js 不受影響。
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Service worker 與 manifest 絕對不能被快取。
+# registerType 是 autoUpdate：使用者要拿到新版，靠的是瀏覽器重新抓 sw.js 時
+# 發現內容變了。sw.js 被邊緣快取住的話，App 會卡在舊版本——而這個產品的
+# 使用者一年只打開三次，中間可能已經改過好幾版。
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# 帶 hash 的檔名可以永久快取。
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # 名單裡有真實姓名與電話，不要被別的站嵌成 iframe。
+    X-Frame-Options = "DENY"

@@ -7,3 +7,5 @@ dist-ssr/
 .DS_Store
 .vite/
 dist-sync/
+dist-netlify/
+dist-prod/
