@@ -16,12 +16,23 @@ export { isSupabaseConfigured }
  */
 let realtime: RealtimeClient | null = null
 
+/** presence 的識別碼。呼叫端在啟動時設定成這台裝置的 owner_key。 */
+let presenceKey = ''
+export function setPresenceKey(key: string): void { presenceKey = key }
+
 export function realtimeChannel(topic: string): RealtimeChannel | null {
   if (!isSupabaseConfigured) return null
   realtime ??= new RealtimeClient(`${SUPABASE_URL.replace(/^http/, 'ws')}/realtime/v1`, {
     params: { apikey: SUPABASE_ANON_KEY },
   })
-  return realtime.channel(topic, { config: { broadcast: { self: false } } })
+  return realtime.channel(topic, {
+    config: {
+      broadcast: { self: false },
+      // presence 的 key 用裝置金鑰：同一支手機重連時取代自己那一筆，
+      // 不會在名單上留下幽靈。
+      presence: { key: presenceKey },
+    },
+  })
 }
 
 export type AppErrorKind =

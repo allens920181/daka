@@ -113,6 +113,23 @@ await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitFo
 const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
 ok(`未到者顯示撥號連結 ${telHref}`, telHref === 'tel:0912345678')
 
+// #22 收尾一個一個打電話：打完第三通抬頭找第四個，七個人長得一模一樣，
+// 而「打過了沒」正是決定「車要不要再等十分鐘」的那條資訊。
+ok('還沒打過時沒有記號', (await p.locator('.chip-called').count()) === 0)
+// 擋掉 tel: 的實際導航（無頭瀏覽器會把頁面帶走），但 onClick 照樣跑完——
+// preventDefault 只取消預設動作，不影響事件處理器。
+await p.evaluate(() => {
+  document.addEventListener('click', (e) => {
+    if ((e.target instanceof Element) && e.target.closest('a[href^="tel:"]')) e.preventDefault()
+  })
+})
+await p.locator('a[href^="tel:"]').first().click(); await p.waitForTimeout(500)
+ok('打過之後那一列留下時間記號', (await p.locator('.chip-called').count()) === 1)
+ok('記號寫的是「已撥 HH:MM」',
+   /^已撥 \d{2}:\d{2}$/.test(((await p.locator('.chip-called').textContent()) ?? '').trim()))
+ok('撥號鍵的無障礙名稱改成「再打給…」',
+   ((await p.locator('a[href^="tel:"]').first().getAttribute('aria-label')) ?? '').includes('再打給'))
+
 // 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，房號、QR、連結對任何人
 // 都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個房號」，然後以為
 // 是自己打錯而重打三次。分享面板必須當場說出來，不能照樣印 QR。

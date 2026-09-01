@@ -165,6 +165,18 @@ ok(`[同工] 被拒絕的點名有當面說：「${dropNotice}」`,
    dropNotice.includes('沒有存到') && (targetName ? dropNotice.includes(targetName) : true))
 ok('[同工] 訊息說得出原因（房間已關閉）', /關閉/.test(dropNotice))
 
+// --- presence：不知道就不要說（#5）-----------------------------------------
+// 這個假後端只有 REST，沒有 Realtime——正好模擬「公司防火牆擋 WebSocket」那種
+// 情況。REST 通了不代表 presence 也通了，所以分享面板不能在別人明明已經進來時
+// 說「目前只有你」。沒把握就整區不顯示。
+await A.p.locator('.topbar button[aria-label="分享"]').click(); await A.p.waitForTimeout(1500)
+ok('[主揪] 同步指示是已同步（REST 通）', /已同步/.test((await A.p.locator('.sync').textContent()) || ''))
+ok('[主揪] 但 presence 沒通，就不顯示「現在在這間房裡」',
+   (await A.p.getByText('現在在這間房裡').count()) === 0)
+ok('[主揪] 更不會說「目前只有你」（那時 B 明明就在房裡）',
+   (await A.p.getByText('目前只有你').count()) === 0)
+await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
+
 // --- 主揪不在時，現場的人也開得出回程房（#25）-------------------------------
 // 主揪臨時不能來、手機在遊覽車上沒電、在山區沒訊號被降級——三個都是真實劇本，
 // 而那時候「回程再點一次」是產品方向書明列的核心情境。複製對來源房完全無害

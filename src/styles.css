@@ -620,6 +620,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .member.is-arrived .member-side { border-left-color: var(--st-arrived-line); }
 .call-btn { color: var(--accent); }
+/* 已經打過的號碼收斂成中性色：那一格的意思從「該打這個」變成「打過了」。 */
+.call-btn.is-called { color: var(--ink-3); }
+.chip-called { background: var(--surface-2); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 /* 關閉之後整列不能點：說出來，不要只是沒反應。 */
 .member-main:disabled { cursor: default; }

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'preact/hooks'
 import {
   AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
   prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
-  session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
-  shareOnEnter, showToast,
+  peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
+  shareOnEnter, showToast, type Peer,
   signIn, signOut,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -40,6 +40,7 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
   // 這支手機裡，房號、QR、連結對任何人都沒有用——發出去只會讓五個同工站在
   // 車門口看到「找不到這個房號。請確認有沒有打錯」，然後重打三次。
   const localOnly = connection.value === 'local-only'
+  const here = peers.value
 
   useEffect(() => {
     if (localOnly) return
@@ -82,6 +83,24 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
           </div>
         )}
 
+        {/*
+          誰已經進來了。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到
+          的前提是五個人在同一個地方——他們散在兩台車的前後門。更常見的失敗是
+          有人掃了 QR 但停在瀏覽器的「要開啟嗎」對話框上，自己以為進來了；等到
+          07:12 發現有一車根本沒人在點，已經沒有第二次機會。
+          離線時不顯示（誠實原則：那時候這個數字只是舊的）。
+        */}
+        {connection.value === 'online' && presenceReady.value && (
+          <div class="field">
+            <span class="label">{t('whoIsHere')}</span>
+            <p class="note">
+              {here.length <= 1
+                ? t('onlyYouHere')
+                : t('peersHere', { n: here.length, names: peerNames(here, t) })}
+            </p>
+          </div>
+        )}
+
         <div class="row">
           <button
             class="btn btn-block"
@@ -99,6 +118,15 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
       </div>
     </Sheet>
   )
+}
+
+/** 「陳姐、阿明，另外 2 支沒寫名字」——沒寫名字的人不逐一列出，只算支數。 */
+function peerNames(list: readonly Peer[], t: ReturnType<typeof useT>): string {
+  const named = list.map((p) => p.name).filter((n): n is string => Boolean(n))
+  const anon = list.length - named.length
+  if (named.length === 0) return t('peersAllAnon', { n: anon })
+  if (anon === 0) return named.join('、')
+  return `${named.join('、')}${t('peersPlusAnon', { n: anon })}`
 }
 
 /**

@@ -4,7 +4,7 @@ import type {
   ConnectionState, DraftMember, Identity, Member, MemberStatus,
   OwnedRoom, PendingOp, Room, SavedRoster,
 } from './types'
-import { AppError, api, isSupabaseConfigured, realtimeChannel } from './supabase'
+import { AppError, api, isSupabaseConfigured, realtimeChannel, setPresenceKey } from './supabase'
 import { AuthError, currentSession, requestCode, restoreSession, signOut as authSignOut, verifyCode, type Session } from './auth'
 import { generateId, generateRoomCode, normalizeRoomCode } from './code'
 import { applyRemoteMember, applyStatusLocally, detectOverrides, mergeMembers, summarize } from './merge'
@@ -56,6 +56,38 @@ export const pendingUploads = computed(() =>
  * 變化，會繼續在舊房打勾。這是整條動線裡最貴的失敗，而且是靜默的。
  */
 export const shareOnEnter = signal<string | null>(null)
+
+/**
+ * 「我已經打過這位了」——只存在這台裝置、只活在這一場點名裡。
+ *
+ * 收尾時「還有 7 位沒到」，主揪要一個一個打。打完第三通抬頭找第四個，畫面上
+ * 七個人長得一模一樣——他記不得剛剛打過誰，也記不得誰說了「我十分鐘到」。
+ * 而這條資訊決定的正是「車要不要再等十分鐘」。
+ *
+ * 刻意不同步：這是「我這支手機打過誰」，不是名單的狀態。做成共享的 note 要多
+ * 一種 PendingOp、一支 RPC 與一輪衝突處理，而打電話的人跟需要這個記號的人本來
+ * 就是同一個。代價是兩個人各自打電話時看不到對方打過誰——這一點寫在
+ * 05-patterns，未來若要升級成共享的 note，路徑也在那裡。
+ */
+export const calledAt = signal<ReadonlyMap<string, number>>(new Map())
+
+/**
+ * 目前在這間房裡的裝置（含自己）。
+ *
+ * `presenceReady` 是「這份名單可信」的旗標，不是「有幾個人」的替代品：
+ * REST 通了不代表 Realtime 也通了（自架、代理、公司防火牆擋 WebSocket 都會
+ * 造成這種狀態）。沒有這個旗標的話，分享面板會在別人明明已經進來時說「目前
+ * 只有你」——那正是這個產品最不能犯的那種錯。不知道就不要說。
+ */
+export interface Peer { name: string | null; at: number }
+export const peers = signal<Peer[]>([])
+export const presenceReady = signal(false)
+
+export function markCalled(memberId: string): void {
+  const next = new Map(calledAt.value)
+  next.set(memberId, Date.now())
+  calledAt.value = next
+}
 
 export const isOwner = computed(() => {
   const code = room.value?.code
@@ -126,6 +158,8 @@ function announceOverrides(before: readonly Member[], after: readonly Member[]):
 
 export async function boot(): Promise<void> {
   identity.value = await loadIdentity()
+  // presence 用裝置金鑰當 key：同一支手機重連時取代自己那一筆，不留幽靈。
+  setPresenceKey(identity.value.ownerKey)
   session.value = await restoreSession()
   prefs.value = await loadPrefs()
   recentRooms.value = await loadRecentRooms()
@@ -233,6 +267,10 @@ export async function setPrefs(patch: Partial<Prefs>): Promise<void> {
 }
 
 export async function setCheckerName(name: string): Promise<void> {
+  // 改完名字要讓房間裡的其他人看到新的名字，不然分享面板上會一直是「點名員」。
+  queueMicrotask(() => {
+    void channel?.track({ name: name.trim() || null, at: Date.now() }).catch(() => {})
+  })
   identity.value = { ...identity.value, checkerName: name.trim().slice(0, 40) }
   await saveIdentity(identity.value)
 }
@@ -313,7 +351,26 @@ function refreshConnection(): void {
 
 function subscribe(code: string): void {
   channel = realtimeChannel(`room:${code}`)
-  if (!channel) return
+  if (!channel) { peers.value = []; presenceReady.value = false; return }
+
+  // 誰在這間房裡。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到的
+  // 前提是五個人在同一個地方——他們散在兩台車的前後門。更常見的失敗是有人掃了
+  // QR 但停在瀏覽器的「要開啟嗎」對話框上，自己以為進來了。
+  channel.on('presence', { event: 'sync' }, () => {
+    const state = channel?.presenceState() ?? {}
+    const seen: Peer[] = []
+    for (const entries of Object.values(state)) {
+      const first = (entries as { name?: unknown; at?: unknown }[])[0]
+      if (!first) continue
+      seen.push({
+        name: typeof first.name === 'string' && first.name.trim() ? first.name.trim() : null,
+        at: typeof first.at === 'number' ? first.at : Date.now(),
+      })
+    }
+    seen.sort((a, b) => a.at - b.at)
+    peers.value = seen
+  })
+
   channel.on('broadcast', { event: 'member' }, ({ payload }) => {
     const incoming = payload as Member | undefined
     if (!incoming?.id) return
@@ -325,7 +382,11 @@ function subscribe(code: string): void {
   // 名單被房主換掉、有人被刪除：這些改的是整份名單，直接重新拉快照。
   channel.on('broadcast', { event: 'roster' }, () => { void reconcile().catch(() => {}) })
   channel.subscribe((status) => {
-    if (status === 'SUBSCRIBED') refreshConnection()
+    if (status !== 'SUBSCRIBED') { presenceReady.value = false; return }
+    refreshConnection()
+    void channel?.track({ name: identity.value.checkerName || null, at: Date.now() })
+      .then(() => { presenceReady.value = true })
+      .catch(() => { /* presence 只是額外資訊，失敗不影響點名 */ })
   })
 }
 
@@ -349,6 +410,9 @@ function stopTimers(): void {
 }
 
 export function leaveRoom(): void {
+  calledAt.value = new Map()
+  peers.value = []
+  presenceReady.value = false
   recentlyChanged.clear()
   void persistNow()
   stopTimers()
