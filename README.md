@@ -1,4 +1,4 @@
-# 點名房間
+# 誰沒到
 
 團體現場多人同步點名。開一間房，把 QR 給協助的人掃，大家一起點同一份名單，隨時知道誰還沒到。
 
@@ -145,7 +145,7 @@ Pages 服務在 `/<repo>/` 底下，所以 `vite.config.ts` 的預設 `base` 是
 Supabase 預設的 Magic Link 信件模板只有連結。到 Dashboard → **Authentication → Email Templates → Magic Link**，把內容改成含 `{{ .Token }}`：
 
 ```html
-<h2>點名房間登入驗證碼</h2>
+<h2>誰沒到 · 登入驗證碼</h2>
 <p>你的驗證碼是：</p>
 <p style="font-size:28px;font-weight:700;letter-spacing:6px">{{ .Token }}</p>
 <p>這組碼一小時內有效。如果不是你要登入，忽略這封信就好。</p>

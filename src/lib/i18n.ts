@@ -3,7 +3,7 @@
  * 舊版是逐一 querySelector 改文字，加一個字串就漏一個地方，這裡讓編譯器擋住。
  */
 const zh = {
-  appName: '點名房間',
+  appName: '誰沒到',
   tagline: '開一間房，大家一起點同一份名單',
 
   // 首頁
@@ -291,7 +291,7 @@ const zh = {
 export type MessageKey = keyof typeof zh
 
 const en: Record<MessageKey, string> = {
-  appName: 'Roll Call',
+  appName: 'RollRoom',
   tagline: 'Open a room, everyone checks the same list',
 
   openRoom: 'Open a room',
