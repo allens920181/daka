@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: '誰沒到',
-        short_name: '誰沒到',
+        name: 'RollRoom',
+        short_name: 'RollRoom',
         description: '團體現場多人同步點名：大家一起點同一份名單。',
         lang: 'zh-TW',
         start_url: base,

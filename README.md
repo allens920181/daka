@@ -2,8 +2,6 @@
 
 團體現場多人同步點名。開啟空間，把 QR 給協助的人掃，大家一起點同一份名單，隨時知道誰還沒到。
 
-中文介面上它叫「誰沒到」——那就是這個工具回答的那個問題。
-
 為「教會上遊覽車出遊、團體入場、集合點名」這種**單次、現場、多人、講求速度**的場景而做——不是差勤系統。
 
 - **五個人點同一份名單。** 每支手機看到的是同一份即時狀態，不會重複點也不會漏。
@@ -147,7 +145,7 @@ Pages 服務在 `/<repo>/` 底下，所以 `vite.config.ts` 的預設 `base` 是
 Supabase 預設的 Magic Link 信件模板只有連結。到 Dashboard → **Authentication → Email Templates → Magic Link**，把內容改成含 `{{ .Token }}`：
 
 ```html
-<h2>誰沒到 · 登入驗證碼</h2>
+<h2>RollRoom · 登入驗證碼</h2>
 <p>你的驗證碼是：</p>
 <p style="font-size:28px;font-weight:700;letter-spacing:6px">{{ .Token }}</p>
 <p>這組碼一小時內有效。如果不是你要登入，忽略這封信就好。</p>

@@ -3,7 +3,7 @@
  * 舊版是逐一 querySelector 改文字，加一個字串就漏一個地方，這裡讓編譯器擋住。
  */
 const zh = {
-  appName: '誰沒到',
+  appName: 'RollRoom',
   tagline: '大家一起點同一份名單',
 
   // 首頁
