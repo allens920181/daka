@@ -19,8 +19,8 @@ ok('首頁載入', await p.locator('.home-title').isVisible())
 ok('顯示單機模式提示', (await p.locator('.banner-muted').count()) > 0)
 
 
-// 開房
-await p.getByRole('button', { name: /開啟房間/ }).first().click()
+// 開空間
+await p.getByRole('button', { name: /開啟空間/ }).first().click()
 await p.waitForTimeout(400)
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
 await p.locator('#roster-text').fill(`秋季旅遊報名
@@ -58,9 +58,9 @@ ok('同名警告出現', await p.locator('.note-warn').first().isVisible())
 
 await p.getByRole('button', { name: /建立/ }).click()
 await p.waitForTimeout(1200)
-ok('進入房間', await p.locator('.topbar-name').isVisible())
+ok('進入空間', await p.locator('.topbar-name').isVisible())
 const code = (await p.locator('.topbar-sub .mono').first().textContent())?.trim()
-ok(`取得 6 碼房號: ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
+ok(`取得 6 碼代碼: ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
 // 大字是人頭不是列數：9 列裡陳大同請假，剩 8 列＝11 個人頭（李美花＋1、王五＋2）。
 // 這個數字必須和右邊的「0 / 11 人」對得起來——0 已到、11 沒到，加起來就是分母。
 ok('未到 11 人頭（8 列，李美花＋1、王五＋2）', (await p.locator('.score-number').textContent()) === '11')
@@ -135,24 +135,24 @@ ok('記號寫的是「已撥 HH:MM」',
 ok('撥號鍵的無障礙名稱改成「再打給…」',
    ((await p.locator('a[href^="tel:"]').first().getAttribute('aria-label')) ?? '').includes('再打給'))
 
-// 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，房號、QR、連結對任何人
-// 都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個房號」，然後以為
+// 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、QR、連結對任何人
+// 都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為
 // 是自己打錯而重打三次。分享面板必須當場說出來，不能照樣印 QR。
 await p.locator('.topbar button[aria-label="分享"]').click(); await p.waitForTimeout(1500)
-ok('單機模式：面板標題改成「這間房只有你看得到」',
+ok('單機模式：面板標題改成「這個空間只有你看得到」',
    (await p.locator('.sheet-title').textContent())?.includes('只有你看得到'))
-ok('單機模式：不發房號', (await p.locator('.code-display').count()) === 0)
+ok('單機模式：不發代碼', (await p.locator('.code-display').count()) === 0)
 ok('單機模式：不產 QR', (await p.locator('.qr-card img').count()) === 0)
 ok('單機模式：不給「複製連結」', (await p.getByRole('button', { name: /傳給別人|複製連結/ }).count()) === 0)
 ok('單機模式：講清楚別人會看到什麼',
-   ((await p.locator('.note-warn').textContent()) || '').includes('找不到這個房號'))
+   ((await p.locator('.note-warn').textContent()) || '').includes('找不到這個代碼'))
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 
 // ---- 現場操作：同名辨識、未分組、臨時加人、刪除確認 ----
 await p.goto(URL); await p.waitForTimeout(900)
-await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('現場操作測試')
 await p.locator('#roster-text').fill(`沒填車次的甲
 沒填車次的乙
@@ -271,14 +271,14 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // #15 捲進名單深處之後回得到頂端；#43 名單要是 list、<html lang> 要跟著語言走。
 await p.goto(URL); await p.waitForTimeout(800)
-await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('長名單測試')
 await p.locator('#roster-text').fill(Array.from({length: 40}, (_, i) => `同工${String(i+1).padStart(2,'0')}`).join('\n'))
 await p.waitForTimeout(400)
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300)
 ok('名單是 list 地標', (await p.locator('.list[role=list]').count()) === 1)
 ok('每一列是 listitem', (await p.locator('.member[role=listitem]').count()) === 40)
-ok('房間名是 h1', (await p.locator('h1.topbar-name').count()) === 1)
+ok('空間名是 h1', (await p.locator('h1.topbar-name').count()) === 1)
 await p.mouse.wheel(0, 3000); await p.waitForTimeout(700)
 ok('捲得下去', (await p.evaluate(() => window.scrollY)) > 500)
 await p.locator('.topbar-title').click(); await p.waitForTimeout(900)
@@ -314,17 +314,17 @@ await p.getByRole('button',{name:/中文/}).click(); await p.waitForTimeout(600)
 ok('切回中文後 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
-// 掃描端：單機模式下用房號加入別人的房，錯的不是房號，是這個站台沒有雲端。
-// 講「找不到這個房號。請確認有沒有打錯」會讓人重打三次，而主揪正在數人頭。
+// 掃描端：單機模式下用代碼加入別人的空間，錯的不是代碼，是這個站台沒有雲端。
+// 講「找不到這個代碼。請確認有沒有打錯」會讓人重打三次，而主揪正在數人頭。
 await p.evaluate(() => { window.location.hash = '#/j/ZZZZZZ' }); await p.waitForTimeout(1500)
 const joinMsg = ((await p.locator('.note-warn').textContent().catch(() => '')) ?? '').trim()
-ok(`單機模式加入房間的說法：「${joinMsg}」`, joinMsg.includes('沒有連上雲端'))
-ok('不會叫人去檢查房號有沒有打錯', !joinMsg.includes('打錯'))
+ok(`單機模式加入空間的說法：「${joinMsg}」`, joinMsg.includes('沒有連上雲端'))
+ok('不會叫人去檢查代碼有沒有打錯', !joinMsg.includes('打錯'))
 
 // ---- 確認對話框、設定、列印樣式 ----
 await p.goto(URL); await p.waitForTimeout(900)
 
-await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('確認對話框測試')
 await p.locator('#roster-text').fill('王小明\n李美花\n陳大同')
 await p.waitForTimeout(300)
@@ -332,23 +332,23 @@ await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200
 
 // --- 確認對話框 ---
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
-await p.getByRole('button',{name:/刪除房間/}).click(); await p.waitForTimeout(500)
-ok('刪除房間跳出 alertdialog（不是 window.confirm）', await p.locator('[role=alertdialog]').isVisible())
-ok('對話框有標題與說明', (await p.locator('#dialog-title').textContent())==='刪除房間'
+await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
+ok('刪除空間跳出 alertdialog（不是 window.confirm）', await p.locator('[role=alertdialog]').isVisible())
+ok('對話框有標題與說明', (await p.locator('#dialog-title').textContent())==='刪除空間'
    && (await p.locator('#dialog-body').textContent())?.includes('無法復原'))
 const focused = await p.evaluate(()=>document.activeElement?.textContent?.trim())
 ok(`初始焦點在「取消」而非破壞性按鈕（實際：${focused}）`, focused==='取消')
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('Esc 關閉對話框，房間仍在', (await p.locator('[role=alertdialog]').count())===0
+ok('Esc 關閉對話框，空間仍在', (await p.locator('[role=alertdialog]').count())===0
    && (await p.locator('.member').count())===3)
 
 // --- #20 結束這一輪：把結果攤在確認鍵前面 ---
 // 以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、下載 CSV 在面板第一項、
-// 關閉房間在第九項），結果多數房間從未被關閉也從未被匯出，30 天後靜靜消失。
+// 關閉空間在第九項），結果多數空間從未被關閉也從未被匯出，30 天後靜靜消失。
 await p.locator('.member-main').first().click(); await p.waitForTimeout(600)
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
-ok('「關閉房間」改叫「結束這一輪」', (await p.getByRole('button',{name:/結束這一輪/}).count()) > 0)
+ok('「關閉空間」改叫「結束這一輪」', (await p.getByRole('button',{name:/結束這一輪/}).count()) > 0)
 await p.getByRole('button',{name:/結束這一輪/}).click(); await p.waitForTimeout(600)
 const finishPreview = (await p.locator('.result-preview').textContent()) ?? ''
 ok(`確認鍵前面就看得到結果：「${finishPreview.split('\n')[1]}」`,
@@ -391,11 +391,11 @@ const printState = await p.evaluate(()=>{
 ok('列印時隱藏頂欄／動作列／篩選／搜尋', printState.dock&&printState.topbar&&printState.seg&&printState.search)
 ok(`列印仍保留名單 ${printState.rows} 列`, printState.rows===3)
 ok('列印的勾選格是空白的（給筆勾）', printState.checkBg==='rgb(255, 255, 255)')
-// 紙本備援是「手機沒電」時唯一剩下的東西。抬頭必須寫得出這是哪一場、房號多少。
+// 紙本備援是「手機沒電」時唯一剩下的東西。抬頭必須寫得出這是哪一場、代碼多少。
 // 以前這裡印的是借來的計分區文字（「還有 12 位沒到」）——一個離開印表機就過期
-// 的數字，而活動名稱與房號反而被 display:none 掉了。
+// 的數字，而活動名稱與代碼反而被 display:none 掉了。
 ok(`列印抬頭是活動名稱：「${printState.title}」`, printState.title === '確認對話框測試')
-ok(`列印抬頭有房號與人數：「${printState.meta}」`,
+ok(`列印抬頭有代碼與人數：「${printState.meta}」`,
    /[2-9A-HJ-KM-NP-Z]{6}/.test(printState.meta || '') && (printState.meta || '').includes('共 3 人'))
 ok('列印抬頭有日期與點名者欄位', (printState.blanks || '').includes('日期') && (printState.blanks || '').includes('點名者'))
 ok('列印不再借用計分區當標題', printState.scoreboard)
@@ -408,7 +408,7 @@ await p.emulateMedia({media:'screen'})
 // ---- 分組（分車）、看板模式 ----
 await p.goto(URL); await p.waitForTimeout(900)
 
-await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
 await p.locator('#roster-text').fill(`【第一車】
 1.王小明 0912345678
@@ -491,7 +491,7 @@ ok('看板同步狀態有文字', ((await p.locator('.board-sync-text').textCont
 await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
 ok('看板可切分組：第一車未到 3 人頭', (await heroNum())==='3')
 await p.getByRole('button',{name:/離開看板/}).click(); await p.waitForTimeout(1200)
-ok('離開看板回到房間', await p.locator('.topbar-name').isVisible() && (await p.locator('.topbar-sub .mono').first().textContent())?.trim()===groupRoomCode)
+ok('離開看板回到空間', await p.locator('.topbar-name').isVisible() && (await p.locator('.topbar-sub .mono').first().textContent())?.trim()===groupRoomCode)
 
 
 
@@ -500,7 +500,7 @@ ok('離開看板回到房間', await p.locator('.topbar-name').isVisible() && (a
 // roll-call.md 寫著「首屏本來就有 45–50% 的高度被控制項吃掉——80 人的名單一屏
 // 只看得到 4 個人；省下的每一格都直接變成人名」。這一段把那句話變成可量的東西。
 await p.goto(URL); await p.waitForTimeout(600)
-await p.getByRole('button',{name:/開啟房間/}).first().click(); await p.waitForTimeout(400)
+await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(400)
 await p.locator('#room-name').fill('員工旅遊 · 出發')
 await p.locator('#roster-text').fill(
   ['【第一車】', ...Array.from({length:40},(_,i)=>`第一車學員${String(i+1).padStart(2,'0')}`),

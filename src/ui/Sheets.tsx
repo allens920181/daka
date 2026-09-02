@@ -37,9 +37,9 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
   const t = useT()
   const url = joinUrl(code)
   const [qr, setQr] = useState('')
-  // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。這間房真的只存在
-  // 這支手機裡，房號、QR、連結對任何人都沒有用——發出去只會讓五個同工站在
-  // 車門口看到「找不到這個房號。請確認有沒有打錯」，然後重打三次。
+  // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。這個空間真的只存在
+  // 這支手機裡，代碼、QR、連結對任何人都沒有用——發出去只會讓五個同工站在
+  // 車門口看到「找不到這個代碼。請確認有沒有打錯」，然後重打三次。
   const localOnly = connection.value === 'local-only'
   const here = peers.value
 
@@ -50,7 +50,7 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
     void import('qrcode')
       .then((m) => m.default.toDataURL(url, { margin: 2, width: 480, errorCorrectionLevel: 'M' }))
       .then((d) => { if (alive) setQr(d) })
-      .catch(() => { /* QR 產不出來時仍可用房號與連結 */ })
+      .catch(() => { /* QR 產不出來時仍可用代碼與連結 */ })
     return () => { alive = false }
   }, [url, localOnly])
 
@@ -205,9 +205,9 @@ export function ManageSheet({ owner, group, onClose }: {
               onClick={() => { void run(async () => {
                 const code = await copyCurrentRoom(value)
                 onClose()
-                // 回程房是新的房號，五支協助的手機還開著舊房——複製完的下一個
-                // 動作 100% 是把新的房號發出去。不主動提醒的話，主揪會直接
-                // 開始點名，而其他人繼續在舊房打勾，兩邊的數字各走各的。
+                // 回程空間是新的代碼，五支協助的手機還開著舊空間——複製完的下一個
+                // 動作 100% 是把新的代碼發出去。不主動提醒的話，主揪會直接
+                // 開始點名，而其他人繼續在舊空間打勾，兩邊的數字各走各的。
                 shareOnEnter.value = code
                 navigate(`/r/${code}`)
               }) }}
@@ -321,7 +321,7 @@ export function ManageSheet({ owner, group, onClose }: {
   return (
     <Sheet title={t('manage')} onClose={onClose}>
       {/*
-        身分與名字。協助者是掃 QR 直接進房的，從來不會經過首頁——在這之前
+        身分與名字。協助者是掃 QR 直接進空間的，從來不會經過首頁——在這之前
         整個 App 沒有任何一條路通往設定，於是「你的名字」永遠是空的，
         「誰點的」與衝突提示就常態退化成匿名：現場問「這個是誰點的」沒有答案。
         另外協助者的管理面板會靜默少掉一半項目，這裡也一併說清楚。
@@ -377,8 +377,8 @@ export function ManageSheet({ owner, group, onClose }: {
         {/*
           複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
           沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
-          方向書明列的核心情境，現場卻只能重貼一次 LINE 接龍重開房。
-          複製對來源房完全無害（一個字都不改），而名單本來就對所有拿得到房號
+          方向書明列的核心情境，現場卻只能重貼一次 LINE 接龍重開空間。
+          複製對來源空間完全無害（一個字都不改），而名單本來就對所有拿得到代碼
           的人可見，所以把它鎖在擁有權後面沒有保護到任何東西。
         */}
         <button
@@ -463,7 +463,7 @@ export function ManageSheet({ owner, group, onClose }: {
       {/*
         「車開了」是唯一一次所有人的注意力同時落在同一件事上，也是唯一一次能把
         結果送出去的機會。以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、
-        下載 CSV 在面板第一項、關閉房間在第九項），結果多數房間從未被關閉也從未
+        下載 CSV 在面板第一項、關閉空間在第九項），結果多數空間從未被關閉也從未
         被匯出，30 天後靜靜消失。把結果攤在確認鍵前面，順手就交出去了。
       */}
       {confirming === 'finish' && (

@@ -27,8 +27,8 @@ export function Home({ onSettings }: { onSettings: () => void }) {
     navigate(`/j/${normalized}`)
   }
 
-  // 登入之後「我的活動」與「最近的房間」是兩份各自維護的清單，主揪自己開的房
-  // 兩邊都有——不去重的話首頁會上下相鄰地把同一間房印兩次。以「我的活動」為準。
+  // 登入之後「我的活動」與「最近的空間」是兩份各自維護的清單，主揪自己開的空間
+  // 兩邊都有——不去重的話首頁會上下相鄰地把同一個空間印兩次。以「我的活動」為準。
   const ownedCodes = new Set(session.value ? myRooms.value.map((r) => r.code) : [])
   const rooms = recentRooms.value.filter((r) => !ownedCodes.has(r.code))
 

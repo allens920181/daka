@@ -100,7 +100,7 @@ export type ConnectionState =
   | 'online'       // 已同步
 
 export interface Identity {
-  /** 房主金鑰：開房的裝置才有，破壞性操作需要它。 */
+  /** 擁有者金鑰：開空間的裝置才有，破壞性操作需要它。 */
   ownerKey: string
   /** 這台裝置的點名員名稱，選填。 */
   checkerName: string

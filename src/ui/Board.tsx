@@ -110,7 +110,7 @@ export function Board({ code }: { code: string }) {
         {groupList.length > 0 && (
           <div class="groups" role="group" aria-label={t('group')}>
             {/* 看板的晶片刻意不印數字（版面留給人名），但沒有數字不等於沒有名稱：
-                roll-call.md 要求每顆晶片都要帶 aria-label，房間畫面已經照做。 */}
+                roll-call.md 要求每顆晶片都要帶 aria-label，空間畫面已經照做。 */}
             <button
               class="group-chip"
               aria-pressed={group === null}

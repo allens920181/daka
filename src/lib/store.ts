@@ -54,10 +54,10 @@ export const pendingUploads = computed(() =>
   room.value ? countForRoom(outbox.value, room.value.code) : 0,
 )
 /**
- * 剛複製出來的房號。房間畫面進來看到自己就會自動打開分享面板，然後清掉。
+ * 剛複製出來的代碼。空間畫面進來看到自己就會自動打開分享面板，然後清掉。
  *
- * 複製回程房會換一組新房號，而五支協助的手機還開著舊房——他們的畫面完全沒有
- * 變化，會繼續在舊房打勾。這是整條動線裡最貴的失敗，而且是靜默的。
+ * 複製回程空間會換一組新代碼，而五支協助的手機還開著舊空間——他們的畫面完全沒有
+ * 變化，會繼續在舊空間打勾。這是整條動線裡最貴的失敗，而且是靜默的。
  */
 export const shareOnEnter = signal<string | null>(null)
 
@@ -76,7 +76,7 @@ export const shareOnEnter = signal<string | null>(null)
 export const calledAt = signal<ReadonlyMap<string, number>>(new Map())
 
 /**
- * 目前在這間房裡的裝置（含自己）。
+ * 目前在這個空間裡的裝置（含自己）。
  *
  * `presenceReady` 是「這份名單可信」的旗標，不是「有幾個人」的替代品：
  * REST 通了不代表 Realtime 也通了（自架、代理、公司防火牆擋 WebSocket 都會
@@ -194,7 +194,7 @@ export { AuthError, requestCode }
 /**
  * 驗證六碼並登入。
  *
- * 登入後立刻認領這台裝置本來就擁有的房間與常用名單——否則使用者會登入完
+ * 登入後立刻認領這台裝置本來就擁有的空間與常用名單——否則使用者會登入完
  * 卻發現「我的活動」是空的，然後以為壞掉了。
  */
 export interface Claimed { rooms: number; rosters: number }
@@ -334,7 +334,7 @@ export async function setPrefs(patch: Partial<Prefs>): Promise<void> {
 }
 
 export async function setCheckerName(name: string): Promise<void> {
-  // 改完名字要讓房間裡的其他人看到新的名字，不然分享面板上會一直是「點名員」。
+  // 改完名字要讓空間裡的其他人看到新的名字，不然分享面板上會一直是「點名員」。
   queueMicrotask(() => {
     void channel?.track({ name: name.trim() || null, at: Date.now() }).catch(() => {})
   })
@@ -413,14 +413,14 @@ function refreshConnection(): void {
 }
 
 // ---------------------------------------------------------------------------
-// 房間工作階段
+// 空間工作階段
 // ---------------------------------------------------------------------------
 
 function subscribe(code: string): void {
   channel = realtimeChannel(`room:${code}`)
   if (!channel) { peers.value = []; presenceReady.value = false; return }
 
-  // 誰在這間房裡。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到的
+  // 誰在這個空間裡。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到的
   // 前提是五個人在同一個地方——他們散在兩台車的前後門。更常見的失敗是有人掃了
   // QR 但停在瀏覽器的「要開啟嗎」對話框上，自己以為進來了。
   channel.on('presence', { event: 'sync' }, () => {
@@ -446,7 +446,7 @@ function subscribe(code: string): void {
     announceOverrides(before, members.value)
     persistSoon()
   })
-  // 名單被房主換掉、有人被刪除：這些改的是整份名單，直接重新拉快照。
+  // 名單被擁有者換掉、有人被刪除：這些改的是整份名單，直接重新拉快照。
   channel.on('broadcast', { event: 'roster' }, () => { void reconcile().catch(() => {}) })
   channel.subscribe((status) => {
     if (status !== 'SUBSCRIBED') { presenceReady.value = false; return }
@@ -491,7 +491,7 @@ export function leaveRoom(): void {
 }
 
 /**
- * 進入房間。先用本地快取立刻顯示，再向伺服器對帳。
+ * 進入空間。先用本地快取立刻顯示，再向伺服器對帳。
  * 沒有快取又連不上時才會丟錯——這是唯一真的無法進入的情況。
  */
 export async function enterRoom(code: string): Promise<void> {
@@ -516,15 +516,15 @@ export async function enterRoom(code: string): Promise<void> {
       if (e instanceof AppError && e.kind === 'offline') connection.value = 'offline'
     }
     // reconcile() 把 offline 吞下去自己處理了（它是背景對帳，不該讓畫面爆掉），
-    // 所以這裡要自己檢查：第一次進房又拿不到快照時 room 仍是 null，畫面會停在
+    // 所以這裡要自己檢查：第一次進空間又拿不到快照時 room 仍是 null，畫面會停在
     // 骨架上一個字都沒有。掃 QR 的協助者站在車門口，看到的就是永遠的空白。
     if (!room.value) {
       currentCode = null
       throw new AppError(connection.value === 'offline' ? 'offline' : 'room-not-found')
     }
   } else if (!cached) {
-    // 單機模式下別人的房號本來就進不來。丟 room-not-found 會讓掃 QR 的人看到
-    // 「請確認有沒有打錯」，於是重打三次——錯的不是房號，是這個站台沒有雲端。
+    // 單機模式下別人的代碼本來就進不來。丟 room-not-found 會讓掃 QR 的人看到
+    // 「請確認有沒有打錯」，於是重打三次——錯的不是代碼，是這個站台沒有雲端。
     currentCode = null
     throw new AppError('not-configured')
   }
@@ -532,7 +532,7 @@ export async function enterRoom(code: string): Promise<void> {
   const r = room.value
   if (r) {
     // 帳號那一邊也算數：離線時 myRooms 可能是空的，但只要本機記得自己是主揪
-    // 就不能因為這一次進房把標記洗掉。
+    // 就不能因為這一次進空間把標記洗掉。
     const wasOwner = (recentRooms.value.find((x) => x.code === c)?.isOwner ?? false) ||
       myRooms.value.some((x) => x.code === c)
     recentRooms.value = await rememberRoom({ code: c, name: r.name, isOwner: wasOwner, lastSeen: Date.now() })
@@ -733,7 +733,7 @@ export async function addWalkIn(
 }
 
 // ---------------------------------------------------------------------------
-// 開房 / 複製 / 管理
+// 開空間 / 複製 / 管理
 // ---------------------------------------------------------------------------
 
 function localRoom(code: string, name: string): Room {
@@ -755,7 +755,7 @@ function toMembers(roomId: string, drafts: readonly DraftMember[]): Member[] {
   }))
 }
 
-/** 開房。房號撞號時自動換一組重試。 */
+/** 開空間。代碼撞號時自動換一組重試。 */
 export async function createRoom(name: string, drafts: readonly DraftMember[]): Promise<string> {
   const title = name.trim() || '點名'
 
@@ -783,7 +783,7 @@ export async function createRoom(name: string, drafts: readonly DraftMember[]): 
   throw new AppError('unknown', 'could not allocate a room code')
 }
 
-/** 再開一間：同一份名單、狀態歸零。這是回程點名的做法。 */
+/** 再開一個：同一份名單、狀態歸零。這是回程點名的做法。 */
 export async function copyCurrentRoom(newName: string): Promise<string> {
   const r = room.value
   if (!r) throw new AppError('room-not-found')

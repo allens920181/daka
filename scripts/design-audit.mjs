@@ -199,17 +199,17 @@ for (const scheme of ['light', 'dark']) {
   await page.goto(URL); await page.waitForTimeout(900)
   await audit(page, scheme, '首頁')
 
-  await page.getByRole('button', { name: /開啟房間|Open a room/ }).first().click()
+  await page.getByRole('button', { name: /開啟空間|Open a room/ }).first().click()
   await page.waitForTimeout(300)
   await page.locator('#room-name').fill('秋季旅遊 · 出發')
   await page.locator('#roster-text').fill(
     '王小明 0912345678\n李美花 +1\n陳大同（請假）\n張三\n李四\n王五 帶2人')
   await page.waitForTimeout(400)
-  await audit(page, scheme, '開啟房間')
+  await audit(page, scheme, '開啟空間')
 
   await page.getByRole('button', { name: /建立|Create/ }).click(); await page.waitForTimeout(1200)
   await page.locator('.member-main').nth(0).click(); await page.waitForTimeout(500)
-  await audit(page, scheme, '房間（含 Toast）')
+  await audit(page, scheme, '空間（含 Toast）')
 
   await page.locator('.topbar button[aria-label="分享"]').click(); await page.waitForTimeout(1400)
   await audit(page, scheme, '分享面板')
@@ -230,11 +230,11 @@ for (const scheme of ['light', 'dark']) {
     '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（請假）\n張三\n李四')
   await page.waitForTimeout(400)
   await page.locator('.sheet').getByRole('button', { name: /儲存|Save/ }).click(); await page.waitForTimeout(500)
-  await page.getByRole('button', { name: /^刪除房間$|^Delete room$/ }).count().catch(() => 0)
+  await page.getByRole('button', { name: /^刪除空間$|^Delete room$/ }).count().catch(() => 0)
   const confirmSave = page.locator('[role=alertdialog] .btn-danger')
   if (await confirmSave.count()) { await confirmSave.click(); await page.waitForTimeout(900) }
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
-  await audit(page, scheme, '房間（含分組）')
+  await audit(page, scheme, '空間（含分組）')
 
   // --- 看板模式 ---
   const roomCode = await page.locator('.topbar-sub .mono').first().textContent().catch(() => null)

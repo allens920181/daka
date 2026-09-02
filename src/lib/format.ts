@@ -29,7 +29,7 @@ export function formatDate(input: string | number | Date, lang: Lang, now: Date 
   return sameYear ? md : `${d.getFullYear()}/${md}`
 }
 
-/** 日期 + 時間，用於房間清單這種「哪一間是哪一天」的場合。 */
+/** 日期 + 時間，用於空間清單這種「哪一個是哪一天」的場合。 */
 export function formatDateTime(input: string | number | Date, lang: Lang, now: Date = new Date()): string {
   const d = toDate(input)
   if (!d) return ''

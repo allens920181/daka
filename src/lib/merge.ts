@@ -23,7 +23,7 @@ export function maxRev(members: readonly Member[]): number {
 
 /**
  * 同一個成員的兩個版本取勝者。
- * 名單欄位（姓名、備註、攜伴、分組）一律以遠端為準——那是房主改的；
+ * 名單欄位（姓名、備註、攜伴、分組）一律以遠端為準——那是擁有者改的；
  * 只有狀態欄位參與 rev 比大小。平手時採用遠端，確保每台裝置得到相同結果。
  */
 export function pickWinner(local: Member, remote: Member): Member {
@@ -44,7 +44,7 @@ export function pickWinner(local: Member, remote: Member): Member {
  *
  * 成員的增刪一律以遠端為準，唯一的例外是「還在待送佇列裡的臨時加人」——
  * 那些人遠端還沒有，但不能因此從畫面上消失。`pendingAddIds` 就是用來
- * 區分「還沒送出的新增」與「房主刪掉的人」。
+ * 區分「還沒送出的新增」與「擁有者刪掉的人」。
  */
 export function mergeMembers(
   local: readonly Member[],

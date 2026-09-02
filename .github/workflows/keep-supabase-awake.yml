@@ -1,6 +1,6 @@
 # Supabase 免費方案的專案閒置一段時間會被暫停。
 # 「一個月出遊一次」正好會踩到——所以每週叫醒它一次。
-# ping() 順手把過期的房間清掉，所以這同時也是資料保留的清理工作。
+# ping() 順手把過期的空間清掉，所以這同時也是資料保留的清理工作。
 #
 # 沒有設定 SUPABASE_URL / SUPABASE_ANON_KEY 時這個工作會自己跳過。
 name: Keep Supabase awake
