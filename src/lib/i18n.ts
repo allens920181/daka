@@ -217,6 +217,8 @@ const zh = {
   errNotConfigured: '還沒設定雲端連線，目前是單機模式。',
   errGoogleFailed: 'Google 登入沒有完成。可以再試一次，或改用 Email 驗證碼。',
   errOauthLost: '登入的過程被中斷了（可能換了分頁或重開瀏覽器）。請再登入一次。',
+  /* 「不安全」是瀏覽器的用詞，直接沿用——使用者網址列上看到的就是這三個字。 */
+  errInsecureContext: 'Google 登入需要 HTTPS，而這個網址是不安全的 http://（例如區網 IP）。請改用下面的 Email 驗證碼，或改從 https:// 的網址開啟。',
   errTooMany: '這份名單的人數已達上限。',
   retry: '重試',
 
@@ -236,6 +238,7 @@ const zh = {
   signInGoogle: '用 Google 登入',
   signInWithEmail: '改用 Email 驗證碼',
   inAppBrowserWarn: '你現在是在 App 的內建瀏覽器裡（例如 LINE）。Google 在這裡常常會擋下登入——真的卡住的話，用右上角的選單「用瀏覽器開啟」，或改用下面的 Email 驗證碼。',
+  insecureContextWarn: '這個網址是不安全的 http://，Google 登入在這裡不能用。請用下面的 Email 驗證碼，或改從 https:// 的網址開啟。',
   signInWhy: '登入後，換手機也管得動你開的空間，常用名單跟著走。協助點名的人不用登入。',
   emailLabel: 'Email',
   emailPlaceholder: 'you@example.com',
@@ -461,6 +464,7 @@ const en: Record<MessageKey, string> = {
   errNotConfigured: 'No cloud configured — running in local-only mode.',
   errGoogleFailed: "Google sign-in didn't complete. Try again, or use an email code instead.",
   errOauthLost: 'The sign-in was interrupted (a new tab, or the browser restarted). Please sign in again.',
+  errInsecureContext: 'Google sign-in needs HTTPS, and this address is an insecure http:// one (a LAN IP, for example). Use the email code below, or open the app from an https:// address.',
   errTooMany: 'This list has reached its size limit.',
   retry: 'Retry',
 
@@ -480,6 +484,7 @@ const en: Record<MessageKey, string> = {
   signInGoogle: 'Sign in with Google',
   signInWithEmail: 'Use an email code instead',
   inAppBrowserWarn: "You're in an app's built-in browser (LINE, for example). Google often blocks sign-in here — if it does, use the menu to open this page in your real browser, or use the email code below.",
+  insecureContextWarn: "This address is an insecure http:// one, so Google sign-in won't work here. Use the email code below, or open the app from an https:// address.",
   signInWhy: 'Sign in and your rooms and saved rosters follow you to a new phone. Helpers never need an account.',
   emailLabel: 'Email',
   emailPlaceholder: 'you@example.com',

@@ -7,7 +7,8 @@ import {
   signIn, signOut, startGoogleSignIn,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
-import { inAppBrowser } from '../lib/config'
+import { copyToClipboard } from '../lib/clipboard'
+import { inAppBrowser, secureOrigin } from '../lib/config'
 import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
 import { formatDate } from '../lib/format'
 import { rosterToText } from '../lib/parse'
@@ -23,12 +24,7 @@ import {
 import { useT } from './t'
 
 async function copyText(value: string, done: string, fail: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(value)
-    showToast(done)
-  } catch {
-    showToast(fail)
-  }
+  showToast((await copyToClipboard(value)) ? done : fail)
 }
 
 // ---------------------------------------------------------------------------
@@ -105,7 +101,7 @@ export function ShareSheet({ code, onClose }: { code: string; onClose: () => voi
         <div class="row">
           <button
             class="btn btn-block"
-            onClick={() => { void copyText(code, t('copied'), t('errUnknown')) }}
+            onClick={() => { void copyText(code, t('copied'), t('copyFailed')) }}
           >
             <IconCopy /> {t('copyCode')}
           </button>
@@ -145,7 +141,7 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
       if (e instanceof DOMException && e.name === 'AbortError') return
     }
   }
-  await copyText(url, t('copied'), t('errUnknown'))
+  await copyText(url, t('copied'), t('copyFailed'))
 }
 
 // ---------------------------------------------------------------------------
@@ -790,6 +786,7 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
       case 'rate-limited': return t('errRateLimited')
       case 'not-configured': return t('errNotConfigured')
       case 'oauth-lost': return t('errOauthLost')
+      case 'insecure-context': return t('errInsecureContext')
       default: return t('errUnknown')
     }
   }
@@ -862,7 +859,14 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
               分享連結進來的。偵測是靠 UA 猜的，會猜錯，所以按鈕不停用——
               只是先說一聲，並把備援擺在旁邊。
             */}
-            {inAppBrowser() && <p class="note note-warn">{t('inAppBrowserWarn')}</p>}
+            {/*
+              不安全來源（例如區網的 http://192.168.x.x）連 PKCE 的 challenge 都
+              簽不出來，Google 也不會放行 http:// 的 redirect URI。這個跟上面的
+              內建瀏覽器不同，不是猜的而是確定的，所以直接講，而且優先講——
+              兩件事同時成立時，這一件才是真正走不通的那一件。
+            */}
+            {!secureOrigin() ? <p class="note note-warn">{t('insecureContextWarn')}</p>
+              : inAppBrowser() && <p class="note note-warn">{t('inAppBrowserWarn')}</p>}
             {error && <p class="note note-warn">{error}</p>}
 
             <button class="btn btn-block" disabled={working} onClick={() => setStep('email')}>

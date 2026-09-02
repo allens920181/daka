@@ -8,6 +8,7 @@ import { summarize } from '../lib/merge'
 import { isExcusedNote } from '../lib/parse'
 import type { Member, MemberStatus } from '../lib/types'
 import { toShareText } from '../lib/export'
+import { copyToClipboard } from '../lib/clipboard'
 import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
@@ -140,15 +141,11 @@ export function Room({ code }: { code: string }) {
 
   async function copySummary() {
     if (!current) return
-    try {
-      // scoped 已經是「目前這一車」的名單；標題用看得懂的字，不是內部哨符。
-      await navigator.clipboard.writeText(toShareText(current, scoped, prefs.value.lang, groupLabel))
-      showToast(t('summaryCopied'))
-    } catch {
-      // 剪貼簿在部分瀏覽器需要使用者手勢或權限，失敗時不能靜默——
-      // 主揪會以為已經複製好了，貼出去卻是上一次的東西。
-      showToast(t('copyFailed'))
-    }
+    // scoped 已經是「目前這一車」的名單；標題用看得懂的字，不是內部哨符。
+    const ok = await copyToClipboard(toShareText(current, scoped, prefs.value.lang, groupLabel))
+    // 剪貼簿在部分瀏覽器需要使用者手勢或權限，失敗時不能靜默——
+    // 主揪會以為已經複製好了，貼出去卻是上一次的東西。
+    showToast(ok ? t('summaryCopied') : t('copyFailed'))
   }
 
   // 分母是「今天該到的人頭」而不是名單總人頭：請假的人不該讓進度條永遠差一截。
