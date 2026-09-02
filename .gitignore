@@ -9,3 +9,7 @@ dist-ssr/
 dist-sync/
 dist-netlify/
 dist-prod/
+
+# mkcert 產生的區網開發憑證（README「用手機從區網連進來」）。
+# -key.pem 是私鑰，一次都不該進版控。
+*.pem

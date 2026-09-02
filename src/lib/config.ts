@@ -29,3 +29,18 @@ export function inAppBrowser(): boolean {
   const ua = navigator.userAgent
   return /\bLine\b|\bFBAN\b|\bFBAV\b|Instagram|MicroMessenger|KAKAOTALK/i.test(ua)
 }
+
+/**
+ * 瀏覽器把這個來源當成「安全」嗎？
+ *
+ * HTTPS 與 localhost 是；區網的 `http://192.168.x.x:5173` 不是——網址列上那個
+ * 「不安全」講的就是這件事。它不只是一個標籤，瀏覽器會連帶收掉一整組 API：
+ * `crypto.subtle`（Google 登入的 PKCE）、`navigator.clipboard`、
+ * `navigator.share`、`wakeLock`、以及 service worker（PWA 與離線）。
+ *
+ * 這個 App 對其中大部分都準備了退路（見 lib/code.ts、lib/clipboard.ts），
+ * 剩下真的走不通的，用這個判斷式先跟使用者說清楚。
+ */
+export function secureOrigin(): boolean {
+  return typeof window === 'undefined' || window.isSecureContext !== false
+}

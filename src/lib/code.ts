@@ -60,6 +60,23 @@ export function generateOwnerKey(): string {
   return [...buf].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+/**
+ * UUID v4，不依賴 `crypto.randomUUID`。
+ *
+ * `randomUUID` 只存在於 secure context（HTTPS 或 localhost）。用手機從區網開
+ * `http://192.168.x.x:5173` 時它是 undefined——而這條路每點一個名字、每加一個
+ * 人都會走到，少了退路，整個 App 在自己的子網底下等於不能用。
+ * `getRandomValues` 沒有這個限制，用它自己組一顆強度相同的 v4。
+ */
+export function uuidV4(): string {
+  const b = new Uint8Array(16)
+  crypto.getRandomValues(b)
+  b[6] = ((b[6] ?? 0) & 0x0f) | 0x40 // 版本位：4
+  b[8] = ((b[8] ?? 0) & 0x3f) | 0x80 // 變體位：RFC 4122
+  const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 export function generateId(): string {
-  return crypto.randomUUID()
+  return typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : uuidV4()
 }

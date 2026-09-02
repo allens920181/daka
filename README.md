@@ -197,6 +197,42 @@ npm run audit:design  # 設計規範自動檢查
 npm run e2e           # 單機模式端對端
 ```
 
+### 用手機從區網連進來
+
+`npm run dev` 綁的是 `0.0.0.0`，同一個網段的手機直接開 `http://<電腦 IP>:5173/daka/`
+就進得來。網址列會標**「不安全」**——那是 Chrome 在陳述事實（這是 http），不是
+程式壞掉。但它不只是一個標籤：瀏覽器會對非 secure context 收掉一整組 API。
+
+| 被收掉的東西 | 這個 App 的處理 |
+| --- | --- |
+| `crypto.randomUUID` | 有退路：改用 `crypto.getRandomValues` 自己組 v4（`src/lib/code.ts`）。少了這個退路，**每點一個名字都會丟 TypeError**。 |
+| `navigator.clipboard` | 有退路：退回 `execCommand('copy')`（`src/lib/clipboard.ts`）。複製代碼／連結／結果照常。 |
+| `navigator.share`、`wakeLock` | 本來就是有才用，沒有就退回複製／不鎖螢幕。 |
+| `crypto.subtle` | **沒有退路**：Google 登入需要它簽 PKCE challenge，而 Google 也不會放行 http:// 的 redirect URI。登入面板會直接說明，並導向 Email 驗證碼——那條路在 http 底下是好的。 |
+| service worker | **沒有退路**：PWA 安裝與離線快取只在 secure context 註冊。要測這一段就得用 HTTPS。 |
+
+所以：**點名、加人、複製、Email 登入在 http 的區網位址底下都是好的**，只有
+Google 登入與 PWA／離線需要 HTTPS。
+
+要連「不安全」那三個字一起消掉（以及測 PWA），給那個 IP 一張憑證：
+
+```bash
+brew install mkcert          # 或 apt install mkcert
+mkcert -install
+mkcert 192.168.1.23 localhost 127.0.0.1
+
+VITE_HTTPS_KEY=./192.168.1.23-key.pem \
+VITE_HTTPS_CERT=./192.168.1.23.pem \
+npm run dev
+```
+
+手機要另外信任 mkcert 的根憑證（`mkcert -CAROOT` 底下的 `rootCA.pem`，傳到手機
+安裝並在「憑證信任設定」裡開啟），裝完那台手機的網址列才會變成鎖頭。
+
+只想臨時試一次、不想弄憑證的話，Chrome 有一個開關可以把指定來源當成安全的：
+`chrome://flags/#unsafely-treat-insecure-origin-as-secure` 填
+`http://192.168.1.23:5173`。這只影響你自己那台瀏覽器，測完記得關掉。
+
 設計規範與端對端要跑在建置產物上：
 
 ```bash

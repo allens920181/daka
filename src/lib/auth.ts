@@ -31,6 +31,8 @@ export type AuthErrorKind =
   | 'oauth-lost'
   /** 使用者在 Google 那一頭按了取消。不是錯誤，不該當錯誤講。 */
   | 'oauth-cancelled'
+  /** 來源不是 secure context（例如區網的 http:// 位址），簽不出 PKCE challenge。 */
+  | 'insecure-context'
   | 'unknown'
 
 export class AuthError extends Error {
@@ -175,6 +177,18 @@ async function challengeFor(verifier: string): Promise<string> {
   return base64url(digest)
 }
 
+/**
+ * `crypto.subtle` 是 secure context 專屬的。從區網開 `http://192.168.x.x:5173`
+ * 時它整個不存在，PKCE 的 challenge 就簽不出來。
+ *
+ * 這條路沒有退路可走：SHA-256 可以自己實作，但 Google 也不會把
+ * 一個 http:// 的 redirect URI 放行。所以早一步擋下來，講清楚原因，
+ * 並把人導去 Email 驗證碼——那條路在不安全來源底下是好的。
+ */
+function canSignPkce(): boolean {
+  return typeof crypto !== 'undefined' && typeof crypto.subtle?.digest === 'function'
+}
+
 /** 回到這個網址——Supabase 後台的 Redirect URLs 要放行它。 */
 export function oauthRedirectUrl(): string {
   const base = import.meta.env.BASE_URL || '/'
@@ -190,6 +204,7 @@ export function oauthRedirectUrl(): string {
  */
 export async function startGoogleSignIn(returnTo: string): Promise<void> {
   if (!isSupabaseConfigured) throw new AuthError('not-configured')
+  if (!canSignPkce()) throw new AuthError('insecure-context', 'crypto.subtle unavailable')
 
   const verifier = base64url(crypto.getRandomValues(new Uint8Array(64)).buffer)
   if (!stash(PKCE_VERIFIER_KEY, verifier)) throw new AuthError('oauth-lost', 'no session storage')
