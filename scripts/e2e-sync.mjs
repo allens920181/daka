@@ -6,10 +6,18 @@
 // 就是正確性的依據，廣播只是讓它更快。
 //
 // 執行方式見 README「開發」一節。
+import { existsSync } from 'node:fs'
 import { chromium } from 'playwright'
+
+// 本機沙盒有預先安裝的 Chromium；CI 用 playwright 自己下載的。
+// 跟 design-audit.mjs / e2e-account.mjs 同一段——寫死路徑的話 CI 一定 launch 不起來。
+const BROWSER = process.env.CHROMIUM_PATH
+  ?? (existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome')
+    ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+    : undefined)
 const URL = 'http://127.0.0.1:4180/'
 const ok = (l, c) => { console.log((c ? '  PASS  ' : '  FAIL  ') + l); if (!c) process.exitCode = 1 }
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+const b = await chromium.launch(BROWSER ? { executablePath: BROWSER } : {})
 
 // 兩個獨立的瀏覽器 context = 兩台不同的手機（各自的 IndexedDB）
 const mk = async (name) => {

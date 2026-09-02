@@ -3,9 +3,17 @@
 //
 //   node scripts/e2e-local.mjs
 //
+import { existsSync } from 'node:fs'
 import { chromium } from 'playwright'
+
+// 本機沙盒有預先安裝的 Chromium；CI 用 playwright 自己下載的。
+// 跟 design-audit.mjs / e2e-account.mjs 同一段——寫死路徑的話 CI 一定 launch 不起來。
+const BROWSER = process.env.CHROMIUM_PATH
+  ?? (existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome')
+    ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+    : undefined)
 const URL = 'http://127.0.0.1:4173/daka/'
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+const b = await chromium.launch(BROWSER ? { executablePath: BROWSER } : {})
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 const p = await ctx.newPage()
 const errs = []
