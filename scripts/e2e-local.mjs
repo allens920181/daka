@@ -13,6 +13,10 @@ p.on('pageerror', e => errs.push('PAGEERROR: ' + e.message))
 p.on('console', m => { if (m.type() === 'error') errs.push('CONSOLE: ' + m.text()) })
 
 const ok = (label, cond) => { console.log((cond ? '  PASS  ' : '  FAIL  ') + label); if (!cond) process.exitCode = 1 }
+// 計分區（44px 大字＋「N / M 人」＋進度條）已經整塊拿掉：攜伴不再解析之後，
+// 它和「未到 N」說的是同一件事。畫面上的那個數字現在長在頂欄的分段控制裡。
+const missing = async () => ((await p.getByRole('button', { name: /^未到/ }).textContent()) || '').replace(/\D/g, '')
+const segCount = async (name) => ((await p.getByRole('button', { name }).first().textContent()) || '').replace(/\D/g, '')
 
 await p.goto(URL); await p.waitForTimeout(1200)
 ok('首頁載入', await p.locator('.home-title').isVisible())
@@ -61,21 +65,19 @@ await p.waitForTimeout(1200)
 ok('進入空間', await p.locator('.topbar-name').isVisible())
 const code = (await p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`取得 6 碼代碼: ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
-// 大字是人頭。攜伴已經不從文字裡解析（`+1`、`帶2人` 只是備註與名字的一部分），
-// 所以新名單上人頭＝列數：9 列（標題行上面補了回去）扣掉請假的陳大同 → 8 個沒到。
-// 這個數字必須和右邊的「0 / 8 人」對得起來——0 已到、8 沒到，加起來就是分母。
-ok('未到 8 人（9 列，陳大同請假不算）', (await p.locator('.score-number').textContent()) === '8')
+// 9 列（標題行上面補了回去）扣掉請假的陳大同 → 8 個沒到。分段控制的三個數字
+// 必須自己加得起來：未到 8 ＋ 已到 0 ＋ 請假 1 ＝ 全部 9。
+ok('未到 8（9 列，陳大同請假不算）', (await missing()) === '8')
 // 44px 的數字旁邊只補單位，不把同一個數字再寫一次。
-ok('計分標籤只寫單位不重複數字', (await p.locator('.score-label').textContent())?.trim() === '位沒到')
-// 名單共 9 人，陳大同請假 → 今天該到 8。
-// 分母用 9 的話，全部到齊時畫面會寫「8 / 9」配一條填不滿的進度條。
-ok('分母扣掉請假者 = 0 / 8', (await p.locator('.score-heads').textContent())?.includes('/ 8'))
+ok('分段的數字加得起來', Number(await missing()) + Number(await segCount(/^已到/)) + Number(await segCount(/^請假/))
+   === Number(await segCount(/^全部/)))
+ok('請假的人自己一段，不混在未到裡', (await segCount(/^請假/)) === '1')
 
 
 // 點名
 await p.locator('.member-main').nth(1).click()
 await p.waitForTimeout(500)
-ok('點名後未到 = 7', (await p.locator('.score-number').textContent()) === '7')
+ok('點名後未到 = 7', (await missing()) === '7')
 ok('該列變成已到', (await p.locator('.member').nth(1).getAttribute('class'))?.includes('is-arrived'))
 ok('出現復原提示', await p.locator('.toast').isVisible())
 
@@ -83,7 +85,7 @@ ok('出現復原提示', await p.locator('.toast').isVisible())
 // 復原
 await p.locator('.toast-action').click()
 await p.waitForTimeout(500)
-ok('復原後未到回到 8', (await p.locator('.score-number').textContent()) === '8')
+ok('復原後未到回到 8', (await missing()) === '8')
 
 // 篩選
 await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(300)
@@ -167,7 +169,7 @@ const dividers = await p.locator('.group-divider').allTextContents()
 ok(`第一段也有標題：${dividers.join(' | ')}`, dividers[0]?.trim() === '未分組')
 await p.getByRole('button',{name:/未分組/}).click(); await p.waitForTimeout(400)
 ok('選「未分組」只看到那 2 個人', (await p.locator('.member').count()) === 2)
-ok('計分區說得出是「未分組」', (await p.locator('.score-scope').textContent())?.trim() === '未分組')
+ok('選了「未分組」之後名單只剩那一組', (await p.locator('.member').count()) === 2)
 await p.locator('.groups button').first().click(); await p.waitForTimeout(400)
 
 // #11 同名的人要看得出誰是誰。
@@ -184,13 +186,12 @@ const excusedText = (await excusedRow.locator('.member-meta').textContent()) ?? 
 ok(`請假不重複印：「${excusedText.trim()}」`, (excusedText.match(/請假/g) || []).length === 1)
 
 // #10 臨時加人：站在你面前的人不該被算成「未到」，而且要說一聲。
-const beforeMissing = await p.locator('.score-number').textContent()
+const beforeMissing = await missing()
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/臨時加人/}).click(); await p.waitForTimeout(500)
 await p.locator('#roster-text').fill('路上遇到的人'); await p.waitForTimeout(400)
 await p.getByRole('button',{name:/加入名單/}).click(); await p.waitForTimeout(1200)
-ok(`臨時加人不會讓未到數變多（${beforeMissing} → ${await p.locator('.score-number').textContent()}）`,
-   (await p.locator('.score-number').textContent()) === beforeMissing)
+ok(`臨時加人不會讓未到數變多（${beforeMissing} → ${await missing()}）`, (await missing()) === beforeMissing)
 const walkToast = (await p.locator('.toast-text').textContent().catch(() => '')) ?? ''
 ok(`加完有說一聲：「${walkToast}」`, walkToast.includes('路上遇到的人') && walkToast.includes('已到'))
 
@@ -377,7 +378,6 @@ const printState = await p.evaluate(()=>{
   const txt = (sel)=>document.querySelector(sel)?.textContent?.trim() ?? null
   const check = document.querySelector('.check')
   return { dock:hidden('.dock'), topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
-    scoreboard: hidden('.scoreboard'),
     rows: document.querySelectorAll('.member').length,
     checkBg: check ? getComputedStyle(check).backgroundColor : null,
     title: txt('.print-title'), meta: txt('.print-meta'), blanks: txt('.print-blanks'),
@@ -393,7 +393,6 @@ ok(`列印抬頭是活動名稱：「${printState.title}」`, printState.title =
 ok(`列印抬頭有代碼與人數：「${printState.meta}」`,
    /[2-9A-HJ-KM-NP-Z]{6}/.test(printState.meta || '') && (printState.meta || '').includes('共 3 人'))
 ok('列印抬頭有日期與點名者欄位', (printState.blanks || '').includes('日期') && (printState.blanks || '').includes('點名者'))
-ok('列印不再借用計分區當標題', printState.scoreboard)
 ok(`列印排成兩欄（${printState.columns}）省紙`, printState.columns === '2')
 
 await p.emulateMedia({media:'screen'})
@@ -423,36 +422,32 @@ ok('出現分組選擇器', await p.locator('.groups').isVisible())
 const chips = await p.locator('.group-chip').allTextContents()
 ok(`分組晶片：${chips.join(' | ')}`, chips.length===3 && chips[1].includes('第一車') && chips[2].includes('第二車'))
 // 6 列，陳大同請假 → 該到 5，一個都還沒到。
-ok('全部：未到 5 人（陳大同請假不算）', (await p.locator('.score-number').textContent())==='5')
+ok('全部：未到 5（陳大同請假不算）', (await missing())==='5')
 ok('看全部時有分組分隔', (await p.locator('.group-divider').count())===2)
 
 
 // 選第一車 → 計數只算那一車
 await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
-ok('第一車：未到 3 人', (await p.locator('.score-number').textContent())==='3')
-ok('第一車：0 / 3', (await p.locator('.score-heads').textContent())?.includes('/ 3'))
-// 選了分組之後，計分區的數字必須自己說是哪一車，否則「還有 3 位沒到」
-// 在全隊和第一車是同一句話。
-ok('計分區標出目前分組', (await p.locator('.score-scope').textContent())?.trim() === '第一車')
+ok('第一車：未到 3', (await missing())==='3')
 ok('第一車只顯示 3 人', (await p.locator('.member').count())===3)
 ok('選了分組後不再顯示分隔', (await p.locator('.group-divider').count())===0)
 
 // 點名只影響那一車的計數
 await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(600)
-ok('第一車點一人後未到 2 人', (await p.locator('.score-number').textContent())==='2')
+ok('第一車點一人後未到 2', (await missing())==='2')
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(400)
 // 第二車：陳大同請假、李四、王五 → 2 個沒到。
-ok('第二車未到 2 人（陳大同請假不算）', (await p.locator('.score-number').textContent())==='2')
+ok('第二車未到 2（陳大同請假不算）', (await missing())==='2')
 
 
-// 分組晶片上的未到人頭。「全部」也帶一個數字，而且各車相加要等於它、也等於
-// 上面那個大字——加不起來的話志工會以為自己算錯，開始找那個不存在的差額。
-// 注意這一列對齊的是大字，不是下面的分段控制（那一排是列數，見 roll-call.md）。
+// 分組晶片上的未到人頭。「全部」也帶一個數字，各車相加要等於它——加不起來的話
+// 志工會以為自己算錯，開始找那個不存在的差額。晶片是人頭、分段控制是列數
+// （見 roll-call.md）；攜伴不再解析之後兩者在新名單上相等。
 await p.locator('.groups .group-chip').first().click(); await p.waitForTimeout(400)
 const gn = await p.locator('.group-chip .group-n').allTextContents()
 ok(`晶片數字（全部｜各車）：${gn.join(' / ')}`, gn.length===3 && gn[1]==='2' && gn[2]==='2')
 ok('各車未到相加等於「全部」', Number(gn[1]) + Number(gn[2]) === Number(gn[0]))
-ok('而且等於計分區的大字', (await p.locator('.score-number').textContent()) === gn[0])
+ok('而且等於分段控制的未到數', (await missing()) === gn[0])
 
 // --- 複製結果應限定在選取的分組 ---
 await ctx.grantPermissions(['clipboard-read','clipboard-write'])

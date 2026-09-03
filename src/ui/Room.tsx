@@ -1,5 +1,5 @@
 import { Fragment } from 'preact'
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
   prefs, room, setStatusWithUndo, shareOnEnter, showToast,
@@ -36,9 +36,6 @@ export function Room({ code }: { code: string }) {
   // 顧第一車的人要看的是「我這台還有幾個沒上」。
   const [group, setGroup] = useState<string | null>(null)
   const [sheet, setSheet] = useState<OpenSheet>(null)
-  // 計分區捲出畫面時，頂欄接手顯示未到人數——這個數字不能消失。
-  const scoreboardRef = useRef<HTMLDivElement>(null)
-  const [scoreVisible, setScoreVisible] = useState(true)
 
   useEffect(() => {
     let alive = true
@@ -62,16 +59,6 @@ export function Room({ code }: { code: string }) {
     shareOnEnter.value = null
     setSheet('share')
   }, [status, code])
-
-  useEffect(() => {
-    const el = scoreboardRef.current
-    if (!el) return
-    const io = new IntersectionObserver(([e]) => setScoreVisible(Boolean(e?.isIntersecting)), {
-      rootMargin: '-56px 0px 0px 0px',
-    })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [status])
 
   const current = room.value
   const all = members.value
@@ -153,7 +140,6 @@ export function Room({ code }: { code: string }) {
   }
 
   // 分母是「今天該到的人頭」而不是名單總人頭：請假的人不該讓進度條永遠差一截。
-  const progress = s.expectedHeadcount === 0 ? 0 : (s.arrivedHeadcount / s.expectedHeadcount) * 100
   // 空名單不是「全部到齊」，只是還沒有人。
   const allHere = s.people > 0 && s.pending === 0
   const groupLabel = group === UNGROUPED ? t('ungrouped') : group
@@ -165,7 +151,7 @@ export function Room({ code }: { code: string }) {
         唯一不能消失的數字，所以字級要和空間名對調——空間名此刻只是脈絡，
         「還有幾個沒到」才是使用者盯著的東西。
       */}
-      <div class={scoreVisible ? 'topbar' : 'topbar handover'}>
+      <div class="topbar">
         <div class="shell topbar-inner">
           <button class="icon-btn" onClick={() => navigate('/')} aria-label={t('back')}>
             <IconBack />
@@ -182,17 +168,12 @@ export function Room({ code }: { code: string }) {
           >
             <h1 class="topbar-name">{current.name}</h1>
             <div class="topbar-sub">
-              {scoreVisible && !closed ? (
-                <span class="mono">{current.code}</span>
-              ) : closed ? (
+              {closed ? (
                 // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
                 // 戳名字沒反應，協助者完全不知道為什麼。
                 <span class="topbar-count closed">{t('roomClosedShort')}</span>
               ) : (
-                <span class={allHere ? 'topbar-count done' : 'topbar-count'}>
-                  {group !== null && <span class="topbar-scope">{groupLabel}</span>}
-                  {allHere ? t('allHere') : t('missingCount', { n: s.pendingHeadcount })}
-                </span>
+                <span class="mono">{current.code}</span>
               )}
               <SyncBadge />
             </div>
@@ -238,6 +219,26 @@ export function Room({ code }: { code: string }) {
             )}
           </div>
         )}
+
+        {/*
+          篩選留在頂欄裡，和搜尋框同一個理由：頂欄是 sticky。
+
+          計分區（44px 的大字＋「8 / 9 人」＋進度條）拿掉之後，「未到 N」就是
+          畫面上唯一回答「還有幾個沒到」的東西——它不能跟著名單捲走。以前那個
+          數字靠「計分區捲出畫面時頂欄接手」來續命，現在不需要那套機關了：它
+          本來就一直在畫面上。
+          省下的高度全部變成人名：首屏本來有 45–50% 被控制項吃掉。
+        */}
+        <div class="shell">
+          <div class="segmented" role="group" aria-label={t('filter')}>
+            <Segment active={filter === 'all'} onClick={() => setFilter('all')} label={t('all')} count={s.people} />
+            <Segment active={filter === 'pending'} onClick={() => setFilter('pending')} label={t('missing')} count={s.pending} />
+            <Segment active={filter === 'arrived'} onClick={() => setFilter('arrived')} label={t('arrived')} count={s.arrived} />
+            {s.excused > 0 && (
+              <Segment active={filter === 'excused'} onClick={() => setFilter('excused')} label={t('excused')} count={s.excused} />
+            )}
+          </div>
+        </div>
       </div>
 
       <div class="shell">
@@ -277,54 +278,6 @@ export function Room({ code }: { code: string }) {
             </button>
           </div>
         )}
-
-        {/*
-          答案用人頭，切片用列數。
-
-          大字回答的是「還有幾個人沒上車」——遊覽車上要對的是人頭，所以它和右邊的
-          分母、進度條、分組晶片、貼回 LINE 的文字一律是 pendingHeadcount。這裡曾經
-          用 s.pending（列數）：畫面上會出現 44px 的「8 位沒到」配著「0 / 11 人」，
-          沒有人到，兩個數字卻差 3，而「位」本來就是人的量詞。差額是李美花＋1、
-          李四＋2，但畫面上沒有任何字說得出這件事。
-
-          下面那排分段控制維持列數：它的職責是「按下去會看到幾列」，寫人頭反而會
-          騙人——按「未到 8」就是會看到 8 列。
-        */}
-        <div class="scoreboard" ref={scoreboardRef}>
-          <div class="score-main">
-            {allHere ? (
-              // 全部到齊時不印那顆「0」：44px 的 0 配上「全部到齊」會讓人愣一下。
-              <span class="score-number score-done">{t('allHere')}</span>
-            ) : (
-              <>
-                <span class="score-number">{s.pendingHeadcount}</span>
-                <span class="score-text">
-                  <span class="score-label">{t('missingUnit')}</span>
-                  {group !== null && <span class="score-scope">{groupLabel}</span>}
-                </span>
-              </>
-            )}
-          </div>
-          <span class="score-heads">
-            {t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}
-          </span>
-        </div>
-
-        {/*
-          進度條併進計分區的下緣。原本它自己佔一列（6px 的條 + 44px 的按鈕 +
-          24px 間距），而首屏本來就有 45–50% 的高度被控制項吃掉——80 人的名單
-          一屏只看得到 4 個人。省下的高度在任何長度的名單上都直接變成人名。
-        */}
-        <div
-          class="progress"
-          role="progressbar"
-          aria-label={t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}
-          aria-valuenow={Math.round(progress)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div class="progress-fill" style={`width:${progress}%`} />
-        </div>
 
         {groupList.length > 0 && (
           <div class="groups" role="group" aria-label={t('group')}>
@@ -371,15 +324,6 @@ export function Room({ code }: { code: string }) {
             })()}
           </div>
         )}
-
-        <div class="segmented" role="group" aria-label={t('filter')}>
-          <Segment active={filter === 'all'} onClick={() => setFilter('all')} label={t('all')} count={s.people} />
-          <Segment active={filter === 'pending'} onClick={() => setFilter('pending')} label={t('missing')} count={s.pending} />
-          <Segment active={filter === 'arrived'} onClick={() => setFilter('arrived')} label={t('arrived')} count={s.arrived} />
-          {s.excused > 0 && (
-            <Segment active={filter === 'excused'} onClick={() => setFilter('excused')} label={t('excused')} count={s.excused} />
-          )}
-        </div>
 
         <div class="list" role="list" aria-label={t('roster')}>
           {shown.length === 0 ? (
@@ -476,7 +420,7 @@ export function Room({ code }: { code: string }) {
 function RoomSkeleton({ label }: { label: string }) {
   return (
     <div class="shell" role="status" aria-busy="true" aria-label={label}>
-      <div class="scoreboard"><span class="sr-only">{label}</span></div>
+      <span class="sr-only">{label}</span>
       <div class="list" aria-hidden="true">
         {[0, 1, 2, 3, 4].map((i) => <div class="skeleton-row" key={i} />)}
       </div>

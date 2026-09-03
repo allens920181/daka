@@ -414,28 +414,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .topbar-sub { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-2); color: var(--ink-3); }
 
-/* 計分區捲出畫面時的精簡計數。這個數字不能消失。 */
+/* 空間關閉時取代代碼的那一格。關閉是全域狀態，不能只靠一條會捲走的橫幅。 */
 .topbar-count {
   display: inline-flex; align-items: baseline; gap: var(--sp-1);
   font-size: var(--fs-2); font-weight: 700; color: var(--st-pending);
   white-space: nowrap;
 }
-.topbar-count.done { color: var(--st-arrived); }
 .topbar-count.closed { color: var(--ink-2); }
 
-/* 計分區捲出畫面之後，頂欄的大小關係對調。 */
-.topbar.handover .topbar-name { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
-.topbar.handover .topbar-count { font-size: var(--fs-5); line-height: 1.1; }
-.topbar.handover .topbar-sub { font-size: var(--fs-3); }
-/* 接手時空間讓給人數，同步狀態收成一顆圓點（aria-label 仍在）。 */
-.topbar.handover .sync-text { position: absolute; width: 1px; height: 1px;
-  padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.topbar.handover .sync { flex: none; }
-/* 捲動後頂欄接手時，數字同樣要帶著「哪一車」一起走。 */
-.topbar-scope {
-  color: var(--accent); font-weight: 700;
-}
-.topbar-scope::after { content: " · "; color: var(--ink-3); font-weight: 400; }
+/*
+ * 篩選長在頂欄裡（sticky），不在名單流裡。計分區拿掉之後，「未到 N」是畫面上
+ * 唯一回答「還有幾個沒到」的東西——它不能跟著名單捲走。
+ */
+.topbar .segmented { margin-bottom: var(--sp-2); }
 
 .sync { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-2); font-weight: 600; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
@@ -454,50 +445,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .sync-syncing .sync-dot { animation: pulse var(--dur-ambient) ease-in-out infinite; }
 }
 @keyframes pulse { 50% { opacity: .3; } }
-
-/* === 計數區 ============================================================== */
-
-.scoreboard {
-  display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-4) 0 var(--sp-3);
-}
-.score-main { align-self: baseline; }
-.score-main { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
-.score-number {
-  font-size: var(--fs-8); font-weight: 800; line-height: 1;
-  letter-spacing: -.02em; font-variant-numeric: tabular-nums;
-  color: var(--st-pending);
-}
-/* 全部到齊時大字換成一句話，字級降一階才放得下四個中文字。 */
-.score-number.score-done { font-size: var(--fs-7); color: var(--st-arrived); }
-.score-text { display: flex; flex-direction: column; min-width: 0; }
-.score-label { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
-/* 選了分組之後，計分區的數字必須自己說是哪一車。 */
-.score-scope {
-  font-size: var(--fs-2); font-weight: 700; color: var(--accent);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.score-heads {
-  margin-left: auto; font-size: var(--fs-4); font-weight: 700;
-  color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap;
-}
-
-
-/*
- * 進度條是計分區的下緣，不自己佔一列。
- * 控制項的節奏用兩個值而不是一個：同一群內 8px，跨群 24px。五段等距的橫條
- * 會讓所有東西看起來一樣重要，也就是一樣不重要——志工第一次拿到手機，要在
- * 兩秒內看出「上面是答案、下面是切片」。
- */
-.progress {
-  height: 6px; border-radius: var(--r-full);
-  background: var(--surface-3); overflow: hidden;
-  margin-bottom: var(--sp-5);
-}
-.progress-fill {
-  height: 100%; background: var(--st-arrived); border-radius: var(--r-full);
-  transition: width var(--dur-2) var(--ease);
-}
 
 /* === 篩選與搜尋 ========================================================== */
 
@@ -980,9 +927,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
   }
   body { background: #fff; color: #000; font-size: 11pt; }
 
+  /* .segmented 與 .search-wrap 都住在 .topbar 裡了，但留著名字：它們是否被藏起來
+     是 e2e 直接驗的事情，而選擇器多寫一個不會錯。 */
   .topbar, .dock, .toast-wrap, .overlay, .segmented, .search-wrap,
-  .progress, .member-side, .icon-btn, .btn, .groups,
-  .scoreboard, .banner { display: none !important; }
+  .member-side, .icon-btn, .btn, .groups, .banner { display: none !important; }
 
   /*
    * 抬頭。以前這裡印的是借來的計分區文字（「還有 12 位沒到」）——一個離開

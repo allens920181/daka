@@ -122,7 +122,7 @@ function collect() {
      * 而它沒有自己的文字節點，所以上面那段以文字為單位的檢查看不到它。
      * 這裡明確點名幾個「形狀就是資訊」的元素。
      */
-    const NON_TEXT = ['check', 'sync-dot', 'progress-fill', 'chip-count', 'chip-tell']
+    const NON_TEXT = ['check', 'sync-dot', 'chip-count', 'chip-tell']
     if ([...(el.classList ?? [])].some((c) => NON_TEXT.includes(c))) {
       const bg = bgOf(el.parentElement ?? el)
       const a = effOpacity(el)
