@@ -27,14 +27,14 @@ const zh = {
   pasteRoster: '貼上名單',
   /* 格式細節從說明搬到範例：讀四行字才知道能貼什麼，不如按一下直接看到解析結果。 */
   pastePlaceholder: '一行一個名字，LINE 接龍直接貼就行。',
-  pasteExample: '填入範例',
-  pasteExampleClear: '清除範例',
-  /* 第一行是活動標題，而且刻意留著：真實的接龍最上面就是這一行，貼進來會被
-     當成一個人——這正是預覽存在的理由。範例照著真實的樣子給，順手就示範了
-     「這一列不是人，按 ✕ 拿掉」，比多寫一句說明有用。
-     每一行都要解析得出一列（parse.test.ts 會驗），所以分組標題不放進來——
-     那種標題會被靜靜吃掉，預覽也不顯示分組，貼進去等於有兩行憑空消失。 */
-  pasteExampleText: '秋季旅遊報名\n1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
+  /* 範例填的是整張表：活動名稱一格、名單一份，按一下就看得到一個完整的空間
+     長什麼樣。key 依語意命名（§6.4），所以不叫 paste*——它已經不屬於哪一個欄位。 */
+  exampleFill: '填入範例',
+  exampleClear: '清除範例',
+  exampleName: '秋季旅遊 · 出發',
+  /* 範例的每一行都必須解析得出一個人（parse.test.ts 會驗）。分組標題不放進來——
+     預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範一件看不到的事。 */
+  exampleRoster: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
   parsePreview: '解析結果',
   /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。
      「人次」不是贅詞而是單位標記：9 是列數、12 是人頭數，全站最容易搞混的兩個量。 */
@@ -322,9 +322,10 @@ const en: Record<MessageKey, string> = {
   roster: 'Roster',
   pasteRoster: 'Paste the roster',
   pastePlaceholder: 'One name per line. Paste a chat thread as-is.',
-  pasteExample: 'Fill in an example',
-  pasteExampleClear: 'Clear the example',
-  pasteExampleText: 'Autumn trip sign-up\n1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (absent)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
+  exampleFill: 'Fill in an example',
+  exampleClear: 'Clear the example',
+  exampleName: 'Autumn trip · Departure',
+  exampleRoster: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (absent)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
   parsedHeads: '{n} heads incl. companions',
@@ -551,17 +552,21 @@ export function translate(lang: Lang, key: MessageKey, vars?: Record<string, str
 }
 
 /**
- * 這段文字就是「填入範例」填進去的那份範例嗎？
+ * 這格裡的字，就是「填入範例」自己填進去的那一段嗎？
  *
- * 用來決定要不要給「清除範例」。判準刻意嚴格到逐字相同：清除鍵只該收回我們
- * 自己放進去的東西，使用者一動手改，它就必須消失——否則那顆按鈕會從「取消範例」
- * 悄悄變成「清空我剛貼好的 200 人名單」，而兩者長得一模一樣。
+ * 用來決定清除鍵要不要出現、以及它可以動哪一格。判準刻意嚴格到逐字相同：清除
+ * 只該收回我們自己放進去的東西，使用者一動手改，那一格就不再屬於範例——否則那
+ * 顆按鈕會從「取消範例」悄悄變成「清空我剛貼好的 200 人名單」，而兩者長得一模
+ * 一樣。兩個欄位分開判，所以改了活動名稱不會連帶讓名單也失去清除鍵。
  *
  * 比對所有語言而不只是當下這個：填了中文範例再去設定裡切成英文，那段文字並不會
  * 跟著變，清除鍵沒有理由在這時候消失。
  */
-export function isExampleRoster(text: string): boolean {
+function isExample(key: 'exampleName' | 'exampleRoster', text: string): boolean {
   const trimmed = text.trim()
   if (!trimmed) return false
-  return Object.values(messages).some((m) => m.pasteExampleText.trim() === trimmed)
+  return Object.values(messages).some((m) => m[key].trim() === trimmed)
 }
+
+export const isExampleName = (text: string): boolean => isExample('exampleName', text)
+export const isExampleRoster = (text: string): boolean => isExample('exampleRoster', text)

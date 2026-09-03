@@ -2,7 +2,6 @@ import { useMemo } from 'preact/hooks'
 import { parseRoster, removeParsedMember } from '../lib/parse'
 import type { DraftMember, SavedRoster } from '../lib/types'
 import { rosterToText } from '../lib/parse'
-import { isExampleRoster } from '../lib/i18n'
 import { IconClose } from './icons'
 import { useT } from './t'
 
@@ -42,32 +41,10 @@ export function RosterInput({
         </div>
       )}
 
+      {/* 範例鍵不在這裡：它一次填活動名稱與名單兩格，所以住在表單那一層
+          （`NewRoom`），而不是掛在其中一個欄位的標籤上。 */}
       <div class="field">
-        <div class="row">
-          <label class="label" for="roster-text">{t('pasteRoster')}</label>
-          <div class="spacer" />
-          {/*
-            同一個位置上的兩個狀態，都只在該給的時候給：
-
-            空的時候給「填入範例」。第一次來的人面對的是一個空白框，說明再短也
-            還是要先讀完才知道能貼什麼——按一下把範例填進去，下面的解析結果立刻
-            自己說明了一切。
-
-            範例還原封不動時給「清除範例」。看完就該能收乾淨，而不是自己去把六行
-            字選起來刪掉。反過來說，只要使用者動手改過一個字，它就必須消失：那時
-            候按下去清掉的已經是他自己的東西，而按鈕長得一模一樣。所以判準是逐字
-            相同（`isExampleRoster`），不是「現在有沒有字」。
-          */}
-          {!text.trim() ? (
-            <button class="btn btn-sm" onClick={() => onText(t('pasteExampleText'))}>
-              {t('pasteExample')}
-            </button>
-          ) : isExampleRoster(text) ? (
-            <button class="btn btn-sm" onClick={() => onText('')}>
-              {t('pasteExampleClear')}
-            </button>
-          ) : null}
-        </div>
+        <label class="label" for="roster-text">{t('pasteRoster')}</label>
         <textarea
           id="roster-text"
           class="textarea"

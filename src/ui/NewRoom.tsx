@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { createRoom, savedRosters } from '../lib/store'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
+import { isExampleName, isExampleRoster } from '../lib/i18n'
 import { AppError, isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
@@ -35,6 +36,26 @@ export function NewRoom() {
     const id = setTimeout(() => { void saveDraft(name, text) }, 500)
     return () => clearTimeout(id)
   }, [name, text])
+
+  /*
+   * 範例填的是整張表：活動名稱一格、名單一份，按一下就看得到一個完整的空間長
+   * 什麼樣——而不是只有下面那個框裡多了六行字。所以按鈕放在表單最上面這一列，
+   * 兩格都歸它管。
+   *
+   * 兩個方向都守同一條線：**不碰使用者自己打的字**。填的時候只填空的那格（先
+   * 打了活動名稱再想看範例的人很常見，那個名字不該被蓋掉）；清的時候只清還跟
+   * 範例逐字相同的那格。差這一格，這顆按鈕就會從「取消範例」悄悄變成「清空我
+   * 剛貼好的 200 人名單」，而畫面上長得一模一樣。
+   */
+  function fillExample() {
+    if (!name.trim()) setName(t('exampleName'))
+    setText(t('exampleRoster'))
+  }
+
+  function clearExample() {
+    if (isExampleName(name)) setName('')
+    setText('')
+  }
 
   async function submit() {
     if (drafts.length === 0) { setError(t('emptyRoster')); return }
@@ -77,7 +98,17 @@ export function NewRoom() {
         )}
 
         <div class="field">
-          <label class="label" for="room-name">{t('roomNameLabel')}</label>
+          <div class="row">
+            <label class="label" for="room-name">{t('roomNameLabel')}</label>
+            <div class="spacer" />
+            {/* 名單還空著就給「填入範例」，範例原封不動就給「清除範例」，
+                使用者一動手改就兩顆都不給——那時候框裡的是他自己的東西。 */}
+            {!text.trim() ? (
+              <button class="btn btn-sm" onClick={fillExample}>{t('exampleFill')}</button>
+            ) : isExampleRoster(text) ? (
+              <button class="btn btn-sm" onClick={clearExample}>{t('exampleClear')}</button>
+            ) : null}
+          </div>
           <input
             id="room-name"
             class="input"
