@@ -13,6 +13,10 @@ p.on('pageerror', e => errs.push('PAGEERROR: ' + e.message))
 p.on('console', m => { if (m.type() === 'error') errs.push('CONSOLE: ' + m.text()) })
 
 const ok = (label, cond) => { console.log((cond ? '  PASS  ' : '  FAIL  ') + label); if (!cond) process.exitCode = 1 }
+// 計分區（44px 大字＋「N / M 人」＋進度條）已經整塊拿掉：攜伴不再解析之後，
+// 它和「未到 N」說的是同一件事。畫面上的那個數字現在長在頂欄的分段控制裡。
+const missing = async () => ((await p.getByRole('button', { name: /^未到/ }).textContent()) || '').replace(/\D/g, '')
+const segCount = async (name) => ((await p.getByRole('button', { name }).first().textContent()) || '').replace(/\D/g, '')
 
 await p.goto(URL); await p.waitForTimeout(1200)
 ok('首頁載入', await p.locator('.home-title').isVisible())
@@ -61,20 +65,19 @@ await p.waitForTimeout(1200)
 ok('進入空間', await p.locator('.topbar-name').isVisible())
 const code = (await p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`取得 6 碼代碼: ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
-// 大字是人頭不是列數：9 列裡陳大同請假，剩 8 列＝11 個人頭（李美花＋1、王五＋2）。
-// 這個數字必須和右邊的「0 / 11 人」對得起來——0 已到、11 沒到，加起來就是分母。
-ok('未到 11 人頭（8 列，李美花＋1、王五＋2）', (await p.locator('.score-number').textContent()) === '11')
+// 9 列（標題行上面補了回去）扣掉請假的陳大同 → 8 個沒到。分段控制的三個數字
+// 必須自己加得起來：未到 8 ＋ 已到 0 ＋ 請假 1 ＝ 全部 9。
+ok('未到 8（9 列，陳大同請假不算）', (await missing()) === '8')
 // 44px 的數字旁邊只補單位，不把同一個數字再寫一次。
-ok('計分標籤只寫單位不重複數字', (await p.locator('.score-label').textContent())?.trim() === '位沒到')
-// 名單共 12 個人頭（9 列 + 李美花＋1 + 王五＋2），陳大同請假 → 今天該到 11。
-// 分母用 12 的話，全部到齊時畫面會寫「11 / 12」配一條填不滿的進度條。
-ok('分母扣掉請假者 = 0 / 11', (await p.locator('.score-heads').textContent())?.includes('/ 11'))
+ok('分段的數字加得起來', Number(await missing()) + Number(await segCount(/^已到/)) + Number(await segCount(/^請假/))
+   === Number(await segCount(/^全部/)))
+ok('請假的人自己一段，不混在未到裡', (await segCount(/^請假/)) === '1')
 
 
 // 點名
 await p.locator('.member-main').nth(1).click()
 await p.waitForTimeout(500)
-ok('點名後未到 = 10（王小明 1 個人頭）', (await p.locator('.score-number').textContent()) === '10')
+ok('點名後未到 = 7', (await missing()) === '7')
 ok('該列變成已到', (await p.locator('.member').nth(1).getAttribute('class'))?.includes('is-arrived'))
 ok('出現復原提示', await p.locator('.toast').isVisible())
 
@@ -82,7 +85,7 @@ ok('出現復原提示', await p.locator('.toast').isVisible())
 // 復原
 await p.locator('.toast-action').click()
 await p.waitForTimeout(500)
-ok('復原後未到回到 11', (await p.locator('.score-number').textContent()) === '11')
+ok('復原後未到回到 8', (await missing()) === '8')
 
 // 篩選
 await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(300)
@@ -119,15 +122,7 @@ await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitFo
 // 一支撥出去是空號的假電話，而畫面上沒有一個字說得出為什麼。號碼現在原文留在
 // 備註裡，撥號鍵長在成員面板（顯示層猜錯是可逆、可見的；資料層猜錯不是）。
 ok('名單列上沒有撥號鍵了', (await p.locator('.member a[href^="tel:"]').count()) === 0)
-ok('還沒打過時沒有記號', (await p.locator('.chip-called').count()) === 0)
 
-// 擋掉 tel: 的實際導航（無頭瀏覽器會把頁面帶走），但 onClick 照樣跑完——
-// preventDefault 只取消預設動作，不影響事件處理器。
-await p.evaluate(() => {
-  document.addEventListener('click', (e) => {
-    if ((e.target instanceof Element) && e.target.closest('a[href^="tel:"]')) e.preventDefault()
-  })
-})
 await p.locator('.member').filter({ hasText: '王小明' }).first()
   .getByRole('button', { name: /管理|manage/ }).click()
 await p.waitForTimeout(400)
@@ -135,15 +130,7 @@ const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
 ok(`成員面板把備註裡的號碼做成撥號鍵 ${telHref}`, telHref === 'tel:0912345678')
 ok('並標明它是備註裡的號碼',
    ((await p.locator('a[href^="tel:"] .sub').first().textContent()) ?? '').includes('備註'))
-
-// #22 收尾一個一個打電話：打完第三通抬頭找第四個，七個人長得一模一樣，
-// 而「打過了沒」正是決定「車要不要再等十分鐘」的那條資訊。號碼從欄位變成
-// 備註之後，這個記號一樣要留得住。
-await p.locator('a[href^="tel:"]').first().click(); await p.waitForTimeout(500)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('打過之後那一列留下時間記號', (await p.locator('.chip-called').count()) === 1)
-ok('記號寫的是「已撥 HH:MM」',
-   /^已撥 \d{2}:\d{2}$/.test(((await p.locator('.chip-called').textContent()) ?? '').trim()))
 
 // 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、QR、連結對任何人
 // 都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為
@@ -182,7 +169,7 @@ const dividers = await p.locator('.group-divider').allTextContents()
 ok(`第一段也有標題：${dividers.join(' | ')}`, dividers[0]?.trim() === '未分組')
 await p.getByRole('button',{name:/未分組/}).click(); await p.waitForTimeout(400)
 ok('選「未分組」只看到那 2 個人', (await p.locator('.member').count()) === 2)
-ok('計分區說得出是「未分組」', (await p.locator('.score-scope').textContent())?.trim() === '未分組')
+ok('選了「未分組」之後名單只剩那一組', (await p.locator('.member').count()) === 2)
 await p.locator('.groups button').first().click(); await p.waitForTimeout(400)
 
 // #11 同名的人要看得出誰是誰。
@@ -199,13 +186,12 @@ const excusedText = (await excusedRow.locator('.member-meta').textContent()) ?? 
 ok(`請假不重複印：「${excusedText.trim()}」`, (excusedText.match(/請假/g) || []).length === 1)
 
 // #10 臨時加人：站在你面前的人不該被算成「未到」，而且要說一聲。
-const beforeMissing = await p.locator('.score-number').textContent()
+const beforeMissing = await missing()
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/臨時加人/}).click(); await p.waitForTimeout(500)
 await p.locator('#roster-text').fill('路上遇到的人'); await p.waitForTimeout(400)
 await p.getByRole('button',{name:/加入名單/}).click(); await p.waitForTimeout(1200)
-ok(`臨時加人不會讓未到數變多（${beforeMissing} → ${await p.locator('.score-number').textContent()}）`,
-   (await p.locator('.score-number').textContent()) === beforeMissing)
+ok(`臨時加人不會讓未到數變多（${beforeMissing} → ${await missing()}）`, (await missing()) === beforeMissing)
 const walkToast = (await p.locator('.toast-text').textContent().catch(() => '')) ?? ''
 ok(`加完有說一聲：「${walkToast}」`, walkToast.includes('路上遇到的人') && walkToast.includes('已到'))
 
@@ -243,21 +229,37 @@ const toastBack = await p.evaluate(() => {
 ok(`面板關掉後 Toast 回到下緣（top=${toastBack}）`, toastBack > 400)
 await p.locator('.toast-action').click().catch(() => {}); await p.waitForTimeout(400)
 
-// #16 底部動作列裝的是「收尾時真正要按的兩個動作」。以前是分享＋臨時加人，
-// 但五支手機裡有四支是掃 QR 進來的協助者，他們永遠不需要分享；而收尾時真正要
-// 做的是「只看未到」，那時你已經捲過 80 個人，得一路捲回頂端才按得到篩選。
-const dockLabels = await p.locator('.dock .btn').allTextContents()
-ok(`底部動作列：${dockLabels.map(x=>x.trim()).join(' ｜ ')}`,
-   dockLabels.length === 2 && dockLabels[0].includes('只看未到') && dockLabels[1].includes('複製結果'))
-ok('分享不在動作列（退回頂欄那顆圖示鍵）',
-   !dockLabels.join('').includes('分享') && (await p.locator('.topbar button[aria-label="分享"]').count()) === 1)
-await p.locator('.dock .btn').first().click(); await p.waitForTimeout(400)
-ok('按下之後真的只剩未到', (await p.locator('.member.is-arrived').count()) === 0)
-ok('與上面的分段控制同步',
-   (await p.locator('.segmented button[aria-pressed=true]').textContent())?.includes('未到'))
-ok('切換鍵自己顯示為開啟', (await p.locator('.dock .btn').first().getAttribute('aria-pressed')) === 'true')
-await p.locator('.dock .btn').first().click(); await p.waitForTimeout(400)
-ok('再按一次回到全部', (await p.locator('.dock .btn').first().textContent())?.includes('看全部') === false)
+// #16 點名畫面沒有底部動作列。兩個槽位裝的是「只看未到」（篩選搬進 sticky 頂欄
+// 之後變成重複的按鈕）與「複製結果」（一場活動按一次，搬進管理面板）。留下來的
+// 是整場反覆在用的搜尋——浮在右下角的拇指落點。
+ok('點名畫面沒有底部動作列', (await p.locator('.dock').count()) === 0)
+const fab = p.locator('.fab')
+ok('右下角有浮動搜尋鍵', await fab.isVisible())
+const fabBox = await fab.boundingBox()
+const vp = p.viewportSize()
+ok(`浮動鍵在右下角且 ${Math.round(fabBox.width)}×${Math.round(fabBox.height)}（>=48px）`,
+   fabBox.width >= 48 && fabBox.height >= 48
+   && vp.width - (fabBox.x + fabBox.width) < 40 && vp.height - (fabBox.y + fabBox.height) < 40)
+ok('浮動鍵有無障礙名稱', ((await fab.getAttribute('aria-label')) || '').includes('搜尋'))
+ok('分享仍在頂欄那顆圖示鍵', (await p.locator('.topbar button[aria-label="分享"]').count()) === 1)
+ok('頂欄不再有放大鏡（搜尋只有一個入口）',
+   (await p.locator('.topbar button[aria-label*="搜尋"]').count()) === 0)
+
+// 輸入框刻意開在頂欄而不是浮動鍵旁邊：position: fixed 的底部元素在 iOS 會被
+// 鍵盤蓋住，變成盲打。觸發器在下、欄位在上。
+await fab.click(); await p.waitForTimeout(400)
+ok('按浮動鍵之後搜尋框開在頂欄裡', (await p.locator('.topbar .search-wrap input[type=search]').count()) === 1)
+ok('而且自動聚焦', await p.evaluate(() => document.activeElement?.getAttribute('type') === 'search'))
+ok('浮動鍵顯示為開啟', (await fab.getAttribute('aria-expanded')) === 'true')
+await fab.click(); await p.waitForTimeout(400)
+ok('再按一次收起', (await p.locator('input[type=search]').count()) === 0)
+
+// 複製結果搬進管理面板，排第一項。
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+const firstItem = await p.locator('.menu .menu-item').first().textContent()
+ok(`管理面板第一項是複製結果：「${(firstItem || '').trim().split('\n')[0]}」`,
+   (firstItem || '').includes('複製結果'))
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // #36 刪除是唯一不可復原的動作，不能一按就沒。
 await p.locator('.member').filter({ hasText: '王小明' }).locator('.icon-btn').last().click()
@@ -391,14 +393,13 @@ const printState = await p.evaluate(()=>{
   const hidden = (sel)=>{const e=document.querySelector(sel); return !e || getComputedStyle(e).display==='none'}
   const txt = (sel)=>document.querySelector(sel)?.textContent?.trim() ?? null
   const check = document.querySelector('.check')
-  return { dock:hidden('.dock'), topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
-    scoreboard: hidden('.scoreboard'),
+  return { fab:hidden('.fab'), topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
     rows: document.querySelectorAll('.member').length,
     checkBg: check ? getComputedStyle(check).backgroundColor : null,
     title: txt('.print-title'), meta: txt('.print-meta'), blanks: txt('.print-blanks'),
     columns: getComputedStyle(document.querySelector('.list')).columnCount }
 })
-ok('列印時隱藏頂欄／動作列／篩選／搜尋', printState.dock&&printState.topbar&&printState.seg&&printState.search)
+ok('列印時隱藏頂欄／浮動鍵／篩選／搜尋', printState.fab&&printState.topbar&&printState.seg&&printState.search)
 ok(`列印仍保留名單 ${printState.rows} 列`, printState.rows===3)
 ok('列印的勾選格是空白的（給筆勾）', printState.checkBg==='rgb(255, 255, 255)')
 // 紙本備援是「手機沒電」時唯一剩下的東西。抬頭必須寫得出這是哪一場、代碼多少。
@@ -408,7 +409,6 @@ ok(`列印抬頭是活動名稱：「${printState.title}」`, printState.title =
 ok(`列印抬頭有代碼與人數：「${printState.meta}」`,
    /[2-9A-HJ-KM-NP-Z]{6}/.test(printState.meta || '') && (printState.meta || '').includes('共 3 人'))
 ok('列印抬頭有日期與點名者欄位', (printState.blanks || '').includes('日期') && (printState.blanks || '').includes('點名者'))
-ok('列印不再借用計分區當標題', printState.scoreboard)
 ok(`列印排成兩欄（${printState.columns}）省紙`, printState.columns === '2')
 
 await p.emulateMedia({media:'screen'})
@@ -437,42 +437,39 @@ await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300
 ok('出現分組選擇器', await p.locator('.groups').isVisible())
 const chips = await p.locator('.group-chip').allTextContents()
 ok(`分組晶片：${chips.join(' | ')}`, chips.length===3 && chips[1].includes('第一車') && chips[2].includes('第二車'))
-// 6 列 9 人頭，陳大同請假 → 該到 8 人頭，一個都還沒到。
-ok('全部：未到 8 人頭（陳大同請假不算）', (await p.locator('.score-number').textContent())==='8')
+// 6 列，陳大同請假 → 該到 5，一個都還沒到。
+ok('全部：未到 5（陳大同請假不算）', (await missing())==='5')
 ok('看全部時有分組分隔', (await p.locator('.group-divider').count())===2)
 
 
 // 選第一車 → 計數只算那一車
 await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
-ok('第一車：未到 4 人頭（3 列，李美花＋1）', (await p.locator('.score-number').textContent())==='4')
-ok('第一車：人頭 0 / 4（李美花 +1）', (await p.locator('.score-heads').textContent())?.includes('/ 4'))
-// 選了分組之後，計分區的數字必須自己說是哪一車，否則「還有 3 位沒到」
-// 在全隊和第一車是同一句話。
-ok('計分區標出目前分組', (await p.locator('.score-scope').textContent())?.trim() === '第一車')
+ok('第一車：未到 3', (await missing())==='3')
 ok('第一車只顯示 3 人', (await p.locator('.member').count())===3)
 ok('選了分組後不再顯示分隔', (await p.locator('.group-divider').count())===0)
 
 // 點名只影響那一車的計數
 await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(600)
-ok('第一車點一人後未到 3 人頭', (await p.locator('.score-number').textContent())==='3')
+ok('第一車點一人後未到 2', (await missing())==='2')
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(400)
-// 第二車：陳大同請假、李四 1、王五＋2 → 4 個人頭沒到。
-ok('第二車未到 4 人頭（陳大同請假不算）', (await p.locator('.score-number').textContent())==='4')
+// 第二車：陳大同請假、李四、王五 → 2 個沒到。
+ok('第二車未到 2（陳大同請假不算）', (await missing())==='2')
 
 
-// 分組晶片上的未到人頭。「全部」也帶一個數字，而且各車相加要等於它、也等於
-// 上面那個大字——加不起來的話志工會以為自己算錯，開始找那個不存在的差額。
-// 注意這一列對齊的是大字，不是下面的分段控制（那一排是列數，見 roll-call.md）。
+// 分組晶片上的未到人頭。「全部」也帶一個數字，各車相加要等於它——加不起來的話
+// 志工會以為自己算錯，開始找那個不存在的差額。晶片是人頭、分段控制是列數
+// （見 roll-call.md）；攜伴不再解析之後兩者在新名單上相等。
 await p.locator('.groups .group-chip').first().click(); await p.waitForTimeout(400)
 const gn = await p.locator('.group-chip .group-n').allTextContents()
-ok(`晶片數字（全部｜各車）：${gn.join(' / ')}`, gn.length===3 && gn[1]==='3' && gn[2]==='4')
-ok('各車未到人頭相加等於「全部」', Number(gn[1]) + Number(gn[2]) === Number(gn[0]))
-ok('而且等於計分區的大字', (await p.locator('.score-number').textContent()) === gn[0])
+ok(`晶片數字（全部｜各車）：${gn.join(' / ')}`, gn.length===3 && gn[1]==='2' && gn[2]==='2')
+ok('各車未到相加等於「全部」', Number(gn[1]) + Number(gn[2]) === Number(gn[0]))
+ok('而且等於分段控制的未到數', (await missing()) === gn[0])
 
 // --- 複製結果應限定在選取的分組 ---
 await ctx.grantPermissions(['clipboard-read','clipboard-write'])
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(300)
-await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(600)
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(700)
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))
 
@@ -484,9 +481,9 @@ await p.getByRole('button',{name:/看板模式/}).click(); await p.waitForTimeou
 ok('進入看板模式', await p.locator('.board').isVisible())
 // 看板最大的字要回答車長真正的問題——「還缺誰」，不是「已經到幾個」。
 const heroNum = async () => ((await p.locator('.board-hero').textContent()) || '').replace('位沒到','').trim()
-ok('看板主角是未到人頭（7）', (await heroNum())==='7')
-// 6 列 + 李美花＋1 + 王五＋2 = 9 人頭，陳大同請假 → 今天該到 8。
-ok('已到人頭退成副行且分母扣掉請假', (await p.locator('.board-sub').textContent())?.includes('1 / 8'))
+ok('看板主角是未到人數（4）', (await heroNum())==='4')
+// 6 列，陳大同請假 → 今天該到 5，王小明已到。
+ok('已到退成副行且分母扣掉請假', (await p.locator('.board-sub').textContent())?.includes('1 / 5'))
 const names=await p.locator('.board-names li').allTextContents()
 ok(`看板列出未到者：${names.map(n=>n.trim()).join('、')}`, names.length===4)
 const numSize=await p.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('.board-hero')).fontSize))
@@ -499,7 +496,7 @@ ok('未到名單沒有被切掉', await p.evaluate(()=>{
 ok('看板同步狀態有文字', ((await p.locator('.board-sync-text').textContent())||'').trim().length > 0)
 
 await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
-ok('看板可切分組：第一車未到 3 人頭', (await heroNum())==='3')
+ok('看板可切分組：第一車未到 2 人', (await heroNum())==='2')
 await p.getByRole('button',{name:/離開看板/}).click(); await p.waitForTimeout(1200)
 ok('離開看板回到空間', await p.locator('.topbar-name').isVisible() && (await p.locator('.topbar-sub .mono').first().textContent())?.trim()===groupRoomCode)
 
@@ -518,26 +515,52 @@ await p.locator('#roster-text').fill(
 await p.waitForTimeout(800)
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(2200)
 const fold = await p.evaluate(() => {
-  const dockTop = document.querySelector('.dock')?.getBoundingClientRect().top ?? innerHeight
+  // 底部動作列拿掉之後，下緣只剩浮動搜尋鍵擋住右下角一小塊；量到視窗底部。
   const rows = [...document.querySelectorAll('.member')]
   return {
     firstNameTop: Math.round(rows[0].getBoundingClientRect().top),
-    visible: rows.filter((e) => e.getBoundingClientRect().bottom <= dockTop).length,
+    visible: rows.filter((e) => e.getBoundingClientRect().bottom <= innerHeight).length,
     searchInFlow: !!document.querySelector('.shell .search-wrap'),
+    hasDock: !!document.querySelector('.dock'),
   }
 })
-ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 6)
+ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 8)
+ok('沒有底部動作列吃掉高度', !fold.hasDock)
 ok('搜尋框不在名單流裡（它佔的 76px 等於一列人名）', !fold.searchInFlow)
-// 捲到名單深處，搜尋鈕必須還按得到——這是把它搬進頂欄的另一半理由。
+// 捲到名單深處，搜尋鍵必須還按得到——它是 fixed 的，永遠在拇指落點。
 await p.mouse.wheel(0, 3000); await p.waitForTimeout(500)
-ok('捲過 3000px 之後搜尋鈕仍在畫面上',
-   await p.getByRole('button', { name: /搜尋姓名/ }).isVisible())
-await p.getByRole('button', { name: /搜尋姓名/ }).click(); await p.waitForTimeout(300)
+ok('捲過 3000px 之後浮動搜尋鍵仍在畫面上', await p.locator('.fab').isVisible())
+await p.locator('.fab').click(); await p.waitForTimeout(300)
 await p.keyboard.type('第二車學員37'); await p.waitForTimeout(500)
 ok('深處也搜得到人', (await p.locator('.member').count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 收起搜尋並還原名單', (await p.locator('input[type=search]').count()) === 0
    && (await p.locator('.member').count()) === 80)
+
+// .list 的下方內距（見 styles.css）決定的是「捲到底之後最後一列還按得到嗎」，
+// 不是首屏能看到幾個人——這裡直接量兩個會蓋住它的東西：浮動鍵（永遠在）與
+// Toast（點名時彈出）。
+await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(400)
+const lastRowVsFab = await p.evaluate(() => {
+  const rows = [...document.querySelectorAll('.member')]
+  const last = rows[rows.length - 1]
+  const btn = last.querySelector('.icon-btn')
+  const fab = document.querySelector('.fab')
+  const b = btn.getBoundingClientRect(); const f = fab.getBoundingClientRect()
+  return !(b.right < f.left || b.left > f.right || b.bottom < f.top || b.top > f.bottom)
+})
+ok('捲到底之後，浮動搜尋鍵不蓋住最後一列的管理鍵', !lastRowVsFab)
+await p.locator('.member-main').last().click(); await p.waitForTimeout(400)
+const lastRowVsToast = await p.evaluate(() => {
+  const rows = [...document.querySelectorAll('.member')]
+  const last = rows[rows.length - 1]
+  const toast = document.querySelector('.toast')
+  if (!toast) return null
+  const l = last.getBoundingClientRect(); const t = toast.getBoundingClientRect()
+  return !(l.right < t.left || l.left > t.right || l.bottom < t.top || l.top > t.bottom)
+})
+ok('點了最後一人之後，Toast 不蓋住那一列', lastRowVsToast === false)
+await p.locator('.toast-action').click().catch(() => {}); await p.waitForTimeout(400)
 
 ok('沒有 JS 錯誤', errs.length === 0)
 if (errs.length) console.log(errs.join('\n'))

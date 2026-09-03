@@ -36,7 +36,7 @@ function stripKeyframes(input: string): string {
 }
 
 /** 允許的字面值：邊框寬度、透明度、百分比、0、以及列印用的 pt。 */
-const ALLOWED_PX = new Set(['0px', '1px', '2px', '3px', '4px', '6px', '7px', '30px', '38px', '44px', '240px', '260px', '200px', '22px', '120px', '560px', '640px', '420px', '88px', '176px'])
+const ALLOWED_PX = new Set(['0px', '1px', '2px', '3px', '4px', '6px', '7px', '30px', '38px', '44px', '240px', '260px', '200px', '22px', '120px', '560px', '640px', '420px', '88px', '160px'])
 
 describe('設計 token 的靜態檢查', () => {
   it('沒有硬寫的 font-size', () => {

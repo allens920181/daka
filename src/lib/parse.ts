@@ -73,19 +73,6 @@ function groupHeader(line: string): string | null {
 /** 行內編號（一行被貼成 `1.甲 2.乙 3.丙` 的情況）。 */
 const INLINE_MARKER = /(?:^|\s)\d{1,3}\s*[.、)]\s*(?=\S)/g
 
-/** 攜伴：`+1`、`＋ 2`、`帶2人`、`帶3位`。 */
-const COMPANION_PLUS = /\+\s*(\d{1,2})(?!\d)/
-/**
- * 這個 `+N` 其實是國碼。
- *
- * `Tan +65 9123 4567` 不加這道守衛就會被讀成「攜伴 65 人」——直接灌爆人頭數，
- * 而人頭數是這個 App 最不能錯的量（§6.5）。判準是「+N 之後還跟著一串不以 0
- * 開頭的數字」：`+1 0912345678` 的 0 開頭那串是台灣號碼，所以它仍然是攜伴 1
- * 加一支電話——接龍裡這樣寫的人比寫美國號碼的多得多。
- */
-const INTL_CODE = /\+\s*\d{1,2}[\s\-.]+(?!0)\d[\d\s\-.()]{4,}/
-const COMPANION_BRING = /帶\s*(\d{1,2})\s*[人位個名]?/
-
 /** 備註：括號內的內容。`（請假）` `[遲到]` */
 const NOTE_PAREN = /[([]([^()[\]]{0,60})[)\]]/
 
@@ -175,19 +162,6 @@ function parseEntry(raw: string): DraftMember | null {
   let s = raw.replace(LEADING_MARKER, '').trim()
   if (!s) return null
 
-  let companions = 0
-  const plus = INTL_CODE.test(s) ? null : s.match(COMPANION_PLUS)
-  if (plus?.[1]) {
-    companions = Number(plus[1])
-    s = s.replace(COMPANION_PLUS, ' ')
-  } else {
-    const bring = s.match(COMPANION_BRING)
-    if (bring?.[1]) {
-      companions = Number(bring[1])
-      s = s.replace(COMPANION_BRING, ' ')
-    }
-  }
-
   // 括號備註先抽，而且與行尾那段分開存著：「請假」的判定只看括號裡的字
   // （`李美花 0912345678（請假）` 的狀態仍要是請假，不能被前面那串數字沖淡）。
   let paren: string | null = null
@@ -225,7 +199,9 @@ function parseEntry(raw: string): DraftMember | null {
     name: name.slice(0, 60),
     note: trimmedNote,
     phone: null,
-    companions: Math.min(Math.max(companions, 0), 99),
+    // 攜伴不再從文字裡認。`+1`、`帶2人` 就跟號碼一樣留在備註裡給人看——
+    // 這個欄位只剩舊名單的資料會有值（`rosterToText` 仍然寫得出來）。
+    companions: 0,
     group_label: null,
     ...(status ? { status } : {}),
   }
@@ -233,7 +209,7 @@ function parseEntry(raw: string): DraftMember | null {
 
 /**
  * 把貼上的文字解析成名單。
- * 刻意寬容：LINE 接龍的編號、全形標點、`+1` 攜伴、括號備註都吃得下來，
+ * 刻意寬容：LINE 接龍的編號、全形標點、括號備註都吃得下來，
  * 但不做「猜測式」的修正 —— UI 會先顯示解析結果讓主揪確認再載入。
  */
 export function parseRoster(input: string): ParseResult {
@@ -364,7 +340,10 @@ export function dialableFrom(note: string | null): string[] {
     // 起點前面若還是數字，這就是從一串更長的數字中間切下來的——「700-1234567」
     // 的第二個 0 起跳剛好湊得出 10 碼，而那是郵局帳號，不是電話。
     if (/\d/.test(note[m.index - 1] ?? '')) continue
-    const raw = m[0].trim()
+    // 「+1 0912345678」的 +1 是攜伴（不再解析，所以整段留在備註裡），不是國碼——
+    // 黏在一起會撥出 tel:+10912345678。判準跟現實一致：`+N` 後面那串以 0 開頭的
+    // 就是台灣號碼，號碼從那個 0 開始。
+    const raw = (m[0].trim().match(/^\+\s*\d{1,3}[\s\-.]+(0[\d\s\-.()]*\d)$/)?.[1] ?? m[0]).trim()
     const digits = raw.replace(/\D/g, '')
     if (digits.length < 8 || digits.length > 15) continue
     if (!out.includes(raw)) out.push(raw)

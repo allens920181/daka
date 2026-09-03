@@ -9,6 +9,10 @@
 import { chromium } from 'playwright'
 const URL = 'http://127.0.0.1:4180/'
 const ok = (l, c) => { console.log((c ? '  PASS  ' : '  FAIL  ') + l); if (!c) process.exitCode = 1 }
+// 計分區（44px 大字＋「N / M 人」＋進度條）已經整塊拿掉；畫面上的未到數現在長在
+// 頂欄的分段控制裡（見 04-components/roll-call.md 的「分段控制」）。
+const missing = async (page) =>
+  ((await page.getByRole('button', { name: /^未到/ }).textContent()) || '').replace(/\D/g, '')
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
 
 // 兩個獨立的瀏覽器 context = 兩台不同的手機（各自的 IndexedDB）
@@ -37,27 +41,27 @@ await A.p.waitForTimeout(300)
 await A.p.getByRole('button', { name: /建立/ }).click(); await A.p.waitForTimeout(1600)
 const code = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`[主揪] 空間建立於伺服器，代碼 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
-// 5 列裡陳大同請假，剩 4 列＝5 個人頭（李美花＋1）。大字是人頭不是列數。
-ok('[主揪] 未到 5 人頭（請假的不算）', (await A.p.locator('.score-number').textContent()) === '5')
+// 5 列裡陳大同請假，剩 4 列。攜伴不再解析，所以李美花的「+1」只是備註。
+ok('[主揪] 未到 4（請假的不算）', (await missing(A.p)) === '4')
 
 // --- 同工用連結加入 ---
 await B.p.goto(`${URL}#/j/${code}`); await B.p.waitForTimeout(2000)
 ok('[同工] 用分享連結進到同一個空間', (await B.p.locator('.topbar-name').textContent()) === '秋季旅遊 · 出發')
 ok('[同工] 看到同一份名單（5 人）', (await B.p.locator('.member').count()) === 5)
-ok('[同工] 未到也是 5', (await B.p.locator('.score-number').textContent()) === '5')
+ok('[同工] 未到也是 4', (await missing(B.p)) === '4')
 ok('[同工] 標示為協助點名而非擁有者', (await B.p.locator('.topbar button[aria-label="管理"]').count()) === 1)
 
 // --- 主揪點名 → 同工對帳後看到 ---
 await A.p.locator('.member-main').nth(0).click(); await A.p.waitForTimeout(1200)
-ok('[主揪] 點名後未到 4（王小明 1 個人頭）', (await A.p.locator('.score-number').textContent()) === '4')
+ok('[主揪] 點名後未到 3', (await missing(A.p)) === '3')
 await reconcile(B)
-ok('[同工] 對帳後也看到未到 4', (await B.p.locator('.score-number').textContent()) === '4')
+ok('[同工] 對帳後也看到未到 3', (await missing(B.p)) === '3')
 ok('[同工] 王小明那列變成已到', (await B.p.locator('.member').nth(0).getAttribute('class'))?.includes('is-arrived'))
 
 // --- 同工點名 → 主揪看到（反向）---
 await B.p.locator('.member-main').nth(3).click(); await B.p.waitForTimeout(1200)
 await reconcile(A)
-ok('[主揪] 看到同工點的那一筆，未到 3', (await A.p.locator('.score-number').textContent()) === '3')
+ok('[主揪] 看到同工點的那一筆，未到 2', (await missing(A.p)) === '2')
 
 // --- 兩人同時點同一個人（冪等，不重複計算）---
 await Promise.all([
@@ -65,29 +69,27 @@ await Promise.all([
   B.p.locator('.member-main').nth(4).click(),
 ])
 await A.p.waitForTimeout(1500); await reconcile(A); await reconcile(B)
-const a1 = await A.p.locator('.score-number').textContent()
-const b1 = await B.p.locator('.score-number').textContent()
-ok(`[雙方] 同時點同一人不會重複計算（A=${a1} B=${b1}）`, a1 === '2' && b1 === '2')
+const a1 = await missing(A.p)
+const b1 = await missing(B.p)
+ok(`[雙方] 同時點同一人不會重複計算（A=${a1} B=${b1}）`, a1 === '1' && b1 === '1')
 
 // --- 離線點名 → 恢復連線後上傳 ---
 await B.ctx.setOffline(true)
 await B.p.waitForTimeout(500)
 await B.p.locator('.member-main').nth(1).click(); await B.p.waitForTimeout(800)
-// 全部到齊時大字換成「全部到齊」而不是一顆「0」（見 04-components/roll-call.md）。
-ok('[同工] 離線仍可點名，本地立刻更新',
-   (await B.p.locator('.score-number').textContent())?.trim() === '全部到齊')
+// 全部到齊 = 未到那一段歸零。
+ok('[同工] 離線仍可點名，本地立刻更新', (await missing(B.p)) === '0')
 const badge = await B.p.locator('.sync').textContent()
 ok(`[同工] 顯示離線與待上傳筆數：「${badge?.trim()}」`, /離線|待上傳/.test(badge || ''))
 await reconcile(A)
-// B 離線點掉的是李美花＋1（2 個人頭），A 這邊還停在 2。
-ok('[主揪] 此時還看不到（同工尚未上傳）', (await A.p.locator('.score-number').textContent()) === '2')
+// B 離線點掉的是李美花，A 這邊還停在 1。
+ok('[主揪] 此時還看不到（同工尚未上傳）', (await missing(A.p)) === '1')
 
 await B.ctx.setOffline(false)
 await B.p.evaluate(() => window.dispatchEvent(new Event('online')))
 await B.p.waitForTimeout(2000)
 await reconcile(A)
-ok('[主揪] 恢復連線後自動補上，全部到齊',
-   (await A.p.locator('.score-number').textContent())?.trim() === '全部到齊')
+ok('[主揪] 恢復連線後自動補上，未到歸零', (await missing(A.p)) === '0')
 ok('[同工] 同步狀態回到已同步', /已同步/.test((await B.p.locator('.sync').textContent()) || ''))
 
 // --- 再開一個（回程）---
@@ -98,7 +100,7 @@ ok(`[主揪] 新空間名預帶「回程」：${prefill}`, prefill.includes('回
 await A.p.getByRole('button', { name: '確定' }).click(); await A.p.waitForTimeout(2200)
 ok('[主揪] 進入新空間', (await A.p.locator('.topbar-name').textContent())?.includes('回程'))
 ok('[主揪] 回程名單一樣是 5 人', (await A.p.locator('.member').count()) === 5)
-ok('[主揪] 已到全部歸零、請假保留 → 未到 5 人頭', (await A.p.locator('.score-number').textContent()) === '5')
+ok('[主揪] 已到全部歸零、請假保留 → 未到 4', (await missing(A.p)) === '4')
 const newCode = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`[主揪] 回程是新的代碼 ${newCode}`, newCode !== code)
 

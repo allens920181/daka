@@ -29,17 +29,26 @@ describe('parseRoster', () => {
     expect(names('　王小明　')).toEqual(['王小明'])
   })
 
-  it('解析 +N 攜伴', () => {
-    const r = parseRoster('王小明\n李美花 +1\n陳大同+2\n張三 ＋ 3')
-    expect(r.members.map((m) => [m.name, m.companions])).toEqual([
-      ['王小明', 0], ['李美花', 1], ['陳大同', 2], ['張三', 3],
+  /**
+   * 攜伴不再從文字裡認。`+1` 落進備註（`空白＋數字` 是切點），`帶2人` 沒有
+   * 數字開頭的段落所以留在名字裡——兩者都還看得見，只是不再變成 `companions`。
+   */
+  it('+N 不再是攜伴，落進備註', () => {
+    const r = parseRoster('王小明\n李美花 +1\n陳大同+2')
+    expect(r.members.map((m) => [m.name, m.note, m.companions])).toEqual([
+      ['王小明', null, 0],
+      ['李美花', '+1', 0],
+      // 沒有空白就沒有切點，`+2` 留在名字裡——切分只看形狀，不看字義。
+      ['陳大同+2', null, 0],
     ])
   })
 
-  it('解析「帶N人」攜伴', () => {
-    const r = parseRoster('王媽媽帶2人\n李伯伯 帶 1 位\n陳姐帶3')
-    expect(r.members.map((m) => [m.name, m.companions])).toEqual([
-      ['王媽媽', 2], ['李伯伯', 1], ['陳姐', 3],
+  it('「帶N人」不再是攜伴', () => {
+    const r = parseRoster('王媽媽帶2人\n李伯伯 帶 1 位')
+    expect(r.members.map((m) => [m.name, m.note, m.companions])).toEqual([
+      ['王媽媽帶2人', null, 0],
+      // 「帶」與數字之間有空白，切點就落在那裡。規則只認形狀，這是它的代價。
+      ['李伯伯 帶', '1 位', 0],
     ])
   })
 
@@ -50,9 +59,9 @@ describe('parseRoster', () => {
     ])
   })
 
-  it('編號＋攜伴＋備註同時出現', () => {
+  it('編號＋備註同時出現', () => {
     const r = parseRoster('2. 李美花 +1（素食）')
-    expect(r.members[0]).toMatchObject({ name: '李美花', companions: 1, note: '素食' })
+    expect(r.members[0]).toMatchObject({ name: '李美花', note: '+1 素食', companions: 0 })
   })
 
   it('一行被貼成多筆時會切開', () => {
@@ -89,8 +98,8 @@ describe('parseRoster', () => {
     expect(parseRoster(long).members[0]?.name).toHaveLength(60)
   })
 
-  it('攜伴數上限 99', () => {
-    expect(parseRoster('王小明 +99').members[0]?.companions).toBe(99)
+  it('解析出來的成員一律沒有攜伴', () => {
+    expect(parseRoster('王小明 +99').members[0]).toMatchObject({ note: '+99', companions: 0 })
   })
 
   it('真實的 LINE 接龍', () => {
@@ -102,11 +111,10 @@ describe('parseRoster', () => {
 - 李四
 王五 帶2人`)
     expect(r.members.map((m) => m.name)).toEqual([
-      '秋季旅遊報名', '王小明', '李美花', '陳大同', '張三', '李四', '王五',
+      '秋季旅遊報名', '王小明', '李美花', '陳大同', '張三', '李四', '王五 帶2人',
     ])
-    expect(r.members[2]).toMatchObject({ companions: 1 })
+    expect(r.members[2]).toMatchObject({ note: '+1', companions: 0 })
     expect(r.members[3]).toMatchObject({ note: '請假' })
-    expect(r.members[6]).toMatchObject({ companions: 2 })
   })
 })
 
@@ -228,33 +236,28 @@ describe('parseRoster 名字與備註的切分', () => {
     })
   })
 
-  it('攜伴先抽走，不會跑進備註', () => {
+  it('數字後面的東西全部進備註，包含 +N', () => {
     expect(parseRoster('王媽媽 0912345678 +2（素食）').members[0]).toMatchObject({
-      name: '王媽媽', note: '0912345678 素食', companions: 2,
+      name: '王媽媽', note: '0912345678 +2 素食', companions: 0,
     })
-    expect(parseRoster('王五 帶2人').members[0]).toMatchObject({ name: '王五', note: null, companions: 2 })
   })
 
   it('解析不再產生 phone 欄位', () => {
     expect(parseRoster('王小明 0912345678').members[0]?.phone).toBeNull()
   })
 
-  /**
-   * `+65` 被當成「攜伴 65 人」會直接灌爆人頭數，而人頭數是這個 App 最不能錯
-   * 的量。但 `+1 0912345678` 仍然是攜伴 1 加一支台灣號碼——接龍裡這樣寫的人
-   * 比寫美國號碼的多得多，判準是後面那串數字有沒有以 0 開頭。
-   */
-  it('國碼不是攜伴', () => {
+  /** 國際號碼要整段留在備註裡才撥得出去，不能被拆成「+65」與「9123 4567」。 */
+  it('國碼與號碼不會被拆開', () => {
     expect(parseRoster('Tan +65 9123 4567').members[0]).toMatchObject({
       name: 'Tan', note: '+65 9123 4567', companions: 0,
     })
     expect(parseRoster('王五 +886 912 345 678').members[0]).toMatchObject({ companions: 0 })
   })
 
-  it('攜伴加台灣號碼仍然算攜伴', () => {
-    expect(parseRoster('李美花 +1 0912345678').members[0]).toMatchObject({
-      name: '李美花', note: '0912345678', companions: 1,
-    })
+  it('「+1 加一支電話」整段都是備註，號碼照樣撥得出去', () => {
+    const m = parseRoster('李美花 +1 0912345678').members[0]
+    expect(m).toMatchObject({ name: '李美花', note: '+1 0912345678', companions: 0 })
+    expect(dialableFrom(m?.note ?? null)).toEqual(['0912345678'])
   })
 
   it('往返後名字與備註都不變', () => {
@@ -290,6 +293,14 @@ describe('dialableFrom', () => {
   it('太短的不給', () => {
     expect(dialableFrom('0912')).toEqual([])          // 生日
     expect(dialableFrom('房號 0912-2')).toEqual([])
+  })
+
+  /** `+1 0912345678` 的 +1 是攜伴不是國碼——黏在一起會撥出 tel:+10912345678。 */
+  it('+N 後面接 0 開頭的號碼時，號碼從那個 0 開始', () => {
+    expect(dialableFrom('+1 0912345678')).toEqual(['0912345678'])
+    expect(telHref(dialableFrom('+1 0912-345-678')[0] ?? '')).toBe('tel:0912345678')
+    // 真的是國碼的時候不能砍掉：+886 後面那串不是 0 開頭。
+    expect(dialableFrom('+886 912 345 678')).toEqual(['+886 912 345 678'])
   })
 
   it('不從一串更長的數字中間切下來', () => {
@@ -414,10 +425,9 @@ describe('parseRoster 分組', () => {
     expect(r.members.map((m) => [m.name, m.group_label])).toEqual([
       ['秋季旅遊', null],
       ['王小明', '第一車'], ['李美花', '第一車'],
-      ['陳大同', '第二車'], ['王媽媽', '第二車'],
+      ['陳大同', '第二車'], ['王媽媽 帶2人', '第二車'],
     ])
     expect(r.members[3]).toMatchObject({ status: 'excused' })
-    expect(r.members[4]).toMatchObject({ companions: 2 })
   })
 })
 
@@ -438,13 +448,14 @@ describe('填入範例的文字', () => {
       expect(r.members.length).toBe(text.split('\n').length)
     })
 
-    it(`${lang}：電話、攜伴、請假三件事都示範到`, () => {
+    it(`${lang}：撥得出去的號碼與請假都示範到`, () => {
       const r = parseRoster(messages[lang].exampleRoster)
       // 電話不再是欄位，而是備註裡撥得出去的一段——範例仍要示範到這件事，
       // 否則第一次用的人不會知道號碼該寫在哪裡。
       expect(r.members.some((m) => dialableFrom(m.note).length > 0)).toBe(true)
-      expect(r.members.some((m) => m.companions > 0)).toBe(true)
       expect(r.members.some((m) => m.status === 'excused')).toBe(true)
+      // 攜伴已經不解析了，範例裡的 `+1` 只會是備註。
+      expect(r.members.every((m) => m.companions === 0)).toBe(true)
     })
   }
 })

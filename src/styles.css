@@ -127,7 +127,7 @@
 
   /* --- 層級（只有這四層，不得插值）------------------------------------- */
   --z-sticky: 20;    /* 頂欄 */
-  --z-dock: 30;      /* 底部動作列 */
+  --z-dock: 30;      /* 底部動作列（開空間）／浮動搜尋鍵（點名） */
   --z-modal: 40;     /* 面板、確認對話框 */
   --z-toast: 50;     /* Toast：永遠在最上層，它可能是唯一的復原機會 */
 
@@ -304,8 +304,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .btn-google:active { background: var(--google-bg-active); }
 
-/* 切換鍵的「開」狀態（底部動作列的「只看未到」）。用色塊而不是 .btn-primary：
-   它不是「這個畫面最主要的動作」，只是一個開關現在是開著的。 */
+/* 切換鍵的「開」狀態。用色塊而不是 .btn-primary：它不是「這個畫面最主要的
+   動作」，只是一個開關現在是開著的（例：曾經的「只看未到」；.fab.is-on 是
+   同一個概念在浮動鍵上的版本，用實心而不是色塊，因為那顆鍵本身底色已經是
+   --raised，色塊在小尺寸上不夠分明）。 */
 .btn.is-on {
   background: var(--accent-soft); border-color: var(--accent);
   color: var(--accent); font-weight: 700;
@@ -414,28 +416,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .topbar-sub { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-2); color: var(--ink-3); }
 
-/* 計分區捲出畫面時的精簡計數。這個數字不能消失。 */
+/* 空間關閉時取代代碼的那一格。關閉是全域狀態，不能只靠一條會捲走的橫幅。 */
 .topbar-count {
   display: inline-flex; align-items: baseline; gap: var(--sp-1);
   font-size: var(--fs-2); font-weight: 700; color: var(--st-pending);
   white-space: nowrap;
 }
-.topbar-count.done { color: var(--st-arrived); }
 .topbar-count.closed { color: var(--ink-2); }
 
-/* 計分區捲出畫面之後，頂欄的大小關係對調。 */
-.topbar.handover .topbar-name { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
-.topbar.handover .topbar-count { font-size: var(--fs-5); line-height: 1.1; }
-.topbar.handover .topbar-sub { font-size: var(--fs-3); }
-/* 接手時空間讓給人數，同步狀態收成一顆圓點（aria-label 仍在）。 */
-.topbar.handover .sync-text { position: absolute; width: 1px; height: 1px;
-  padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.topbar.handover .sync { flex: none; }
-/* 捲動後頂欄接手時，數字同樣要帶著「哪一車」一起走。 */
-.topbar-scope {
-  color: var(--accent); font-weight: 700;
-}
-.topbar-scope::after { content: " · "; color: var(--ink-3); font-weight: 400; }
+/*
+ * 篩選長在頂欄裡（sticky），不在名單流裡。計分區拿掉之後，「未到 N」是畫面上
+ * 唯一回答「還有幾個沒到」的東西——它不能跟著名單捲走。
+ */
+.topbar .segmented { margin-bottom: var(--sp-2); }
 
 .sync { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-2); font-weight: 600; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
@@ -454,50 +447,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .sync-syncing .sync-dot { animation: pulse var(--dur-ambient) ease-in-out infinite; }
 }
 @keyframes pulse { 50% { opacity: .3; } }
-
-/* === 計數區 ============================================================== */
-
-.scoreboard {
-  display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-4) 0 var(--sp-3);
-}
-.score-main { align-self: baseline; }
-.score-main { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
-.score-number {
-  font-size: var(--fs-8); font-weight: 800; line-height: 1;
-  letter-spacing: -.02em; font-variant-numeric: tabular-nums;
-  color: var(--st-pending);
-}
-/* 全部到齊時大字換成一句話，字級降一階才放得下四個中文字。 */
-.score-number.score-done { font-size: var(--fs-7); color: var(--st-arrived); }
-.score-text { display: flex; flex-direction: column; min-width: 0; }
-.score-label { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
-/* 選了分組之後，計分區的數字必須自己說是哪一車。 */
-.score-scope {
-  font-size: var(--fs-2); font-weight: 700; color: var(--accent);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.score-heads {
-  margin-left: auto; font-size: var(--fs-4); font-weight: 700;
-  color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap;
-}
-
-
-/*
- * 進度條是計分區的下緣，不自己佔一列。
- * 控制項的節奏用兩個值而不是一個：同一群內 8px，跨群 24px。五段等距的橫條
- * 會讓所有東西看起來一樣重要，也就是一樣不重要——志工第一次拿到手機，要在
- * 兩秒內看出「上面是答案、下面是切片」。
- */
-.progress {
-  height: 6px; border-radius: var(--r-full);
-  background: var(--surface-3); overflow: hidden;
-  margin-bottom: var(--sp-5);
-}
-.progress-fill {
-  height: 100%; background: var(--st-arrived); border-radius: var(--r-full);
-  transition: width var(--dur-2) var(--ease);
-}
 
 /* === 篩選與搜尋 ========================================================== */
 
@@ -585,11 +534,17 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .list { margin-top: var(--sp-3); }
 
 /*
- * 底部留白要同時讓開底部動作列（88px）與可能疊在它上面的 Toast（約 60px）。
- * 少留的話，名單最後一兩列會永遠被蓋住——而收尾時要找的正是最後那幾個人。
- * 176px = 88 + 88，落在 4px 階上。
+ * 底部留白要讓開浮動搜尋鍵與點名後彈出的 Toast，兩者誰的量都不能算——名單最後
+ * 幾列被其中之一蓋住的話，收尾時要找的正是那幾個人。
+ *
+ * 決定用量的是 Toast，不是浮動鍵：浮動鍵只佔右下角 72px（56px＋離底 16px），
+ * Toast 卻是貼著下緣（`bottom: 88px`）＋自己的高度（約 62px）＝離底約 150px。
+ * 這裡曾經是 176px（讓開整條底部動作列 88px＋Toast 88px，動作列拿掉後兩個
+ * 數字都不再對）。160px 是實機量出來的最小值再加 8px 緩衝（見
+ * scripts/e2e-local.mjs 的「捲到底、點名後 Toast 不蓋住最後一列」），比舊值
+ * 省 16px——不多，因為 Toast 才是這裡真正的瓶頸，浮動鍵反而比動作列小得多。
  */
-.list { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: 176px; }
+.list { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: 160px; }
 
 /*
  * 平板橫向：名單排成兩欄。
@@ -676,8 +631,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .member.is-arrived .member-side { border-left-color: var(--st-arrived-line); }
 .call-btn { color: var(--accent); }
 /* 已經打過的號碼收斂成中性色：那一格的意思從「該打這個」變成「打過了」。 */
-.call-btn.is-called { color: var(--ink-3); }
-.chip-called { background: var(--surface-2); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 /* 關閉之後整列不能點：說出來，不要只是沒反應。 */
 .member-main:disabled { cursor: default; }
@@ -777,6 +730,36 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .dock-inner { max-width: 640px; margin: 0 auto; display: flex; gap: var(--sp-2); }
 .dock-inner > .btn { flex: none; }
 .dock-inner > .btn-block { flex: 1 1 auto; min-width: 0; width: auto; }
+
+/*
+ * 浮動搜尋鍵（點名畫面）。
+ *
+ * 那個畫面的底部動作列整條拿掉了：兩個槽位裝的是「只看未到」（篩選搬進 sticky
+ * 頂欄之後變成重複的按鈕）與「複製結果」（一場活動按一次，搬進管理面板）。
+ * 搜尋反過來是整場反覆在用、而且原本在頂欄右上角——390×844 上單手要跨 780px
+ * 過去。浮在拇指落點是對的位置。
+ *
+ * 輸入框仍然開在頂欄，不放在這顆鍵旁邊：`position: fixed` 的底部元素在 iOS 是
+ * 對著 layout viewport 定位的，鍵盤升起時會蓋住它，於是變成盲打。
+ *
+ * --el-2 是往上打光的那一階（原本給底部動作列）。這顆鍵貼在下緣，光從下面來
+ * 才對得上；--el-1 在深色底上等於不存在（見 03-tokens §陰影）。
+ */
+.fab {
+  position: fixed; right: var(--sp-4);
+  bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+  z-index: var(--z-dock);
+  width: var(--tap-lg); height: var(--tap-lg);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--rule-strong); border-radius: var(--r-full);
+  background: var(--raised); color: var(--ink);
+  box-shadow: var(--el-2);
+  cursor: pointer; touch-action: manipulation;
+  transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
+}
+.fab:active { transform: scale(.96); }
+/* 開著的時候用實心強調色：它此刻是「關掉搜尋」，狀態要看得出來。 */
+.fab.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
 /* === 面板 ================================================================ */
 
@@ -927,7 +910,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /*
  * 面板開著的時候 Toast 改貼上緣。
  *
- * 下緣的 88px 是為了讓開底部動作列，但面板是從下緣長上來的：Toast 於是落在
+ * 下緣的 88px 是為了讓開下緣的浮動鍵，但面板是從下緣長上來的：Toast 於是落在
  * 選單列之間，蓋住「結束這一輪」49px，而且 .toast 是 pointer-events: auto，
  * 那五秒內那一列按不下去。深色下更難看出它是外來的——Toast 底色和
  * .menu-item:hover 同一個 --surface-2，圓角與左右內縮也同一套。
@@ -982,9 +965,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
   }
   body { background: #fff; color: #000; font-size: 11pt; }
 
-  .topbar, .dock, .toast-wrap, .overlay, .segmented, .search-wrap,
-  .progress, .member-side, .icon-btn, .btn, .groups,
-  .scoreboard, .banner { display: none !important; }
+  /* .segmented 與 .search-wrap 都住在 .topbar 裡了，但留著名字：它們是否被藏起來
+     是 e2e 直接驗的事情，而選擇器多寫一個不會錯。 */
+  .topbar, .dock, .fab, .toast-wrap, .overlay, .segmented, .search-wrap,
+  .member-side, .icon-btn, .btn, .groups, .banner { display: none !important; }
 
   /*
    * 抬頭。以前這裡印的是借來的計分區文字（「還有 12 位沒到」）——一個離開

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, markCalled, members,
+  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
   prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
   peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
   shareOnEnter, showToast, type Peer,
@@ -149,10 +149,12 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings' | 'walkin'
 type Confirming = null | 'delete' | 'replaceRoster' | 'finish'
 
-export function ManageSheet({ owner, group, onClose }: {
+export function ManageSheet({ owner, group, onCopySummary, onClose }: {
   owner: boolean
   /** 目前正在看的那一車。臨時加人要繼承它。 */
   group: string | null
+  /** 複製結果由 Room 執行：它握著「目前這一車」的名單與 Toast，實作只留一份。 */
+  onCopySummary: () => void
   onClose: () => void
 }) {
   const t = useT()
@@ -331,8 +333,21 @@ export function ManageSheet({ owner, group, onClose }: {
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
       <div class="menu">
-        {/* 臨時加人從底部動作列搬到這裡：一場活動用 0-2 次，而動作列的兩個
-            槽位讓給了整個收尾都在用的「只看未到」與「複製結果」。
+        {/*
+          複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事。它原本在
+          底部動作列，那條列子整條拿掉了（見 Room.tsx 的浮動搜尋鍵）——一場活動
+          按一次的東西，不值得整場佔著一列人名的高度。
+          複製的範圍跟著目前選的分組，所以動作交回 Room 執行。
+        */}
+        <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
+          <IconCopy />
+          <span>
+            <strong>{t('copySummary')}</strong>
+            <span class="sub">{t('copySummaryHint')}</span>
+          </span>
+        </button>
+
+        {/* 臨時加人也在這裡：一場活動用 0-2 次。
             協助者站在車門口也用得到，所以不放在 owner 區塊裡。 */}
         {!closed && (
           <button class="menu-item" onClick={() => setMode('walkin')}>
@@ -540,16 +555,9 @@ export function MemberSheet({ member, owner, onClose }: {
           裡認出來的：解析階段刻意不判斷任何一串數字是什麼，這個判斷改在這裡做，
           因為**顯示層猜錯是可逆、可見的**（多一顆鍵，備註原文一字未動），而存進
           資料庫的假號碼是看不見的。
-
-          兩者都掛 markCalled：收尾一個一個催人時，「已撥 15:32」是唯一記得
-          打過誰的線索，它不該因為號碼是從備註認出來的就消失。
         */}
         {member.phone && (
-          <a
-            class="menu-item"
-            href={`tel:${member.phone}`}
-            onClick={() => markCalled(member.id)}
-          >
+          <a class="menu-item" href={`tel:${member.phone}`}>
             <IconPhone />
             <span>
               <strong class="mono">{member.phone}</strong>
@@ -561,12 +569,7 @@ export function MemberSheet({ member, owner, onClose }: {
         {dialableFrom(member.note)
           .filter((d) => d.replace(/\D/g, '') !== member.phone)
           .map((d) => (
-            <a
-              key={d}
-              class="menu-item"
-              href={telHref(d)}
-              onClick={() => markCalled(member.id)}
-            >
+            <a key={d} class="menu-item" href={telHref(d)}>
               <IconPhone />
               <span>
                 <strong class="mono">{d}</strong>

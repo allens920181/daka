@@ -38,10 +38,8 @@ const zh = {
   /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
   fromNote: '備註裡的號碼',
   parsePreview: '解析結果',
-  /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。
-     「人次」不是贅詞而是單位標記：9 是列數、12 是人頭數，全站最容易搞混的兩個量。 */
+  /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。 */
   parsedCount: '{n} 人',
-  parsedHeads: '含攜伴 {n} 人次',
   duplicateWarning: '有同名的人：{names}。點一個不會動到另一個，建議加註記區分。',
   skippedLines: '{n} 行看起來不是姓名，已略過',
   emptyRoster: '請先貼上名單',
@@ -93,10 +91,6 @@ const zh = {
   walkInAddedInGroup: '{name} 已加入「{group}」並標記已到',
   walkInAddedMany: '已加入 {n} 人並標記已到',
   backToTop: '回到名單頂端',
-  calledAt: '已撥 {time}',
-  callAgainMember: '再打給 {name}（{time} 撥過）',
-  onlyMissing: '只看未到',
-  showAll: '看全部',
   removeFromPreview: '把「{name}」從名單移除',
   signOutWhat: '登出後，這支手機自己開的空間照樣管得動；用帳號接過來的活動會暫時看不到，重新登入就會回來。',
   roomClosedShort: '已關閉',
@@ -198,6 +192,7 @@ const zh = {
   export: '匯出',
   exportCsv: '下載 CSV',
   copySummary: '複製結果',
+  copySummaryHint: '貼回 LINE 群組。只複製目前這一車。',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
   // 同步
@@ -331,7 +326,6 @@ const en: Record<MessageKey, string> = {
   fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
-  parsedHeads: '{n} heads incl. companions',
   duplicateWarning: 'Duplicate names: {names}. Checking one never moves the other; a note helps tell them apart.',
   skippedLines: '{n} lines skipped (not names)',
   emptyRoster: 'Paste a roster first',
@@ -378,10 +372,6 @@ const en: Record<MessageKey, string> = {
   walkInAddedInGroup: '{name} added to \u201c{group}\u201d and marked here',
   walkInAddedMany: '{n} people added and marked here',
   backToTop: 'Back to top',
-  calledAt: 'called {time}',
-  callAgainMember: 'Call {name} again (tried {time})',
-  onlyMissing: 'Only missing',
-  showAll: 'Show all',
   removeFromPreview: 'Remove “{name}” from the list',
   signOutWhat: "After signing out you keep control of rooms this phone opened; events you took over with the account disappear until you sign in again.",
   roomClosedShort: 'Closed',
@@ -458,6 +448,7 @@ const en: Record<MessageKey, string> = {
   export: 'Export',
   exportCsv: 'Download CSV',
   copySummary: 'Copy result',
+  copySummaryHint: 'Paste it back to the group chat. Current group only.',
   summaryCopied: 'Result copied — paste it anywhere',
 
   syncOnline: 'Synced',
