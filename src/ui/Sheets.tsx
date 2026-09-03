@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, markCalled, members,
+  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
   prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
   peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
   shareOnEnter, showToast, type Peer,
@@ -540,16 +540,9 @@ export function MemberSheet({ member, owner, onClose }: {
           裡認出來的：解析階段刻意不判斷任何一串數字是什麼，這個判斷改在這裡做，
           因為**顯示層猜錯是可逆、可見的**（多一顆鍵，備註原文一字未動），而存進
           資料庫的假號碼是看不見的。
-
-          兩者都掛 markCalled：收尾一個一個催人時，「已撥 15:32」是唯一記得
-          打過誰的線索，它不該因為號碼是從備註認出來的就消失。
         */}
         {member.phone && (
-          <a
-            class="menu-item"
-            href={`tel:${member.phone}`}
-            onClick={() => markCalled(member.id)}
-          >
+          <a class="menu-item" href={`tel:${member.phone}`}>
             <IconPhone />
             <span>
               <strong class="mono">{member.phone}</strong>
@@ -561,12 +554,7 @@ export function MemberSheet({ member, owner, onClose }: {
         {dialableFrom(member.note)
           .filter((d) => d.replace(/\D/g, '') !== member.phone)
           .map((d) => (
-            <a
-              key={d}
-              class="menu-item"
-              href={telHref(d)}
-              onClick={() => markCalled(member.id)}
-            >
+            <a key={d} class="menu-item" href={telHref(d)}>
               <IconPhone />
               <span>
                 <strong class="mono">{d}</strong>

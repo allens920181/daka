@@ -2,7 +2,7 @@ import { Fragment } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
-  calledAt, markCalled, prefs, room, setStatusWithUndo, shareOnEnter, showToast,
+  prefs, room, setStatusWithUndo, shareOnEnter, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
 import { isExcusedNote } from '../lib/parse'
@@ -511,9 +511,6 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
   // 螢幕上與紙本上都會出現「請假 請假」。狀態自己會說，備註就不必再說一次。
   const noteIsStatus = member.status === 'excused' && isExcusedNote(member.note)
 
-  // 收尾一個一個打電話時，打完第三通抬頭找第四個，七個人長得一模一樣。
-  const called = member.status === 'pending' ? calledAt.value.get(member.id) : undefined
-
   return (
     <div class={cls} role="listitem">
       <button
@@ -536,7 +533,6 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
               <span>{member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}</span>
             )}
             {member.status === 'excused' && <span class="meta-excused">{t('excused')}</span>}
-            {called && <span class="chip chip-called">{t('calledAt', { time: formatTime(called) })}</span>}
           </span>
         </span>
       </button>
@@ -548,12 +544,9 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
       <div class="member-side">
         {member.phone && member.status === 'pending' && (
           <a
-            class={called ? 'icon-btn call-btn is-called' : 'icon-btn call-btn'}
+            class="icon-btn call-btn"
             href={`tel:${member.phone}`}
-            aria-label={called
-              ? t('callAgainMember', { name: member.name, time: formatTime(called) })
-              : t('callMember', { name: member.name })}
-            onClick={() => markCalled(member.id)}
+            aria-label={t('callMember', { name: member.name })}
           >
             <IconPhone />
           </a>

@@ -119,15 +119,7 @@ await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitFo
 // 一支撥出去是空號的假電話，而畫面上沒有一個字說得出為什麼。號碼現在原文留在
 // 備註裡，撥號鍵長在成員面板（顯示層猜錯是可逆、可見的；資料層猜錯不是）。
 ok('名單列上沒有撥號鍵了', (await p.locator('.member a[href^="tel:"]').count()) === 0)
-ok('還沒打過時沒有記號', (await p.locator('.chip-called').count()) === 0)
 
-// 擋掉 tel: 的實際導航（無頭瀏覽器會把頁面帶走），但 onClick 照樣跑完——
-// preventDefault 只取消預設動作，不影響事件處理器。
-await p.evaluate(() => {
-  document.addEventListener('click', (e) => {
-    if ((e.target instanceof Element) && e.target.closest('a[href^="tel:"]')) e.preventDefault()
-  })
-})
 await p.locator('.member').filter({ hasText: '王小明' }).first()
   .getByRole('button', { name: /管理|manage/ }).click()
 await p.waitForTimeout(400)
@@ -135,15 +127,7 @@ const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
 ok(`成員面板把備註裡的號碼做成撥號鍵 ${telHref}`, telHref === 'tel:0912345678')
 ok('並標明它是備註裡的號碼',
    ((await p.locator('a[href^="tel:"] .sub').first().textContent()) ?? '').includes('備註'))
-
-// #22 收尾一個一個打電話：打完第三通抬頭找第四個，七個人長得一模一樣，
-// 而「打過了沒」正是決定「車要不要再等十分鐘」的那條資訊。號碼從欄位變成
-// 備註之後，這個記號一樣要留得住。
-await p.locator('a[href^="tel:"]').first().click(); await p.waitForTimeout(500)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('打過之後那一列留下時間記號', (await p.locator('.chip-called').count()) === 1)
-ok('記號寫的是「已撥 HH:MM」',
-   /^已撥 \d{2}:\d{2}$/.test(((await p.locator('.chip-called').textContent()) ?? '').trim()))
 
 // 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、QR、連結對任何人
 // 都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為

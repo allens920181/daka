@@ -62,20 +62,6 @@ export const pendingUploads = computed(() =>
 export const shareOnEnter = signal<string | null>(null)
 
 /**
- * 「我已經打過這位了」——只存在這台裝置、只活在這一場點名裡。
- *
- * 收尾時「還有 7 位沒到」，主揪要一個一個打。打完第三通抬頭找第四個，畫面上
- * 七個人長得一模一樣——他記不得剛剛打過誰，也記不得誰說了「我十分鐘到」。
- * 而這條資訊決定的正是「車要不要再等十分鐘」。
- *
- * 刻意不同步：這是「我這支手機打過誰」，不是名單的狀態。做成共享的 note 要多
- * 一種 PendingOp、一支 RPC 與一輪衝突處理，而打電話的人跟需要這個記號的人本來
- * 就是同一個。代價是兩個人各自打電話時看不到對方打過誰——這一點寫在
- * 05-patterns，未來若要升級成共享的 note，路徑也在那裡。
- */
-export const calledAt = signal<ReadonlyMap<string, number>>(new Map())
-
-/**
  * 目前在這個空間裡的裝置（含自己）。
  *
  * `presenceReady` 是「這份名單可信」的旗標，不是「有幾個人」的替代品：
@@ -86,12 +72,6 @@ export const calledAt = signal<ReadonlyMap<string, number>>(new Map())
 export interface Peer { name: string | null; at: number }
 export const peers = signal<Peer[]>([])
 export const presenceReady = signal(false)
-
-export function markCalled(memberId: string): void {
-  const next = new Map(calledAt.value)
-  next.set(memberId, Date.now())
-  calledAt.value = next
-}
 
 export const isOwner = computed(() => {
   const code = room.value?.code
@@ -477,7 +457,6 @@ function stopTimers(): void {
 }
 
 export function leaveRoom(): void {
-  calledAt.value = new Map()
   peers.value = []
   presenceReady.value = false
   recentlyChanged.clear()
