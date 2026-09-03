@@ -42,7 +42,20 @@ export function RosterInput({
       )}
 
       <div class="field">
-        <label class="label" for="roster-text">{t('pasteRoster')}</label>
+        <div class="row">
+          <label class="label" for="roster-text">{t('pasteRoster')}</label>
+          <div class="spacer" />
+          {/*
+            範例只在空的時候出現。第一次來的人面對的是一個空白框，說明再短也還是
+            要先讀完才知道能貼什麼——按一下把範例填進去，下面的解析結果立刻自己
+            說明了一切。有字之後它就只剩一個會蓋掉整份名單的按鈕，所以那時候不給。
+          */}
+          {!text.trim() && (
+            <button class="btn btn-sm" onClick={() => onText(t('pasteExampleText'))}>
+              {t('pasteExample')}
+            </button>
+          )}
+        </div>
         <textarea
           id="roster-text"
           class="textarea"

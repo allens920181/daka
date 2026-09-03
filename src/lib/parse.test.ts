@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { messages } from './i18n'
 import { parseRoster, removeParsedMember, rosterToText } from './parse'
 
 const names = (s: string) => parseRoster(s).members.map((m) => m.name)
@@ -335,4 +336,30 @@ describe('parseRoster 分組', () => {
     expect(r.members[3]).toMatchObject({ status: 'excused' })
     expect(r.members[4]).toMatchObject({ companions: 2 })
   })
+})
+
+/**
+ * 「填入範例」按進去的那段文字。
+ *
+ * 範例是拿來示範解析器吃得下什麼的，所以它自己得先過得了解析器：少一行解析
+ * 不出來，第一次用的人按下去就會看到一個「1 行看起來不是姓名，已略過」的
+ * 警告，而那一行是我們自己寫的。示範的項目也一併釘住——改文案時很容易順手
+ * 把電話或攜伴刪掉，那顆按鈕就變成只是在填字。
+ */
+describe('填入範例的文字', () => {
+  for (const lang of ['zh', 'en'] as const) {
+    it(`${lang}：每一行都解析得出一個人`, () => {
+      const text = messages[lang].pasteExampleText
+      const r = parseRoster(text)
+      expect(r.skipped).toBe(0)
+      expect(r.members.length).toBe(text.split('\n').length)
+    })
+
+    it(`${lang}：電話、攜伴、請假三件事都示範到`, () => {
+      const r = parseRoster(messages[lang].pasteExampleText)
+      expect(r.members.some((m) => m.phone)).toBe(true)
+      expect(r.members.some((m) => m.companions > 0)).toBe(true)
+      expect(r.members.some((m) => m.status === 'excused')).toBe(true)
+    })
+  }
 })
