@@ -35,6 +35,8 @@ const zh = {
   /* 範例的每一行都必須解析得出一個人（parse.test.ts 會驗）。分組標題不放進來——
      預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範一件看不到的事。 */
   exampleRoster: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
+  /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
+  fromNote: '備註裡的號碼',
   parsePreview: '解析結果',
   /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。
      「人次」不是贅詞而是單位標記：9 是列數、12 是人頭數，全站最容易搞混的兩個量。 */
@@ -326,6 +328,7 @@ const en: Record<MessageKey, string> = {
   exampleClear: 'Clear the example',
   exampleName: 'Autumn trip · Departure',
   exampleRoster: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (absent)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
+  fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
   parsedHeads: '{n} heads incl. companions',

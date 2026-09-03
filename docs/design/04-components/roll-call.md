@@ -18,7 +18,8 @@
 │       ├─ .member-name
 │       └─ .member-meta   chip 與時間
 └─ .member-side   ← 不觸發切換
-    ├─ 撥號鍵（只在「未到 + 有電話」時出現）
+    ├─ 撥號鍵（只在「未到 + 有 phone 欄位」時出現；新解析的名單號碼在備註裡，
+    │            撥號鍵長在成員面板，見 04-components/overlays.md）
     └─ 更多
 ```
 
@@ -88,7 +89,7 @@
 | --- | --- | --- |
 | `.chip-count` | `--accent-soft` 底、`--accent` 字 | 攜伴人數 `＋2` |
 | `.chip-note` | `--surface-2` 底、`--ink-2` 字 | 名單上的備註 |
-| `.chip-data` | `--surface-2` 底、等寬 | 電話等資料 |
+| `.chip-data` | `--surface-2` 底、等寬 | 電話等資料（舊名單的 phone 欄位） |
 | `.chip-tell` | `--accent-soft` 底、`--accent` 字、700 | **只在有同名的人時出現**的辨識資訊 |
 | `.chip-called` | `--surface-2` 底、`--ink-2` 字 | 「已撥 15:42」——本機狀態，見 05-patterns §5.10 |
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { messages } from './i18n'
-import { parseRoster, removeParsedMember, rosterToText } from './parse'
+import { dialableFrom, parseRoster, removeParsedMember, rosterToText, telHref } from './parse'
 
 const names = (s: string) => parseRoster(s).members.map((m) => m.name)
 
@@ -182,46 +182,129 @@ describe('rosterToText', () => {
   })
 })
 
-describe('parseRoster 電話', () => {
-  const phones = (s: string) => parseRoster(s).members.map((m) => [m.name, m.phone])
+/**
+ * 名字到哪裡結束，備註從哪裡開始。
+ *
+ * 解析器刻意不再判斷任何一串數字是什麼——舊版會在一行裡到處找「看起來像台灣
+ * 電話」的片段，於是「匯款 700-1234567」被抽成 `001234567`、名字變成
+ * 「李美花 匯款 7」，撥出去是空號而畫面上沒有一個字說得出為什麼。現在只回答
+ * 一個沒有歧義的問題：名字到第一個「空白＋數字」為止，後面整段原文照抄。
+ */
+describe('parseRoster 名字與備註的切分', () => {
+  const split = (s: string) => {
+    const m = parseRoster(s).members[0]
+    return [m?.name, m?.note]
+  }
 
-  it('抽出手機號碼，名字裡不留', () => {
-    expect(phones('王小明 0912345678')).toEqual([['王小明', '0912345678']])
+  it('數字前面切開，名字裡不留號碼', () => {
+    expect(split('王小明 0912345678')).toEqual(['王小明', '0912345678'])
   })
 
-  it('接受連字號與空格', () => {
-    expect(phones('李美花 0912-345-678\n陳大同 0912 345 678')).toEqual([
-      ['李美花', '0912345678'], ['陳大同', '0912345678'],
-    ])
+  it('切在空白而不是第一個數字，英文名字才不會被切斷', () => {
+    expect(split('Alice Chen 0912345678')).toEqual(['Alice Chen', '0912345678'])
   })
 
-  it('接受 +886 格式並正規化成 0 開頭', () => {
-    expect(phones('王五 +886912345678')).toEqual([['王五', '0912345678']])
+  it('空白後面不是數字就不切', () => {
+    expect(split('陳大同 A123456789')).toEqual(['陳大同 A123456789', null])
+    expect(split('王小明 素食')).toEqual(['王小明 素食', null])
+    expect(split('S1 王小明')).toEqual(['S1 王小明', null])
   })
 
-  it('市話含括號區碼不會被當成備註', () => {
-    const m = parseRoster('陳伯伯 (02)2345-6789').members[0]
-    expect(m).toMatchObject({ name: '陳伯伯', phone: '0223456789', note: null })
+  it('號碼後面的字一起進備註', () => {
+    expect(split('林小姐 0912345678 已匯款')).toEqual(['林小姐', '0912345678 已匯款'])
   })
 
-  it('沒有電話時是 null', () => {
-    expect(parseRoster('王小明').members[0]?.phone).toBeNull()
+  it('括號備註與行尾那段會合併，行尾的排前面', () => {
+    expect(split('王媽媽 0912-345-678（素食）')).toEqual(['王媽媽', '0912-345-678 素食'])
   })
 
-  it('長度不對的數字串不會被誤判成電話', () => {
-    expect(parseRoster('王小明 123').members[0]).toMatchObject({ name: '王小明 123', phone: null })
-    expect(parseRoster('李美花 0912').members[0]).toMatchObject({ phone: null })
+  it('括號裡全是數字的不是備註，是市話區碼', () => {
+    expect(split('陳伯伯 (02)2345-6789')).toEqual(['陳伯伯', '(02)2345-6789'])
   })
 
-  it('電話、攜伴、備註、編號可以同時出現', () => {
-    const m = parseRoster('3. 王媽媽 0912345678 +2（素食）').members[0]
-    expect(m).toMatchObject({ name: '王媽媽', phone: '0912345678', companions: 2, note: '素食' })
+  it('請假仍然只看括號裡的字，不會被前面那串號碼沖淡', () => {
+    expect(parseRoster('李美花 0912345678（請假）').members[0]).toMatchObject({
+      name: '李美花', note: '0912345678 請假', status: 'excused',
+    })
   })
 
-  it('往返後電話仍保留', () => {
+  it('攜伴先抽走，不會跑進備註', () => {
+    expect(parseRoster('王媽媽 0912345678 +2（素食）').members[0]).toMatchObject({
+      name: '王媽媽', note: '0912345678 素食', companions: 2,
+    })
+    expect(parseRoster('王五 帶2人').members[0]).toMatchObject({ name: '王五', note: null, companions: 2 })
+  })
+
+  it('解析不再產生 phone 欄位', () => {
+    expect(parseRoster('王小明 0912345678').members[0]?.phone).toBeNull()
+  })
+
+  /**
+   * `+65` 被當成「攜伴 65 人」會直接灌爆人頭數，而人頭數是這個 App 最不能錯
+   * 的量。但 `+1 0912345678` 仍然是攜伴 1 加一支台灣號碼——接龍裡這樣寫的人
+   * 比寫美國號碼的多得多，判準是後面那串數字有沒有以 0 開頭。
+   */
+  it('國碼不是攜伴', () => {
+    expect(parseRoster('Tan +65 9123 4567').members[0]).toMatchObject({
+      name: 'Tan', note: '+65 9123 4567', companions: 0,
+    })
+    expect(parseRoster('王五 +886 912 345 678').members[0]).toMatchObject({ companions: 0 })
+  })
+
+  it('攜伴加台灣號碼仍然算攜伴', () => {
+    expect(parseRoster('李美花 +1 0912345678').members[0]).toMatchObject({
+      name: '李美花', note: '0912345678', companions: 1,
+    })
+  })
+
+  it('往返後名字與備註都不變', () => {
     const original = '王小明 0912345678 +1（素食）'
     const round = rosterToText(parseRoster(original).members)
     expect(parseRoster(round).members).toEqual(parseRoster(original).members)
+  })
+})
+
+/**
+ * 撥號鍵長在顯示層。這裡猜錯只是多一顆鍵、備註原文一字未動；存進資料庫的
+ * 假號碼才是看不見的那種錯。所以判準只有「0 或 + 開頭、8～15 碼」。
+ */
+describe('dialableFrom', () => {
+  it('認得台灣手機、市話與 +886', () => {
+    expect(dialableFrom('0912345678')).toEqual(['0912345678'])
+    expect(dialableFrom('0912-345-678 素食')).toEqual(['0912-345-678'])
+    expect(dialableFrom('(02)2345-6789')).toEqual(['(02)2345-6789'])
+    expect(dialableFrom('+886 912 345 678')).toEqual(['+886 912 345 678'])
+  })
+
+  it('國際號碼也撥得出去——備註是原文，不需要解析器支援', () => {
+    expect(dialableFrom('+65 9123 4567')).toEqual(['+65 9123 4567'])
+    expect(telHref('+65 9123 4567')).toBe('tel:+6591234567')
+  })
+
+  it('不是 0 或 + 開頭的數字串不給撥號鍵', () => {
+    expect(dialableFrom('700-1234567')).toEqual([])   // 郵局帳號
+    expect(dialableFrom('A123456789')).toEqual([])    // 身分證
+    expect(dialableFrom('統編 12345678')).toEqual([])
+  })
+
+  it('太短的不給', () => {
+    expect(dialableFrom('0912')).toEqual([])          // 生日
+    expect(dialableFrom('房號 0912-2')).toEqual([])
+  })
+
+  it('不從一串更長的數字中間切下來', () => {
+    expect(dialableFrom('匯款 700-1234567')).toEqual([])
+    expect(dialableFrom('0021234567')).toEqual(['0021234567'])
+  })
+
+  it('沒有備註就沒有撥號鍵', () => {
+    expect(dialableFrom(null)).toEqual([])
+    expect(dialableFrom('素食')).toEqual([])
+  })
+
+  it('telHref 去掉分隔符，只留數字與開頭的 +', () => {
+    expect(telHref('(02)2345-6789')).toBe('tel:0223456789')
+    expect(telHref('0912-345-678')).toBe('tel:0912345678')
   })
 })
 
@@ -357,7 +440,9 @@ describe('填入範例的文字', () => {
 
     it(`${lang}：電話、攜伴、請假三件事都示範到`, () => {
       const r = parseRoster(messages[lang].exampleRoster)
-      expect(r.members.some((m) => m.phone)).toBe(true)
+      // 電話不再是欄位，而是備註裡撥得出去的一段——範例仍要示範到這件事，
+      // 否則第一次用的人不會知道號碼該寫在哪裡。
+      expect(r.members.some((m) => dialableFrom(m.note).length > 0)).toBe(true)
       expect(r.members.some((m) => m.companions > 0)).toBe(true)
       expect(r.members.some((m) => m.status === 'excused')).toBe(true)
     })

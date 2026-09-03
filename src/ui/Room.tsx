@@ -111,7 +111,11 @@ export function Room({ code }: { code: string }) {
       if (filter === 'arrived' && m.status !== 'arrived') return false
       if (filter === 'excused' && m.status !== 'excused') return false
       if (!q) return true
-      return m.name.toLowerCase().includes(q) || (m.phone ?? '').includes(q)
+      // 備註也要比對：電話已經不是解析出來的欄位，號碼現在原文躺在備註裡
+      // （見 parse.ts 的 NAME_TAIL）。少了這一行，「用 0912 找人」就無聲失效。
+      return m.name.toLowerCase().includes(q)
+        || (m.phone ?? '').includes(q)
+        || (m.note ?? '').toLowerCase().includes(q)
     })
   }, [scoped, filter, query])
 
