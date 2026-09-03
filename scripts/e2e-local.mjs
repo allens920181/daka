@@ -186,6 +186,28 @@ const excusedRow = p.locator('.member.is-excused').first()
 const excusedText = (await excusedRow.locator('.member-meta').textContent()) ?? ''
 ok(`請假不重複印：「${excusedText.trim()}」`, (excusedText.match(/請假/g) || []).length === 1)
 
+// 更多面板的狀態切換鍵不重複名單列已經做得到的事。「標記已到」在任何狀態下
+// 都跟點名單列一樣（Room.tsx 的 toggle()），所以完全不留；「改回未到」只有
+// 從請假出發時才是唯一入口（點名單列只會跳去已到），這個狀態才留。
+const pendingRow = p.locator('.member').filter({ hasText: '王小明' })
+await pendingRow.getByRole('button', { name: /管理|manage/ }).click(); await p.waitForTimeout(400)
+ok('未到狀態的更多面板沒有「標記已到」',
+   (await p.getByRole('button', { name: /^標記已到$/ }).count()) === 0)
+ok('未到狀態的更多面板沒有「改回未到」（本來就是未到）',
+   (await p.getByRole('button', { name: /改回未到/ }).count()) === 0)
+ok('未到狀態的更多面板有「標記請假」', await p.getByRole('button', { name: /標記請假/ }).isVisible())
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+await excusedRow.getByRole('button', { name: /管理|manage/ }).click(); await p.waitForTimeout(400)
+ok('請假狀態的更多面板沒有「標記已到」',
+   (await p.getByRole('button', { name: /^標記已到$/ }).count()) === 0)
+ok('請假狀態的更多面板有「改回未到」（點名單列只會跳去已到，這是唯一入口）',
+   await p.getByRole('button', { name: /改回未到/ }).isVisible())
+const missingBeforeRevert = await missing()
+await p.getByRole('button', { name: /改回未到/ }).click(); await p.waitForTimeout(500)
+ok(`「改回未到」真的讓人變回未到（${missingBeforeRevert} → ${await missing()}）`,
+   Number(await missing()) === Number(missingBeforeRevert) + 1)
+
 // 備註搬進「更多」面板：名單列上的 .chip-note 用 CSS 關掉（DOM 裡還在，紙本
 // 要用），螢幕上看不到；點開「陳怡君」（備註是解析器抓到的電話號碼）的更多
 // 面板才看得到原文。

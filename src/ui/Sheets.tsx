@@ -599,12 +599,16 @@ export function MemberSheet({ member, owner, onClose }: {
         {!closed && (
           <>
             <div class="menu-divider" />
-            {member.status !== 'arrived' && (
-              <button class="menu-item" onClick={() => mark('arrived', t('arrived'))}>
-                <span><strong>{t('markArrived')}</strong></span>
-              </button>
-            )}
-            {member.status !== 'pending' && (
+            {/*
+              「標記已到」不放在這裡：名單列整片可點就是切換已到，任何狀態
+              點下去都會變成已到（見 Room.tsx 的 toggle()）——面板裡再放一顆
+              一模一樣的按鈕只是重複，是這個面板看起來雜亂的原因之一。
+
+              「改回未到」只在請假狀態才留：從已到點名單列就會變回未到，這條
+              路本來就有；但從請假點名單列只會跳去已到，回未到沒有第二條路，
+              這顆鍵是唯一入口，不能一起拿掉。
+            */}
+            {member.status === 'excused' && (
               <button class="menu-item" onClick={() => mark('pending', t('missing'))}>
                 <span><strong>{t('markMissing')}</strong></span>
               </button>
