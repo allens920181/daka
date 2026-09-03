@@ -19,7 +19,6 @@ export function RosterInput({
 }) {
   const t = useT()
   const result = useMemo(() => parseRoster(text), [text])
-  const heads = result.members.reduce((n, m) => n + 1 + m.companions, 0)
 
   return (
     <div class="stack">
@@ -61,10 +60,7 @@ export function RosterInput({
             <div class="spacer" />
             {/* 整句中文不套 .mono：等寬的空白會把句子撐出不自然的縫。
                 等寬只給真正需要對齊的數字與代碼。 */}
-            <span class="hint">
-              {t('parsedCount', { n: result.members.length })}
-              {heads !== result.members.length && ` · ${t('parsedHeads', { n: heads })}`}
-            </span>
+            <span class="hint">{t('parsedCount', { n: result.members.length })}</span>
           </div>
 
           {/*
@@ -78,7 +74,6 @@ export function RosterInput({
               <div class="preview-row" key={`${m.name}-${i}`}>
                 <span class="preview-index mono">{i + 1}</span>
                 <span style="flex:1; min-width:0">{m.name}</span>
-                {m.companions > 0 && <span class="chip chip-count">+{m.companions}</span>}
                 {m.note && <span class="chip chip-note">{m.note}</span>}
                 <button
                   class="icon-btn preview-remove"

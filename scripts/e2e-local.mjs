@@ -61,20 +61,21 @@ await p.waitForTimeout(1200)
 ok('進入空間', await p.locator('.topbar-name').isVisible())
 const code = (await p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`取得 6 碼代碼: ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
-// 大字是人頭不是列數：9 列裡陳大同請假，剩 8 列＝11 個人頭（李美花＋1、王五＋2）。
-// 這個數字必須和右邊的「0 / 11 人」對得起來——0 已到、11 沒到，加起來就是分母。
-ok('未到 11 人頭（8 列，李美花＋1、王五＋2）', (await p.locator('.score-number').textContent()) === '11')
+// 大字是人頭。攜伴已經不從文字裡解析（`+1`、`帶2人` 只是備註與名字的一部分），
+// 所以新名單上人頭＝列數：9 列（標題行上面補了回去）扣掉請假的陳大同 → 8 個沒到。
+// 這個數字必須和右邊的「0 / 8 人」對得起來——0 已到、8 沒到，加起來就是分母。
+ok('未到 8 人（9 列，陳大同請假不算）', (await p.locator('.score-number').textContent()) === '8')
 // 44px 的數字旁邊只補單位，不把同一個數字再寫一次。
 ok('計分標籤只寫單位不重複數字', (await p.locator('.score-label').textContent())?.trim() === '位沒到')
-// 名單共 12 個人頭（9 列 + 李美花＋1 + 王五＋2），陳大同請假 → 今天該到 11。
-// 分母用 12 的話，全部到齊時畫面會寫「11 / 12」配一條填不滿的進度條。
-ok('分母扣掉請假者 = 0 / 11', (await p.locator('.score-heads').textContent())?.includes('/ 11'))
+// 名單共 9 人，陳大同請假 → 今天該到 8。
+// 分母用 9 的話，全部到齊時畫面會寫「8 / 9」配一條填不滿的進度條。
+ok('分母扣掉請假者 = 0 / 8', (await p.locator('.score-heads').textContent())?.includes('/ 8'))
 
 
 // 點名
 await p.locator('.member-main').nth(1).click()
 await p.waitForTimeout(500)
-ok('點名後未到 = 10（王小明 1 個人頭）', (await p.locator('.score-number').textContent()) === '10')
+ok('點名後未到 = 7', (await p.locator('.score-number').textContent()) === '7')
 ok('該列變成已到', (await p.locator('.member').nth(1).getAttribute('class'))?.includes('is-arrived'))
 ok('出現復原提示', await p.locator('.toast').isVisible())
 
@@ -82,7 +83,7 @@ ok('出現復原提示', await p.locator('.toast').isVisible())
 // 復原
 await p.locator('.toast-action').click()
 await p.waitForTimeout(500)
-ok('復原後未到回到 11', (await p.locator('.score-number').textContent()) === '11')
+ok('復原後未到回到 8', (await p.locator('.score-number').textContent()) === '8')
 
 // 篩選
 await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(300)
@@ -421,15 +422,15 @@ await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300
 ok('出現分組選擇器', await p.locator('.groups').isVisible())
 const chips = await p.locator('.group-chip').allTextContents()
 ok(`分組晶片：${chips.join(' | ')}`, chips.length===3 && chips[1].includes('第一車') && chips[2].includes('第二車'))
-// 6 列 9 人頭，陳大同請假 → 該到 8 人頭，一個都還沒到。
-ok('全部：未到 8 人頭（陳大同請假不算）', (await p.locator('.score-number').textContent())==='8')
+// 6 列，陳大同請假 → 該到 5，一個都還沒到。
+ok('全部：未到 5 人（陳大同請假不算）', (await p.locator('.score-number').textContent())==='5')
 ok('看全部時有分組分隔', (await p.locator('.group-divider').count())===2)
 
 
 // 選第一車 → 計數只算那一車
 await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
-ok('第一車：未到 4 人頭（3 列，李美花＋1）', (await p.locator('.score-number').textContent())==='4')
-ok('第一車：人頭 0 / 4（李美花 +1）', (await p.locator('.score-heads').textContent())?.includes('/ 4'))
+ok('第一車：未到 3 人', (await p.locator('.score-number').textContent())==='3')
+ok('第一車：0 / 3', (await p.locator('.score-heads').textContent())?.includes('/ 3'))
 // 選了分組之後，計分區的數字必須自己說是哪一車，否則「還有 3 位沒到」
 // 在全隊和第一車是同一句話。
 ok('計分區標出目前分組', (await p.locator('.score-scope').textContent())?.trim() === '第一車')
@@ -438,10 +439,10 @@ ok('選了分組後不再顯示分隔', (await p.locator('.group-divider').count
 
 // 點名只影響那一車的計數
 await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(600)
-ok('第一車點一人後未到 3 人頭', (await p.locator('.score-number').textContent())==='3')
+ok('第一車點一人後未到 2 人', (await p.locator('.score-number').textContent())==='2')
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(400)
-// 第二車：陳大同請假、李四 1、王五＋2 → 4 個人頭沒到。
-ok('第二車未到 4 人頭（陳大同請假不算）', (await p.locator('.score-number').textContent())==='4')
+// 第二車：陳大同請假、李四、王五 → 2 個沒到。
+ok('第二車未到 2 人（陳大同請假不算）', (await p.locator('.score-number').textContent())==='2')
 
 
 // 分組晶片上的未到人頭。「全部」也帶一個數字，而且各車相加要等於它、也等於
@@ -449,8 +450,8 @@ ok('第二車未到 4 人頭（陳大同請假不算）', (await p.locator('.sco
 // 注意這一列對齊的是大字，不是下面的分段控制（那一排是列數，見 roll-call.md）。
 await p.locator('.groups .group-chip').first().click(); await p.waitForTimeout(400)
 const gn = await p.locator('.group-chip .group-n').allTextContents()
-ok(`晶片數字（全部｜各車）：${gn.join(' / ')}`, gn.length===3 && gn[1]==='3' && gn[2]==='4')
-ok('各車未到人頭相加等於「全部」', Number(gn[1]) + Number(gn[2]) === Number(gn[0]))
+ok(`晶片數字（全部｜各車）：${gn.join(' / ')}`, gn.length===3 && gn[1]==='2' && gn[2]==='2')
+ok('各車未到相加等於「全部」', Number(gn[1]) + Number(gn[2]) === Number(gn[0]))
 ok('而且等於計分區的大字', (await p.locator('.score-number').textContent()) === gn[0])
 
 // --- 複製結果應限定在選取的分組 ---
@@ -468,9 +469,9 @@ await p.getByRole('button',{name:/看板模式/}).click(); await p.waitForTimeou
 ok('進入看板模式', await p.locator('.board').isVisible())
 // 看板最大的字要回答車長真正的問題——「還缺誰」，不是「已經到幾個」。
 const heroNum = async () => ((await p.locator('.board-hero').textContent()) || '').replace('位沒到','').trim()
-ok('看板主角是未到人頭（7）', (await heroNum())==='7')
-// 6 列 + 李美花＋1 + 王五＋2 = 9 人頭，陳大同請假 → 今天該到 8。
-ok('已到人頭退成副行且分母扣掉請假', (await p.locator('.board-sub').textContent())?.includes('1 / 8'))
+ok('看板主角是未到人數（4）', (await heroNum())==='4')
+// 6 列，陳大同請假 → 今天該到 5，王小明已到。
+ok('已到退成副行且分母扣掉請假', (await p.locator('.board-sub').textContent())?.includes('1 / 5'))
 const names=await p.locator('.board-names li').allTextContents()
 ok(`看板列出未到者：${names.map(n=>n.trim()).join('、')}`, names.length===4)
 const numSize=await p.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('.board-hero')).fontSize))
@@ -483,7 +484,7 @@ ok('未到名單沒有被切掉', await p.evaluate(()=>{
 ok('看板同步狀態有文字', ((await p.locator('.board-sync-text').textContent())||'').trim().length > 0)
 
 await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
-ok('看板可切分組：第一車未到 3 人頭', (await heroNum())==='3')
+ok('看板可切分組：第一車未到 2 人', (await heroNum())==='2')
 await p.getByRole('button',{name:/離開看板/}).click(); await p.waitForTimeout(1200)
 ok('離開看板回到空間', await p.locator('.topbar-name').isVisible() && (await p.locator('.topbar-sub .mono').first().textContent())?.trim()===groupRoomCode)
 

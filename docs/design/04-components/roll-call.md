@@ -85,7 +85,7 @@
 
 | 類別 | 樣式 | 內容 |
 | --- | --- | --- |
-| `.chip-count` | `--accent-soft` 底、`--accent` 字 | 攜伴人數 `＋2` |
+| `.chip-count` | `--accent-soft` 底、`--accent` 字 | 攜伴人數 `＋2`（舊名單的 `companions` 欄位） |
 | `.chip-note` | `--surface-2` 底、`--ink-2` 字 | 名單上的備註 |
 | `.chip-data` | `--surface-2` 底、等寬 | 電話等資料（舊名單的 phone 欄位） |
 | `.chip-tell` | `--accent-soft` 底、`--accent` 字、700 | **只在有同名的人時出現**的辨識資訊 |

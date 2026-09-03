@@ -38,10 +38,8 @@ const zh = {
   /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
   fromNote: '備註裡的號碼',
   parsePreview: '解析結果',
-  /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。
-     「人次」不是贅詞而是單位標記：9 是列數、12 是人頭數，全站最容易搞混的兩個量。 */
+  /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。 */
   parsedCount: '{n} 人',
-  parsedHeads: '含攜伴 {n} 人次',
   duplicateWarning: '有同名的人：{names}。點一個不會動到另一個，建議加註記區分。',
   skippedLines: '{n} 行看起來不是姓名，已略過',
   emptyRoster: '請先貼上名單',
@@ -329,7 +327,6 @@ const en: Record<MessageKey, string> = {
   fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
-  parsedHeads: '{n} heads incl. companions',
   duplicateWarning: 'Duplicate names: {names}. Checking one never moves the other; a note helps tell them apart.',
   skippedLines: '{n} lines skipped (not names)',
   emptyRoster: 'Paste a roster first',
