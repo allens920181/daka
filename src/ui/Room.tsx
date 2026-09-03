@@ -1,5 +1,5 @@
 import { Fragment } from 'preact'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
   prefs, room, setStatusWithUndo, shareOnEnter, showToast,
@@ -25,21 +25,6 @@ type OpenSheet = null | 'share' | 'manage' | 'walkin' | { member: Member }
  */
 const UNGROUPED = '\u0000ungrouped'
 
-/**
- * 搜尋框「從浮動鍵飛出來」用的位移量：把 `el` 拉到跟 `fab` 同一個中心點、
- * 同一個尺寸所需要的 translate/scale。開合兩個方向共用同一組數字——開的
- * 時候當成起點瞬間套上，收的時候當成終點讓 transition 動過去。
- */
-function fabOffset(el: HTMLElement, fab: HTMLElement) {
-  const w = el.getBoundingClientRect()
-  const f = fab.getBoundingClientRect()
-  const dx = (f.left + f.width / 2) - (w.left + w.width / 2)
-  const dy = (f.top + f.height / 2) - (w.top + w.height / 2)
-  const sx = f.width / w.width
-  const sy = f.height / w.height
-  return `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`
-}
-
 export function Room({ code }: { code: string }) {
   const t = useT()
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -47,8 +32,6 @@ export function Room({ code }: { code: string }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const fabRef = useRef<HTMLButtonElement>(null)
-  const searchWrapRef = useRef<HTMLDivElement>(null)
   // 分車：選了某一車之後，計數與名單都只算那一車——
   // 顧第一車的人要看的是「我這台還有幾個沒上」。
   const [group, setGroup] = useState<string | null>(null)
@@ -76,27 +59,6 @@ export function Room({ code }: { code: string }) {
     shareOnEnter.value = null
     setSheet('share')
   }, [status, code])
-
-  // 搜尋框掛上去的那一瞬間，先瞬間套上「跟浮動鍵疊在一起」的 transform，逼一次
-  // reflow，下一幀再放手讓 styles.css 的 transition 把它動回原位——這是標準的
-  // FLIP 手法：起點用量出來的（getBoundingClientRect），不是猜的座標。
-  // prefers-reduced-motion 使用者兩段都不跑，直接看到定裝後的樣子。
-  useLayoutEffect(() => {
-    if (!searchOpen) return
-    const el = searchWrapRef.current
-    const fab = fabRef.current
-    if (!el || !fab) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    el.style.transition = 'none'
-    el.style.transform = fabOffset(el, fab)
-    el.style.opacity = '0'
-    void el.offsetHeight
-    requestAnimationFrame(() => {
-      el.style.transition = ''
-      el.style.transform = ''
-      el.style.opacity = ''
-    })
-  }, [searchOpen])
 
   const current = room.value
   const all = members.value
@@ -156,22 +118,6 @@ export function Room({ code }: { code: string }) {
   }
 
   if (!current) return <RoomSkeleton label={t('loading')} />
-
-  // 收起搜尋：反過來讓 transition 把搜尋框動回浮動鍵疊在一起的位置與大小、
-  // 淡出，動畫跑完才真的把 searchOpen 撥成 false 拆掉 DOM——提早拆掉的話，
-  // 動畫只會演到一半就被砍斷。
-  function closeSearch() {
-    const el = searchWrapRef.current
-    const fab = fabRef.current
-    if (el && fab && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      el.style.transform = fabOffset(el, fab)
-      el.style.opacity = '0'
-      // 320ms 對應 styles.css 的 --dur-3——transform 動畫跑多久，這裡就等多久。
-      window.setTimeout(() => setSearchOpen(false), 320)
-    } else {
-      setSearchOpen(false)
-    }
-  }
 
   async function toggle(m: Member) {
     if (closed) return
@@ -248,7 +194,7 @@ export function Room({ code }: { code: string }) {
           頂欄是 sticky，搬進來之後兩個問題一起消失。
         */}
         {searchOpen && (
-          <div class="shell search-wrap" ref={searchWrapRef}>
+          <div class="shell search-wrap">
             <input
               class="input"
               type="search"
@@ -258,7 +204,7 @@ export function Room({ code }: { code: string }) {
               // eslint-disable-next-line jsx-a11y/no-autofocus
               ref={(el) => el?.focus()}
               onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
-              onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); closeSearch() } }}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); setSearchOpen(false) } }}
             />
             {query && (
               <button class="search-clear" onClick={() => setQuery('')} aria-label={t('cancel')}>×</button>
@@ -433,17 +379,10 @@ export function Room({ code }: { code: string }) {
         但**輸入框仍然開在頂欄**（sticky），不跟著鍵盤走：`position: fixed` 的底部
         元素在 iOS 是對著 layout viewport 定位的，鍵盤升起時會蓋住它，於是變成盲打。
         觸發器在下、欄位在上，兩邊的問題都不用碰。
-
-        開合時搜尋框不是憑空冒出來——它會從這顆鍵的座標「飛」到頂欄，視覺上等於
-        「按下去的東西自己展開、飄到不會被鍵盤擋住的地方」，移動到上方這件事本身
-        變成看得見的動作，不必使用者自己意會。飛行的起點與終點用
-        getBoundingClientRect() 量（見 fabOffset），不是猜的座標；實作在
-        useLayoutEffect（開）與 closeSearch（收）。
       */}
       <button
-        ref={fabRef}
         class={searchOpen ? 'fab is-on' : 'fab'}
-        onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+        onClick={() => setSearchOpen((v) => !v)}
         aria-label={t('searchPlaceholder')}
         aria-expanded={searchOpen}
       >

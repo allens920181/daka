@@ -113,20 +113,12 @@
 - **輸入框仍然開在頂欄，不是這顆鍵旁邊。** `position: fixed` 的底部元素在 iOS
   是對著 layout viewport 定位的，虛擬鍵盤升起時不會把它推開，會直接蓋住——
   觸發器在拇指落點、欄位留在頂欄，兩個問題都不用碰。
-- **開合不是瞬間切換，是從這顆鍵「飛」到頂欄、再飛回來。** 移動到不會被鍵盤
-  擋住的地方，這件事本身要看得見，使用者才知道搜尋框去了哪裡、還按不按得到
-  剛剛那顆鍵。起點與終點用 `getBoundingClientRect()` 量（`fabOffset`），瞬間
-  套上起點的 transform 再放手讓 `.search-wrap` 的 transition（`--dur-3`、
-  `--ease`）動回原位，是標準的 FLIP 手法，不是猜座標。收起時反過來：先讓
-  transition 動到跟 `.fab` 疊在一起再真的拆 DOM（`closeSearch`），提早拆掉
-  動畫只會演到一半被砍斷。`prefers-reduced-motion` 兩個方向都跳過，直接切換。
 - 列印時隱藏（`@media print`）。
 
 **無障礙契約** — `aria-label` 用 `searchPlaceholder`，`aria-expanded` 反映搜尋框
 是否展開。
 
-**實作** — `src/styles.css`（`.fab`、`.search-wrap`）、`src/ui/Room.tsx`
-（`fabOffset`、`closeSearch`）
+**實作** — `src/styles.css`（`.fab`）、`src/ui/Room.tsx`
 
 ---
 

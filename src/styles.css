@@ -516,22 +516,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
   content: ""; flex: 1; height: 1px; background: var(--rule);
 }
 
-/*
- * 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。
- *
- * 開合時它會從 `.fab` 的螢幕座標「飛」到這裡——transform/opacity 由
- * Room.tsx 用量出來的 getBoundingClientRect() 算好，寫成行內樣式；這裡只
- * 負責讓那組行內樣式有 transition 可以套。--dur-3（較大位移）配 --ease，
- * 跟其他「進場、離場」動畫共用同一組節奏 token，不是另外調的數字。
- */
-.search-wrap {
-  position: relative; padding: 0 0 var(--sp-2);
-  transform-origin: center;
-  transition: transform var(--dur-3) var(--ease), opacity var(--dur-2) var(--ease);
-}
-@media (prefers-reduced-motion: reduce) {
-  .search-wrap { transition: none; }
-}
+/* 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。 */
+.search-wrap { position: relative; padding: 0 0 var(--sp-2); }
 /* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
    留自訂的那顆：它有 48px 的觸控目標與無障礙名稱，原生那顆兩者都沒有。 */
 .search-wrap input[type='search']::-webkit-search-cancel-button,
