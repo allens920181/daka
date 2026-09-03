@@ -186,6 +186,26 @@ const excusedRow = p.locator('.member.is-excused').first()
 const excusedText = (await excusedRow.locator('.member-meta').textContent()) ?? ''
 ok(`請假不重複印：「${excusedText.trim()}」`, (excusedText.match(/請假/g) || []).length === 1)
 
+// 備註搬進「更多」面板：名單列上的 .chip-note 用 CSS 關掉（DOM 裡還在，紙本
+// 要用），螢幕上看不到；點開「陳怡君」（備註是解析器抓到的電話號碼）的更多
+// 面板才看得到原文。
+const notedRow = dupRows.first()
+ok('備註不再顯示在名單列上',
+   !(await notedRow.locator('.chip-note').first().isVisible().catch(() => false)))
+await notedRow.getByRole('button', { name: /管理|manage/ }).click()
+await p.waitForTimeout(400)
+ok('更多面板看得到備註原文（0912345678）',
+   ((await p.locator('.sheet').textContent()) ?? '').includes('0912345678'))
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+// 紙本是例外：手機沒電時拿著這張紙的人沒有「更多」可以點，.chip-note 要在
+// @media print 裡換回來。
+await p.emulateMedia({ media: 'print' }); await p.waitForTimeout(200)
+ok('列印時備註換回來了', await notedRow.locator('.chip-note').first().isVisible())
+ok('列印的備註是原文（0912345678）',
+   ((await notedRow.locator('.chip-note').first().textContent()) ?? '').includes('0912345678'))
+await p.emulateMedia({ media: 'screen' }); await p.waitForTimeout(200)
+
 // #10 臨時加人：站在你面前的人不該被算成「未到」，而且要說一聲。
 const beforeMissing = await missing()
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)

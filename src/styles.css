@@ -671,6 +671,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border: 1px solid var(--accent); padding: 0 var(--sp-2);
 }
 .chip-note { background: var(--surface-2); color: var(--ink-2); }
+/*
+ * 點名畫面的名單列不再顯示備註（2026-09，見 04-components/overlays.md
+ * 「成員面板的規則 › 備註」）——備註搬進了成員面板。這條規則只關掉 .member
+ * 底下的 .chip-note，不動 RosterInput 那份解析預覽（.preview-row 底下的
+ * 同一個 class，貼上名單當下就是要看到備註，還沒有「更多」面板可以點）。
+ * @media print 裡會把它換回來：手機沒電時拿著紙本的人沒有「更多」可點。
+ */
+.member .chip-note { display: none; }
 .chip-data {
   background: var(--surface-2); color: var(--ink-2); font-weight: 500;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1004,6 +1012,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
     color: #333 !important; font-weight: 400;
   }
   .chip::after { content: "　"; }
+  /* 螢幕上用 `.member .chip-note { display: none }` 關掉的備註，紙本要換回來：
+     手機沒電時拿著這張紙的人沒有「更多」面板可以點。 */
+  .member .chip-note { display: inline-flex; }
 
   /*
    * 每一車從新的一欄開始。一欄一車，剛好可以撕開分給兩個顧車的人——這比

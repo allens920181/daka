@@ -11,7 +11,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { inAppBrowser, secureOrigin } from '../lib/config'
 import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
 import { formatDate } from '../lib/format'
-import { dialableFrom, rosterToText, telHref } from '../lib/parse'
+import { dialableFrom, isExcusedNote, rosterToText, telHref } from '../lib/parse'
 import type { Member } from '../lib/types'
 import { currentRoute, joinUrl, navigate } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
@@ -526,6 +526,11 @@ export function MemberSheet({ member, owner, onClose }: {
   const closed = Boolean(room.value?.closed_at)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
+  // 「陳大同（請假）」這種名單，note 是「請假」，下面又有一顆會標成「請假」的
+  // 狀態切換鍵：兩個都印備註原文的話，這個面板會同時看到「備註：請假」與
+  // 一顆已經在講同一件事的按鈕，備註沒有多給任何資訊，純粹是雜訊。
+  const noteIsStatus = member.status === 'excused' && isExcusedNote(member.note)
+
   // 從名單列點名有 5 秒復原；從這裡做同一件事卻什麼都沒有。同一個結果要有
   // 同一種安全網，否則使用者學不會「哪一種操作可以反悔」。
   function mark(status: Member['status'], label: string): void {
@@ -549,6 +554,19 @@ export function MemberSheet({ member, owner, onClose }: {
   return (
     <Sheet title={member.name} onClose={onClose}>
       <div class="menu">
+        {/*
+          備註原文搬到這裡：名單列只留辨識晶片與狀態，備註本身查才需要，不必
+          一直印在畫面上。放在撥號鍵之前，因為下面那些從備註裡認出來的號碼
+          （見下一段註解）就是從這段文字裡抽出來的——先看到原文，再看到抽出
+          的號碼，順序才對得上。
+        */}
+        {member.note && !noteIsStatus && (
+          <div class="field" style="padding: var(--sp-2) 12px 8px">
+            <span class="label">{t('noteLabel')}</span>
+            <p style="margin:0">{member.note}</p>
+          </div>
+        )}
+
         {/*
           撥號鍵有兩個來源。上面那個是結構化的 phone 欄位——舊名單留下來的，
           解析器現在不再產生它（見 `parse.ts` 的 `NAME_TAIL`）。下面那些是從備註
