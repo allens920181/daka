@@ -41,6 +41,8 @@ export function RosterInput({
         </div>
       )}
 
+      {/* 範例鍵不在這裡：它一次填活動名稱與名單兩格，所以住在表單那一層
+          （`NewRoom`），而不是掛在其中一個欄位的標籤上。 */}
       <div class="field">
         <label class="label" for="roster-text">{t('pasteRoster')}</label>
         <textarea
@@ -76,7 +78,6 @@ export function RosterInput({
               <div class="preview-row" key={`${m.name}-${i}`}>
                 <span class="preview-index mono">{i + 1}</span>
                 <span style="flex:1; min-width:0">{m.name}</span>
-                {m.phone && <span class="chip chip-data">{m.phone}</span>}
                 {m.companions > 0 && <span class="chip chip-count">+{m.companions}</span>}
                 {m.note && <span class="chip chip-note">{m.note}</span>}
                 <button

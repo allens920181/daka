@@ -100,7 +100,8 @@ ok('搜尋框打開後自動聚焦', await p.evaluate(() => document.activeEleme
 await p.locator('input[type=search]').fill('陳怡君'); await p.waitForTimeout(300)
 ok('搜尋同名找到 2 人', (await p.locator('.member').count()) === 2)
 await p.locator('input[type=search]').fill('0912'); await p.waitForTimeout(300)
-ok('可用電話搜尋', (await p.locator('.member').count()) === 1)
+// 電話已經不是解析出來的欄位（號碼原文躺在備註裡），搜尋要照樣找得到人。
+ok('可用電話搜尋（號碼現在在備註裡）', (await p.locator('.member').count()) === 1)
 
 // 收尾時單手打錯字：切「未到」再搜一個不存在的名字。這裡絕對不能回答
 // 「太好了，全部都到了」——那句話在車門口等於「可以關門了」。
@@ -114,13 +115,12 @@ ok('清掉搜尋後「未到」篩選才回到成功文案',
    (await p.locator('.empty-big').count()) === 0 || (await p.locator('.empty-big').textContent())?.includes('全部都到了'))
 await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitForTimeout(300)
 
-// 電話按鈕
-const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
-ok(`未到者顯示撥號連結 ${telHref}`, telHref === 'tel:0912345678')
-
-// #22 收尾一個一個打電話：打完第三通抬頭找第四個，七個人長得一模一樣，
-// 而「打過了沒」正是決定「車要不要再等十分鐘」的那條資訊。
+// 撥號。解析器不再判斷任何一串數字是什麼——「匯款 700-1234567」曾經被抽成
+// 一支撥出去是空號的假電話，而畫面上沒有一個字說得出為什麼。號碼現在原文留在
+// 備註裡，撥號鍵長在成員面板（顯示層猜錯是可逆、可見的；資料層猜錯不是）。
+ok('名單列上沒有撥號鍵了', (await p.locator('.member a[href^="tel:"]').count()) === 0)
 ok('還沒打過時沒有記號', (await p.locator('.chip-called').count()) === 0)
+
 // 擋掉 tel: 的實際導航（無頭瀏覽器會把頁面帶走），但 onClick 照樣跑完——
 // preventDefault 只取消預設動作，不影響事件處理器。
 await p.evaluate(() => {
@@ -128,12 +128,22 @@ await p.evaluate(() => {
     if ((e.target instanceof Element) && e.target.closest('a[href^="tel:"]')) e.preventDefault()
   })
 })
+await p.locator('.member').filter({ hasText: '王小明' }).first()
+  .getByRole('button', { name: /管理|manage/ }).click()
+await p.waitForTimeout(400)
+const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
+ok(`成員面板把備註裡的號碼做成撥號鍵 ${telHref}`, telHref === 'tel:0912345678')
+ok('並標明它是備註裡的號碼',
+   ((await p.locator('a[href^="tel:"] .sub').first().textContent()) ?? '').includes('備註'))
+
+// #22 收尾一個一個打電話：打完第三通抬頭找第四個，七個人長得一模一樣，
+// 而「打過了沒」正是決定「車要不要再等十分鐘」的那條資訊。號碼從欄位變成
+// 備註之後，這個記號一樣要留得住。
 await p.locator('a[href^="tel:"]').first().click(); await p.waitForTimeout(500)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('打過之後那一列留下時間記號', (await p.locator('.chip-called').count()) === 1)
 ok('記號寫的是「已撥 HH:MM」',
    /^已撥 \d{2}:\d{2}$/.test(((await p.locator('.chip-called').textContent()) ?? '').trim()))
-ok('撥號鍵的無障礙名稱改成「再打給…」',
-   ((await p.locator('a[href^="tel:"]').first().getAttribute('aria-label')) ?? '').includes('再打給'))
 
 // 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、QR、連結對任何人
 // 都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為

@@ -25,7 +25,18 @@ const zh = {
   // 名單
   roster: '名單',
   pasteRoster: '貼上名單',
-  pastePlaceholder: '一行一個名字。可以直接貼 LINE 接龍，編號、（備註）、+1 攜伴都會自動辨識。',
+  /* 格式細節從說明搬到範例：讀四行字才知道能貼什麼，不如按一下直接看到解析結果。 */
+  pastePlaceholder: '一行一個名字，LINE 接龍直接貼就行。',
+  /* 範例填的是整張表：活動名稱一格、名單一份，按一下就看得到一個完整的空間
+     長什麼樣。key 依語意命名（§6.4），所以不叫 paste*——它已經不屬於哪一個欄位。 */
+  exampleFill: '填入範例',
+  exampleClear: '清除範例',
+  exampleName: '秋季旅遊 · 出發',
+  /* 範例的每一行都必須解析得出一個人（parse.test.ts 會驗）。分組標題不放進來——
+     預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範一件看不到的事。 */
+  exampleRoster: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
+  /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
+  fromNote: '備註裡的號碼',
   parsePreview: '解析結果',
   /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。
      「人次」不是贅詞而是單位標記：9 是列數、12 是人頭數，全站最容易搞混的兩個量。 */
@@ -312,7 +323,12 @@ const en: Record<MessageKey, string> = {
 
   roster: 'Roster',
   pasteRoster: 'Paste the roster',
-  pastePlaceholder: 'One name per line. Numbering, (notes) and +1 companions are picked up automatically.',
+  pastePlaceholder: 'One name per line. Paste a chat thread as-is.',
+  exampleFill: 'Fill in an example',
+  exampleClear: 'Clear the example',
+  exampleName: 'Autumn trip · Departure',
+  exampleRoster: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (absent)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
+  fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
   parsedHeads: '{n} heads incl. companions',
@@ -537,3 +553,23 @@ export function translate(lang: Lang, key: MessageKey, vars?: Record<string, str
   if (!vars) return raw
   return raw.replace(/\{(\w+)\}/g, (m, name: string) => String(vars[name] ?? m))
 }
+
+/**
+ * 這格裡的字，就是「填入範例」自己填進去的那一段嗎？
+ *
+ * 用來決定清除鍵要不要出現、以及它可以動哪一格。判準刻意嚴格到逐字相同：清除
+ * 只該收回我們自己放進去的東西，使用者一動手改，那一格就不再屬於範例——否則那
+ * 顆按鈕會從「取消範例」悄悄變成「清空我剛貼好的 200 人名單」，而兩者長得一模
+ * 一樣。兩個欄位分開判，所以改了活動名稱不會連帶讓名單也失去清除鍵。
+ *
+ * 比對所有語言而不只是當下這個：填了中文範例再去設定裡切成英文，那段文字並不會
+ * 跟著變，清除鍵沒有理由在這時候消失。
+ */
+function isExample(key: 'exampleName' | 'exampleRoster', text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  return Object.values(messages).some((m) => m[key].trim() === trimmed)
+}
+
+export const isExampleName = (text: string): boolean => isExample('exampleName', text)
+export const isExampleRoster = (text: string): boolean => isExample('exampleRoster', text)

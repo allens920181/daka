@@ -75,30 +75,35 @@ const INLINE_MARKER = /(?:^|\s)\d{1,3}\s*[.、)]\s*(?=\S)/g
 
 /** 攜伴：`+1`、`＋ 2`、`帶2人`、`帶3位`。 */
 const COMPANION_PLUS = /\+\s*(\d{1,2})(?!\d)/
+/**
+ * 這個 `+N` 其實是國碼。
+ *
+ * `Tan +65 9123 4567` 不加這道守衛就會被讀成「攜伴 65 人」——直接灌爆人頭數，
+ * 而人頭數是這個 App 最不能錯的量（§6.5）。判準是「+N 之後還跟著一串不以 0
+ * 開頭的數字」：`+1 0912345678` 的 0 開頭那串是台灣號碼，所以它仍然是攜伴 1
+ * 加一支電話——接龍裡這樣寫的人比寫美國號碼的多得多。
+ */
+const INTL_CODE = /\+\s*\d{1,2}[\s\-.]+(?!0)\d[\d\s\-.()]{4,}/
 const COMPANION_BRING = /帶\s*(\d{1,2})\s*[人位個名]?/
 
 /** 備註：括號內的內容。`（請假）` `[遲到]` */
 const NOTE_PAREN = /[([]([^()[\]]{0,60})[)\]]/
 
 /**
- * 電話。台灣手機 09xxxxxxxx、市話 0x-xxxxxxx、+886 開頭都要吃得下，
- * 而且要在備註之前抽出來——`(02)2345-6789` 的區碼括號會被當成備註。
+ * 名字與備註的切點：第一個「空白＋數字」。
+ *
+ * 這裡刻意**不判斷那串數字是什麼**。舊版會在一行裡到處找「看起來像台灣電話」
+ * 的片段，於是「匯款 700-1234567」被抽成 `001234567`、名字變成「李美花 匯款 7」，
+ * 而畫面上沒有一個字說得出為什麼——撥出去是空號，現場只會以為對方關機。
+ * 猜錯的代價完全不對稱：漏抓只是號碼留在備註裡（看得見、還撥得到，見成員面板），
+ * 亂抓卻是存下一個假號碼（看不見）。所以這裡只回答一個沒有歧義的問題：
+ * 「名字到哪裡結束？」——答案是第一次出現「空白後面接數字」的地方。
+ *
+ * 切在空白而不是第一個數字，是為了英文名字：「Alice Chen 0912345678」要切在
+ * 號碼前面，不是切在 Chen 前面（中文名字沒有空格，英文有）。也因此
+ * 「陳大同 A123456789」不會被切——空白後面是 A 不是數字。
  */
-const PHONE_CANDIDATE = /(?:\+?886[-\s.]?|\(?0\)?)[\d\-\s.()]{7,15}/g
-
-function extractPhone(input: string): { phone: string | null; rest: string } {
-  PHONE_CANDIDATE.lastIndex = 0
-  let m: RegExpExecArray | null
-  while ((m = PHONE_CANDIDATE.exec(input)) !== null) {
-    let digits = m[0].replace(/\D/g, '')
-    if (digits.startsWith('886')) digits = `0${digits.slice(3)}`
-    // 台灣號碼是 0 開頭的 9～10 碼。長度不對就不是電話，繼續往後找。
-    if (/^0\d{8,9}$/.test(digits)) {
-      return { phone: digits, rest: `${input.slice(0, m.index)} ${input.slice(m.index + m[0].length)}` }
-    }
-  }
-  return { phone: null, rest: input }
-}
+const NAME_TAIL = /\s+(?=[(+]?\d)/
 
 /**
  * 行內編號的切點。回傳的是索引而不是字串，因為 removeParsedMember 要拿這些
@@ -170,13 +175,8 @@ function parseEntry(raw: string): DraftMember | null {
   let s = raw.replace(LEADING_MARKER, '').trim()
   if (!s) return null
 
-  // 電話最先抽：它的括號與連字號會干擾後面的備註與攜伴比對。
-  const withPhone = extractPhone(s)
-  const phone = withPhone.phone
-  s = withPhone.rest
-
   let companions = 0
-  const plus = s.match(COMPANION_PLUS)
+  const plus = INTL_CODE.test(s) ? null : s.match(COMPANION_PLUS)
   if (plus?.[1]) {
     companions = Number(plus[1])
     s = s.replace(COMPANION_PLUS, ' ')
@@ -188,15 +188,26 @@ function parseEntry(raw: string): DraftMember | null {
     }
   }
 
-  let note: string | null = null
-  const paren = s.match(NOTE_PAREN)
-  if (paren) {
-    const inner = (paren[1] ?? '').trim()
-    if (inner) note = inner
+  // 括號備註先抽，而且與行尾那段分開存著：「請假」的判定只看括號裡的字
+  // （`李美花 0912345678（請假）` 的狀態仍要是請假，不能被前面那串數字沖淡）。
+  let paren: string | null = null
+  const parenMatch = s.match(NOTE_PAREN)
+  const inner = (parenMatch?.[1] ?? '').trim()
+  // 括號裡全是數字的不是備註，是市話的區碼：`(02)2345-6789` 若在這裡被拆走，
+  // 剩下的「2345-6789」就再也撥不出去了。備註是寫給人看的字。
+  if (parenMatch && !/^\d+$/.test(inner)) {
+    if (inner) paren = inner
     s = s.replace(NOTE_PAREN, ' ')
   }
 
-  const name = s
+  // 名字到第一個「空白＋數字」為止，後面整段都是備註。電話、匯款帳號、身分證、
+  // 座位號——一律原文照抄，不分類。要撥號的話，成員面板會把備註裡撥得出去的
+  // 數字做成撥號鍵（`dialableFrom`）。
+  const cut = s.search(NAME_TAIL)
+  const tail = cut === -1 ? '' : s.slice(cut).replace(/\s+/g, ' ').trim()
+  const head = cut === -1 ? s : s.slice(0, cut)
+
+  const name = head
     .replace(/^@+/, '')
     .replace(/[,:：;；]+$/, '')
     .replace(/\s+/g, ' ')
@@ -205,13 +216,15 @@ function parseEntry(raw: string): DraftMember | null {
   // 只剩符號或數字的行不算名字（例如貼進來的空編號、分隔線）。
   if (!name || !/[\p{L}\p{N}]/u.test(name) || /^[\d\s.\-_=~]+$/.test(name)) return null
 
-  const trimmedNote = note ? note.slice(0, 200) : null
-  const status = statusFromNote(trimmedNote)
+  // 兩段備註接起來，行尾那段在前——原文裡它通常就排在括號前面。
+  const merged = [tail, paren].filter(Boolean).join(' ')
+  const trimmedNote = merged ? merged.slice(0, 200) : null
+  const status = statusFromNote(paren)
 
   return {
     name: name.slice(0, 60),
     note: trimmedNote,
-    phone,
+    phone: null,
     companions: Math.min(Math.max(companions, 0), 99),
     group_label: null,
     ...(status ? { status } : {}),
@@ -324,8 +337,43 @@ export function rosterToText(members: readonly DraftMember[]): string {
     let s = m.name
     if (m.phone) s += ` ${m.phone}`
     if (m.companions > 0) s += ` +${m.companions}`
-    if (m.note) s += `（${m.note}）`
+    // 純數字的備註不能寫進括號：解析時「括號裡全是數字」會被當成市話區碼而
+    // 不是備註（`(02)2345-6789`），往返一趟就會變成名字的一部分。
+    if (m.note) s += /^\d+$/.test(m.note) ? ` ${m.note}` : `（${m.note}）`
     lines.push(s)
   }
   return lines.join('\n')
+}
+
+/**
+ * 備註裡撥得出去的號碼。
+ *
+ * 解析階段刻意不判斷任何一串數字是什麼（見 `NAME_TAIL`），所以「要撥給他」這
+ * 件事改在顯示階段回答——而顯示階段猜錯是可逆、可見的：多出一顆撥號鍵而已，
+ * 備註原文一個字都沒動，使用者自己看得到那串數字到底是什麼。存進資料庫的假
+ * 號碼才是不可見的那種錯。
+ *
+ * 判準只有兩條：以 `0`（國內）或 `+`（國際）開頭，總長 8～15 碼。郵局帳號
+ * 「700-1234567」、身分證、統編都不是 0 或 + 開頭，所以不會冒出撥號鍵；真的
+ * 漏掉的號碼仍然原文躺在備註裡，複製得到。
+ */
+export function dialableFrom(note: string | null): string[] {
+  if (!note) return []
+  const out: string[] = []
+  for (const m of note.matchAll(/\(?[+0][\d\s\-.()]{6,16}\d/g)) {
+    // 起點前面若還是數字，這就是從一串更長的數字中間切下來的——「700-1234567」
+    // 的第二個 0 起跳剛好湊得出 10 碼，而那是郵局帳號，不是電話。
+    if (/\d/.test(note[m.index - 1] ?? '')) continue
+    const raw = m[0].trim()
+    const digits = raw.replace(/\D/g, '')
+    if (digits.length < 8 || digits.length > 15) continue
+    if (!out.includes(raw)) out.push(raw)
+    if (out.length === 3) break
+  }
+  return out
+}
+
+/** `dialableFrom` 給的字串轉成 `tel:` 用的形式（保留國際碼的 +）。 */
+export function telHref(raw: string): string {
+  return `tel:${raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '')}`
 }
