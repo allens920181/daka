@@ -335,8 +335,8 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
       <div class="menu">
         {/*
           複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事。它原本在
-          底部動作列，那條列子整條拿掉了（見 Room.tsx 的浮動搜尋鍵）——一場活動
-          按一次的東西，不值得整場佔著一列人名的高度。
+          底部動作列，那條列子整條拿掉了——一場活動按一次的東西，不值得整場
+          佔著一列人名的高度。
           複製的範圍跟著目前選的分組，所以動作交回 Room 執行。
         */}
         <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>

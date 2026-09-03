@@ -13,7 +13,7 @@ import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
 import { AddWalkInSheet, ManageSheet, MemberSheet, ShareSheet } from './Sheets'
-import { IconBack, IconCheck, IconCopy, IconMore, IconPhone, IconSearch, IconShare } from './icons'
+import { IconBack, IconCheck, IconCopy, IconMore, IconPhone, IconShare } from './icons'
 import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived' | 'excused'
@@ -31,7 +31,6 @@ export function Room({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
   // 分車：選了某一車之後，計數與名單都只算那一車——
   // 顧第一車的人要看的是「我這台還有幾個沒上」。
   const [group, setGroup] = useState<string | null>(null)
@@ -186,31 +185,33 @@ export function Room({ code }: { code: string }) {
           </button>
         </div>
         {/*
-          搜尋框長在頂欄裡，不在名單上方。
-          兩個理由，都是量出來的：80 人的名單首屏只看得到 5 個人名，而搜尋框
-          連間距吃掉 76px（正好一列人名）；而且它原本會跟著名單捲走——真正需要
-          搜尋的時刻是你已經捲過 60 個人、有人報上名字，那時要用它得先捲回
-          17 個螢幕（roll-call.md 的「頂欄標題可點回到頂端」就是為了這件事）。
-          頂欄是 sticky，搬進來之後兩個問題一起消失。
+          搜尋框長在頂欄裡，一直顯示，不是點了才展開。
+          三個理由，都是量出來的／試出來的：80 人的名單首屏只看得到 5 個人名，
+          而搜尋框連間距吃掉 76px（正好一列人名）；它原本會跟著名單捲走——真正
+          需要搜尋的時刻是你已經捲過 60 個人、有人報上名字，那時要用它得先捲回
+          17 個螢幕（roll-call.md 的「頂欄標題可點回到頂端」就是為了這件事）；
+          而且它整場反覆在用，多一次「先點開才能打字」是白白多出來的一步。
+          頂欄是 sticky，搬進來、一直開著，三個問題一起消失。
+
+          不自動聚焦：一進房間就跳出虛擬鍵盤會蓋掉半個畫面，而這裡不像過去
+          「按一下才展開」那樣是使用者剛做出的明確動作。
         */}
-        {searchOpen && (
-          <div class="shell search-wrap">
-            <input
-              class="input"
-              type="search"
-              value={query}
-              placeholder={t('searchPlaceholder')}
-              aria-label={t('searchPlaceholder')}
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              ref={(el) => el?.focus()}
-              onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
-              onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); setSearchOpen(false) } }}
-            />
-            {query && (
-              <button class="search-clear" onClick={() => setQuery('')} aria-label={t('cancel')}>×</button>
-            )}
-          </div>
-        )}
+        <div class="shell search-wrap">
+          <input
+            class="input"
+            type="search"
+            value={query}
+            placeholder={t('searchPlaceholder')}
+            aria-label={t('searchPlaceholder')}
+            onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { setQuery(''); (e.currentTarget as HTMLInputElement).blur() }
+            }}
+          />
+          {query && (
+            <button class="search-clear" onClick={() => setQuery('')} aria-label={t('cancel')}>×</button>
+          )}
+        </div>
 
         {/*
           篩選留在頂欄裡，和搜尋框同一個理由：頂欄是 sticky。
@@ -364,30 +365,6 @@ export function Room({ code }: { code: string }) {
           )}
         </div>
       </div>
-
-      {/*
-        搜尋鍵浮在右下角，底部動作列整條拿掉了。
-
-        兩個槽位裝的原本是「只看未到」與「複製結果」。前者在篩選搬進 sticky 頂欄
-        之後變成重複的按鈕——它存在的理由本來就是「收尾要按篩選，但你已經捲過
-        80 個人，得捲回頂端」，那個理由整條消失了。後者搬進管理面板：一場活動
-        按一次，不值得整場佔著一列人名的高度。
-
-        搜尋鍵反過來是整場反覆在用的，而它原本在頂欄右上角——390×844 上單手要跨
-        780px 過去。浮在拇指落點是對的位置。
-
-        但**輸入框仍然開在頂欄**（sticky），不跟著鍵盤走：`position: fixed` 的底部
-        元素在 iOS 是對著 layout viewport 定位的，鍵盤升起時會蓋住它，於是變成盲打。
-        觸發器在下、欄位在上，兩邊的問題都不用碰。
-      */}
-      <button
-        class={searchOpen ? 'fab is-on' : 'fab'}
-        onClick={() => setSearchOpen((v) => !v)}
-        aria-label={t('searchPlaceholder')}
-        aria-expanded={searchOpen}
-      >
-        <IconSearch />
-      </button>
 
       {sheet === 'share' && <ShareSheet code={current.code} onClose={() => setSheet(null)} />}
       {sheet === 'manage' && (
