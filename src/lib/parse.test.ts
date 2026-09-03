@@ -348,7 +348,7 @@ describe('parseRoster 分組', () => {
  */
 describe('填入範例的文字', () => {
   for (const lang of ['zh', 'en'] as const) {
-    it(`${lang}：每一行都解析得出一個人`, () => {
+    it(`${lang}：每一行都解析得出一列`, () => {
       const text = messages[lang].pasteExampleText
       const r = parseRoster(text)
       expect(r.skipped).toBe(0)
@@ -360,6 +360,24 @@ describe('填入範例的文字', () => {
       expect(r.members.some((m) => m.phone)).toBe(true)
       expect(r.members.some((m) => m.companions > 0)).toBe(true)
       expect(r.members.some((m) => m.status === 'excused')).toBe(true)
+    })
+
+    /**
+     * 範例最上面那行是活動標題，就跟真實的接龍一樣。它會被當成一個人——這不是
+     * 範例沒寫好，是解析器判斷不了、也刻意不猜的那件事，而預覽就是為它存在的。
+     * 所以這裡要同時成立：它真的變成第一列（否則示範不到），而且按一下 ✕ 就
+     * 乾淨消失、其他人一個不少（否則示範的是一個死路）。
+     */
+    it(`${lang}：第一行的活動標題會變成一列，而且拿得掉`, () => {
+      const text = messages[lang].pasteExampleText
+      const title = text.split('\n')[0] as string
+      const r = parseRoster(text)
+      expect(r.members[0]?.name).toBe(title)
+
+      const after = parseRoster(removeParsedMember(text, r.sources[0]!))
+      expect(after.members.map((m) => m.name)).toEqual(
+        r.members.slice(1).map((m) => m.name),
+      )
     })
   }
 })

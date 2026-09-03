@@ -29,9 +29,12 @@ const zh = {
   pastePlaceholder: '一行一個名字，LINE 接龍直接貼就行。',
   pasteExample: '填入範例',
   pasteExampleClear: '清除範例',
-  /* 範例的每一行都必須解析得出一個人（parse.test.ts 會驗）。分組標題不放進來——
-     預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範一件看不到的事。 */
-  pasteExampleText: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
+  /* 第一行是活動標題，而且刻意留著：真實的接龍最上面就是這一行，貼進來會被
+     當成一個人——這正是預覽存在的理由。範例照著真實的樣子給，順手就示範了
+     「這一列不是人，按 ✕ 拿掉」，比多寫一句說明有用。
+     每一行都要解析得出一列（parse.test.ts 會驗），所以分組標題不放進來——
+     那種標題會被靜靜吃掉，預覽也不顯示分組，貼進去等於有兩行憑空消失。 */
+  pasteExampleText: '秋季旅遊報名\n1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
   parsePreview: '解析結果',
   /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。
      「人次」不是贅詞而是單位標記：9 是列數、12 是人頭數，全站最容易搞混的兩個量。 */
@@ -321,7 +324,7 @@ const en: Record<MessageKey, string> = {
   pastePlaceholder: 'One name per line. Paste a chat thread as-is.',
   pasteExample: 'Fill in an example',
   pasteExampleClear: 'Clear the example',
-  pasteExampleText: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (absent)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
+  pasteExampleText: 'Autumn trip sign-up\n1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (absent)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
   parsedHeads: '{n} heads incl. companions',
