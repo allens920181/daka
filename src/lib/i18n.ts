@@ -91,8 +91,6 @@ const zh = {
   walkInAddedInGroup: '{name} 已加入「{group}」並標記已到',
   walkInAddedMany: '已加入 {n} 人並標記已到',
   backToTop: '回到名單頂端',
-  onlyMissing: '只看未到',
-  showAll: '看全部',
   removeFromPreview: '把「{name}」從名單移除',
   signOutWhat: '登出後，這支手機自己開的空間照樣管得動；用帳號接過來的活動會暫時看不到，重新登入就會回來。',
   roomClosedShort: '已關閉',
@@ -194,6 +192,7 @@ const zh = {
   export: '匯出',
   exportCsv: '下載 CSV',
   copySummary: '複製結果',
+  copySummaryHint: '貼回 LINE 群組。只複製目前這一車。',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
   // 同步
@@ -373,8 +372,6 @@ const en: Record<MessageKey, string> = {
   walkInAddedInGroup: '{name} added to \u201c{group}\u201d and marked here',
   walkInAddedMany: '{n} people added and marked here',
   backToTop: 'Back to top',
-  onlyMissing: 'Only missing',
-  showAll: 'Show all',
   removeFromPreview: 'Remove “{name}” from the list',
   signOutWhat: "After signing out you keep control of rooms this phone opened; events you took over with the account disappear until you sign in again.",
   roomClosedShort: 'Closed',
@@ -451,6 +448,7 @@ const en: Record<MessageKey, string> = {
   export: 'Export',
   exportCsv: 'Download CSV',
   copySummary: 'Copy result',
+  copySummaryHint: 'Paste it back to the group chat. Current group only.',
   summaryCopied: 'Result copied — paste it anywhere',
 
   syncOnline: 'Synced',

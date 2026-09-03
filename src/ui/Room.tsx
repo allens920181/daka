@@ -178,14 +178,6 @@ export function Room({ code }: { code: string }) {
               <SyncBadge />
             </div>
           </button>
-          <button
-            class={searchOpen ? 'icon-btn is-on' : 'icon-btn'}
-            onClick={() => setSearchOpen((v) => !v)}
-            aria-label={t('searchPlaceholder')}
-            aria-expanded={searchOpen}
-          >
-            <IconSearch />
-          </button>
           <button class="icon-btn" onClick={() => setSheet('share')} aria-label={t('share')}>
             <IconShare />
           </button>
@@ -202,7 +194,7 @@ export function Room({ code }: { code: string }) {
           頂欄是 sticky，搬進來之後兩個問題一起消失。
         */}
         {searchOpen && (
-          <div class="search-wrap">
+          <div class="shell search-wrap">
             <input
               class="input"
               type="search"
@@ -374,39 +366,37 @@ export function Room({ code }: { code: string }) {
       </div>
 
       {/*
-        底部動作列裝的是「收尾時真正要按的兩個動作」。
+        搜尋鍵浮在右下角，底部動作列整條拿掉了。
 
-        以前是「分享」＋「臨時加人」。但五支手機裡有四支是掃 QR 進來的協助者，
-        他們永遠不需要分享，卻整場都被那顆按鈕佔著最好的拇指位置；而收尾時真正
-        要做的是「只看未到」再一個一個打電話，那時你已經捲過 80 個人，得一路
-        捲回頂端才按得到篩選。
+        兩個槽位裝的原本是「只看未到」與「複製結果」。前者在篩選搬進 sticky 頂欄
+        之後變成重複的按鈕——它存在的理由本來就是「收尾要按篩選，但你已經捲過
+        80 個人，得捲回頂端」，那個理由整條消失了。後者搬進管理面板：一場活動
+        按一次，不值得整場佔著一列人名的高度。
 
-        這推翻了 01-foundations §1.3 原本的「位置穩定贏」——那條規則保護的是
-        肌肉記憶，但一次性的活動裡沒有人會產生肌肉記憶，前提本來就不成立。
-        兩個槽位仍然永遠固定、不隨狀態變動，換掉的是內容。
+        搜尋鍵反過來是整場反覆在用的，而它原本在頂欄右上角——390×844 上單手要跨
+        780px 過去。浮在拇指落點是對的位置。
 
-        分享退回頂欄那顆已經存在的圖示鍵（活動前用一次，一次點擊仍然到得了）；
-        臨時加人移進管理面板（一場活動 0-2 次，而「只看未到」是整個收尾都在用）。
-        這裡沒有 .btn-primary：這個畫面最主要的動作是點名單上的名字。
+        但**輸入框仍然開在頂欄**（sticky），不跟著鍵盤走：`position: fixed` 的底部
+        元素在 iOS 是對著 layout viewport 定位的，鍵盤升起時會蓋住它，於是變成盲打。
+        觸發器在下、欄位在上，兩邊的問題都不用碰。
       */}
-      <div class="dock">
-        <div class="dock-inner">
-          <button
-            class={filter === 'pending' ? 'btn btn-block is-on' : 'btn btn-block'}
-            aria-pressed={filter === 'pending'}
-            onClick={() => setFilter(filter === 'pending' ? 'all' : 'pending')}
-          >
-            {filter === 'pending' ? t('showAll') : t('onlyMissing')}
-          </button>
-          <button class="btn" onClick={() => { void copySummary() }}>
-            <IconCopy /> {t('copySummary')}
-          </button>
-        </div>
-      </div>
+      <button
+        class={searchOpen ? 'fab is-on' : 'fab'}
+        onClick={() => setSearchOpen((v) => !v)}
+        aria-label={t('searchPlaceholder')}
+        aria-expanded={searchOpen}
+      >
+        <IconSearch />
+      </button>
 
       {sheet === 'share' && <ShareSheet code={current.code} onClose={() => setSheet(null)} />}
       {sheet === 'manage' && (
-        <ManageSheet owner={isOwner.value} group={group} onClose={() => setSheet(null)} />
+        <ManageSheet
+          owner={isOwner.value}
+          group={group}
+          onCopySummary={() => { void copySummary() }}
+          onClose={() => setSheet(null)}
+        />
       )}
       {sheet === 'walkin' && <AddWalkInSheet group={group} onClose={() => setSheet(null)} />}
       {sheet && typeof sheet === 'object' && (

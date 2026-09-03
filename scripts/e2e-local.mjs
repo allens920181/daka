@@ -229,21 +229,37 @@ const toastBack = await p.evaluate(() => {
 ok(`面板關掉後 Toast 回到下緣（top=${toastBack}）`, toastBack > 400)
 await p.locator('.toast-action').click().catch(() => {}); await p.waitForTimeout(400)
 
-// #16 底部動作列裝的是「收尾時真正要按的兩個動作」。以前是分享＋臨時加人，
-// 但五支手機裡有四支是掃 QR 進來的協助者，他們永遠不需要分享；而收尾時真正要
-// 做的是「只看未到」，那時你已經捲過 80 個人，得一路捲回頂端才按得到篩選。
-const dockLabels = await p.locator('.dock .btn').allTextContents()
-ok(`底部動作列：${dockLabels.map(x=>x.trim()).join(' ｜ ')}`,
-   dockLabels.length === 2 && dockLabels[0].includes('只看未到') && dockLabels[1].includes('複製結果'))
-ok('分享不在動作列（退回頂欄那顆圖示鍵）',
-   !dockLabels.join('').includes('分享') && (await p.locator('.topbar button[aria-label="分享"]').count()) === 1)
-await p.locator('.dock .btn').first().click(); await p.waitForTimeout(400)
-ok('按下之後真的只剩未到', (await p.locator('.member.is-arrived').count()) === 0)
-ok('與上面的分段控制同步',
-   (await p.locator('.segmented button[aria-pressed=true]').textContent())?.includes('未到'))
-ok('切換鍵自己顯示為開啟', (await p.locator('.dock .btn').first().getAttribute('aria-pressed')) === 'true')
-await p.locator('.dock .btn').first().click(); await p.waitForTimeout(400)
-ok('再按一次回到全部', (await p.locator('.dock .btn').first().textContent())?.includes('看全部') === false)
+// #16 點名畫面沒有底部動作列。兩個槽位裝的是「只看未到」（篩選搬進 sticky 頂欄
+// 之後變成重複的按鈕）與「複製結果」（一場活動按一次，搬進管理面板）。留下來的
+// 是整場反覆在用的搜尋——浮在右下角的拇指落點。
+ok('點名畫面沒有底部動作列', (await p.locator('.dock').count()) === 0)
+const fab = p.locator('.fab')
+ok('右下角有浮動搜尋鍵', await fab.isVisible())
+const fabBox = await fab.boundingBox()
+const vp = p.viewportSize()
+ok(`浮動鍵在右下角且 ${Math.round(fabBox.width)}×${Math.round(fabBox.height)}（>=48px）`,
+   fabBox.width >= 48 && fabBox.height >= 48
+   && vp.width - (fabBox.x + fabBox.width) < 40 && vp.height - (fabBox.y + fabBox.height) < 40)
+ok('浮動鍵有無障礙名稱', ((await fab.getAttribute('aria-label')) || '').includes('搜尋'))
+ok('分享仍在頂欄那顆圖示鍵', (await p.locator('.topbar button[aria-label="分享"]').count()) === 1)
+ok('頂欄不再有放大鏡（搜尋只有一個入口）',
+   (await p.locator('.topbar button[aria-label*="搜尋"]').count()) === 0)
+
+// 輸入框刻意開在頂欄而不是浮動鍵旁邊：position: fixed 的底部元素在 iOS 會被
+// 鍵盤蓋住，變成盲打。觸發器在下、欄位在上。
+await fab.click(); await p.waitForTimeout(400)
+ok('按浮動鍵之後搜尋框開在頂欄裡', (await p.locator('.topbar .search-wrap input[type=search]').count()) === 1)
+ok('而且自動聚焦', await p.evaluate(() => document.activeElement?.getAttribute('type') === 'search'))
+ok('浮動鍵顯示為開啟', (await fab.getAttribute('aria-expanded')) === 'true')
+await fab.click(); await p.waitForTimeout(400)
+ok('再按一次收起', (await p.locator('input[type=search]').count()) === 0)
+
+// 複製結果搬進管理面板，排第一項。
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+const firstItem = await p.locator('.menu .menu-item').first().textContent()
+ok(`管理面板第一項是複製結果：「${(firstItem || '').trim().split('\n')[0]}」`,
+   (firstItem || '').includes('複製結果'))
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // #36 刪除是唯一不可復原的動作，不能一按就沒。
 await p.locator('.member').filter({ hasText: '王小明' }).locator('.icon-btn').last().click()
@@ -377,13 +393,13 @@ const printState = await p.evaluate(()=>{
   const hidden = (sel)=>{const e=document.querySelector(sel); return !e || getComputedStyle(e).display==='none'}
   const txt = (sel)=>document.querySelector(sel)?.textContent?.trim() ?? null
   const check = document.querySelector('.check')
-  return { dock:hidden('.dock'), topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
+  return { fab:hidden('.fab'), topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
     rows: document.querySelectorAll('.member').length,
     checkBg: check ? getComputedStyle(check).backgroundColor : null,
     title: txt('.print-title'), meta: txt('.print-meta'), blanks: txt('.print-blanks'),
     columns: getComputedStyle(document.querySelector('.list')).columnCount }
 })
-ok('列印時隱藏頂欄／動作列／篩選／搜尋', printState.dock&&printState.topbar&&printState.seg&&printState.search)
+ok('列印時隱藏頂欄／浮動鍵／篩選／搜尋', printState.fab&&printState.topbar&&printState.seg&&printState.search)
 ok(`列印仍保留名單 ${printState.rows} 列`, printState.rows===3)
 ok('列印的勾選格是空白的（給筆勾）', printState.checkBg==='rgb(255, 255, 255)')
 // 紙本備援是「手機沒電」時唯一剩下的東西。抬頭必須寫得出這是哪一場、代碼多少。
@@ -452,7 +468,8 @@ ok('而且等於分段控制的未到數', (await missing()) === gn[0])
 // --- 複製結果應限定在選取的分組 ---
 await ctx.grantPermissions(['clipboard-read','clipboard-write'])
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(300)
-await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(600)
+await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(700)
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))
 
@@ -498,26 +515,52 @@ await p.locator('#roster-text').fill(
 await p.waitForTimeout(800)
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(2200)
 const fold = await p.evaluate(() => {
-  const dockTop = document.querySelector('.dock')?.getBoundingClientRect().top ?? innerHeight
+  // 底部動作列拿掉之後，下緣只剩浮動搜尋鍵擋住右下角一小塊；量到視窗底部。
   const rows = [...document.querySelectorAll('.member')]
   return {
     firstNameTop: Math.round(rows[0].getBoundingClientRect().top),
-    visible: rows.filter((e) => e.getBoundingClientRect().bottom <= dockTop).length,
+    visible: rows.filter((e) => e.getBoundingClientRect().bottom <= innerHeight).length,
     searchInFlow: !!document.querySelector('.shell .search-wrap'),
+    hasDock: !!document.querySelector('.dock'),
   }
 })
-ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 6)
+ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 8)
+ok('沒有底部動作列吃掉高度', !fold.hasDock)
 ok('搜尋框不在名單流裡（它佔的 76px 等於一列人名）', !fold.searchInFlow)
-// 捲到名單深處，搜尋鈕必須還按得到——這是把它搬進頂欄的另一半理由。
+// 捲到名單深處，搜尋鍵必須還按得到——它是 fixed 的，永遠在拇指落點。
 await p.mouse.wheel(0, 3000); await p.waitForTimeout(500)
-ok('捲過 3000px 之後搜尋鈕仍在畫面上',
-   await p.getByRole('button', { name: /搜尋姓名/ }).isVisible())
-await p.getByRole('button', { name: /搜尋姓名/ }).click(); await p.waitForTimeout(300)
+ok('捲過 3000px 之後浮動搜尋鍵仍在畫面上', await p.locator('.fab').isVisible())
+await p.locator('.fab').click(); await p.waitForTimeout(300)
 await p.keyboard.type('第二車學員37'); await p.waitForTimeout(500)
 ok('深處也搜得到人', (await p.locator('.member').count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 收起搜尋並還原名單', (await p.locator('input[type=search]').count()) === 0
    && (await p.locator('.member').count()) === 80)
+
+// .list 的下方內距（見 styles.css）決定的是「捲到底之後最後一列還按得到嗎」，
+// 不是首屏能看到幾個人——這裡直接量兩個會蓋住它的東西：浮動鍵（永遠在）與
+// Toast（點名時彈出）。
+await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(400)
+const lastRowVsFab = await p.evaluate(() => {
+  const rows = [...document.querySelectorAll('.member')]
+  const last = rows[rows.length - 1]
+  const btn = last.querySelector('.icon-btn')
+  const fab = document.querySelector('.fab')
+  const b = btn.getBoundingClientRect(); const f = fab.getBoundingClientRect()
+  return !(b.right < f.left || b.left > f.right || b.bottom < f.top || b.top > f.bottom)
+})
+ok('捲到底之後，浮動搜尋鍵不蓋住最後一列的管理鍵', !lastRowVsFab)
+await p.locator('.member-main').last().click(); await p.waitForTimeout(400)
+const lastRowVsToast = await p.evaluate(() => {
+  const rows = [...document.querySelectorAll('.member')]
+  const last = rows[rows.length - 1]
+  const toast = document.querySelector('.toast')
+  if (!toast) return null
+  const l = last.getBoundingClientRect(); const t = toast.getBoundingClientRect()
+  return !(l.right < t.left || l.left > t.right || l.bottom < t.top || l.top > t.bottom)
+})
+ok('點了最後一人之後，Toast 不蓋住那一列', lastRowVsToast === false)
+await p.locator('.toast-action').click().catch(() => {}); await p.waitForTimeout(400)
 
 ok('沒有 JS 錯誤', errs.length === 0)
 if (errs.length) console.log(errs.join('\n'))
