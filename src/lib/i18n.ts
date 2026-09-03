@@ -28,6 +28,7 @@ const zh = {
   /* 格式細節從說明搬到範例：讀四行字才知道能貼什麼，不如按一下直接看到解析結果。 */
   pastePlaceholder: '一行一個名字，LINE 接龍直接貼就行。',
   pasteExample: '填入範例',
+  pasteExampleClear: '清除範例',
   /* 範例的每一行都必須解析得出一個人（parse.test.ts 會驗）。分組標題不放進來——
      預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範一件看不到的事。 */
   pasteExampleText: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
@@ -319,6 +320,7 @@ const en: Record<MessageKey, string> = {
   pasteRoster: 'Paste the roster',
   pastePlaceholder: 'One name per line. Paste a chat thread as-is.',
   pasteExample: 'Fill in an example',
+  pasteExampleClear: 'Clear the example',
   pasteExampleText: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (absent)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
@@ -543,4 +545,20 @@ export function translate(lang: Lang, key: MessageKey, vars?: Record<string, str
   const raw: string = messages[lang][key] ?? messages.zh[key]
   if (!vars) return raw
   return raw.replace(/\{(\w+)\}/g, (m, name: string) => String(vars[name] ?? m))
+}
+
+/**
+ * 這段文字就是「填入範例」填進去的那份範例嗎？
+ *
+ * 用來決定要不要給「清除範例」。判準刻意嚴格到逐字相同：清除鍵只該收回我們
+ * 自己放進去的東西，使用者一動手改，它就必須消失——否則那顆按鈕會從「取消範例」
+ * 悄悄變成「清空我剛貼好的 200 人名單」，而兩者長得一模一樣。
+ *
+ * 比對所有語言而不只是當下這個：填了中文範例再去設定裡切成英文，那段文字並不會
+ * 跟著變，清除鍵沒有理由在這時候消失。
+ */
+export function isExampleRoster(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  return Object.values(messages).some((m) => m.pasteExampleText.trim() === trimmed)
 }
