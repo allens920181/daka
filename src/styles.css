@@ -127,7 +127,7 @@
 
   /* --- 層級（只有這四層，不得插值）------------------------------------- */
   --z-sticky: 20;    /* 頂欄 */
-  --z-dock: 30;      /* 底部動作列（開空間）／浮動搜尋鍵（點名） */
+  --z-dock: 30;      /* 底部動作列（開空間） */
   --z-modal: 40;     /* 面板、確認對話框 */
   --z-toast: 50;     /* Toast：永遠在最上層，它可能是唯一的復原機會 */
 
@@ -305,9 +305,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn-google:active { background: var(--google-bg-active); }
 
 /* 切換鍵的「開」狀態。用色塊而不是 .btn-primary：它不是「這個畫面最主要的
-   動作」，只是一個開關現在是開著的（例：曾經的「只看未到」；.fab.is-on 是
-   同一個概念在浮動鍵上的版本，用實心而不是色塊，因為那顆鍵本身底色已經是
-   --raised，色塊在小尺寸上不夠分明）。 */
+   動作」，只是一個開關現在是開著的（例：曾經的「只看未到」）。 */
 .btn.is-on {
   background: var(--accent-soft); border-color: var(--accent);
   color: var(--accent); font-weight: 700;
@@ -518,6 +516,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。 */
 .search-wrap { position: relative; padding: 0 0 var(--sp-2); }
+/*
+ * 搜尋框跟它正上方的圖示鍵、正下方的分段控制共用同一套視覺語言，不是借來的
+ * 通用 .input：48px 高（--tap-min，跟 .icon-btn／.segment 對齊），填色底＋
+ * 透明邊框（跟 .segmented 的凹槽同一個 --surface-2），不是白底＋實邊——
+ * 不然它會像插進控制群組裡的表單欄位，而不是控制群組本身的一部分。
+ * 邊框寬度留著（只把顏色蓋成透明）：對焦時 .input:focus 換回 --accent，
+ * 寬度不變才不會讓框線突然冒出來把旁邊的字擠一下。
+ */
+.search-wrap .input {
+  height: var(--tap-min); padding: 0 var(--sp-3);
+  border-color: transparent; background: var(--surface-2);
+}
 /* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
    留自訂的那顆：它有 48px 的觸控目標與無障礙名稱，原生那顆兩者都沒有。 */
 .search-wrap input[type='search']::-webkit-search-cancel-button,
@@ -534,15 +544,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .list { margin-top: var(--sp-3); }
 
 /*
- * 底部留白要讓開浮動搜尋鍵與點名後彈出的 Toast，兩者誰的量都不能算——名單最後
- * 幾列被其中之一蓋住的話，收尾時要找的正是那幾個人。
+ * 底部留白要讓開點名後彈出的 Toast——蓋住名單最後幾列的話，收尾時要找的
+ * 正是那幾個人。
  *
- * 決定用量的是 Toast，不是浮動鍵：浮動鍵只佔右下角 72px（56px＋離底 16px），
- * Toast 卻是貼著下緣（`bottom: 88px`）＋自己的高度（約 62px）＝離底約 150px。
- * 這裡曾經是 176px（讓開整條底部動作列 88px＋Toast 88px，動作列拿掉後兩個
- * 數字都不再對）。160px 是實機量出來的最小值再加 8px 緩衝（見
- * scripts/e2e-local.mjs 的「捲到底、點名後 Toast 不蓋住最後一列」），比舊值
- * 省 16px——不多，因為 Toast 才是這裡真正的瓶頸，浮動鍵反而比動作列小得多。
+ * Toast 貼著下緣（`bottom: 88px`）＋自己的高度（約 62px）＝離底約 150px，
+ * 160px 是實機量出來的最小值再加 8px 緩衝（見 scripts/e2e-local.mjs 的
+ * 「捲到底、點名後 Toast 不蓋住最後一列」）。這裡曾經還要多讓開一顆浮動
+ * 搜尋鍵（72px），但那顆鍵比 Toast 小得多，從來不是決定這個數字的瓶頸；
+ * 拿掉之後 160px 這個數字本身不用跟著變，只是少一個要比較的對象。
  */
 .list { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: 160px; }
 
@@ -731,36 +740,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .dock-inner > .btn { flex: none; }
 .dock-inner > .btn-block { flex: 1 1 auto; min-width: 0; width: auto; }
 
-/*
- * 浮動搜尋鍵（點名畫面）。
- *
- * 那個畫面的底部動作列整條拿掉了：兩個槽位裝的是「只看未到」（篩選搬進 sticky
- * 頂欄之後變成重複的按鈕）與「複製結果」（一場活動按一次，搬進管理面板）。
- * 搜尋反過來是整場反覆在用、而且原本在頂欄右上角——390×844 上單手要跨 780px
- * 過去。浮在拇指落點是對的位置。
- *
- * 輸入框仍然開在頂欄，不放在這顆鍵旁邊：`position: fixed` 的底部元素在 iOS 是
- * 對著 layout viewport 定位的，鍵盤升起時會蓋住它，於是變成盲打。
- *
- * --el-2 是往上打光的那一階（原本給底部動作列）。這顆鍵貼在下緣，光從下面來
- * 才對得上；--el-1 在深色底上等於不存在（見 03-tokens §陰影）。
- */
-.fab {
-  position: fixed; right: var(--sp-4);
-  bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
-  z-index: var(--z-dock);
-  width: var(--tap-lg); height: var(--tap-lg);
-  display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--rule-strong); border-radius: var(--r-full);
-  background: var(--raised); color: var(--ink);
-  box-shadow: var(--el-2);
-  cursor: pointer; touch-action: manipulation;
-  transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
-}
-.fab:active { transform: scale(.96); }
-/* 開著的時候用實心強調色：它此刻是「關掉搜尋」，狀態要看得出來。 */
-.fab.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-
 /* === 面板 ================================================================ */
 
 /* 遮罩層。overlay-bottom 用於面板，overlay-center 用於確認對話框。 */
@@ -910,8 +889,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /*
  * 面板開著的時候 Toast 改貼上緣。
  *
- * 下緣的 88px 是為了讓開下緣的浮動鍵，但面板是從下緣長上來的：Toast 於是落在
- * 選單列之間，蓋住「結束這一輪」49px，而且 .toast 是 pointer-events: auto，
+ * 下緣的 88px 是為了讓開底部動作列（開空間畫面的 `.dock` 還在用這個間距），
+ * 但面板是從下緣長上來的：Toast 於是落在選單列之間，蓋住「結束這一輪」49px，
+ * 而且 .toast 是 pointer-events: auto，
  * 那五秒內那一列按不下去。深色下更難看出它是外來的——Toast 底色和
  * .menu-item:hover 同一個 --surface-2，圓角與左右內縮也同一套。
  *
@@ -967,7 +947,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
   /* .segmented 與 .search-wrap 都住在 .topbar 裡了，但留著名字：它們是否被藏起來
      是 e2e 直接驗的事情，而選擇器多寫一個不會錯。 */
-  .topbar, .dock, .fab, .toast-wrap, .overlay, .segmented, .search-wrap,
+  .topbar, .dock, .toast-wrap, .overlay, .segmented, .search-wrap,
   .member-side, .icon-btn, .btn, .groups, .banner { display: none !important; }
 
   /*
