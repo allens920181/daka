@@ -514,8 +514,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   content: ""; flex: 1; height: 1px; background: var(--rule);
 }
 
-/* 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。 */
-.search-wrap { position: relative; padding: 0 0 var(--sp-2); }
+/*
+ * 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。
+ * 只設 padding-bottom，不用 padding 簡寫：`.search-wrap` 跟 `.shell` 掛在
+ * 同一個元素上（`class="shell search-wrap"`），簡寫會把 `.shell` 的左右
+ * 內距（--sp-4）整個蓋成 0——搜尋框曾經因此貼齊螢幕邊緣，跟下面分段控制、
+ * 名單列的左右邊界對不齊。
+ */
+.search-wrap { position: relative; padding-bottom: var(--sp-2); }
 /*
  * 搜尋框跟它正上方的圖示鍵、正下方的分段控制共用同一套視覺語言，不是借來的
  * 通用 .input：48px 高（--tap-min，跟 .icon-btn／.segment 對齊），填色底＋
