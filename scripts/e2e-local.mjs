@@ -132,7 +132,7 @@ await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitFo
 ok('名單列上沒有撥號鍵了', (await p.locator('.member a[href^="tel:"]').count()) === 0)
 
 await p.locator('.member').filter({ hasText: '王小明' }).first()
-  .getByRole('button', { name: /管理|manage/ }).click()
+  .getByRole('button', { name: /更多|more/ }).click()
 await p.waitForTimeout(400)
 const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
 ok(`成員面板把備註裡的號碼做成撥號鍵 ${telHref}`, telHref === 'tel:0912345678')
@@ -140,12 +140,18 @@ ok('並標明它是備註裡的號碼',
    ((await p.locator('a[href^="tel:"] .sub').first().textContent()) ?? '').includes('備註'))
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
-// 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、QR、連結對任何人
-// 都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為
-// 是自己打錯而重打三次。分享面板必須當場說出來，不能照樣印 QR。
-await p.locator('.topbar button[aria-label="分享"]').click(); await p.waitForTimeout(1500)
-ok('單機模式：面板標題改成「這個空間只有你看得到」',
-   (await p.locator('.sheet-title').textContent())?.includes('只有你看得到'))
+// 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、連結、二維碼對任何
+// 人都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為
+// 是自己打錯而重打三次。分享分頁必須當場說出來，不能照樣列出那三種方式。
+// 分享 2026-09 從頂欄搬進「更多」的第三個分頁。
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(600)
+ok('頂欄沒有分享鍵了', (await p.locator('.topbar button[aria-label="分享"]').count()) === 0)
+await p.getByRole('button', { name: /^分享$/ }).click(); await p.waitForTimeout(1200)
+ok('單機模式：分享分頁說「這個空間只有你看得到」',
+   ((await p.locator('.note-warn').textContent()) || '').includes('只有你看得到'))
+ok('單機模式：不列代碼', (await p.getByRole('button', { name: /^代碼/ }).count()) === 0)
+ok('單機模式：不列連結', (await p.getByRole('button', { name: /^連結/ }).count()) === 0)
+ok('單機模式：不列二維碼', (await p.getByRole('button', { name: /^二維碼/ }).count()) === 0)
 ok('單機模式：不發代碼', (await p.locator('.code-display').count()) === 0)
 ok('單機模式：不產 QR', (await p.locator('.qr-card img').count()) === 0)
 ok('單機模式：不給「複製連結」', (await p.getByRole('button', { name: /傳給別人|複製連結/ }).count()) === 0)
@@ -197,7 +203,7 @@ ok(`請假不重複印：「${excusedText.trim()}」`, (excusedText.match(/請�
 // 都跟點名單列一樣（Room.tsx 的 toggle()），所以完全不留；「改回未到」只有
 // 從請假出發時才是唯一入口（點名單列只會跳去已到），這個狀態才留。
 const pendingRow = p.locator('.member').filter({ hasText: '王小明' })
-await pendingRow.getByRole('button', { name: /管理|manage/ }).click(); await p.waitForTimeout(400)
+await pendingRow.getByRole('button', { name: /更多|more/ }).click(); await p.waitForTimeout(400)
 ok('未到狀態的更多面板沒有「標記已到」',
    (await p.getByRole('button', { name: /^標記已到$/ }).count()) === 0)
 ok('未到狀態的更多面板沒有「改回未到」（本來就是未到）',
@@ -205,7 +211,7 @@ ok('未到狀態的更多面板沒有「改回未到」（本來就是未到）'
 ok('未到狀態的更多面板有「標記請假」', await p.getByRole('button', { name: /標記請假/ }).isVisible())
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
-await excusedRow.getByRole('button', { name: /管理|manage/ }).click(); await p.waitForTimeout(400)
+await excusedRow.getByRole('button', { name: /更多|more/ }).click(); await p.waitForTimeout(400)
 ok('請假狀態的更多面板沒有「標記已到」',
    (await p.getByRole('button', { name: /^標記已到$/ }).count()) === 0)
 ok('請假狀態的更多面板有「改回未到」（點名單列只會跳去已到，這是唯一入口）',
@@ -221,7 +227,7 @@ ok(`「改回未到」真的讓人變回未到（${missingBeforeRevert} → ${aw
 const notedRow = dupRows.first()
 ok('備註不再顯示在名單列上',
    !(await notedRow.locator('.chip-note').first().isVisible().catch(() => false)))
-await notedRow.getByRole('button', { name: /管理|manage/ }).click()
+await notedRow.getByRole('button', { name: /更多|more/ }).click()
 await p.waitForTimeout(400)
 const sheetText = (await p.locator('.sheet').textContent()) ?? ''
 ok('更多面板看得到備註原文（0912345678）', sheetText.includes('0912345678'))
@@ -241,7 +247,7 @@ await p.emulateMedia({ media: 'screen' }); await p.waitForTimeout(200)
 
 // #10 臨時加人：站在你面前的人不該被算成「未到」，而且要說一聲。
 const beforeMissing = await missing()
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/臨時加人/}).click(); await p.waitForTimeout(500)
 await p.locator('#roster-text').fill('路上遇到的人'); await p.waitForTimeout(400)
 await p.getByRole('button',{name:/加入名單/}).click(); await p.waitForTimeout(1200)
@@ -253,7 +259,7 @@ ok(`加完有說一聲：「${walkToast}」`, walkToast.includes('路上遇到�
 // Toast 於是落在選單列之間，實測蓋住「結束這一輪」49px，而且 .toast 是
 // pointer-events: auto，那五秒內那一列按不下去。面板開著時要移到上緣的遮罩區。
 await p.locator('.member-main').first().click(); await p.waitForTimeout(300)
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 const toastVsMenu = await p.evaluate(() => {
   const toast = document.querySelector('.toast')
   if (!toast) return { noToast: true }
@@ -291,13 +297,16 @@ ok('點名畫面沒有底部動作列', (await p.locator('.dock').count()) === 0
 ok('也沒有浮動搜尋鍵', (await p.locator('.fab').count()) === 0)
 ok('搜尋框一直開在頂欄裡，不必點開',
    (await p.locator('.topbar .search-wrap input[type=search]').count()) === 1)
-ok('分享仍在頂欄那顆圖示鍵', (await p.locator('.topbar button[aria-label="分享"]').count()) === 1)
+// 分享 2026-09 也收進「更多」了：頂欄只剩「更多」一顆動作鍵。
+ok('頂欄只剩「更多」一顆動作鍵',
+   (await p.locator('.topbar-inner > button.icon-btn').count()) === 2
+   && (await p.locator('.topbar button[aria-label="更多"]').count()) === 1)
 ok('頂欄不再有放大鏡（搜尋只有一個入口）',
    (await p.locator('.topbar button[aria-label*="搜尋"]').count()) === 0)
 
 // 高度與邊框要跟上下相鄰的控制項對齊——不是借來的通用 .input 樣式。
 const searchInputBox = await p.locator('.search-wrap input[type=search]').boundingBox()
-const iconBtnBox = await p.locator('.topbar button[aria-label="分享"]').boundingBox()
+const iconBtnBox = await p.locator('.topbar button[aria-label="更多"]').boundingBox()
 const segmentBox = await p.getByRole('button', { name: /^全部/ }).first().boundingBox()
 ok(`搜尋框高度（${Math.round(searchInputBox.height)}px）跟圖示鍵（${Math.round(iconBtnBox.height)}px）／分段控制（${Math.round(segmentBox.height)}px）一致`,
    Math.abs(searchInputBox.height - iconBtnBox.height) <= 1 && Math.abs(searchInputBox.height - segmentBox.height) <= 1)
@@ -309,7 +318,7 @@ ok('Esc 清空搜尋字但搜尋框還在', await p.locator('input[type=search]'
    && (await p.locator('input[type=search]').count()) === 1)
 
 // 「名單」分頁排序（2026-09）：編輯名單排第一項，複製結果緊接在後。
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 const firstItem = await p.locator('.menu .menu-item').first().textContent()
 ok(`管理面板第一項是編輯名單：「${(firstItem || '').trim().split('\n')[0]}」`,
    (firstItem || '').includes('編輯名單'))
@@ -333,9 +342,85 @@ ok('沒有資訊區塊時更多面板不畫分隔線', (await p.locator('.sheet 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 身分列整列拿掉（2026-09）：標籤搬到頂欄，名字與設定只剩首頁那顆齒輪進得去。
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(600)
-ok('管理面板沒有身分列了', (await p.locator('.sheet .role-line').count()) === 0)
-ok('管理面板沒有設定入口了', (await p.locator('.sheet button[aria-label="設定"]').count()) === 0)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(600)
+ok('「更多」面板沒有身分列了', (await p.locator('.sheet .role-line').count()) === 0)
+ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[aria-label="設定"]').count()) === 0)
+
+// 標題不印在畫面上，但無障礙名稱要留著（2026-09）。
+ok('「更多」不印標題', (await p.locator('.sheet .sheet-title').count()) === 0)
+ok('但無障礙名稱還在', (await p.locator('.sheet').getAttribute('aria-label')) === '更多')
+// 標題拿掉之後那一列只剩一顆孤零零的叉叉，所以叉叉也拿掉，整列給分頁鍵。
+// 收起來的三條路：點面板外面、Esc、從頂端那一帶往下滑。
+ok('「更多」沒有關閉鍵了', (await p.locator('.sheet-head .icon-btn').count()) === 0)
+ok('整列都是分頁鍵', (await p.locator('.sheet-head .segmented').count()) === 1)
+
+/** 從 sel 的中心往下（或往旁邊）滑，模擬手勢。 */
+async function swipe(sel, dy, dx = 0) {
+  const box = await p.locator(sel).boundingBox()
+  const x = box.x + box.width / 2
+  const y = box.y + box.height / 2
+  await p.mouse.move(x, y); await p.mouse.down()
+  for (let i = 1; i <= 6; i++) { await p.mouse.move(x + (dx * i) / 6, y + (dy * i) / 6); await p.waitForTimeout(20) }
+  await p.mouse.up(); await p.waitForTimeout(500)
+}
+const reopen = async () => {
+  await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+}
+
+await swipe('.sheet-grip', 30)
+ok('往下滑一點點不會收起來（手指抖一下不該關掉面板）', (await p.locator('.sheet').count()) === 1)
+await swipe('.sheet-grip', 130)
+ok('從握把往下滑收得起來', (await p.locator('.sheet').count()) === 0)
+
+// 手勢區包含標題列，不是只有那條 24px 的握把——但按著分頁鍵往下拖時，
+// Chromium 會把它當成拖曳選取的文字而送出 pointercancel，手勢會在第一公分
+// 就被吃掉。這一條就是在守 .sheet-head 的 user-select: none。
+await reopen()
+await swipe('.sheet-head', 130)
+ok('從分頁鍵那一列往下滑也收得起來', (await p.locator('.sheet').count()) === 0)
+
+// 橫向留給分頁鍵自己（.segmented 是可以橫向捲的），不能被手勢吃掉。
+await reopen()
+await swipe('.sheet .segment >> nth=0', 0, 120)
+ok('橫向滑分頁鍵不會收起面板', (await p.locator('.sheet').count()) === 1)
+await p.getByRole('button', { name: /^分享$/ }).click(); await p.waitForTimeout(300)
+ok('而且分頁鍵照樣按得動',
+   (await p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '分享')
+
+// 另外兩條路也要在。
+await p.mouse.click(195, 120); await p.waitForTimeout(400)
+ok('點面板外面關得掉', (await p.locator('.sheet').count()) === 0)
+await reopen()
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關得掉', (await p.locator('.sheet').count()) === 0)
+await reopen()
+
+// 三個分頁一樣高，而且分頁鍵不隨清單捲動——分頁鍵是同一根手指連續要按的
+// 東西，面板一長高，第二顆鍵就會跑到剛剛按下去的位置底下。
+const tabGeom = []
+for (const label of ['空間', '名單', '分享']) {
+  await p.getByRole('button', { name: new RegExp(`^${label}$`) }).click(); await p.waitForTimeout(250)
+  const sheet = await p.locator('.sheet').boundingBox()
+  const seg = await p.locator('.sheet .segmented').boundingBox()
+  tabGeom.push({ label, h: Math.round(sheet.height), segY: Math.round(seg.y) })
+}
+ok(`三個分頁一樣高（${tabGeom.map((g) => `${g.label} ${g.h}`).join('、')}）`,
+   new Set(tabGeom.map((g) => g.h)).size === 1)
+ok(`分頁鍵位置也不動（y=${[...new Set(tabGeom.map((g) => g.segY))].join('、')}）`,
+   new Set(tabGeom.map((g) => g.segY)).size === 1)
+
+// 「名單」比框長，捲的是框、不是整張面板：分頁鍵留在原地。
+await p.getByRole('button', { name: /^名單$/ }).click(); await p.waitForTimeout(250)
+const segBefore = Math.round((await p.locator('.sheet .segmented').boundingBox()).y)
+const scrolled = await p.locator('.manage-body').evaluate((el) => {
+  el.scrollTop = el.scrollHeight
+  return el.scrollTop
+})
+await p.waitForTimeout(300)
+const segAfter = Math.round((await p.locator('.sheet .segmented').boundingBox()).y)
+ok(`清單在框內捲得動（scrollTop=${scrolled}）`, scrolled > 0)
+ok(`捲到底之後分頁鍵還在原位（${segBefore} → ${segAfter}）`, segBefore === segAfter)
+
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('身分標籤搬到頂欄', (await p.locator('.topbar-sub .tag-owner').textContent())?.trim() === '主揪')
 // 排在代碼前面：身分（我能不能改）→ 空間（哪一間）→ 連線（存不存得進去）。
@@ -353,7 +438,7 @@ await p.locator('#room-name').fill('備註加號碼測試')
 await p.locator('#roster-text').fill('陳大同 0955666777 帶輪椅')
 await p.waitForTimeout(300)
 await p.getByRole('button', { name: /建立/ }).click(); await p.waitForTimeout(1000)
-await p.locator('.member').first().getByRole('button', { name: /管理|manage/ }).click()
+await p.locator('.member').first().getByRole('button', { name: /更多|more/ }).click()
 await p.waitForTimeout(400)
 const mixedSheetText = (await p.locator('.sheet').textContent()) ?? ''
 ok('備註帶額外文字時，備註欄位跟撥號鍵都印',
@@ -442,7 +527,7 @@ await p.waitForTimeout(300)
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
 
 // --- 確認對話框 ---
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 // 「刪除空間」搬進「空間」分頁（2026-09 管理面板分組）。
 await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
@@ -460,7 +545,7 @@ ok('Esc 關閉對話框，空間仍在', (await p.locator('[role=alertdialog]').
 // 以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、下載 CSV 在面板第一項、
 // 關閉空間在第九項），結果多數空間從未被關閉也從未被匯出，30 天後靜靜消失。
 await p.locator('.member-main').first().click(); await p.waitForTimeout(600)
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 // 「結束這一輪」在「空間」分頁（2026-09 管理面板分組：常用分頁拿掉，
 // 它跟容器本身的其他動作歸在一起）。
 await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
@@ -550,7 +635,7 @@ ok('看全部時有分組分隔', (await p.locator('.group-divider').count())===
 // 更多面板的分隔線只留一條：查得到的資訊（撥號鍵）跟會改動這個人的動作
 // （狀態鍵、改分組、移除）之間那一條。狀態鍵、改分組、移除以前各自開一條，
 // 三個常常都只裝一兩項東西，面板被切成一截一截。
-await p.locator('.member').filter({ hasText: '王小明' }).getByRole('button', { name: /管理|manage/ }).click()
+await p.locator('.member').filter({ hasText: '王小明' }).getByRole('button', { name: /更多|more/ }).click()
 await p.waitForTimeout(400)
 ok('更多面板只有一條分隔線（資訊與動作之間）', (await p.locator('.sheet .menu-divider').count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
@@ -582,7 +667,7 @@ ok('而且等於分段控制的未到數', (await missing()) === gn[0])
 // --- 複製結果應限定在選取的分組 ---
 await ctx.grantPermissions(['clipboard-read','clipboard-write'])
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(300)
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(700)
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))

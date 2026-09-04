@@ -208,12 +208,21 @@ for (const scheme of ['light', 'dark']) {
   await page.locator('.member-main').nth(0).click(); await page.waitForTimeout(500)
   await audit(page, scheme, '空間（含 Toast）')
 
-  await page.locator('.topbar button[aria-label="分享"]').click(); await page.waitForTimeout(1400)
-  await audit(page, scheme, '分享面板')
-  await page.keyboard.press('Escape'); await page.waitForTimeout(300)
-
-  await page.locator('.topbar button[aria-label="管理"]').click(); await page.waitForTimeout(500)
-  await audit(page, scheme, '管理面板')
+  // 分享住在「更多」的分享分頁裡（2026-09）。單機模式（沒設定 Supabase 的建置，
+  // 也就是這支腳本跑的那個）分享分頁只有一塊說明，三種方式一個都不列——所以
+  // 子頁面存在才驗，不存在也不算失敗。
+  await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(500)
+  await audit(page, scheme, '「更多」面板')
+  await page.getByRole('button', { name: /^分享$|^Share$/ }).click(); await page.waitForTimeout(400)
+  await audit(page, scheme, '「更多」· 分享分頁')
+  const codeRow = page.getByRole('button', { name: /^代碼|^Room code/ })
+  if (await codeRow.count()) {
+    await codeRow.click(); await page.waitForTimeout(400)
+    await audit(page, scheme, '分享 · 代碼')
+    await page.locator('.sheet-head .icon-btn').first().click(); await page.waitForTimeout(300)
+    await page.getByRole('button', { name: /^二維碼|^QR code/ }).click(); await page.waitForTimeout(1400)
+    await audit(page, scheme, '分享 · 二維碼')
+  }
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   await page.locator('.member').nth(1).locator('.icon-btn').last().click(); await page.waitForTimeout(400)
@@ -221,7 +230,7 @@ for (const scheme of ['light', 'dark']) {
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   // --- 分組（分車）---
-  await page.locator('.topbar button[aria-label="管理"]').click(); await page.waitForTimeout(400)
+  await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(400)
   await page.getByRole('button', { name: /編輯名單|Edit roster/ }).click(); await page.waitForTimeout(400)
   await page.locator('#roster-text').fill(
     '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（請假）\n張三\n李四')

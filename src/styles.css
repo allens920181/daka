@@ -793,7 +793,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 @media (prefers-reduced-motion: no-preference) {
   .overlay { animation: fade var(--dur-2) var(--ease); }
-  .sheet { animation: rise var(--dur-2) var(--ease); }
+  /* 放手沒滑夠遠時滑回原位；拖曳當下不能有轉場，不然手指會拖不動它。 */
+  .sheet { animation: rise var(--dur-2) var(--ease); transition: transform var(--dur-2) var(--ease); }
+  .sheet.is-dragging { transition: none; }
   .dialog { animation: pop var(--dur-2) var(--ease); }
   .toast { animation: rise var(--dur-2) var(--ease); }
 }
@@ -828,15 +830,63 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background-position: 0 100%, 0 100%;
   background-attachment: local, scroll;
 }
+/*
+ * 握把與標題列是「往下滑收起來」的手勢區（Sheet.tsx 的 drag）。握把本來只是
+ * 一條裝飾線，看起來可以拖卻拖不動；現在它跟標題列一起真的拖得動，而標題列
+ * 讓手勢區從 24px 變成 72px——單手大拇指按得到的範圍。
+ *
+ * touch-action 要放行它自己該做的事、擋掉其餘：握把底下沒有東西要捲，用 none；
+ * 標題列裡住著可以橫向捲的分頁鍵，用 pan-x 把橫向留給它，垂直交給我們。
+ */
 .sheet-grip {
-  width: 38px; height: 4px; border-radius: var(--r-full);
+  height: 4px; border-radius: var(--r-full);
   background: var(--rule-strong); margin: var(--sp-1) auto var(--sp-3);
+  /* 線本身仍然只有 38px 寬，但整條的高度都吃得到手勢——padding 撐出去的部分
+     用負的外距收回來，版面高度一格都沒有多長。 */
+  width: 38px; padding: var(--sp-2) var(--sp-5);
+  margin-top: calc(var(--sp-1) - var(--sp-2)); margin-bottom: calc(var(--sp-3) - var(--sp-2));
+  background-clip: content-box; box-sizing: content-box;
+  touch-action: none; cursor: grab;
 }
-.sheet-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.sheet.is-dragging .sheet-grip { cursor: grabbing; }
+.sheet-head {
+  display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3);
+  touch-action: pan-x;
+}
+/*
+ * 手勢區裡不選字。按著分頁鍵往下拖時，Chromium 會把它當成「拖曳選取的文字」
+ * 而開始一次原生拖放（dragstart），那會立刻送出 pointercancel——手勢在第一
+ * 公分就被吃掉，面板紋風不動。這一行是那個手勢能不能用的前提，不是修飾。
+ */
+.sheet-grip, .sheet-head { user-select: none; -webkit-user-select: none; }
 .sheet-title { font-size: var(--fs-5); }
 
-/* 管理面板的分頁（2026-09）：沿用篩選列同一顆 .segmented，不必再學一種新切法。 */
+/* 「更多」面板的分頁（2026-09）：沿用篩選列同一顆 .segmented，不必再學一種新切法。 */
 .sheet .segmented { margin-bottom: var(--sp-3); }
+/*
+ * 分頁鍵住在標題列裡，跟關閉鍵同一列（2026-09）：標題拿掉之後那一列只剩一顆
+ * 孤零零的叉叉，白佔 48px。分頁鍵撐滿剩下的寬度，關閉鍵是 flex: none 不會被
+ * 擠掉；分頁鍵自己擠不下時 .segmented 本來就會橫向捲。
+ */
+.sheet-head > .segmented { flex: 1; min-width: 0; margin-bottom: 0; }
+
+/*
+ * 「更多」三個分頁共用的固定高度框。高度以「空間」分頁為基準（主揪看到的四項，
+ * 副標拿掉之後每一列都只有一行，390px 與 320px 上都是 230px）：比它長的「名單」
+ * 在框內捲，比它短的「分享」留白，切分頁時面板高度不變。
+ *
+ * 為什麼要訂死：分頁鍵是同一根手指連續要按的東西，面板一長高，第二顆鍵就跑到
+ * 剛剛按下去的位置底下——按第二次會按到隔壁那一頁。
+ *
+ * 捲的是這個框而不是整張 .sheet，所以分頁鍵留在框外面，往下捲清單時它一直在
+ * 原位。矮螢幕改用 44vh 收斂：整張面板一旦超過 .sheet 的 88vh 就換成面板自己
+ * 捲，那時分頁鍵反而會跟著捲走，正好是這裡要避免的事。
+ * overscroll-behavior 擋住捲到底之後把底下的名單一起帶走。
+ */
+.manage-body {
+  height: min(230px, 44vh);
+  overflow-y: auto; overscroll-behavior: contain;
+}
 
 .menu { display: flex; flex-direction: column; gap: 2px; }
 /*
@@ -878,6 +928,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
   text-align: center; padding: var(--sp-4) var(--sp-2) var(--sp-4) var(--sp-5);
   background: var(--surface); border: 1px solid var(--rule);
   border-radius: var(--r-2); color: var(--ink);
+}
+/*
+ * 連結那一頁先把網址印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE
+ * 群。等寬字讓 l/1、O/0 分得開，`overflow-wrap` 讓長網址折行而不是把面板頂寬。
+ */
+.link-display {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-2); color: var(--ink-2);
+  padding: var(--sp-3); background: var(--surface); border: 1px solid var(--rule);
+  border-radius: var(--r-2); overflow-wrap: anywhere;
 }
 .qr-card {
   /* QR 一律白底黑碼：掃描器要的是對比，不是配色。 */

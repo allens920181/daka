@@ -86,7 +86,6 @@ const zh = {
   dropGone: '{name} 沒有存到：這個空間在伺服器上已經不在了',
   dropMore: '另有 {n} 筆',
   addWalkIn: '臨時加人',
-  walkInPlaceholder: '沒報名但到場的人',
   /* 臨時加人預設已到：這個功能的定義就是「人已經站在你面前」。 */
   walkInIntoGroup: '會加進「{group}」，而且直接算已到。',
   walkInAdded: '{name} 已加入並標記已到',
@@ -119,8 +118,7 @@ const zh = {
 
   // 分享
   share: '分享',
-  shareTitle: '讓其他人加入',
-  shareHint: '把代碼或 QR 給他們，不用註冊、不用安裝。',
+  shareHint: '把代碼、連結或二維碼給他們，不用註冊、不用安裝。',
   whoIsHere: '現在在這個空間裡',
   onlyYouHere: '目前只有你。把代碼或 QR 給協助點名的人，他們進來後會出現在這裡。',
   peersHere: '{n} 支手機：{names}',
@@ -133,13 +131,15 @@ const zh = {
   shareLocalBody: '這支手機沒連上雲端，名單只存在這裡。把代碼或連結給別人，他們會看到「找不到這個代碼」。',
   shareLocalHow: '多人一起點，要先設定雲端連線（見專案 README）。你還是可以自己點完，用「複製結果」或列印交出名單。',
   roomCode: '代碼',
+  roomLink: '連結',
+  roomQr: '二維碼',
   copyCode: '複製代碼',
   copyLink: '複製連結',
   copied: '已複製',
   scanToJoin: '掃描加入',
 
-  // 管理
-  manage: '管理',
+  // 更多（程式裡仍叫 manage：這是頂欄 ⋮ 那個面板，鍵名沒跟著文案改）
+  manage: '更多',
   // 管理面板分頁（2026-09）：13 個項目攤成一長串選單，掃過去要找的那一項
   // 常常要滾好幾屏。依「這個動作在動什麼」分兩類：名單本身、空間這個容器。
   manageTabs: '分類',
@@ -163,7 +163,6 @@ const zh = {
   /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉空間」——
      使用者心裡想的是「這件事做完了」，不是「把一個容器關起來」。 */
   finishRound: '結束這一輪',
-  finishRoundHint: '車開了就按這個。結束後不能再點名。',
   finishRoundBody: '紀錄還在。先帶走結果：',
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
@@ -196,7 +195,6 @@ const zh = {
   export: '匯出',
   exportCsv: '下載 CSV',
   copySummary: '複製結果',
-  copySummaryHint: '貼回 LINE 群組。只複製目前這一車。',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
   // 同步
@@ -271,7 +269,6 @@ const zh = {
      數字。晶片的數字不加文字標籤（見 roll-call.md），文字說明就得說明那個數字。 */
   groupCount: '{name}：{n} 位沒到',
   printRoster: '列印紙本名單',
-  printHint: '印出空白名單備用，手機沒電時用筆勾。',
 
   // 通用
   cancel: '取消',
@@ -362,7 +359,6 @@ const en: Record<MessageKey, string> = {
   dropGone: "{name} wasn't saved — this room no longer exists on the server",
   dropMore: '{n} more',
   addWalkIn: 'Add someone',
-  walkInPlaceholder: 'Someone who showed up unregistered',
   walkInIntoGroup: 'Goes into \u201c{group}\u201d, marked as here.',
   walkInAdded: '{name} added and marked here',
   walkInAddedInGroup: '{name} added to \u201c{group}\u201d and marked here',
@@ -386,8 +382,7 @@ const en: Record<MessageKey, string> = {
   add: 'Add',
 
   share: 'Share',
-  shareTitle: 'Let others join',
-  shareHint: 'Give them the code or the QR. No sign-up, no install.',
+  shareHint: 'Give them the code, the link or the QR code. No sign-up, no install.',
   whoIsHere: 'In this room now',
   onlyYouHere: "Just you so far. Give helpers the code or QR — they'll show up here once they join.",
   peersHere: '{n} phones: {names}',
@@ -399,12 +394,14 @@ const en: Record<MessageKey, string> = {
   shareLocalBody: "This phone has no cloud set up, so the list lives only here. Anyone you give the code to will just see \u201cthat code doesn't match a room\u201d.",
   shareLocalHow: 'Sharing one list across phones needs a cloud connection (see the README). You can still finish here and hand the result over with Copy or print.',
   roomCode: 'Room code',
+  roomLink: 'Link',
+  roomQr: 'QR code',
   copyCode: 'Copy code',
   copyLink: 'Copy link',
   copied: 'Copied',
   scanToJoin: 'Scan to join',
 
-  manage: 'Manage',
+  manage: 'More',
   manageTabs: 'Category',
   manageTabRoster: 'Roster',
   manageTabSpace: 'Space',
@@ -417,7 +414,6 @@ const en: Record<MessageKey, string> = {
   editRosterWarning: 'Replacing the roster clears every check-in. Continue?',
   rename: 'Rename',
   finishRound: 'Finish this round',
-  finishRoundHint: 'Once the bus leaves. No more check-ins after.',
   finishRoundBody: 'The record stays. Take the result with you first:',
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
@@ -443,7 +439,6 @@ const en: Record<MessageKey, string> = {
   export: 'Export',
   exportCsv: 'Download CSV',
   copySummary: 'Copy result',
-  copySummaryHint: 'Paste it back to the group chat. Current group only.',
   summaryCopied: 'Result copied — paste it anywhere',
 
   syncOnline: 'Synced',
@@ -505,7 +500,6 @@ const en: Record<MessageKey, string> = {
   removeFromGroup: 'Remove from group',
   groupCount: '{name}: {n} missing',
   printRoster: 'Print paper roster',
-  printHint: 'A blank tick-list, for when a phone dies.',
 
   cancel: 'Cancel',
   confirm: 'Confirm',
