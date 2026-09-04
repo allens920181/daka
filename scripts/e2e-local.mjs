@@ -370,6 +370,21 @@ ok('自訂清除鍵有 48px 觸控目標與無障礙名稱', await p.evaluate(()
   const r = b?.getBoundingClientRect()
   return Boolean(b?.getAttribute('aria-label')) && r && r.width >= 48 && r.height >= 48
 }))
+// 清除鍵的 top/right 量的是 .search-wrap 的 padding box，不是 .input 的邊緣
+// ——兩者曾經是同一件事，.search-wrap 拆出獨立的左右內距之後，清除鍵沒有
+// 跟著換算：垂直偏移了 4px（top: 50% 把 padding-bottom 也算進去），右側還
+// 超出 .input 邊界 12px（right 量到 .shell 內距外面的螢幕邊緣）。
+const clearAlign = await p.evaluate(() => {
+  const input = document.querySelector('.search-wrap .input')
+  const clear = document.querySelector('.search-clear')
+  const i = input.getBoundingClientRect(); const c = clear.getBoundingClientRect()
+  return {
+    vGap: Math.round((i.top + i.height / 2) - (c.top + c.height / 2)),
+    rGap: Math.round(i.right - c.right),
+  }
+})
+ok(`清除鍵跟輸入框垂直置中（誤差 ${clearAlign.vGap}px）`, Math.abs(clearAlign.vGap) <= 1)
+ok(`清除鍵在輸入框邊界之內、留合理間距（${clearAlign.rGap}px）`, clearAlign.rGap >= 2 && clearAlign.rGap <= 8)
 ok('原生清除鍵被關掉（只剩自訂的那顆）', await p.evaluate(() => {
   for (const sheet of document.styleSheets) {
     let rules; try { rules = sheet.cssRules } catch { continue }

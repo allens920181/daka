@@ -42,6 +42,14 @@
   高度；填色底＋透明邊框用 `--surface-2`，跟正下方 `.segmented` 的凹槽同一個
   顏色——不然它會看起來像插進控制群組裡的表單欄位，而不是控制群組本身的
   一部分。
+- **`.search-clear` 的 `top`／`right` 要換算成 `.input` 的邊緣，不是
+  `.search-wrap` 的邊緣。** 兩者曾經是同一件事：`.search-wrap` 左右內距被
+  簡寫蓋成 0 的時候，`.input`（`width: 100%`）跟清除鍵的絕對定位剛好都量到
+  同一個邊。拆開之後（見上面「搜尋列在頂欄裡」的內距說明）`.input` 縮進了
+  `.shell` 的內距（`--sp-4`），清除鍵卻沒有跟著換算，垂直偏了 4px（`top: 50%`
+  把 `.search-wrap` 的 `padding-bottom` 也算進去）、右邊也超出 `.input`
+  邊界 12px。`right` 要加回 `--sp-4` 才是量到 `.input` 的邊緣，`top: 0`
+  （兩者同高、`.search-wrap` 沒有上內距）比再算一次 `50%` 更直接。
 
 **無障礙契約** — 有 `aria-label`（因為沒有可見 label）。清除鍵有自己的 `aria-label`。
 
