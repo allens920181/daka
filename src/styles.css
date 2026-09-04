@@ -271,8 +271,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   min-height: var(--tap-min); padding: 0 var(--sp-4);
-  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
-  background: var(--surface); color: var(--ink);
+  /* 次要按鈕是實心淡底，不描邊——邊框留給真的需要當狀態訊號的變體
+     （.btn-google 的第三方規範、.is-on 的開關狀態）。 */
+  border: 1px solid transparent; border-radius: var(--r-2);
+  background: var(--surface-2); color: var(--ink);
   font-size: var(--fs-4); font-weight: 600; cursor: pointer;
   transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
   touch-action: manipulation;
@@ -302,7 +304,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .btn-ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
 .btn-ghost:hover { background: var(--surface-2); }
-.btn-danger { color: var(--fb-error); border-color: var(--rule); }
+.btn-danger { color: var(--fb-error); }
 .btn-danger:hover { background: var(--fb-error-soft); }
 .btn-block { width: 100%; }
 .btn-lg { min-height: var(--tap-lg); }
@@ -351,8 +353,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 .input, .textarea {
   width: 100%; padding: var(--sp-3) var(--sp-3);
-  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
-  background: var(--surface); color: var(--ink);
+  /* 淡底、無邊框——跟 .search-wrap .input 同一套「填色定義形狀」的作法，
+     邊框留給對焦時才需要的那圈強訊號（見下面 :focus）。 */
+  border: 1px solid transparent; border-radius: var(--r-2);
+  background: var(--surface-2); color: var(--ink);
   font-size: var(--fs-4);
 }
 .input:focus, .textarea:focus {
@@ -512,8 +516,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .group-chip {
   display: inline-flex; align-items: center; gap: var(--sp-2);
   min-height: var(--tap-min); padding: 0 var(--sp-3); flex: 0 0 auto;
-  border: 1px solid var(--rule-strong); border-radius: var(--r-full);
-  background: var(--surface); color: var(--ink-2);
+  /* 未選取時淡底無邊框，跟 .tag 同一套；邊框只留給選取狀態當訊號。 */
+  border: 1px solid transparent; border-radius: var(--r-full);
+  background: var(--surface-2); color: var(--ink-2);
   font-size: var(--fs-3); font-weight: 600; cursor: pointer;
   white-space: nowrap; touch-action: manipulation;
 }
