@@ -536,6 +536,15 @@ export function MemberSheet({ member, owner, onClose }: {
   // 下面的撥號鍵會連續印兩次一模一樣的數字。撥號鍵已經把這串數字講完了
   // （還多了一顆可以按），備註原文在這裡沒有多給任何資訊，是重複。
   const noteIsJustPhone = notedPhones.length === 1 && member.note?.trim() === notedPhones[0]
+  const extraPhones = notedPhones.filter((d) => d.replace(/\D/g, '') !== member.phone)
+
+  // 分隔線只留一條，畫在「查得到的資訊」與「會改動這個人的動作」之間——這是
+  // 唯一真的需要隔開的界線。下面的狀態鍵、改分組、移除，本來各自帶一條自己的
+  // 分隔線，三個都只裝一兩項東西，畫面被切成一截一截，比它們要分開的東西還
+  // 顯眼。狀態鍵改用文字位置分開、移除鍵單靠 .danger 的紅色跟排在最後（跟
+  // ManageSheet 的「刪除空間」同一套做法），都不必再各自開一條線。
+  const hasInfoSection = (member.note && !noteIsStatus && !noteIsJustPhone) || Boolean(member.phone) || extraPhones.length > 0
+  const hasActionsSection = !closed || owner
 
   // 從名單列點名有 5 秒復原；從這裡做同一件事卻什麼都沒有。同一個結果要有
   // 同一種安全網，否則使用者學不會「哪一種操作可以反悔」。
@@ -590,86 +599,80 @@ export function MemberSheet({ member, owner, onClose }: {
           </a>
         )}
 
-        {notedPhones
-          .filter((d) => d.replace(/\D/g, '') !== member.phone)
-          .map((d) => (
-            <a key={d} class="menu-item" href={telHref(d)}>
-              <IconPhone />
-              <span>
-                <strong class="mono">{d}</strong>
-                <span class="sub">{t('fromNote')}</span>
-              </span>
-            </a>
-          ))}
+        {extraPhones.map((d) => (
+          <a key={d} class="menu-item" href={telHref(d)}>
+            <IconPhone />
+            <span>
+              <strong class="mono">{d}</strong>
+              <span class="sub">{t('fromNote')}</span>
+            </span>
+          </a>
+        ))}
 
-        {!closed && (
-          <>
-            <div class="menu-divider" />
-            {/*
-              「標記已到」不放在這裡：名單列整片可點就是切換已到，任何狀態
-              點下去都會變成已到（見 Room.tsx 的 toggle()）——面板裡再放一顆
-              一模一樣的按鈕只是重複，是這個面板看起來雜亂的原因之一。
+        {hasInfoSection && hasActionsSection && <div class="menu-divider" />}
 
-              「改回未到」只在請假狀態才留：從已到點名單列就會變回未到，這條
-              路本來就有；但從請假點名單列只會跳去已到，回未到沒有第二條路，
-              這顆鍵是唯一入口，不能一起拿掉。
-            */}
-            {member.status === 'excused' && (
-              <button class="menu-item" onClick={() => mark('pending', t('missing'))}>
-                <IconUndo />
-                <span><strong>{t('markMissing')}</strong></span>
-              </button>
-            )}
-            {member.status !== 'excused' && (
-              <button class="menu-item" onClick={() => mark('excused', t('excused'))}>
-                <IconCalendar />
-                <span><strong>{t('markExcused')}</strong></span>
-              </button>
-            )}
-          </>
+        {/*
+          「標記已到」不放在這裡：名單列整片可點就是切換已到，任何狀態
+          點下去都會變成已到（見 Room.tsx 的 toggle()）——面板裡再放一顆
+          一模一樣的按鈕只是重複，是這個面板看起來雜亂的原因之一。
+
+          「改回未到」只在請假狀態才留：從已到點名單列就會變回未到，這條
+          路本來就有；但從請假點名單列只會跳去已到，回未到沒有第二條路，
+          這顆鍵是唯一入口，不能一起拿掉。
+        */}
+        {!closed && member.status === 'excused' && (
+          <button class="menu-item" onClick={() => mark('pending', t('missing'))}>
+            <IconUndo />
+            <span><strong>{t('markMissing')}</strong></span>
+          </button>
+        )}
+        {!closed && member.status !== 'excused' && (
+          <button class="menu-item" onClick={() => mark('excused', t('excused'))}>
+            <IconCalendar />
+            <span><strong>{t('markExcused')}</strong></span>
+          </button>
         )}
 
         {owner && groups.value.length > 0 && (
-          <>
-            <div class="menu-divider" />
-            <div class="field" style="padding: 0 12px 8px">
-              <span class="label">{t('changeGroup')}</span>
-              <div class="groups">
-                {groups.value.map((g) => (
-                  <button
-                    key={g}
-                    class="group-chip"
-                    aria-pressed={member.group_label === g}
-                    onClick={() => { void setMemberGroup(member.id, g); onClose() }}
-                  >
-                    {g}
-                  </button>
-                ))}
-                {member.group_label && (
-                  <button
-                    class="group-chip"
-                    onClick={() => { void setMemberGroup(member.id, null); onClose() }}
-                  >
-                    {t('removeFromGroup')}
-                  </button>
-                )}
-              </div>
+          <div class="field" style="padding: var(--sp-2) 12px 8px">
+            <span class="label">{t('changeGroup')}</span>
+            <div class="groups">
+              {groups.value.map((g) => (
+                <button
+                  key={g}
+                  class="group-chip"
+                  aria-pressed={member.group_label === g}
+                  onClick={() => { void setMemberGroup(member.id, g); onClose() }}
+                >
+                  {g}
+                </button>
+              ))}
+              {member.group_label && (
+                <button
+                  class="group-chip"
+                  onClick={() => { void setMemberGroup(member.id, null); onClose() }}
+                >
+                  {t('removeFromGroup')}
+                </button>
+              )}
             </div>
-          </>
+          </div>
         )}
 
+        {/*
+          移除不再自己開一條分隔線：狀態鍵、改分組、移除三個都只裝一兩項
+          東西，各自一條線會把面板切成一截一截，比它們要分開的東西還顯眼。
+          移除單靠 .danger 的紅色跟排在最後跟其他動作分開——跟 ManageSheet
+          的「刪除空間」同一套做法，這個面板不必另外發明一條規則。
+        */}
         {owner && (
-          <>
-            <div class="menu-divider" />
-            {/* 刪除是這個面板裡唯一不可復原的動作，而它坐在最好按的位置。 */}
-            <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
-              <IconTrash />
-              <span>
-                <strong>{t('removeMember')}</strong>
-                <span class="sub">{t('removeMemberSub')}</span>
-              </span>
-            </button>
-          </>
+          <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
+            <IconTrash />
+            <span>
+              <strong>{t('removeMember')}</strong>
+              <span class="sub">{t('removeMemberSub')}</span>
+            </span>
+          </button>
         )}
       </div>
     </Sheet>

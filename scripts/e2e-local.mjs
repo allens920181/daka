@@ -319,6 +319,9 @@ await p.getByRole('button',{name:/^取消$/}).click(); await p.waitForTimeout(40
 ok('取消之後人還在', (await p.locator('.member').filter({ hasText: '王小明' }).count()) === 1)
 // 取消會退回成員面板（而不是整個關掉），這是對的——使用者本來就在那裡。
 ok('取消後退回成員面板而不是全部關掉', (await p.locator('.sheet').count()) === 1)
+// 王小明沒有備註可看，這裡完全沒有「查得到的資訊」區塊——分隔線也不該畫，
+// 兩邊要都有東西才分得開。
+ok('沒有資訊區塊時更多面板不畫分隔線', (await p.locator('.sheet .menu-divider').count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // #13 協助者要有地方寫上自己的名字，否則「誰點的」永遠是匿名。
@@ -502,6 +505,14 @@ ok(`分組晶片：${chips.join(' | ')}`, chips.length===3 && chips[1].includes(
 // 6 列，陳大同請假 → 該到 5，一個都還沒到。
 ok('全部：未到 5（陳大同請假不算）', (await missing())==='5')
 ok('看全部時有分組分隔', (await p.locator('.group-divider').count())===2)
+
+// 更多面板的分隔線只留一條：查得到的資訊（撥號鍵）跟會改動這個人的動作
+// （狀態鍵、改分組、移除）之間那一條。狀態鍵、改分組、移除以前各自開一條，
+// 三個常常都只裝一兩項東西，面板被切成一截一截。
+await p.locator('.member').filter({ hasText: '王小明' }).getByRole('button', { name: /管理|manage/ }).click()
+await p.waitForTimeout(400)
+ok('更多面板只有一條分隔線（資訊與動作之間）', (await p.locator('.sheet .menu-divider').count()) === 1)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 
 // 選第一車 → 計數只算那一車
