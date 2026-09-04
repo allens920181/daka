@@ -835,8 +835,26 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sheet-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
 .sheet-title { font-size: var(--fs-5); }
 
-/* 管理面板的分頁（2026-09）：沿用篩選列同一顆 .segmented，不必再學一種新切法。 */
+/* 「更多」面板的分頁（2026-09）：沿用篩選列同一顆 .segmented，不必再學一種新切法。 */
 .sheet .segmented { margin-bottom: var(--sp-3); }
+
+/*
+ * 「更多」三個分頁共用的固定高度框。高度以「空間」分頁為基準（主揪看到的四項，
+ * 390px 上量到 237px、320px 上因為換行是 257px），取 260px 讓兩種寬度都放得下：
+ * 比它長的「名單」在框內捲，比它短的「分享」留白，切分頁時面板高度不變。
+ *
+ * 為什麼要訂死：分頁鍵是同一根手指連續要按的東西，面板一長高，第二顆鍵就跑到
+ * 剛剛按下去的位置底下——按第二次會按到隔壁那一頁。
+ *
+ * 捲的是這個框而不是整張 .sheet，所以分頁鍵留在框外面，往下捲清單時它一直在
+ * 原位。矮螢幕改用 44vh 收斂：整張面板一旦超過 .sheet 的 88vh 就換成面板自己
+ * 捲，那時分頁鍵反而會跟著捲走，正好是這裡要避免的事。
+ * overscroll-behavior 擋住捲到底之後把底下的名單一起帶走。
+ */
+.manage-body {
+  height: min(260px, 44vh);
+  overflow-y: auto; overscroll-behavior: contain;
+}
 
 .menu { display: flex; flex-direction: column; gap: 2px; }
 /*

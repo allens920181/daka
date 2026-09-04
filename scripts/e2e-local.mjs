@@ -343,8 +343,39 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 身分列整列拿掉（2026-09）：標籤搬到頂欄，名字與設定只剩首頁那顆齒輪進得去。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(600)
-ok('管理面板沒有身分列了', (await p.locator('.sheet .role-line').count()) === 0)
-ok('管理面板沒有設定入口了', (await p.locator('.sheet button[aria-label="設定"]').count()) === 0)
+ok('「更多」面板沒有身分列了', (await p.locator('.sheet .role-line').count()) === 0)
+ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[aria-label="設定"]').count()) === 0)
+
+// 標題不印在畫面上，但無障礙名稱要留著（2026-09）。
+ok('「更多」不印標題', (await p.locator('.sheet .sheet-title').count()) === 0)
+ok('但無障礙名稱還在', (await p.locator('.sheet').getAttribute('aria-label')) === '更多')
+
+// 三個分頁一樣高，而且分頁鍵不隨清單捲動——分頁鍵是同一根手指連續要按的
+// 東西，面板一長高，第二顆鍵就會跑到剛剛按下去的位置底下。
+const tabGeom = []
+for (const label of ['空間', '名單', '分享']) {
+  await p.getByRole('button', { name: new RegExp(`^${label}$`) }).click(); await p.waitForTimeout(250)
+  const sheet = await p.locator('.sheet').boundingBox()
+  const seg = await p.locator('.sheet .segmented').boundingBox()
+  tabGeom.push({ label, h: Math.round(sheet.height), segY: Math.round(seg.y) })
+}
+ok(`三個分頁一樣高（${tabGeom.map((g) => `${g.label} ${g.h}`).join('、')}）`,
+   new Set(tabGeom.map((g) => g.h)).size === 1)
+ok(`分頁鍵位置也不動（y=${[...new Set(tabGeom.map((g) => g.segY))].join('、')}）`,
+   new Set(tabGeom.map((g) => g.segY)).size === 1)
+
+// 「名單」比框長，捲的是框、不是整張面板：分頁鍵留在原地。
+await p.getByRole('button', { name: /^名單$/ }).click(); await p.waitForTimeout(250)
+const segBefore = Math.round((await p.locator('.sheet .segmented').boundingBox()).y)
+const scrolled = await p.locator('.manage-body').evaluate((el) => {
+  el.scrollTop = el.scrollHeight
+  return el.scrollTop
+})
+await p.waitForTimeout(300)
+const segAfter = Math.round((await p.locator('.sheet .segmented').boundingBox()).y)
+ok(`清單在框內捲得動（scrollTop=${scrolled}）`, scrolled > 0)
+ok(`捲到底之後分頁鍵還在原位（${segBefore} → ${segAfter}）`, segBefore === segAfter)
+
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('身分標籤搬到頂欄', (await p.locator('.topbar-sub .tag-owner').textContent())?.trim() === '主揪')
 // 排在代碼前面：身分（我能不能改）→ 空間（哪一間）→ 連線（存不存得進去）。

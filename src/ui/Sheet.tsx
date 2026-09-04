@@ -9,13 +9,19 @@ import { useT } from './t'
  * 需要使用者做「是或否」的決定時用 ConfirmDialog，不要用面板。
  */
 export function Sheet({
-  title, onClose, onBack, children,
+  title, onClose, onBack, hideTitle = false, children,
 }: {
   title: string
   onClose: () => void
-  /** 只有面板內有多階段時才傳（例如管理面板的子畫面）：回上一頁，跟
+  /** 只有面板內有多階段時才傳（例如「更多」面板的子畫面）：回上一頁，跟
    *  onClose（離開整個面板）是兩個不同的動作。 */
   onBack?: () => void
+  /**
+   * 標題只當無障礙名稱用，畫面上不印。用在標題只是複述底下那排分頁的面板
+   * ——「更多」兩個字說不出任何一件這裡做得到的事，而分頁鍵已經寫著空間、
+   * 名單、分享。`aria-label` 仍然是 title，螢幕閱讀器聽得到的沒有變少。
+   */
+  hideTitle?: boolean
   children: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)
@@ -35,7 +41,7 @@ export function Sheet({
               <IconBack />
             </button>
           )}
-          <h2 class="sheet-title">{title}</h2>
+          {!hideTitle && <h2 class="sheet-title">{title}</h2>}
           <div class="spacer" />
           <button class="icon-btn" onClick={onClose} aria-label={t('close')}>
             <IconClose />

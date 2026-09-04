@@ -117,7 +117,9 @@ await B.p.goto(`${URL}#/r/${newCode}`); await B.p.waitForTimeout(1800)
 // 沒有變化，會繼續在舊空間打勾。複製完的下一個動作 100% 是把新代碼發出去，
 // 所以分享面板要自己打開。
 // 分享 2026-09 搬進「更多」的分享分頁，所以自動打開的是那個面板的那一頁。
-ok('[主揪] 複製完自動打開「更多」', (await A.p.locator('.sheet-title').textContent())?.includes('更多'))
+// 「更多」面板不印標題（2026-09），無障礙名稱還在 .sheet 的 aria-label 上。
+ok('[主揪] 複製完自動打開「更多」',
+   (await A.p.locator('.sheet').getAttribute('aria-label'))?.includes('更多'))
 ok('[主揪] 而且直接停在分享分頁',
    (await A.p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '分享')
 ok('[主揪] 分享分頁上就是新代碼',
