@@ -7,7 +7,7 @@ const zh = {
   tagline: '大家一起點同一份名單',
 
   // 首頁
-  openRoom: '開啟空間',
+  openRoom: '創建空間',
   joinRoom: '加入空間',
   /* 標籤問問題，placeholder 給例子。原本兩處共用同一個字串，19 字的問句上下相隔
      20px 完整重複兩遍。重複的是例子，不是問句，所以例子搬到 placeholder 就結案。 */
@@ -20,6 +20,13 @@ const zh = {
   // copyRoomHintHelper 都已經寫成「主揪」），不要在標籤裡另外發明一種說法。
   owner: '主揪',
   helper: '協助者',
+  /* 首頁的空間清單原本拆成「我的活動」「最近的空間」兩個各自獨立的區塊，合併
+     成一份清單之後改用這三顆分段鍵切換看哪個子集合——跟點名畫面篩選「全部／
+     未到／已到」是同一個手勢，不必再學一種新切法。 */
+  roomFilterAll: '所有',
+  roomFilterMine: '我的',
+  roomFilterOthers: '他人的',
+  noOtherRooms: '還沒有加入別人的空間。用代碼加入，它就會出現在這裡。',
   create: '建立',
   join: '加入',
   forget: '從清單移除',
@@ -296,7 +303,7 @@ const en: Record<MessageKey, string> = {
   appName: 'RollRoom',
   tagline: 'Everyone checks the same list',
 
-  openRoom: 'Open a room',
+  openRoom: 'Create a room',
   joinRoom: 'Join a room',
   roomNameLabel: "What's this event?",
   roomNamePlaceholder: 'e.g. Autumn trip · Departure',
@@ -305,6 +312,10 @@ const en: Record<MessageKey, string> = {
   noRecentRooms: 'No rooms yet. Open one, or join with a code.',
   owner: 'Organizer',
   helper: 'Helper',
+  roomFilterAll: 'All',
+  roomFilterMine: 'Mine',
+  roomFilterOthers: "Others'",
+  noOtherRooms: "You haven't joined anyone else's room yet. Join with a code and it'll show up here.",
   create: 'Create',
   join: 'Join',
   forget: 'Remove from list',
