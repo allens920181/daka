@@ -19,7 +19,7 @@ import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLock,
-  IconChevronDown, IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
+  IconChevronDown, IconGoogle, IconPhone, IconPlus, IconPrinter, IconShare, IconTag, IconTrash,
   IconUndo, IconUser,
 } from './icons'
 import { useT } from './t'
@@ -147,7 +147,7 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings' | 'walkin'
+type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'walkin'
 // 管理面板分頁（2026-09）。依「這個動作在動什麼」分類：'roster' 底下是名單
 // 本身——資料與跟這份名單有關的現場動作；'space' 底下是空間這個容器。曾經
 // 想過第三個「常用」分頁裝複製結果／臨時加人／結束這一輪，但「多常按」跟
@@ -192,7 +192,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
 
   if (mode === 'copy') {
     return (
-      <Sheet title={t('copyRoom')} onClose={onClose}>
+      <Sheet title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <p class="hint">{t('copyRoomHint')}</p>
           <div class="field">
@@ -203,24 +203,21 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
             />
           </div>
           {error && <p class="note note-warn">{error}</p>}
-          <div class="row">
-            <button class="btn btn-block" onClick={() => setMode('menu')}>{t('cancel')}</button>
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || !value.trim()}
-              onClick={() => { void run(async () => {
-                const code = await copyCurrentRoom(value)
-                onClose()
-                // 回程空間是新的代碼，五支協助的手機還開著舊空間——複製完的下一個
-                // 動作 100% 是把新的代碼發出去。不主動提醒的話，主揪會直接
-                // 開始點名，而其他人繼續在舊空間打勾，兩邊的數字各走各的。
-                shareOnEnter.value = code
-                navigate(`/r/${code}`)
-              }) }}
-            >
-              {working ? t('loading') : t('confirm')}
-            </button>
-          </div>
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => {
+              const code = await copyCurrentRoom(value)
+              onClose()
+              // 回程空間是新的代碼，五支協助的手機還開著舊空間——複製完的下一個
+              // 動作 100% 是把新的代碼發出去。不主動提醒的話，主揪會直接
+              // 開始點名，而其他人繼續在舊空間打勾，兩邊的數字各走各的。
+              shareOnEnter.value = code
+              navigate(`/r/${code}`)
+            }) }}
+          >
+            {working ? t('loading') : t('confirm')}
+          </button>
         </div>
       </Sheet>
     )
@@ -228,23 +225,20 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
 
   if (mode === 'rename') {
     return (
-      <Sheet title={t('rename')} onClose={onClose}>
+      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <input
             class="input" value={value} maxLength={80} aria-label={t('rename')}
             onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
           />
           {error && <p class="note note-warn">{error}</p>}
-          <div class="row">
-            <button class="btn btn-block" onClick={() => setMode('menu')}>{t('cancel')}</button>
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || !value.trim()}
-              onClick={() => { void run(async () => { await renameRoom(value); setMode('menu') }) }}
-            >
-              {t('save')}
-            </button>
-          </div>
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => { await renameRoom(value); setMode('menu') }) }}
+          >
+            {t('save')}
+          </button>
         </div>
       </Sheet>
     )
@@ -253,21 +247,18 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
   if (mode === 'roster') {
     const drafts = draftsFrom(rosterText)
     return (
-      <Sheet title={t('editRoster')} onClose={onClose}>
+      <Sheet title={t('editRoster')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <p class="note note-warn">{t('editRosterWarning')}</p>
           <RosterInput text={rosterText} onText={setRosterText} />
           {error && <p class="note note-warn">{error}</p>}
-          <div class="row">
-            <button class="btn btn-block" onClick={() => setMode('menu')}>{t('cancel')}</button>
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || drafts.length === 0}
-              onClick={() => setConfirming('replaceRoster')}
-            >
-              {working ? t('loading') : drafts.length ? `${t('save')} ${drafts.length}` : t('save')}
-            </button>
-          </div>
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || drafts.length === 0}
+            onClick={() => setConfirming('replaceRoster')}
+          >
+            {working ? t('loading') : drafts.length ? `${t('save')} ${drafts.length}` : t('save')}
+          </button>
         </div>
 
         {confirming === 'replaceRoster' && (
@@ -286,7 +277,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
 
   if (mode === 'saveRoster') {
     return (
-      <Sheet title={t('saveAsRoster')} onClose={onClose}>
+      <Sheet title={t('saveAsRoster')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <div class="field">
             <label class="label" for="roster-name">{t('saveRosterPrompt')}</label>
@@ -296,57 +287,43 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
             />
           </div>
           {error && <p class="note note-warn">{error}</p>}
-          <div class="row">
-            <button class="btn btn-block" onClick={() => setMode('menu')}>{t('cancel')}</button>
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || !value.trim()}
-              onClick={() => { void run(async () => {
-                await saveRosterAs(value, members.value.map((m) => ({
-                  name: m.name, note: m.note, phone: m.phone,
-                  companions: m.companions, group_label: m.group_label,
-                })))
-                showToast(t('copied'))
-                setMode('menu')
-              }) }}
-            >
-              {working ? t('loading') : t('save')}
-            </button>
-          </div>
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => {
+              await saveRosterAs(value, members.value.map((m) => ({
+                name: m.name, note: m.note, phone: m.phone,
+                companions: m.companions, group_label: m.group_label,
+              })))
+              showToast(t('copied'))
+              setMode('menu')
+            }) }}
+          >
+            {working ? t('loading') : t('save')}
+          </button>
         </div>
       </Sheet>
     )
   }
 
-  if (mode === 'settings') return <SettingsSheet onClose={onClose} />
-  if (mode === 'walkin') return <AddWalkInSheet group={group} onClose={onClose} />
+  if (mode === 'walkin') return <AddWalkInSheet group={group} onClose={onClose} onBack={() => setMode('menu')} />
 
   const expires = formatDate(current.expires_at, prefs.value.lang)
-  const myName = identity.value.checkerName.trim()
 
   return (
     <Sheet title={t('manage')} onClose={onClose}>
       {/*
-        身分、名字、設定同一列。協助者是掃 QR 直接進空間的，從來不會經過
-        首頁——在這之前整個 App 沒有任何一條路通往設定，於是「你的名字」
-        永遠是空的，「誰點的」與衝突提示就常態退化成匿名：現場問「這個是誰
-        點的」沒有答案。另外協助者的管理面板會靜默少掉一半項目，這裡也一併
-        說清楚。
+        面板頂端曾經有一列「身分標籤＋你的名字＋設定齒輪」，三個都不在了：
 
-        帳號、名字、主題全部是跟這台裝置／這個人有關的東西，
-        換一個空間、甚至刪掉這個空間都還在——不屬於底下任何一個分頁，所以
-        設定鍵直接跟著身分／名字放在最上面這一列，不必另外找地方放。
-        齒輪是這一列唯一的按鈕：標籤跟名字只是顯示目前是誰，不是第二個
-        通往設定的入口——同一個目的地兩條路，使用者要多想一次「這兩個是不是
-        不一樣」，跟拿掉「離開空間」是同一個理由。
+        - 身分標籤搬到頂欄的代碼前面（Room.tsx）。它回答的是「我能不能改」，
+          那是進空間第一眼就該看到的事，不是點開面板才知道。
+        - 「你的名字」只剩首頁的設定進得去。在空間裡改名字是個一場活動用不到
+          一次的動作，卻常態佔著面板最上面一整列。
+        - 設定齒輪跟著拿掉：帳號、名字、主題、語言都是跟這台裝置／這個人有關
+          的東西，跟「這個空間」無關，同一個目的地不需要兩個入口。
+
+        協助者少掉一半項目這件事仍然要講，所以 helperLimits 這句留著。
       */}
-      <div class="role-line">
-        <span class={owner ? 'tag tag-owner' : 'tag'}>{owner ? t('owner') : t('helper')}</span>
-        <span class="role-name">{myName ? t('youAre', { name: myName }) : t('setYourName')}</span>
-        <button class="icon-btn" onClick={() => setMode('settings')} aria-label={t('settings')}>
-          <IconSettings />
-        </button>
-      </div>
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
       {/*
@@ -355,22 +332,47 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
         「空間」是空間這個容器。分頁沿用篩選列同一顆 `.segmented`——它已經
         是這個 app 裡「切換一組看哪個子集合」的固定手勢，不必再學一種新的
         切法。
+
+        分頁鍵排列是「空間、名單」，但預設打開的仍是「名單」：這裡的複製
+        結果／臨時加人是收尾與現場最常按的動作，開面板就看得到比較重要，
+        跟哪顆鍵排在左邊是兩件事。
       */}
       <div class="segmented" role="group" aria-label={t('manageTabs')}>
-        <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
-          {t('manageTabRoster')}
-        </button>
         <button class="segment" aria-pressed={tab === 'space'} onClick={() => setTab('space')}>
           {t('manageTabSpace')}
+        </button>
+        <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
+          {t('manageTabRoster')}
         </button>
       </div>
 
       {tab === 'roster' && (
         <div class="menu">
           {/*
-            複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事。
-            複製的範圍跟著目前選的分組，所以動作交回 Room 執行。
+            編輯名單、存成常用名單排最前：這兩項通常在活動開始、名單還沒
+            開始點名時就會用到。
           */}
+          {owner && (
+            <button
+              class="menu-item"
+              onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
+            >
+              <IconEdit />
+              <span><strong>{t('editRoster')}</strong></span>
+            </button>
+          )}
+
+          {owner && isSupabaseConfigured && (
+            <button
+              class="menu-item"
+              onClick={() => { setValue(current.name); setMode('saveRoster') }}
+            >
+              <IconBookmark />
+              <span><strong>{t('saveAsRoster')}</strong></span>
+            </button>
+          )}
+
+          {/* 複製的範圍跟著目前選的分組，所以動作交回 Room 執行。 */}
           <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
             <IconCopy />
             <span>
@@ -405,31 +407,19 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
             <IconDownload />
             <span><strong>{t('exportCsv')}</strong></span>
           </button>
-
-          {owner && (
-            <button
-              class="menu-item"
-              onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
-            >
-              <IconEdit />
-              <span><strong>{t('editRoster')}</strong></span>
-            </button>
-          )}
-
-          {owner && isSupabaseConfigured && (
-            <button
-              class="menu-item"
-              onClick={() => { setValue(current.name); setMode('saveRoster') }}
-            >
-              <IconBookmark />
-              <span><strong>{t('saveAsRoster')}</strong></span>
-            </button>
-          )}
         </div>
       )}
 
       {tab === 'space' && (
         <div class="menu">
+          {/* 重新命名排最前：通常在活動一開始、名字還沒定案時就會用到。 */}
+          {owner && (
+            <button class="menu-item" onClick={() => { setValue(current.name); setMode('rename') }}>
+              <IconTag />
+              <span><strong>{t('rename')}</strong></span>
+            </button>
+          )}
+
           {/*
             複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
             沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
@@ -450,13 +440,6 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
               <span class="sub">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</span>
             </span>
           </button>
-
-          {owner && (
-            <button class="menu-item" onClick={() => { setValue(current.name); setMode('rename') }}>
-              <IconTag />
-              <span><strong>{t('rename')}</strong></span>
-            </button>
-          )}
 
           {owner && (
             <button
@@ -697,7 +680,11 @@ export function MemberSheet({ member, owner, onClose }: {
 
 // ---------------------------------------------------------------------------
 
-export function AddWalkInSheet({ group, onClose }: { group: string | null; onClose: () => void }) {
+export function AddWalkInSheet({ group, onClose, onBack }: {
+  group: string | null
+  onClose: () => void
+  onBack?: () => void
+}) {
   const t = useT()
   const [text, setText] = useState('')
   const drafts = draftsFrom(text)
@@ -719,7 +706,7 @@ export function AddWalkInSheet({ group, onClose }: { group: string | null; onClo
   }
 
   return (
-    <Sheet title={t('addWalkIn')} onClose={onClose}>
+    <Sheet title={t('addWalkIn')} onClose={onClose} onBack={onBack}>
       <div class="stack">
         {group && <p class="note">{t('walkInIntoGroup', { group })}</p>}
         <RosterInput text={text} onText={setText} />

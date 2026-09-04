@@ -196,9 +196,9 @@ await B.p.getByRole('button', { name: '確定' }).click(); await B.p.waitForTime
 ok('[同工] 進到自己開的回程空間', (await B.p.locator('.topbar-name').textContent())?.includes('同工開的'))
 ok('[同工] 名單一起複製過來', (await B.p.locator('.member').count()) === 5)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(500)
-// 複製的人是新空間的主揪：管理功能要出現。
+// 複製的人是新空間的主揪：身分標籤（頂欄）與管理功能都要出現。
+ok('[同工] 在新空間裡是主揪', (await B.p.locator('.topbar-sub .tag-owner').count()) === 1)
 await B.p.locator('.topbar button[aria-label="管理"]').click(); await B.p.waitForTimeout(700)
-ok('[同工] 在新空間裡是主揪', (await B.p.locator('.role-line .tag-owner').count()) === 1)
 ok('[同工] 新空間裡有擁有者才有的「編輯名單」', (await B.p.getByRole('button', { name: /編輯名單/ }).count()) > 0)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
 
