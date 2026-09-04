@@ -216,8 +216,12 @@ ok('備註不再顯示在名單列上',
    !(await notedRow.locator('.chip-note').first().isVisible().catch(() => false)))
 await notedRow.getByRole('button', { name: /管理|manage/ }).click()
 await p.waitForTimeout(400)
-ok('更多面板看得到備註原文（0912345678）',
-   ((await p.locator('.sheet').textContent()) ?? '').includes('0912345678'))
+const sheetText = (await p.locator('.sheet').textContent()) ?? ''
+ok('更多面板看得到備註原文（0912345678）', sheetText.includes('0912345678'))
+// 備註整則剛好就是一支電話號碼時，備註欄位跟撥號鍵會印兩次同一組數字——
+// 這種名單（「王小明 0912345678」）最常見，備註欄位在這種情況不該出現。
+ok('備註整則就是電話號碼時不重複印（只從撥號鍵出現一次）',
+   (sheetText.match(/0912345678/g) || []).length === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 紙本是例外：手機沒電時拿著這張紙的人沒有「更多」可以點，.chip-note 要在
@@ -322,6 +326,22 @@ await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForT
 ok('管理面板有身分列', (await p.locator('.role-line').count()) === 1)
 await p.locator('.role-name').click(); await p.waitForTimeout(500)
 ok('點名字可以進到設定', (await p.locator('#checker-name').count()) === 1)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+// 備註不是「純電話號碼」的話（號碼前後還有別的字），備註欄位跟撥號鍵要
+// 兩個都印：備註欄位比撥號鍵多給了資訊，不算重複。獨立開一間空間測，不然
+// 跟「現場操作測試」混在一起的話，後面一長串斷言都假設還在那個房間裡。
+await p.goto(URL); await p.waitForTimeout(600)
+await p.getByRole('button', { name: /開啟空間/ }).first().click(); await p.waitForTimeout(300)
+await p.locator('#room-name').fill('備註加號碼測試')
+await p.locator('#roster-text').fill('陳大同 0955666777 帶輪椅')
+await p.waitForTimeout(300)
+await p.getByRole('button', { name: /建立/ }).click(); await p.waitForTimeout(1000)
+await p.locator('.member').first().getByRole('button', { name: /管理|manage/ }).click()
+await p.waitForTimeout(400)
+const mixedSheetText = (await p.locator('.sheet').textContent()) ?? ''
+ok('備註帶額外文字時，備註欄位跟撥號鍵都印',
+   mixedSheetText.includes('0955666777 帶輪椅') && mixedSheetText.includes('備註裡的號碼'))
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // #15 捲進名單深處之後回得到頂端；#43 名單要是 list、<html lang> 要跟著語言走。

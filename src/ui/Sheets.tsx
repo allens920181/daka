@@ -18,8 +18,8 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLeave, IconList, IconLock,
-  IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
+  IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLeave, IconList, IconLock,
+  IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash, IconUndo,
 } from './icons'
 import { useT } from './t'
 
@@ -531,6 +531,12 @@ export function MemberSheet({ member, owner, onClose }: {
   // 一顆已經在講同一件事的按鈕，備註沒有多給任何資訊，純粹是雜訊。
   const noteIsStatus = member.status === 'excused' && isExcusedNote(member.note)
 
+  const notedPhones = dialableFrom(member.note)
+  // 「王小明 0912345678」這種名單，note 整則就是一支電話號碼：備註欄位跟
+  // 下面的撥號鍵會連續印兩次一模一樣的數字。撥號鍵已經把這串數字講完了
+  // （還多了一顆可以按），備註原文在這裡沒有多給任何資訊，是重複。
+  const noteIsJustPhone = notedPhones.length === 1 && member.note?.trim() === notedPhones[0]
+
   // 從名單列點名有 5 秒復原；從這裡做同一件事卻什麼都沒有。同一個結果要有
   // 同一種安全網，否則使用者學不會「哪一種操作可以反悔」。
   function mark(status: Member['status'], label: string): void {
@@ -560,7 +566,7 @@ export function MemberSheet({ member, owner, onClose }: {
           （見下一段註解）就是從這段文字裡抽出來的——先看到原文，再看到抽出
           的號碼，順序才對得上。
         */}
-        {member.note && !noteIsStatus && (
+        {member.note && !noteIsStatus && !noteIsJustPhone && (
           <div class="field" style="padding: var(--sp-2) 12px 8px">
             <span class="label">{t('noteLabel')}</span>
             <p style="margin:0">{member.note}</p>
@@ -584,7 +590,7 @@ export function MemberSheet({ member, owner, onClose }: {
           </a>
         )}
 
-        {dialableFrom(member.note)
+        {notedPhones
           .filter((d) => d.replace(/\D/g, '') !== member.phone)
           .map((d) => (
             <a key={d} class="menu-item" href={telHref(d)}>
@@ -610,11 +616,13 @@ export function MemberSheet({ member, owner, onClose }: {
             */}
             {member.status === 'excused' && (
               <button class="menu-item" onClick={() => mark('pending', t('missing'))}>
+                <IconUndo />
                 <span><strong>{t('markMissing')}</strong></span>
               </button>
             )}
             {member.status !== 'excused' && (
               <button class="menu-item" onClick={() => mark('excused', t('excused'))}>
+                <IconCalendar />
                 <span><strong>{t('markExcused')}</strong></span>
               </button>
             )}
