@@ -37,6 +37,16 @@ export function normalizeRoomCode(input: string): string {
     .replace(/[Ａ-Ｚ０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
 }
 
+/**
+ * 貼上的常常是整條分享連結，不是單獨的代碼——收到連結的人習慣先複製再貼進
+ * 這個框，而不是直接點開它。連結長相是 `.../#/j/CODE` 或 `.../#/r/CODE`，
+ * 抓出代碼再正規化；抓不到就當作使用者貼的就是代碼本身，交給後面的驗證判斷。
+ */
+export function extractRoomCode(input: string): string {
+  const match = input.match(/#\/[jr]\/([^/?#]+)/i)
+  return normalizeRoomCode(match?.[1] ?? input)
+}
+
 export function isValidRoomCode(input: string): boolean {
   const code = normalizeRoomCode(input)
   if (code.length !== CODE_LENGTH) return false

@@ -2,10 +2,12 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { connection, forgetRecentRoom, myRooms, prefs, recentRooms, session } from '../lib/store'
 import { formatDate } from '../lib/format'
-import { findConfusables, isValidRoomCode, normalizeRoomCode, CODE_LENGTH } from '../lib/code'
+import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '../lib/code'
+import { canScanQr } from '../lib/config'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
-import { IconChevronDown, IconPlus, IconSettings, IconTrash } from './icons'
+import { IconCamera, IconChevronDown, IconPlus, IconSettings, IconTrash } from './icons'
+import { ScanSheet } from './Scan'
 import { useT } from './t'
 
 type RoomFilter = 'all' | 'mine' | 'others'
@@ -23,6 +25,7 @@ export function Home({ onSettings }: { onSettings: () => void }) {
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [joinOpen, setJoinOpen] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
   const [filter, setFilter] = useState<RoomFilter>('all')
   const codeInputRef = useRef<HTMLInputElement>(null)
 
@@ -32,7 +35,7 @@ export function Home({ onSettings }: { onSettings: () => void }) {
   }, [joinOpen])
 
   function join() {
-    const normalized = normalizeRoomCode(code)
+    const normalized = extractRoomCode(code)
     const confusables = findConfusables(normalized)
     if (confusables.length > 0) {
       setError(t('errConfusable', { chars: confusables.join('、') }))
@@ -122,7 +125,9 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                 ref={codeInputRef}
                 class="input code-input"
                 value={code}
-                maxLength={CODE_LENGTH + 2}
+                // 沒有 maxLength：貼上的常常是整條連結，得讓 extractRoomCode 先從裡面
+                // 抓出代碼，原生的長度限制會在那之前就把後半段截斷。裁到固定長度
+                // 改成抓完代碼之後才做，抓出來的碼本來就只有 6 碼。
                 inputMode="text"
                 autocapitalize="characters"
                 autocomplete="off"
@@ -130,7 +135,8 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                 aria-label={t('codePlaceholder')}
                 placeholder="——————"
                 onInput={(e) => {
-                  setCode(normalizeRoomCode((e.currentTarget as HTMLInputElement).value))
+                  const raw = (e.currentTarget as HTMLInputElement).value
+                  setCode(extractRoomCode(raw).slice(0, CODE_LENGTH + 2))
                   setError(null)
                 }}
                 onKeyDown={(e) => { if (e.key === 'Enter') join() }}
@@ -138,14 +144,21 @@ export function Home({ onSettings }: { onSettings: () => void }) {
               {error && <p class="note note-warn">{error}</p>}
               <button
                 class="btn btn-block"
-                disabled={normalizeRoomCode(code).length < CODE_LENGTH}
+                disabled={extractRoomCode(code).length < CODE_LENGTH}
                 onClick={join}
               >
                 {t('join')}
               </button>
+              {canScanQr() && (
+                <button class="btn btn-ghost btn-block" onClick={() => setScanOpen(true)}>
+                  <IconCamera /> {t('scanQr')}
+                </button>
+              )}
             </div>
           </div>
         )}
+
+        {scanOpen && <ScanSheet onClose={() => setScanOpen(false)} />}
 
         <div class="field">
           <div class="segmented" role="group" aria-label={t('filter')}>

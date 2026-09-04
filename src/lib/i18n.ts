@@ -34,6 +34,13 @@ const zh = {
   confirmCreate: '確認建立',
   join: '加入',
   forget: '從清單移除',
+  /* 分享有代碼、連結、QR 碼三種方式，加入原本只接得住代碼——這顆按鍵補上
+     第三條路：直接用相機掃別人給的 QR 碼。連結貼進代碼框則由 extractRoomCode
+     接住，不需要另外的入口。 */
+  scanQr: '掃描 QR 碼',
+  scanQrHint: '把 QR 碼對準框框',
+  errNoCamera: '這個瀏覽器不支援用相機掃描，改用代碼或連結加入。',
+  errCameraDenied: '沒有相機權限，改用代碼或連結加入。',
 
   // 名單
   roster: '名單',
@@ -327,6 +334,10 @@ const en: Record<MessageKey, string> = {
   confirmCreate: 'Confirm & create',
   join: 'Join',
   forget: 'Remove from list',
+  scanQr: 'Scan a QR code',
+  scanQrHint: 'Point the QR code at the frame',
+  errNoCamera: "This browser can't scan with the camera. Use a code or link instead.",
+  errCameraDenied: 'No camera access. Use a code or link instead.',
 
   roster: 'Roster',
   pasteRoster: 'Paste the roster',

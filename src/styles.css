@@ -380,6 +380,17 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .card-title { font-size: var(--fs-4); font-weight: 700; margin-bottom: var(--sp-3); }
 
+/*
+ * 掃描加入的鏡頭預覽。方框而非全寬：QR 碼本身是方的，方框讓使用者一眼知道
+ * 要把它擺進哪個範圍，不必先讀說明文字。載入中與拿不到相機時框仍在，靠
+ * `--surface-2` 撐出形狀，不會整片空白像壞掉了。
+ */
+.scan-frame {
+  position: relative; overflow: hidden; aspect-ratio: 1 / 1;
+  background: var(--surface-2); border: 1px solid var(--rule); border-radius: var(--r-3);
+}
+.scan-video { display: block; width: 100%; height: 100%; object-fit: cover; }
+
 .recent-item {
   display: flex; align-items: center; gap: var(--sp-3); width: 100%;
   min-height: var(--tap-row); padding: var(--sp-2) var(--sp-3);

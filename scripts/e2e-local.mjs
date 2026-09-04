@@ -24,7 +24,7 @@ ok('顯示單機模式提示', (await p.locator('.banner-muted').count()) > 0)
 
 
 // 開空間
-await p.getByRole('button', { name: /開啟空間/ }).first().click()
+await p.getByRole('button', { name: /創建空間/ }).first().click()
 await p.waitForTimeout(400)
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
 await p.locator('#roster-text').fill(`秋季旅遊報名
@@ -163,7 +163,7 @@ ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 
 // ---- 現場操作：同名辨識、未分組、臨時加人、刪除確認 ----
 await p.goto(URL); await p.waitForTimeout(900)
-await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('現場操作測試')
 await p.locator('#roster-text').fill(`沒填車次的甲
 沒填車次的乙
@@ -433,7 +433,7 @@ ok('身分標籤排在代碼前面', await p.evaluate(() => {
 // 兩個都印：備註欄位比撥號鍵多給了資訊，不算重複。獨立開一間空間測，不然
 // 跟「現場操作測試」混在一起的話，後面一長串斷言都假設還在那個房間裡。
 await p.goto(URL); await p.waitForTimeout(600)
-await p.getByRole('button', { name: /開啟空間/ }).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button', { name: /創建空間/ }).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('備註加號碼測試')
 await p.locator('#roster-text').fill('陳大同 0955666777 帶輪椅')
 await p.waitForTimeout(300)
@@ -447,7 +447,7 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // #15 捲進名單深處之後回得到頂端；#43 名單要是 list、<html lang> 要跟著語言走。
 await p.goto(URL); await p.waitForTimeout(800)
-await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('長名單測試')
 await p.locator('#roster-text').fill(Array.from({length: 40}, (_, i) => `同工${String(i+1).padStart(2,'0')}`).join('\n'))
 await p.waitForTimeout(400)
@@ -520,7 +520,7 @@ ok('不會叫人去檢查代碼有沒有打錯', !joinMsg.includes('打錯'))
 // ---- 確認對話框、設定、列印樣式 ----
 await p.goto(URL); await p.waitForTimeout(900)
 
-await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('確認對話框測試')
 await p.locator('#roster-text').fill('王小明\n李美花\n陳大同')
 await p.waitForTimeout(300)
@@ -633,7 +633,7 @@ await p.emulateMedia({media:'screen'})
 // ---- 分組（分車）----
 await p.goto(URL); await p.waitForTimeout(900)
 
-await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
+await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
 await p.locator('#roster-text').fill(`【第一車】
 1.王小明 0912345678
@@ -703,7 +703,7 @@ ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('
 // 搜尋框改成一直開著之後（不必先點才展開）首屏會少掉一列人名的高度，這是
 // 換掉「先點開才能用」那一步的代價，門檻跟著往下調一格，不是量錯了。
 await p.goto(URL); await p.waitForTimeout(600)
-await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(400)
+await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(400)
 await p.locator('#room-name').fill('員工旅遊 · 出發')
 await p.locator('#roster-text').fill(
   ['【第一車】', ...Array.from({length:40},(_,i)=>`第一車學員${String(i+1).padStart(2,'0')}`),
