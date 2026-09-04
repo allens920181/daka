@@ -66,7 +66,6 @@
 | 特性 | 沒有時 |
 | --- | --- |
 | `inert` | 背景仍可被 Tab 到（焦點陷阱仍生效，只是不完美） |
-| `navigator.vibrate` | 沒有震動（iOS 一律如此） |
 | `IntersectionObserver` | 頂欄不接手顯示計數 |
 | `crypto.randomUUID` | 需要安全內容（HTTPS 或 localhost），GitHub Pages 符合 |
 | `color-mix` | 未使用（刻意避開，支援度不齊） |

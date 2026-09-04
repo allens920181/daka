@@ -332,7 +332,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
         點的」沒有答案。另外協助者的管理面板會靜默少掉一半項目，這裡也一併
         說清楚。
 
-        帳號、名字、主題、震動回饋全部是跟這台裝置／這個人有關的東西，
+        帳號、名字、主題全部是跟這台裝置／這個人有關的東西，
         換一個空間、甚至刪掉這個空間都還在——不屬於底下任何一個分頁，所以
         設定鍵直接跟著身分／名字放在最上面這一列，不必另外找地方放。
         齒輪是這一列唯一的按鈕：標籤跟名字只是顯示目前是誰，不是第二個
@@ -751,39 +751,41 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet title={t('settings')} onClose={onClose}>
       <div class="stack">
-        {isSupabaseConfigured && (
-          <div class="field">
-            <span class="label">{t('account')}</span>
-            {session.value ? (
-              <>
-                <div class="row">
-                  <span class="hint" style="flex:1">
-                    {t('signedInAs', { email: session.value.email })}
-                  </span>
-                  <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
-                </div>
-                {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
-                    動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
-                    不加確認對話框（重新登入就還原），但後果要講出來。 */}
-                <p class="hint">{t('signOutWhat')}</p>
-              </>
-            ) : (
-              <>
-                <button class="btn btn-block" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
-                <span class="hint">{t('signInWhy')}</span>
-              </>
-            )}
-          </div>
-        )}
-
+        {/*
+          名字輸入框跟登入鍵合成一列（2026-09）：兩者都在回答「你是誰」，
+          分成兩個各自佔一整塊的欄位，找不到帳號在動就要滾過一整個名字欄位。
+          登入鍵只在**未登入**時出現在這一列——登入之後這一列只需要輸入框，
+          已登入的細節（帳號、登出）改在下面另開一小塊，那裡的資訊量
+          （email、登出後果的提醒）擠不進同一列，硬塞只會變成另一種雜亂。
+        */}
         <div class="field">
           <label class="label" for="checker-name">{t('yourName')}</label>
-          <input
-            id="checker-name" class="input" value={name} maxLength={40}
-            onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
-            onBlur={() => { void setCheckerName(name) }}
-          />
+          <div class="row">
+            <input
+              id="checker-name" class="input" style="flex:1" value={name} maxLength={40}
+              onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
+              onBlur={() => { void setCheckerName(name) }}
+            />
+            {isSupabaseConfigured && !session.value && (
+              <button class="btn btn-sm" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
+            )}
+          </div>
           <span class="hint">{t('yourNameHint')}</span>
+          {isSupabaseConfigured && !session.value && <span class="hint">{t('signInWhy')}</span>}
+          {isSupabaseConfigured && session.value && (
+            <>
+              <div class="row">
+                <span class="hint" style="flex:1">
+                  {t('signedInAs', { email: session.value.email })}
+                </span>
+                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
+              </div>
+              {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
+                  動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
+                  不加確認對話框（重新登入就還原），但後果要講出來。 */}
+              <p class="hint">{t('signOutWhat')}</p>
+            </>
+          )}
         </div>
 
         <div class="field">
@@ -800,23 +802,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
-        </div>
-
-        <div class="field">
-          <span class="label">{t('haptics')}</span>
-          <div class="segmented">
-            {([true, false] as const).map((on) => (
-              <button
-                key={String(on)}
-                class="segment"
-                aria-pressed={p.haptics === on}
-                onClick={() => { void setPrefs({ haptics: on }) }}
-              >
-                {on ? t('on') : t('off')}
-              </button>
-            ))}
-          </div>
-          <span class="hint">{t('hapticsHint')}</span>
         </div>
 
         <div class="field">

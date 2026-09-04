@@ -471,12 +471,14 @@ ok('結束後仍然複製得到結果', (await p.locator('.banner-result .btn').
 ok('結束後戳名字沒有作用', await p.locator('.member-main').first().isDisabled())
 ok('頂欄說得出已關閉', (await p.locator('.topbar-count.closed').count()) === 1)
 
-// --- 設定：震動開關 ---
+// --- 設定 ---
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 await p.goto(URL); await p.waitForTimeout(800)
 await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
 ok('設定面板標題是「設定」不是「主題」', (await p.locator('.sheet-title').textContent())==='設定')
-ok('有震動回饋開關', await p.getByText('震動回饋').isVisible())
+ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count()) === 0)
+// 名字輸入框跟登入鍵合成一列（2026-09），單機模式沒有雲端所以不會出現登入鍵。
+ok('名字輸入框在', await p.locator('#checker-name').isVisible())
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 
