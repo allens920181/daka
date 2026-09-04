@@ -534,6 +534,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   height: var(--tap-min); padding: 0 var(--sp-3);
   border-color: transparent; background: var(--surface-2);
 }
+/*
+ * 有字才亮。:focus 那圈只在打字的當下看得到——點開別人的成員面板、或只是
+ * 滑走去點名之後，框就退回跟平常一樣的灰底，畫面上沒有東西說「名單現在是
+ * 過濾過的」。跟 .btn.is-on 同一套顏色（--accent-soft 底、--accent 邊），
+ * 但不改 color：打進去的字要維持一般墨色可讀，變色的是搜尋這個「動作」在
+ * 生效，不是使用者打的內容本身出了什麼狀況。
+ */
+.search-wrap .input.is-on { border-color: var(--accent); background: var(--accent-soft); }
 /* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
    留自訂的那顆：它有 48px 的觸控目標與無障礙名稱，原生那顆兩者都沒有。 */
 .search-wrap input[type='search']::-webkit-search-cancel-button,

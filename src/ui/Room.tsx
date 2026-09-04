@@ -195,10 +195,18 @@ export function Room({ code }: { code: string }) {
 
           不自動聚焦：一進房間就跳出虛擬鍵盤會蓋掉半個畫面，而這裡不像過去
           「按一下才展開」那樣是使用者剛做出的明確動作。
+
+          有字才亮（.is-on）：搜尋框一直開著，:focus 那圈只在打字的當下看得到，
+          點開別人的成員面板、或只是滑走去點名之後，框就退回跟平常一樣的灰底，
+          畫面上完全沒有東西說「名單現在是過濾過的」。名單本身也不會說——空
+          名單那句「這裡沒有人」跟「太好了全部都到了」長得不一樣，但沒清空
+          搜尋字之前只看得到過濾後的幾個人，很容易誤讀成「全部都到了」。
+          鍵的是 query.trim()，跟真正觸發過濾的判準（見 shown 那段 useMemo）
+          同一條，而不是原始的 query——只打了空白鍵不該亮。
         */}
         <div class="shell search-wrap">
           <input
-            class="input"
+            class={query.trim() ? 'input is-on' : 'input'}
             type="search"
             value={query}
             placeholder={t('searchPlaceholder')}

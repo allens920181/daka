@@ -101,8 +101,14 @@ ok('未到篩選顯示 6 人', (await p.locator('.member').count()) === 6)
 await p.getByRole('button', { name: /^全部/ }).click(); await p.waitForTimeout(300)
 
 // 搜尋。搜尋框住在頂欄（sticky），一直顯示，不必先點才展開。
+ok('搜尋框空的時候沒有高亮', (await p.locator('.search-wrap .input.is-on').count()) === 0)
 await p.locator('input[type=search]').fill('陳怡君'); await p.waitForTimeout(300)
 ok('搜尋同名找到 2 人', (await p.locator('.member').count()) === 2)
+ok('搜尋框有字時高亮，讓人知道名單被過濾了', (await p.locator('.search-wrap .input.is-on').count()) === 1)
+// 焦點圈只在打字當下看得到；拿掉焦點（不點名單列，避免動到點名狀態）之後
+// 高亮要繼續留著——這才是「名單現在是過濾過的」唯一的持續提示。
+await p.locator('input[type=search]').evaluate((el) => el.blur()); await p.waitForTimeout(200)
+ok('拿掉焦點之後高亮還在', (await p.locator('.search-wrap .input.is-on').count()) === 1)
 await p.locator('input[type=search]').fill('0912'); await p.waitForTimeout(300)
 // 電話已經不是解析出來的欄位（號碼原文躺在備註裡），搜尋要照樣找得到人。
 ok('可用電話搜尋（號碼現在在備註裡）', (await p.locator('.member').count()) === 1)
@@ -115,6 +121,7 @@ const typoEmpty = (await p.locator('.empty-big').textContent())?.trim()
 ok(`搜尋打錯字時說「沒找到」而不是「全部都到了」：${typoEmpty}`, typoEmpty === '這裡沒有人')
 ok('並附上「換個字再找找」的下一步', ((await p.locator('.empty .hint').textContent()) || '').includes('換個字'))
 await p.locator('input[type=search]').fill(''); await p.waitForTimeout(300)
+ok('清掉搜尋字之後高亮跟著消失', (await p.locator('.search-wrap .input.is-on').count()) === 0)
 ok('清掉搜尋後「未到」篩選才回到成功文案',
    (await p.locator('.empty-big').count()) === 0 || (await p.locator('.empty-big').textContent())?.includes('全部都到了'))
 await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitForTimeout(300)
