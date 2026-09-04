@@ -192,7 +192,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
 
   if (mode === 'copy') {
     return (
-      <Sheet title={t('copyRoom')} onClose={onClose}>
+      <Sheet title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <p class="hint">{t('copyRoomHint')}</p>
           <div class="field">
@@ -203,24 +203,21 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
             />
           </div>
           {error && <p class="note note-warn">{error}</p>}
-          <div class="row">
-            <button class="btn btn-block" onClick={() => setMode('menu')}>{t('cancel')}</button>
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || !value.trim()}
-              onClick={() => { void run(async () => {
-                const code = await copyCurrentRoom(value)
-                onClose()
-                // 回程空間是新的代碼，五支協助的手機還開著舊空間——複製完的下一個
-                // 動作 100% 是把新的代碼發出去。不主動提醒的話，主揪會直接
-                // 開始點名，而其他人繼續在舊空間打勾，兩邊的數字各走各的。
-                shareOnEnter.value = code
-                navigate(`/r/${code}`)
-              }) }}
-            >
-              {working ? t('loading') : t('confirm')}
-            </button>
-          </div>
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => {
+              const code = await copyCurrentRoom(value)
+              onClose()
+              // 回程空間是新的代碼，五支協助的手機還開著舊空間——複製完的下一個
+              // 動作 100% 是把新的代碼發出去。不主動提醒的話，主揪會直接
+              // 開始點名，而其他人繼續在舊空間打勾，兩邊的數字各走各的。
+              shareOnEnter.value = code
+              navigate(`/r/${code}`)
+            }) }}
+          >
+            {working ? t('loading') : t('confirm')}
+          </button>
         </div>
       </Sheet>
     )
@@ -228,23 +225,20 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
 
   if (mode === 'rename') {
     return (
-      <Sheet title={t('rename')} onClose={onClose}>
+      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <input
             class="input" value={value} maxLength={80} aria-label={t('rename')}
             onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
           />
           {error && <p class="note note-warn">{error}</p>}
-          <div class="row">
-            <button class="btn btn-block" onClick={() => setMode('menu')}>{t('cancel')}</button>
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || !value.trim()}
-              onClick={() => { void run(async () => { await renameRoom(value); setMode('menu') }) }}
-            >
-              {t('save')}
-            </button>
-          </div>
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => { await renameRoom(value); setMode('menu') }) }}
+          >
+            {t('save')}
+          </button>
         </div>
       </Sheet>
     )
@@ -253,21 +247,18 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
   if (mode === 'roster') {
     const drafts = draftsFrom(rosterText)
     return (
-      <Sheet title={t('editRoster')} onClose={onClose}>
+      <Sheet title={t('editRoster')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <p class="note note-warn">{t('editRosterWarning')}</p>
           <RosterInput text={rosterText} onText={setRosterText} />
           {error && <p class="note note-warn">{error}</p>}
-          <div class="row">
-            <button class="btn btn-block" onClick={() => setMode('menu')}>{t('cancel')}</button>
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || drafts.length === 0}
-              onClick={() => setConfirming('replaceRoster')}
-            >
-              {working ? t('loading') : drafts.length ? `${t('save')} ${drafts.length}` : t('save')}
-            </button>
-          </div>
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || drafts.length === 0}
+            onClick={() => setConfirming('replaceRoster')}
+          >
+            {working ? t('loading') : drafts.length ? `${t('save')} ${drafts.length}` : t('save')}
+          </button>
         </div>
 
         {confirming === 'replaceRoster' && (
@@ -286,7 +277,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
 
   if (mode === 'saveRoster') {
     return (
-      <Sheet title={t('saveAsRoster')} onClose={onClose}>
+      <Sheet title={t('saveAsRoster')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <div class="field">
             <label class="label" for="roster-name">{t('saveRosterPrompt')}</label>
@@ -296,30 +287,27 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
             />
           </div>
           {error && <p class="note note-warn">{error}</p>}
-          <div class="row">
-            <button class="btn btn-block" onClick={() => setMode('menu')}>{t('cancel')}</button>
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || !value.trim()}
-              onClick={() => { void run(async () => {
-                await saveRosterAs(value, members.value.map((m) => ({
-                  name: m.name, note: m.note, phone: m.phone,
-                  companions: m.companions, group_label: m.group_label,
-                })))
-                showToast(t('copied'))
-                setMode('menu')
-              }) }}
-            >
-              {working ? t('loading') : t('save')}
-            </button>
-          </div>
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => {
+              await saveRosterAs(value, members.value.map((m) => ({
+                name: m.name, note: m.note, phone: m.phone,
+                companions: m.companions, group_label: m.group_label,
+              })))
+              showToast(t('copied'))
+              setMode('menu')
+            }) }}
+          >
+            {working ? t('loading') : t('save')}
+          </button>
         </div>
       </Sheet>
     )
   }
 
-  if (mode === 'settings') return <SettingsSheet onClose={onClose} />
-  if (mode === 'walkin') return <AddWalkInSheet group={group} onClose={onClose} />
+  if (mode === 'settings') return <SettingsSheet onClose={onClose} onBack={() => setMode('menu')} />
+  if (mode === 'walkin') return <AddWalkInSheet group={group} onClose={onClose} onBack={() => setMode('menu')} />
 
   const expires = formatDate(current.expires_at, prefs.value.lang)
   const myName = identity.value.checkerName.trim()
@@ -703,7 +691,11 @@ export function MemberSheet({ member, owner, onClose }: {
 
 // ---------------------------------------------------------------------------
 
-export function AddWalkInSheet({ group, onClose }: { group: string | null; onClose: () => void }) {
+export function AddWalkInSheet({ group, onClose, onBack }: {
+  group: string | null
+  onClose: () => void
+  onBack?: () => void
+}) {
   const t = useT()
   const [text, setText] = useState('')
   const drafts = draftsFrom(text)
@@ -725,7 +717,7 @@ export function AddWalkInSheet({ group, onClose }: { group: string | null; onClo
   }
 
   return (
-    <Sheet title={t('addWalkIn')} onClose={onClose}>
+    <Sheet title={t('addWalkIn')} onClose={onClose} onBack={onBack}>
       <div class="stack">
         {group && <p class="note">{t('walkInIntoGroup', { group })}</p>}
         <RosterInput text={text} onText={setText} />
@@ -743,7 +735,7 @@ export function AddWalkInSheet({ group, onClose }: { group: string | null; onClo
 
 // ---------------------------------------------------------------------------
 
-export function SettingsSheet({ onClose }: { onClose: () => void }) {
+export function SettingsSheet({ onClose, onBack }: { onClose: () => void; onBack?: () => void }) {
   const t = useT()
   const p = prefs.value
   const [name, setName] = useState(identity.value.checkerName)
@@ -758,7 +750,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet title={t('settings')} onClose={onClose}>
+    <Sheet title={t('settings')} onClose={onClose} onBack={onBack}>
       <div class="stack">
         {/*
           名字是這台裝置的本機顯示名，帳號是雲端登入——兩件不同的事，曾經

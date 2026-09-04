@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useRef } from 'preact/hooks'
-import { IconClose } from './icons'
+import { IconBack, IconClose } from './icons'
 import { useModal } from './useModal'
 import { useT } from './t'
 
@@ -9,10 +9,13 @@ import { useT } from './t'
  * 需要使用者做「是或否」的決定時用 ConfirmDialog，不要用面板。
  */
 export function Sheet({
-  title, onClose, children,
+  title, onClose, onBack, children,
 }: {
   title: string
   onClose: () => void
+  /** 只有面板內有多階段時才傳（例如管理面板的子畫面）：回上一頁，跟
+   *  onClose（離開整個面板）是兩個不同的動作。 */
+  onBack?: () => void
   children: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)
@@ -27,6 +30,11 @@ export function Sheet({
       <div class="sheet" ref={panel} role="dialog" aria-modal="true" aria-label={title}>
         <div class="sheet-grip" />
         <div class="sheet-head">
+          {onBack && (
+            <button class="icon-btn" onClick={onBack} aria-label={t('back')}>
+              <IconBack />
+            </button>
+          )}
           <h2 class="sheet-title">{title}</h2>
           <div class="spacer" />
           <button class="icon-btn" onClick={onClose} aria-label={t('close')}>
