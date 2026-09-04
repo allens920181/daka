@@ -332,13 +332,17 @@ ok('取消後退回成員面板而不是全部關掉', (await p.locator('.sheet'
 ok('沒有資訊區塊時更多面板不畫分隔線', (await p.locator('.sheet .menu-divider').count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
-// #13 協助者要有地方寫上自己的名字，否則「誰點的」永遠是匿名。
+// 身分列整列拿掉（2026-09）：標籤搬到頂欄，名字與設定只剩首頁那顆齒輪進得去。
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(600)
-ok('管理面板有身分列', (await p.locator('.role-line').count()) === 1)
-// 設定鍵搬進身分列右邊，跟名字同一列（2026-09）；名字本身不再是按鈕。
-await p.locator('.role-line button[aria-label="設定"]').click(); await p.waitForTimeout(500)
-ok('點齒輪可以進到設定', (await p.locator('#checker-name').count()) === 1)
+ok('管理面板沒有身分列了', (await p.locator('.sheet .role-line').count()) === 0)
+ok('管理面板沒有設定入口了', (await p.locator('.sheet button[aria-label="設定"]').count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('身分標籤搬到頂欄', (await p.locator('.topbar-sub .tag-owner').textContent())?.trim() === '主揪')
+// 排在代碼前面：身分（我能不能改）→ 空間（哪一間）→ 連線（存不存得進去）。
+ok('身分標籤排在代碼前面', await p.evaluate(() => {
+  const kids = [...document.querySelectorAll('.topbar-sub > *')]
+  return kids.findIndex((e) => e.classList.contains('tag')) < kids.findIndex((e) => e.classList.contains('mono'))
+}))
 
 // 備註不是「純電話號碼」的話（號碼前後還有別的字），備註欄位跟撥號鍵要
 // 兩個都印：備註欄位比撥號鍵多給了資訊，不算重複。獨立開一間空間測，不然
@@ -407,9 +411,9 @@ ok('原生清除鍵被關掉（只剩自訂的那顆）', await p.evaluate(() =>
 await p.locator('input[type=search]').fill(''); await p.waitForTimeout(200)
 // <html lang> 要跟著 App 語言，否則螢幕閱讀器會用中文語音唸英文介面。
 ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
-// 「設定」跟身分列放在分頁之外，不必先切分頁（2026-09 管理面板分組）。
-await p.getByRole('button',{name:/^設定$/}).click(); await p.waitForTimeout(500)
+// 設定只剩首頁那顆齒輪進得去（2026-09 管理面板拿掉設定入口）。
+await p.goto(URL); await p.waitForTimeout(800)
+await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
 // 主題／語言改成摺疊列（2026-09），要先點開才看得到選項；選了選項後
 // 摺疊列自己收回去，所以切回中文前要用英文的「Language」字樣重新展開。
 await p.getByRole('button',{name:/語言/}).click(); await p.waitForTimeout(300)

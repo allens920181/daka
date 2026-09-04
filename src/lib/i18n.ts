@@ -103,8 +103,6 @@ const zh = {
   noteLabel: '備註',
   copyFailed: '複製失敗，請長按選取文字',
   downloaded: '已下載 {name}',
-  youAre: '你是 {name}',
-  setYourName: '還沒寫上你的名字',
   /*
    * 這句話一度是假的：它說「複製空間」只有主揪做得到，但「再開一個」刻意對所有人
    * 開放（Sheets.tsx 的 owner 區塊從「編輯名單」才開始），同一個面板上方 3px 還對
@@ -379,8 +377,6 @@ const en: Record<MessageKey, string> = {
   noteLabel: 'Note',
   copyFailed: "Couldn't copy — long-press to select the text",
   downloaded: 'Downloaded {name}',
-  youAre: "You're {name}",
-  setYourName: "You haven't added your name yet",
   helperLimits: "Editing the roster and finishing the round are the organiser's to do.",
   remove: 'Remove',
   removeMember: 'Remove from list',

@@ -167,6 +167,16 @@ export function Room({ code }: { code: string }) {
           >
             <h1 class="topbar-name">{current.name}</h1>
             <div class="topbar-sub">
+              {/*
+                身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
+                這個畫面上哪些事做得動（改名單、結束這一輪都只有主揪能做），
+                是進空間第一眼就該知道的事，不該要先點開管理面板才看得到。
+                排在代碼前面：代碼與同步狀態講的是「這是哪個空間、連上了沒」，
+                身分講的是「我」，順序從人到空間再到連線。
+              */}
+              <span class={isOwner.value ? 'tag tag-owner' : 'tag'}>
+                {isOwner.value ? t('owner') : t('helper')}
+              </span>
               {closed ? (
                 // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
                 // 戳名字沒反應，協助者完全不知道為什麼。

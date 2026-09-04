@@ -19,7 +19,7 @@ import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLock,
-  IconChevronDown, IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
+  IconChevronDown, IconGoogle, IconPhone, IconPlus, IconPrinter, IconShare, IconTag, IconTrash,
   IconUndo, IconUser,
 } from './icons'
 import { useT } from './t'
@@ -147,7 +147,7 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings' | 'walkin'
+type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'walkin'
 // 管理面板分頁（2026-09）。依「這個動作在動什麼」分類：'roster' 底下是名單
 // 本身——資料與跟這份名單有關的現場動作；'space' 底下是空間這個容器。曾經
 // 想過第三個「常用」分頁裝複製結果／臨時加人／結束這一輪，但「多常按」跟
@@ -306,35 +306,24 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
     )
   }
 
-  if (mode === 'settings') return <SettingsSheet onClose={onClose} onBack={() => setMode('menu')} />
   if (mode === 'walkin') return <AddWalkInSheet group={group} onClose={onClose} onBack={() => setMode('menu')} />
 
   const expires = formatDate(current.expires_at, prefs.value.lang)
-  const myName = identity.value.checkerName.trim()
 
   return (
     <Sheet title={t('manage')} onClose={onClose}>
       {/*
-        身分、名字、設定同一列。協助者是掃 QR 直接進空間的，從來不會經過
-        首頁——在這之前整個 App 沒有任何一條路通往設定，於是「你的名字」
-        永遠是空的，「誰點的」與衝突提示就常態退化成匿名：現場問「這個是誰
-        點的」沒有答案。另外協助者的管理面板會靜默少掉一半項目，這裡也一併
-        說清楚。
+        面板頂端曾經有一列「身分標籤＋你的名字＋設定齒輪」，三個都不在了：
 
-        帳號、名字、主題全部是跟這台裝置／這個人有關的東西，
-        換一個空間、甚至刪掉這個空間都還在——不屬於底下任何一個分頁，所以
-        設定鍵直接跟著身分／名字放在最上面這一列，不必另外找地方放。
-        齒輪是這一列唯一的按鈕：標籤跟名字只是顯示目前是誰，不是第二個
-        通往設定的入口——同一個目的地兩條路，使用者要多想一次「這兩個是不是
-        不一樣」，跟拿掉「離開空間」是同一個理由。
+        - 身分標籤搬到頂欄的代碼前面（Room.tsx）。它回答的是「我能不能改」，
+          那是進空間第一眼就該看到的事，不是點開面板才知道。
+        - 「你的名字」只剩首頁的設定進得去。在空間裡改名字是個一場活動用不到
+          一次的動作，卻常態佔著面板最上面一整列。
+        - 設定齒輪跟著拿掉：帳號、名字、主題、語言都是跟這台裝置／這個人有關
+          的東西，跟「這個空間」無關，同一個目的地不需要兩個入口。
+
+        協助者少掉一半項目這件事仍然要講，所以 helperLimits 這句留著。
       */}
-      <div class="role-line">
-        <span class={owner ? 'tag tag-owner' : 'tag'}>{owner ? t('owner') : t('helper')}</span>
-        <span class="role-name">{myName ? t('youAre', { name: myName }) : t('setYourName')}</span>
-        <button class="icon-btn" onClick={() => setMode('settings')} aria-label={t('settings')}>
-          <IconSettings />
-        </button>
-      </div>
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
       {/*
@@ -735,7 +724,7 @@ export function AddWalkInSheet({ group, onClose, onBack }: {
 
 // ---------------------------------------------------------------------------
 
-export function SettingsSheet({ onClose, onBack }: { onClose: () => void; onBack?: () => void }) {
+export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const t = useT()
   const p = prefs.value
   const [name, setName] = useState(identity.value.checkerName)
@@ -750,7 +739,7 @@ export function SettingsSheet({ onClose, onBack }: { onClose: () => void; onBack
   }
 
   return (
-    <Sheet title={t('settings')} onClose={onClose} onBack={onBack}>
+    <Sheet title={t('settings')} onClose={onClose}>
       <div class="stack">
         {/*
           名字是這台裝置的本機顯示名，帳號是雲端登入——兩件不同的事，曾經
