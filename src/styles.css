@@ -780,6 +780,32 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .dock-inner > .btn { flex: none; }
 .dock-inner > .btn-block { flex: 1 1 auto; min-width: 0; width: auto; }
 
+/* === 開空間：兩步驟 ====================================================== */
+
+/*
+ * 貼名單、看名單分兩步：貼的時候不想被解析結果打斷（框可以長好長），看的時候
+ * 名單也不用跟輸入框擠同一屏。兩塊面板疊在同一個舞台上，「產生名單」把名單
+ * 面板從螢幕下緣滑上來蓋住輸入面板——輸入面板本身沒有動，只是被蓋住，所以
+ * 滑回去編輯不需要另外做一段動畫，蓋住它的面板退下去就看到了。
+ */
+.room-flow { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+.room-flow-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.room-flow-panel {
+  position: absolute; inset: 0; overflow-y: auto;
+  max-width: 640px; margin: 0 auto;
+  padding: var(--sp-4) var(--sp-4) 120px;
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  background: var(--paper);
+}
+.room-flow-panel-list { transform: translateY(100%); }
+.room-flow.is-list .room-flow-panel-list { transform: translateY(0); }
+.room-flow-title { font-size: var(--fs-6); }
+
+/* 輸入框跟著面板一起長：拿掉即時預覽騰出來的高度都給它。 */
+.roster-editor { flex: 1; min-height: 0; }
+.roster-editor-field { flex: 1; min-height: 0; }
+.roster-editor-textarea { flex: 1; min-height: 220px; }
+
 /* === 面板 ================================================================ */
 
 /* 遮罩層。overlay-bottom 用於面板，overlay-center 用於確認對話框。 */
@@ -798,6 +824,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .sheet.is-dragging { transition: none; }
   .dialog { animation: pop var(--dur-2) var(--ease); }
   .toast { animation: rise var(--dur-2) var(--ease); }
+  .room-flow-panel { transition: transform var(--dur-2) var(--ease); }
 }
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translateY(24px); opacity: 0; } }

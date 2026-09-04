@@ -21,6 +21,10 @@ const zh = {
   owner: '主揪',
   helper: '協助者',
   create: '建立',
+  /* 開空間拆成兩步：先貼名單、再看解析結果。兩顆鍵各自對應一步，
+     不共用 create——「產生名單」不會真的建立空間，混用會讓人以為按下去就開了。 */
+  generateList: '產生名單',
+  confirmCreate: '確認建立',
   join: '加入',
   forget: '從清單移除',
 
@@ -306,6 +310,8 @@ const en: Record<MessageKey, string> = {
   owner: 'Organizer',
   helper: 'Helper',
   create: 'Create',
+  generateList: 'Generate the list',
+  confirmCreate: 'Confirm & create',
   join: 'Join',
   forget: 'Remove from list',
 

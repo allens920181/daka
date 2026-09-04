@@ -1,16 +1,16 @@
 import { useMemo } from 'preact/hooks'
 import { parseRoster, removeParsedMember } from '../lib/parse'
+import type { ParseResult } from '../lib/parse'
 import type { DraftMember, SavedRoster } from '../lib/types'
 import { rosterToText } from '../lib/parse'
 import { IconClose } from './icons'
 import { useT } from './t'
 
 /**
- * 名單輸入。刻意在載入前就把解析結果攤開來給人看——
- * 解析器再寬容也會有猜錯的時候（例如把「秋季旅遊報名」這種標題當成人名），
- * 與其猜得更聰明，不如讓主揪一眼看到、直接改掉。
+ * 名單輸入框：常用名單快捷鍵 + 貼上欄位。不含解析預覽——開空間流程把預覽挪去
+ * 另一步（見 NewRoom），這裡只管「打字／貼上」這件事，好讓框本身可以長大。
  */
-export function RosterInput({
+export function RosterEditorField({
   text, onText, rosters,
 }: {
   text: string
@@ -18,10 +18,8 @@ export function RosterInput({
   rosters?: readonly SavedRoster[]
 }) {
   const t = useT()
-  const result = useMemo(() => parseRoster(text), [text])
-
   return (
-    <div class="stack">
+    <div class="stack roster-editor">
       {rosters && rosters.length > 0 && (
         <div class="field">
           <span class="label">{t('savedRosters')}</span>
@@ -42,17 +40,35 @@ export function RosterInput({
 
       {/* 範例鍵不在這裡：它一次填活動名稱與名單兩格，所以住在表單那一層
           （`NewRoom`），而不是掛在其中一個欄位的標籤上。 */}
-      <div class="field">
+      <div class="field roster-editor-field">
         <label class="label" for="roster-text">{t('pasteRoster')}</label>
         <textarea
           id="roster-text"
-          class="textarea"
+          class="textarea roster-editor-textarea"
           value={text}
           placeholder={t('pastePlaceholder')}
           onInput={(e) => onText((e.currentTarget as HTMLTextAreaElement).value)}
         />
       </div>
+    </div>
+  )
+}
 
+/**
+ * 解析結果預覽。刻意把結果攤開來給人看——解析器再寬容也會有猜錯的時候
+ * （例如把「秋季旅遊報名」這種標題當成人名），與其猜得更聰明，不如讓主揪
+ * 一眼看到、直接改掉。
+ */
+export function RosterPreview({
+  text, onText, result,
+}: {
+  text: string
+  onText: (v: string) => void
+  result: ParseResult
+}) {
+  const t = useT()
+  return (
+    <div class="stack">
       {result.members.length > 0 && (
         <div class="field">
           <div class="row">
@@ -99,6 +115,27 @@ export function RosterInput({
       {result.skipped > 0 && (
         <p class="note">{t('skippedLines', { n: result.skipped })}</p>
       )}
+    </div>
+  )
+}
+
+/**
+ * 名單輸入的合併版：欄位與預覽疊在同一面板。用在空間比較小、不值得拆兩步的
+ * 場合（例如「更多」面板裡改名單）——`NewRoom` 的開空間流程改用拆開的
+ * `RosterEditorField` / `RosterPreview`，好讓輸入框跟預覽各自有整面螢幕可以用。
+ */
+export function RosterInput({
+  text, onText, rosters,
+}: {
+  text: string
+  onText: (v: string) => void
+  rosters?: readonly SavedRoster[]
+}) {
+  const result = useMemo(() => parseRoster(text), [text])
+  return (
+    <div class="stack">
+      <RosterEditorField text={text} onText={onText} rosters={rosters} />
+      <RosterPreview text={text} onText={onText} result={result} />
     </div>
   )
 }
