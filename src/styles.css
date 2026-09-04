@@ -837,6 +837,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* 「更多」面板的分頁（2026-09）：沿用篩選列同一顆 .segmented，不必再學一種新切法。 */
 .sheet .segmented { margin-bottom: var(--sp-3); }
+/*
+ * 分頁鍵住在標題列裡，跟關閉鍵同一列（2026-09）：標題拿掉之後那一列只剩一顆
+ * 孤零零的叉叉，白佔 48px。分頁鍵撐滿剩下的寬度，關閉鍵是 flex: none 不會被
+ * 擠掉；分頁鍵自己擠不下時 .segmented 本來就會橫向捲。
+ */
+.sheet-head > .segmented { flex: 1; min-width: 0; margin-bottom: 0; }
 
 /*
  * 「更多」三個分頁共用的固定高度框。高度以「空間」分頁為基準（主揪看到的四項，

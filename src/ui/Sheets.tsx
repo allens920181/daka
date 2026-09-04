@@ -309,12 +309,42 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
   const here = peers.value
 
   return (
-    <Sheet title={t('manage')} hideTitle onClose={onClose}>
-      {/*
-        標題不印在畫面上（`hideTitle`）：「更多」兩個字說不出任何一件這裡做得到
-        的事，而它正下方那排分頁鍵已經寫著空間、名單、分享。省下的那一行高度
-        直接給清單。無障礙名稱仍然是「更多」，讀得到的沒有變少。
+    <Sheet
+      title={t('manage')}
+      onClose={onClose}
+      /*
+        標題列放的是分頁鍵，不是標題（`head`）。「更多」兩個字說不出任何一件
+        這裡做得到的事，而分頁鍵已經寫著空間、名單、分享；標題拿掉之後那一列
+        只剩一顆孤零零的關閉鍵，白佔一整列高度——把分頁鍵搬上去，關閉鍵就有
+        了同伴，也省下一列給清單。無障礙名稱仍然是「更多」。
 
+        分頁鍵擠不下時 `.segmented` 本來就會自己橫向捲（英文的三個字比較長），
+        關閉鍵是 flex: none，不會被擠掉。
+
+        擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏。分頁依「這個動作
+        在動什麼」分類：「名單」是名單本身的資料與跟它有關的現場動作，「空間」
+        是空間這個容器，「分享」是把這個空間交出去的三種方式。沿用篩選列同一顆
+        `.segmented`——它已經是這個 app 裡「切換一組看哪個子集合」的固定手勢。
+
+        排列是「空間、名單、分享」，但預設打開的仍是「名單」：那裡的複製結果／
+        臨時加人是收尾與現場最常按的動作，開面板就看得到比較重要，跟哪顆鍵排在
+        左邊是兩件事。
+      */
+      head={(
+        <div class="segmented" role="group" aria-label={t('manageTabs')}>
+          <button class="segment" aria-pressed={tab === 'space'} onClick={() => setTab('space')}>
+            {t('manageTabSpace')}
+          </button>
+          <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
+            {t('manageTabRoster')}
+          </button>
+          <button class="segment" aria-pressed={tab === 'share'} onClick={() => setTab('share')}>
+            {t('share')}
+          </button>
+        </div>
+      )}
+    >
+      {/*
         面板頂端曾經有一列「身分標籤＋你的名字＋設定齒輪」，三個都不在了：
 
         - 身分標籤搬到頂欄的代碼前面（Room.tsx）。它回答的是「我能不能改」，
@@ -327,29 +357,6 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
         協助者少掉一半項目這件事仍然要講，所以 helperLimits 這句留著。
       */}
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
-
-      {/*
-        擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏。分兩頁，依「這個
-        動作在動什麼」分類：「名單」是名單本身的資料與跟它有關的現場動作，
-        「空間」是空間這個容器。分頁沿用篩選列同一顆 `.segmented`——它已經
-        是這個 app 裡「切換一組看哪個子集合」的固定手勢，不必再學一種新的
-        切法。
-
-        分頁鍵排列是「空間、名單」，但預設打開的仍是「名單」：這裡的複製
-        結果／臨時加人是收尾與現場最常按的動作，開面板就看得到比較重要，
-        跟哪顆鍵排在左邊是兩件事。
-      */}
-      <div class="segmented" role="group" aria-label={t('manageTabs')}>
-        <button class="segment" aria-pressed={tab === 'space'} onClick={() => setTab('space')}>
-          {t('manageTabSpace')}
-        </button>
-        <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
-          {t('manageTabRoster')}
-        </button>
-        <button class="segment" aria-pressed={tab === 'share'} onClick={() => setTab('share')}>
-          {t('share')}
-        </button>
-      </div>
 
       {/*
         三個分頁的內容裝在同一個固定高度的框裡（`.manage-body`），高度以「空間」

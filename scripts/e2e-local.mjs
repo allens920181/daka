@@ -349,6 +349,19 @@ ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[ar
 // 標題不印在畫面上，但無障礙名稱要留著（2026-09）。
 ok('「更多」不印標題', (await p.locator('.sheet .sheet-title').count()) === 0)
 ok('但無障礙名稱還在', (await p.locator('.sheet').getAttribute('aria-label')) === '更多')
+// 標題拿掉之後那一列只剩一顆孤零零的關閉鍵，所以分頁鍵搬上去跟它同一列——
+// 沒有任何一列是空的，關閉鍵也還在。
+const headRow = await p.evaluate(() => {
+  const seg = document.querySelector('.sheet-head .segmented')?.getBoundingClientRect()
+  const close = [...document.querySelectorAll('.sheet-head .icon-btn')].pop()?.getBoundingClientRect()
+  if (!seg || !close) return null
+  return {
+    sameRow: Math.abs((seg.top + seg.height / 2) - (close.top + close.height / 2)) < 6,
+    overlap: seg.right > close.left + 1,
+  }
+})
+ok('分頁鍵跟關閉鍵同一列', Boolean(headRow?.sameRow))
+ok('而且不互相重疊', headRow?.overlap === false)
 
 // 三個分頁一樣高，而且分頁鍵不隨清單捲動——分頁鍵是同一根手指連續要按的
 // 東西，面板一長高，第二顆鍵就會跑到剛剛按下去的位置底下。

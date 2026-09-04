@@ -9,7 +9,7 @@ import { useT } from './t'
  * 需要使用者做「是或否」的決定時用 ConfirmDialog，不要用面板。
  */
 export function Sheet({
-  title, onClose, onBack, hideTitle = false, children,
+  title, onClose, onBack, head, children,
 }: {
   title: string
   onClose: () => void
@@ -17,11 +17,12 @@ export function Sheet({
    *  onClose（離開整個面板）是兩個不同的動作。 */
   onBack?: () => void
   /**
-   * 標題只當無障礙名稱用，畫面上不印。用在標題只是複述底下那排分頁的面板
-   * ——「更多」兩個字說不出任何一件這裡做得到的事，而分頁鍵已經寫著空間、
-   * 名單、分享。`aria-label` 仍然是 title，螢幕閱讀器聽得到的沒有變少。
+   * 標題那一列要放的東西，取代標題本身（「更多」面板放的是它的分頁鍵）。
+   * 用在標題只是複述底下內容、自己說不出任何一件事的面板：與其讓標題列
+   * 只剩一顆孤零零的關閉鍵佔掉一整列，不如把面板自己的控制項搬上去。
+   * **`aria-label` 仍然是 title**——螢幕閱讀器聽得到的不能跟著少。
    */
-  hideTitle?: boolean
+  head?: ComponentChildren
   children: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)
@@ -41,8 +42,9 @@ export function Sheet({
               <IconBack />
             </button>
           )}
-          {!hideTitle && <h2 class="sheet-title">{title}</h2>}
-          <div class="spacer" />
+          {head ?? <h2 class="sheet-title">{title}</h2>}
+          {/* 有 head 的時候由它自己撐滿，再塞一個 flex:1 的墊片會跟它平分寬度。 */}
+          {!head && <div class="spacer" />}
           <button class="icon-btn" onClick={onClose} aria-label={t('close')}>
             <IconClose />
           </button>
