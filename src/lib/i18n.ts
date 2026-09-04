@@ -16,8 +16,10 @@ const zh = {
   codePlaceholder: '輸入 6 碼代碼',
   recentRooms: '最近的空間',
   noRecentRooms: '還沒有開過空間。開一個，或用代碼加入別人的。',
-  owner: '我開的',
-  helper: '協助點名',
+  // 身分標籤：跟其他地方講同一個角色時用的名詞一致（helperLimits、
+  // copyRoomHintHelper 都已經寫成「主揪」），不要在標籤裡另外發明一種說法。
+  owner: '主揪',
+  helper: '協助者',
   create: '建立',
   join: '加入',
   forget: '從清單移除',
@@ -313,8 +315,8 @@ const en: Record<MessageKey, string> = {
   codePlaceholder: 'Enter the 6-character code',
   recentRooms: 'Recent rooms',
   noRecentRooms: 'No rooms yet. Open one, or join with a code.',
-  owner: 'Mine',
-  helper: 'Helping',
+  owner: 'Organizer',
+  helper: 'Helper',
   create: 'Create',
   join: 'Join',
   forget: 'Remove from list',
