@@ -37,7 +37,9 @@ async function phone(name) {
 async function signInWithGoogle(d) {
   await d.page.goto(URL); await d.page.waitForTimeout(900)
   await d.page.locator('button[aria-label="設定"]').click(); await d.page.waitForTimeout(500)
-  await d.page.getByRole('button', { name: /^登入$/ }).click(); await d.page.waitForTimeout(400)
+  // 登入鍵搬進設定頁的 .menu-item（2026-09），連著一句說明一起算進無障礙名稱，
+  // 所以只認開頭，不整串精確比對。
+  await d.page.getByRole('button', { name: /^登入/ }).click(); await d.page.waitForTimeout(400)
   await d.page.getByRole('button', { name: /用 Google 登入/ }).click()
   // 導走 → 回來 → 重新啟動 → 換 token → 認領資產
   await d.page.waitForURL((u) => !u.searchParams.has('code'), { timeout: 15000 }).catch(() => {})
@@ -48,7 +50,7 @@ async function signInWithGoogle(d) {
 async function signInWithEmail(d, email) {
   await d.page.goto(URL); await d.page.waitForTimeout(900)
   await d.page.locator('button[aria-label="設定"]').click(); await d.page.waitForTimeout(500)
-  await d.page.getByRole('button', { name: /^登入$/ }).click(); await d.page.waitForTimeout(400)
+  await d.page.getByRole('button', { name: /^登入/ }).click(); await d.page.waitForTimeout(400)
   await d.page.getByRole('button', { name: /改用 Email/ }).click(); await d.page.waitForTimeout(300)
   await d.page.locator('#signin-email').fill(email)
   await d.page.getByRole('button', { name: /寄驗證碼/ }).click(); await d.page.waitForTimeout(900)
@@ -99,7 +101,7 @@ await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 // --- 登入面板：Google 是主要路徑，Email 是備援 ---
 await A.page.goto(URL); await A.page.waitForTimeout(900)
 await A.page.locator('button[aria-label="設定"]').click(); await A.page.waitForTimeout(500)
-await A.page.getByRole('button', { name: /^登入$/ }).click(); await A.page.waitForTimeout(400)
+await A.page.getByRole('button', { name: /^登入/ }).click(); await A.page.waitForTimeout(400)
 ok('登入面板第一顆是 Google',
   (await A.page.locator('.sheet .btn').first().textContent())?.includes('Google'))
 // Google 的按鈕照他們自己的規範走（白底、四色 G），不是這個系統的 .btn-primary

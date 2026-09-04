@@ -19,7 +19,7 @@ import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLock,
-  IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash, IconUndo,
+  IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash, IconUndo, IconUser,
 } from './icons'
 import { useT } from './t'
 
@@ -752,41 +752,47 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     <Sheet title={t('settings')} onClose={onClose}>
       <div class="stack">
         {/*
-          名字輸入框跟登入鍵合成一列（2026-09）：兩者都在回答「你是誰」，
-          分成兩個各自佔一整塊的欄位，找不到帳號在動就要滾過一整個名字欄位。
-          登入鍵只在**未登入**時出現在這一列——登入之後這一列只需要輸入框，
-          已登入的細節（帳號、登出）改在下面另開一小塊，那裡的資訊量
-          （email、登出後果的提醒）擠不進同一列，硬塞只會變成另一種雜亂。
+          名字是這台裝置的本機顯示名，帳號是雲端登入——兩件不同的事，曾經
+          擠進同一列（合成一個 .row），但那樣會把「你是誰」跟「這台裝置管
+          不管得動雲端」混成一件事。分開回兩塊：名字維持自己獨立的輸入框；
+          未登入時帳號縮成一顆 .menu-item（管理面板同一套列表元件），整列
+          可點、一行講完「登入」＋為什麼，比原本「標籤＋整寬按鈕＋說明」
+          省事，但沒有跟名字混在一起。
         */}
         <div class="field">
           <label class="label" for="checker-name">{t('yourName')}</label>
-          <div class="row">
-            <input
-              id="checker-name" class="input" style="flex:1" value={name} maxLength={40}
-              onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
-              onBlur={() => { void setCheckerName(name) }}
-            />
-            {isSupabaseConfigured && !session.value && (
-              <button class="btn btn-sm" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
-            )}
-          </div>
+          <input
+            id="checker-name" class="input" value={name} maxLength={40}
+            onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
+            onBlur={() => { void setCheckerName(name) }}
+          />
           <span class="hint">{t('yourNameHint')}</span>
-          {isSupabaseConfigured && !session.value && <span class="hint">{t('signInWhy')}</span>}
-          {isSupabaseConfigured && session.value && (
-            <>
-              <div class="row">
-                <span class="hint" style="flex:1">
-                  {t('signedInAs', { email: session.value.email })}
-                </span>
-                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
-              </div>
-              {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
-                  動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
-                  不加確認對話框（重新登入就還原），但後果要講出來。 */}
-              <p class="hint">{t('signOutWhat')}</p>
-            </>
-          )}
         </div>
+
+        {isSupabaseConfigured && (session.value ? (
+          <div class="field">
+            <div class="row">
+              <span class="hint" style="flex:1">
+                {t('signedInAs', { email: session.value.email })}
+              </span>
+              <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
+            </div>
+            {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
+                動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
+                不加確認對話框（重新登入就還原），但後果要講出來——所以登出
+                跟登入不一樣，不做成整列可點的 .menu-item：那樣一大塊觸控
+                區域配一個有後果的動作，比一顆刻意小的按鈕更容易誤觸。 */}
+            <p class="hint">{t('signOutWhat')}</p>
+          </div>
+        ) : (
+          <button class="menu-item" onClick={() => setSigningIn(true)}>
+            <IconUser />
+            <span>
+              <strong>{t('signIn')}</strong>
+              <span class="sub">{t('signInWhy')}</span>
+            </span>
+          </button>
+        ))}
 
         <div class="field">
           <span class="label">{t('theme')}</span>

@@ -95,6 +95,11 @@ export const IconGoogle = ({ size = 20, ...r }: P) => (
   </svg>
 )
 
+export const IconUser = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+  </svg>
+)
 export const IconTrash = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <polyline points="3 6 5 6 21 6" />
