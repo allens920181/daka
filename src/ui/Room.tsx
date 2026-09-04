@@ -419,7 +419,7 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
     : null
 
   // 「陳大同（請假）」這種名單，note 是「請假」而狀態也是請假：兩個都印的話
-  // 螢幕上與紙本上都會出現「請假 請假」。狀態自己會說，備註就不必再說一次。
+  // 螢幕與紙本都會出現「請假 請假」。狀態自己會說，備註就不必再說一次。
   const noteIsStatus = member.status === 'excused' && isExcusedNote(member.note)
 
   return (
@@ -439,6 +439,15 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
             {member.companions > 0 && (
               <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
             )}
+            {/*
+              備註原文不再顯示在螢幕上，搬進「更多」面板（見 MemberSheet）——
+              這一列只留住「哪一個人」（辨識晶片）與「現在什麼狀態」，備註本身
+              是查才需要的細節，而且長度不受控，印在這裡會把行高撐開，破壞
+              80 人名單一屏看幾個人的預算。.chip-note 用 CSS 在螢幕上關掉
+              （見 styles.css 的 `.member .chip-note`），但紙本上要留著：手機
+              沒電時拿著這張紙的人沒有「更多」可以點，理由跟 .print-phone
+              一樣。
+            */}
             {member.note && !noteIsStatus && <span class="chip chip-note">{member.note}</span>}
             {member.status === 'arrived' && time && (
               <span>{member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}</span>

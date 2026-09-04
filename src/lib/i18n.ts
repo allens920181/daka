@@ -97,6 +97,8 @@ const zh = {
   printTotal: '共 {people} 人（{heads} 人頭）',
   printBlanks: '日期：＿＿＿＿＿＿　　點名者：＿＿＿＿＿＿　　完成時間：＿＿＿＿＿＿',
   phoneTail: '尾碼 {tail}',
+  /** 成員面板裡備註原文那個欄位的標籤——備註本身已經搬離名單列，這裡是唯一還看得到它的地方。 */
+  noteLabel: '備註',
   copyFailed: '複製失敗，請長按選取文字',
   downloaded: '已下載 {name}',
   youAre: '你是 {name}',
@@ -378,6 +380,7 @@ const en: Record<MessageKey, string> = {
   printTotal: '{people} people ({heads} heads)',
   printBlanks: 'Date: ____________   Checked by: ____________   Finished: ____________',
   phoneTail: 'ends {tail}',
+  noteLabel: 'Note',
   copyFailed: "Couldn't copy — long-press to select the text",
   downloaded: 'Downloaded {name}',
   youAre: "You're {name}",
