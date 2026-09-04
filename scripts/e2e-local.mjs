@@ -406,6 +406,8 @@ await p.locator('input[type=search]').fill(''); await p.waitForTimeout(200)
 // <html lang> 要跟著 App 語言，否則螢幕閱讀器會用中文語音唸英文介面。
 ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+// 「設定」搬進「空間」分頁（2026-09 管理面板分組）。
+await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/^設定$/}).click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/English/}).click(); await p.waitForTimeout(600)
 ok('切成英文後 lang=en', (await p.evaluate(() => document.documentElement.lang)) === 'en')
@@ -431,6 +433,8 @@ await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200
 
 // --- 確認對話框 ---
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+// 「刪除空間」搬進「空間」分頁（2026-09 管理面板分組）。
+await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
 ok('刪除空間跳出 alertdialog（不是 window.confirm）', await p.locator('[role=alertdialog]').isVisible())
 ok('對話框有標題與說明', (await p.locator('#dialog-title').textContent())==='刪除空間'

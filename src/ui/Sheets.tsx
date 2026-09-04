@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, leaveRoom, members,
+  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, members,
   prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
   peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
   shareOnEnter, showToast, type Peer,
@@ -18,7 +18,7 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLeave, IconList, IconLock,
+  IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconList, IconLock,
   IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash, IconUndo,
 } from './icons'
 import { useT } from './t'
@@ -147,6 +147,11 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 // ---------------------------------------------------------------------------
 
 type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings' | 'walkin'
+// 管理面板分頁（2026-09）。依「一場活動裡什麼時候會用到」分類，不是依動作
+// 性質（唯讀／會改資料）——後者是實作者的心智模型，使用者腦中的問題只有
+// 「我現在要幹嘛」。'common' 是預設分頁：進活動現場、活動結束前反覆會用到
+// 的東西；'roster' 是名單本身的資料；'space' 是空間這個容器的設定。
+type ManageTab = 'common' | 'roster' | 'space'
 type Confirming = null | 'delete' | 'replaceRoster' | 'finish'
 
 export function ManageSheet({ owner, group, onCopySummary, onClose }: {
@@ -159,6 +164,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
 }) {
   const t = useT()
   const [mode, setMode] = useState<ManageMode>('menu')
+  const [tab, setTab] = useState<ManageTab>('common')
   const [confirming, setConfirming] = useState<Confirming>(null)
   const [value, setValue] = useState('')
   const [rosterText, setRosterText] = useState('')
@@ -332,105 +338,68 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
       </div>
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
-      <div class="menu">
-        {/*
-          複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事。它原本在
-          底部動作列，那條列子整條拿掉了——一場活動按一次的東西，不值得整場
-          佔著一列人名的高度。
-          複製的範圍跟著目前選的分組，所以動作交回 Room 執行。
-        */}
-        <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
-          <IconCopy />
-          <span>
-            <strong>{t('copySummary')}</strong>
-            <span class="sub">{t('copySummaryHint')}</span>
-          </span>
+      {/*
+        13 項擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏，而且「編輯
+        名單」跟「看板模式」這種一場活動只按一次跟按十次的東西混在一起找不到
+        輕重。分頁沿用篩選列同一顆 `.segmented`——它已經是這個 app 裡「切換
+        一組看哪個子集合」的固定手勢，不必再學一種新的切法。
+      */}
+      <div class="segmented" role="group" aria-label={t('manageTabs')}>
+        <button class="segment" aria-pressed={tab === 'common'} onClick={() => setTab('common')}>
+          {t('manageTabCommon')}
         </button>
+        <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
+          {t('manageTabRoster')}
+        </button>
+        <button class="segment" aria-pressed={tab === 'space'} onClick={() => setTab('space')}>
+          {t('manageTabSpace')}
+        </button>
+      </div>
 
-        {/* 臨時加人也在這裡：一場活動用 0-2 次。
-            協助者站在車門口也用得到，所以不放在 owner 區塊裡。 */}
-        {!closed && (
-          <button class="menu-item" onClick={() => setMode('walkin')}>
-            <IconPlus />
+      {tab === 'common' && (
+        <div class="menu">
+          {/*
+            複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事，也是
+            這個分頁存在的理由——它跟臨時加人、看板、列印、結束這一輪同屬
+            「活動進行中會反覆用到」這一類。複製的範圍跟著目前選的分組，
+            所以動作交回 Room 執行。
+          */}
+          <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
+            <IconCopy />
             <span>
-              <strong>{t('addWalkIn')}</strong>
-              <span class="sub">{t('walkInPlaceholder')}</span>
+              <strong>{t('copySummary')}</strong>
+              <span class="sub">{t('copySummaryHint')}</span>
             </span>
           </button>
-        )}
 
-        <button
-          class="menu-item"
-          onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
-        >
-          <IconDownload />
-          <span><strong>{t('exportCsv')}</strong></span>
-        </button>
-
-        <button class="menu-item" onClick={() => { onClose(); navigate(`/b/${current.code}`) }}>
-          <IconList />
-          <span>
-            <strong>{t('boardMode')}</strong>
-            <span class="sub">{t('boardHint')}</span>
-          </span>
-        </button>
-
-        <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
-          <IconPrinter />
-          <span>
-            <strong>{t('printRoster')}</strong>
-            <span class="sub">{t('printHint')}</span>
-          </span>
-        </button>
-
-        <div class="menu-divider" />
-
-        {/*
-          複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
-          沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
-          方向書明列的核心情境，現場卻只能重貼一次 LINE 接龍重開空間。
-          複製對來源空間完全無害（一個字都不改），而名單本來就對所有拿得到代碼
-          的人可見，所以把它鎖在擁有權後面沒有保護到任何東西。
-        */}
-        <button
-          class="menu-item"
-          onClick={() => {
-            setValue(current.name.includes(t('returnTrip')) ? current.name : `${current.name} · ${t('returnTrip')}`)
-            setMode('copy')
-          }}
-        >
-          <IconDuplicate />
-          <span>
-            <strong>{t('copyRoom')}</strong>
-            <span class="sub">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</span>
-          </span>
-        </button>
-
-        {owner && (
-          <>
-            <button
-              class="menu-item"
-              onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
-            >
-              <IconEdit />
-              <span><strong>{t('editRoster')}</strong></span>
+          {/* 協助者站在車門口也用得到，所以不放在 owner 限定的項目裡。 */}
+          {!closed && (
+            <button class="menu-item" onClick={() => setMode('walkin')}>
+              <IconPlus />
+              <span>
+                <strong>{t('addWalkIn')}</strong>
+                <span class="sub">{t('walkInPlaceholder')}</span>
+              </span>
             </button>
+          )}
 
-            {isSupabaseConfigured && (
-              <button
-                class="menu-item"
-                onClick={() => { setValue(current.name); setMode('saveRoster') }}
-              >
-                <IconBookmark />
-                <span><strong>{t('saveAsRoster')}</strong></span>
-              </button>
-            )}
+          <button class="menu-item" onClick={() => { onClose(); navigate(`/b/${current.code}`) }}>
+            <IconList />
+            <span>
+              <strong>{t('boardMode')}</strong>
+              <span class="sub">{t('boardHint')}</span>
+            </span>
+          </button>
 
-            <button class="menu-item" onClick={() => { setValue(current.name); setMode('rename') }}>
-              <IconTag />
-              <span><strong>{t('rename')}</strong></span>
-            </button>
+          <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
+            <IconPrinter />
+            <span>
+              <strong>{t('printRoster')}</strong>
+              <span class="sub">{t('printHint')}</span>
+            </span>
+          </button>
 
+          {owner && (
             <button
               class="menu-item"
               onClick={() => {
@@ -445,28 +414,85 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
                 {!closed && <span class="sub">{t('finishRoundHint')}</span>}
               </span>
             </button>
-          </>
-        )}
+          )}
+        </div>
+      )}
 
-        <div class="menu-divider" />
-
-        <button class="menu-item" onClick={() => setMode('settings')}>
-          <IconSettings />
-          <span><strong>{t('settings')}</strong></span>
-        </button>
-
-        <button class="menu-item" onClick={() => { leaveRoom(); onClose(); navigate('/') }}>
-          <IconLeave />
-          <span><strong>{t('leaveRoom')}</strong></span>
-        </button>
-
-        {owner && (
-          <button class="menu-item danger" onClick={() => setConfirming('delete')}>
-            <IconTrash />
-            <span><strong>{t('deleteRoom')}</strong></span>
+      {tab === 'roster' && (
+        <div class="menu">
+          <button
+            class="menu-item"
+            onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
+          >
+            <IconDownload />
+            <span><strong>{t('exportCsv')}</strong></span>
           </button>
-        )}
-      </div>
+
+          {owner && (
+            <button
+              class="menu-item"
+              onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
+            >
+              <IconEdit />
+              <span><strong>{t('editRoster')}</strong></span>
+            </button>
+          )}
+
+          {owner && isSupabaseConfigured && (
+            <button
+              class="menu-item"
+              onClick={() => { setValue(current.name); setMode('saveRoster') }}
+            >
+              <IconBookmark />
+              <span><strong>{t('saveAsRoster')}</strong></span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {tab === 'space' && (
+        <div class="menu">
+          {/*
+            複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
+            沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
+            方向書明列的核心情境，現場卻只能重貼一次 LINE 接龍重開空間。
+            複製對來源空間完全無害（一個字都不改），而名單本來就對所有拿得到代碼
+            的人可見，所以把它鎖在擁有權後面沒有保護到任何東西。
+          */}
+          <button
+            class="menu-item"
+            onClick={() => {
+              setValue(current.name.includes(t('returnTrip')) ? current.name : `${current.name} · ${t('returnTrip')}`)
+              setMode('copy')
+            }}
+          >
+            <IconDuplicate />
+            <span>
+              <strong>{t('copyRoom')}</strong>
+              <span class="sub">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</span>
+            </span>
+          </button>
+
+          {owner && (
+            <button class="menu-item" onClick={() => { setValue(current.name); setMode('rename') }}>
+              <IconTag />
+              <span><strong>{t('rename')}</strong></span>
+            </button>
+          )}
+
+          <button class="menu-item" onClick={() => setMode('settings')}>
+            <IconSettings />
+            <span><strong>{t('settings')}</strong></span>
+          </button>
+
+          {owner && (
+            <button class="menu-item danger" onClick={() => setConfirming('delete')}>
+              <IconTrash />
+              <span><strong>{t('deleteRoom')}</strong></span>
+            </button>
+          )}
+        </div>
+      )}
 
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
       <p class="hint" style="margin-top:14px">{t('expiresOn', { date: expires })}</p>

@@ -140,6 +140,13 @@ const zh = {
 
   // 管理
   manage: '管理',
+  // 管理面板分頁（2026-09）：13 個項目攤成一長串選單，掃過去要找的那一項
+  // 常常要滾好幾屏。依「一場活動裡什麼時候會用到」分成三類，比依「動作性質」
+  // 分（例如「唯讀／會改資料」）更貼近使用者腦中的問題：「我現在要幹嘛」。
+  manageTabs: '分類',
+  manageTabCommon: '常用',
+  manageTabRoster: '名單',
+  manageTabSpace: '空間',
   /*
    * 不叫「複製這個空間」。「複製」在這個 app 的其他五個地方都指複製到剪貼簿
    * （複製結果、複製代碼、複製連結、已複製、結果已複製），只有這裡指「開一個
@@ -167,7 +174,6 @@ const zh = {
   roomClosed: '這個空間已關閉',
   deleteRoom: '刪除空間',
   deleteRoomWarning: '刪除後無法復原，所有點名紀錄都會消失。確定嗎？',
-  leaveRoom: '離開空間',
   expiresOn: '{date} 自動刪除',
 
   // 匯出
@@ -413,6 +419,10 @@ const en: Record<MessageKey, string> = {
   scanToJoin: 'Scan to join',
 
   manage: 'Manage',
+  manageTabs: 'Category',
+  manageTabCommon: 'Common',
+  manageTabRoster: 'Roster',
+  manageTabSpace: 'Space',
   copyRoom: 'Duplicate room',
   copyRoomHint: 'Same roster, statuses reset. For the return trip.',
   copyRoomHintHelper: "Same roster, statuses reset. You'll own the new room.",
@@ -431,7 +441,6 @@ const en: Record<MessageKey, string> = {
   roomClosed: 'This room is closed',
   deleteRoom: 'Delete room',
   deleteRoomWarning: 'This cannot be undone. Every check-in will be lost. Continue?',
-  leaveRoom: 'Leave room',
   expiresOn: 'Auto-deleted on {date}',
 
   shareArrived: '{arrived} / {total} here',

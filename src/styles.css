@@ -803,14 +803,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
   padding: var(--sp-2) var(--sp-4) calc(var(--sp-5) + env(safe-area-inset-bottom));
 
   /*
-   * 下緣的捲動陰影。管理面板在 390×844 上內容有 950px、看得見 743px——「刪除
-   * 空間」永遠在摺線下，中英文都一樣（英文只是多切一項）。面板本來就會捲，
-   * 問題是它完全沒說：底邊剛好是螢幕邊緣，切斷的那一列看起來像壞掉而不是
-   * 「還有」。
+   * 下緣的捲動陰影。原本是管理面板逼出來的：13 項擠成一條選單時內容有 950px，
+   * 390×844 只看得見 743px，「刪除空間」永遠在摺線下。2026-09 把管理面板拆成
+   * 三個分頁之後單一分頁已經不夠長到會捲（實測最長的分頁 574px），但機制留著：
+   * 「編輯名單」帶著警告文字＋名單解析預覽時量到 661px，長活動名稱、放大字體
+   * 或較矮的手機都可能把任何一個 `.sheet` 推過 88vh。面板本來就會捲，問題是
+   * 它完全沒說：底邊剛好貼齊面板邊緣，切斷的那一列看起來像壞掉而不是「還有」。
    *
    * 兩層漸層的老技巧：遮蓋層 background-attachment: local 跟著內容捲，陰影層
    * scroll 固定不動。捲到底時遮蓋層蓋住陰影，陰影自己消失——不需要 JS，也不會
-   * 在捲到底之後還把「刪除空間」壓得灰灰的。
+   * 在捲到底之後還把最後一列壓得灰灰的。
    */
   background-color: var(--paper);
   background-image:
@@ -827,6 +829,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .sheet-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
 .sheet-title { font-size: var(--fs-5); }
+
+/* 管理面板的分頁（2026-09）：沿用篩選列同一顆 .segmented，不必再學一種新切法。 */
+.sheet .segmented { margin-bottom: var(--sp-3); }
 
 .menu { display: flex; flex-direction: column; gap: 2px; }
 /*
