@@ -1,22 +1,27 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { createRoom, savedRosters } from '../lib/store'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
 import { isExampleName, isExampleRoster } from '../lib/i18n'
+import { parseRoster } from '../lib/parse'
 import { AppError, isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
-import { RosterInput, draftsFrom } from './RosterInput'
-import { IconBack } from './icons'
+import { RosterEditorField, RosterPreview } from './RosterInput'
+import { IconBack, IconChevronDown } from './icons'
 import { useT } from './t'
 
 export function NewRoom() {
   const t = useT()
   const [name, setName] = useState('')
   const [text, setText] = useState('')
+  /* 兩步驟：input 貼名單、list 看解析結果再確認。純畫面狀態，不影響 name/text
+     本身——滑回 input 改字，滑去 list 一樣看得到最新結果。 */
+  const [step, setStep] = useState<'input' | 'list'>('input')
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [restored, setRestored] = useState(false)
 
-  const drafts = draftsFrom(text)
+  const result = useMemo(() => parseRoster(text), [text])
+  const drafts = result.members
 
   // 開空間失敗（訊號差時很常見）之後只要切去 LINE 再切回來，PWA 就可能已經
   // 重載。那份剛貼好的 200 人名單不能就這樣沒了。
@@ -57,6 +62,15 @@ export function NewRoom() {
     setText('')
   }
 
+  function reviewList() {
+    if (drafts.length === 0) return
+    // 收鍵盤再滑：清單畫面滑上來時鍵盤還開著，會把剛露出來的名單再擠掉一截。
+    const active = document.activeElement
+    if (active instanceof HTMLElement) active.blur()
+    setError(null)
+    setStep('list')
+  }
+
   async function submit() {
     if (drafts.length === 0) { setError(t('emptyRoster')); return }
     setWorking(true)
@@ -75,68 +89,102 @@ export function NewRoom() {
 
   return (
     <>
-      <div class="topbar">
-        <div class="shell topbar-inner">
-          <button class="icon-btn" onClick={() => navigate('/')} aria-label={t('back')}>
-            <IconBack />
-          </button>
-          <h1 class="topbar-name">{t('openRoom')}</h1>
-        </div>
-      </div>
-
-      <div class="shell stack" style="padding-top:16px; padding-bottom:120px">
-        {restored && (
-          <p class="banner banner-muted">
-            {t('draftRestored')}
+      <div class={step === 'list' ? 'room-flow is-list' : 'room-flow'}>
+        <div class="topbar">
+          <div class="shell topbar-inner">
             <button
-              class="btn btn-sm"
-              onClick={() => { setName(''); setText(''); setRestored(false); void clearDraft() }}
+              class="icon-btn"
+              onClick={() => (step === 'list' ? setStep('input') : navigate('/'))}
+              aria-label={t('back')}
             >
-              {t('draftDiscard')}
+              <IconBack />
             </button>
-          </p>
-        )}
-
-        <div class="field">
-          <div class="row">
-            <label class="label" for="room-name">{t('roomNameLabel')}</label>
-            <div class="spacer" />
-            {/* 名單還空著就給「填入範例」，範例原封不動就給「清除範例」，
-                使用者一動手改就兩顆都不給——那時候框裡的是他自己的東西。 */}
-            {!text.trim() ? (
-              <button class="btn btn-sm" onClick={fillExample}>{t('exampleFill')}</button>
-            ) : isExampleRoster(text) ? (
-              <button class="btn btn-sm" onClick={clearExample}>{t('exampleClear')}</button>
-            ) : null}
+            <h1 class="topbar-name">{t('openRoom')}</h1>
           </div>
-          <input
-            id="room-name"
-            class="input"
-            value={name}
-            maxLength={80}
-            placeholder={t('roomNamePlaceholder')}
-            onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
-          />
         </div>
 
-        <RosterInput
-          text={text}
-          onText={setText}
-          rosters={isSupabaseConfigured ? savedRosters.value : undefined}
-        />
+        <div class="room-flow-stage">
+          {/* 步驟一：貼名單。刻意不放解析預覽——框要多大有多大，貼 200 人的名單
+              時不必看著它被下面的預覽擠成一截。 */}
+          <div
+            class="room-flow-panel room-flow-panel-input"
+            aria-hidden={step !== 'input'}
+            inert={step !== 'input'}
+          >
+            {restored && (
+              <p class="banner banner-muted">
+                {t('draftRestored')}
+                <button
+                  class="btn btn-sm"
+                  onClick={() => { setName(''); setText(''); setRestored(false); void clearDraft() }}
+                >
+                  {t('draftDiscard')}
+                </button>
+              </p>
+            )}
 
-        {error && <p class="note note-warn">{error}</p>}
+            <div class="field">
+              <div class="row">
+                <label class="label" for="room-name">{t('roomNameLabel')}</label>
+                <div class="spacer" />
+                {/* 名單還空著就給「填入範例」，範例原封不動就給「清除範例」，
+                    使用者一動手改就兩顆都不給——那時候框裡的是他自己的東西。 */}
+                {!text.trim() ? (
+                  <button class="btn btn-sm" onClick={fillExample}>{t('exampleFill')}</button>
+                ) : isExampleRoster(text) ? (
+                  <button class="btn btn-sm" onClick={clearExample}>{t('exampleClear')}</button>
+                ) : null}
+              </div>
+              <input
+                id="room-name"
+                class="input"
+                value={name}
+                maxLength={80}
+                placeholder={t('roomNamePlaceholder')}
+                onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
+              />
+            </div>
+
+            <RosterEditorField
+              text={text}
+              onText={setText}
+              rosters={isSupabaseConfigured ? savedRosters.value : undefined}
+            />
+          </div>
+
+          {/* 步驟二：看解析結果。從螢幕下緣滑上來蓋住步驟一，「抬頭」跟著名單
+              一起露出來，所以再貼一次名字當標題，不用滑回上面才看得到活動叫什麼。 */}
+          <div
+            class="room-flow-panel room-flow-panel-list"
+            aria-hidden={step !== 'list'}
+            inert={step !== 'list'}
+          >
+            <h2 class="room-flow-title">{name.trim() || t('roomNameLabel')}</h2>
+            <RosterPreview text={text} onText={setText} result={result} />
+            {error && <p class="note note-warn">{error}</p>}
+          </div>
+        </div>
       </div>
 
       <div class="dock">
         <div class="dock-inner">
-          <button
-            class="btn btn-primary btn-lg btn-block"
-            disabled={working || drafts.length === 0}
-            onClick={() => { void submit() }}
-          >
-            {working ? t('loading') : drafts.length ? `${t('create')} ${drafts.length}` : t('create')}
-          </button>
+          {step === 'input' ? (
+            <button
+              class="btn btn-primary btn-lg btn-block"
+              disabled={drafts.length === 0}
+              onClick={reviewList}
+            >
+              {t('generateList')} <IconChevronDown />
+            </button>
+          ) : (
+            <button
+              class="btn btn-primary btn-lg btn-block"
+              disabled={working || drafts.length === 0}
+              onClick={() => { void submit() }}
+            >
+              {working ? t('loading') : drafts.length ? `${t('confirmCreate')} ${drafts.length}` : t('confirmCreate')}
+            </button>
+          )}
         </div>
       </div>
     </>
