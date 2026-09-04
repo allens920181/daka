@@ -406,8 +406,7 @@ await p.locator('input[type=search]').fill(''); await p.waitForTimeout(200)
 // <html lang> 要跟著 App 語言，否則螢幕閱讀器會用中文語音唸英文介面。
 ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
-// 「設定」搬進「空間」分頁（2026-09 管理面板分組）。
-await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
+// 「設定」跟身分列放在分頁之外，不必先切分頁（2026-09 管理面板分組）。
 await p.getByRole('button',{name:/^設定$/}).click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/English/}).click(); await p.waitForTimeout(600)
 ok('切成英文後 lang=en', (await p.evaluate(() => document.documentElement.lang)) === 'en')
@@ -451,6 +450,9 @@ ok('Esc 關閉對話框，空間仍在', (await p.locator('[role=alertdialog]').
 // 關閉空間在第九項），結果多數空間從未被關閉也從未被匯出，30 天後靜靜消失。
 await p.locator('.member-main').first().click(); await p.waitForTimeout(600)
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+// 「結束這一輪」在「空間」分頁（2026-09 管理面板分組：常用分頁拿掉，
+// 它跟容器本身的其他動作歸在一起）。
+await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
 ok('「關閉空間」改叫「結束這一輪」', (await p.getByRole('button',{name:/結束這一輪/}).count()) > 0)
 await p.getByRole('button',{name:/結束這一輪/}).click(); await p.waitForTimeout(600)
 const finishPreview = (await p.locator('.result-preview').textContent()) ?? ''

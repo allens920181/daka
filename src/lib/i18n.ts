@@ -141,10 +141,8 @@ const zh = {
   // 管理
   manage: '管理',
   // 管理面板分頁（2026-09）：13 個項目攤成一長串選單，掃過去要找的那一項
-  // 常常要滾好幾屏。依「一場活動裡什麼時候會用到」分成三類，比依「動作性質」
-  // 分（例如「唯讀／會改資料」）更貼近使用者腦中的問題：「我現在要幹嘛」。
+  // 常常要滾好幾屏。依「這個動作在動什麼」分兩類：名單本身、空間這個容器。
   manageTabs: '分類',
-  manageTabCommon: '常用',
   manageTabRoster: '名單',
   manageTabSpace: '空間',
   /*
@@ -417,7 +415,6 @@ const en: Record<MessageKey, string> = {
 
   manage: 'Manage',
   manageTabs: 'Category',
-  manageTabCommon: 'Common',
   manageTabRoster: 'Roster',
   manageTabSpace: 'Space',
   copyRoom: 'Duplicate room',

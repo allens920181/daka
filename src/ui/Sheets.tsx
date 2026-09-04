@@ -147,11 +147,12 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 // ---------------------------------------------------------------------------
 
 type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'settings' | 'walkin'
-// 管理面板分頁（2026-09）。依「一場活動裡什麼時候會用到」分類，不是依動作
-// 性質（唯讀／會改資料）——後者是實作者的心智模型，使用者腦中的問題只有
-// 「我現在要幹嘛」。'common' 是預設分頁：進活動現場、活動結束前反覆會用到
-// 的東西；'roster' 是名單本身的資料；'space' 是空間這個容器的設定。
-type ManageTab = 'common' | 'roster' | 'space'
+// 管理面板分頁（2026-09）。依「這個動作在動什麼」分類：'roster' 底下是名單
+// 本身——資料與跟這份名單有關的現場動作；'space' 底下是空間這個容器。曾經
+// 想過第三個「常用」分頁裝複製結果／臨時加人／結束這一輪，但「多常按」跟
+// 「動什麼」是兩種不同的分類軸，「結束這一輪」整場只按一次卻歸在「常用」
+// 裡本身就矛盾，所以拿掉，兩個分頁都用同一種分類方式貫穿到底。
+type ManageTab = 'roster' | 'space'
 type Confirming = null | 'delete' | 'replaceRoster' | 'finish'
 
 export function ManageSheet({ owner, group, onCopySummary, onClose }: {
@@ -164,7 +165,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
 }) {
   const t = useT()
   const [mode, setMode] = useState<ManageMode>('menu')
-  const [tab, setTab] = useState<ManageTab>('common')
+  const [tab, setTab] = useState<ManageTab>('roster')
   const [confirming, setConfirming] = useState<Confirming>(null)
   const [value, setValue] = useState('')
   const [rosterText, setRosterText] = useState('')
@@ -339,15 +340,27 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
       {/*
-        擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏，而且「編輯名單」
-        跟「臨時加人」這種一場活動只按一次跟按十次的東西混在一起找不到
-        輕重。分頁沿用篩選列同一顆 `.segmented`——它已經是這個 app 裡「切換
-        一組看哪個子集合」的固定手勢，不必再學一種新的切法。
+        「設定」跟身分列放在分頁之外、算獨立的一小塊：帳號登入、你的名字、
+        主題、震動回饋，全部是跟這台裝置／這個人有關的東西，換一個空間、
+        甚至刪掉這個空間，這些設定都還在——硬塞進「名單」或「空間」，
+        分類軸會歪掉，跟拿掉「常用」分頁是同一個理由。
+        不包在 `.menu` 裡：只是借同一顆 `.menu-item` 的樣式，不是分頁選單
+        的一部分，不然它會變成 DOM 順序上第一個 `.menu-item`，蓋過「名單」
+        分頁裡真正排第一項的複製結果。
+      */}
+      <button class="menu-item" style="margin-bottom:var(--sp-3)" onClick={() => setMode('settings')}>
+        <IconSettings />
+        <span><strong>{t('settings')}</strong></span>
+      </button>
+
+      {/*
+        擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏。分兩頁，依「這個
+        動作在動什麼」分類：「名單」是名單本身的資料與跟它有關的現場動作，
+        「空間」是空間這個容器。分頁沿用篩選列同一顆 `.segmented`——它已經
+        是這個 app 裡「切換一組看哪個子集合」的固定手勢，不必再學一種新的
+        切法。
       */}
       <div class="segmented" role="group" aria-label={t('manageTabs')}>
-        <button class="segment" aria-pressed={tab === 'common'} onClick={() => setTab('common')}>
-          {t('manageTabCommon')}
-        </button>
         <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
           {t('manageTabRoster')}
         </button>
@@ -356,13 +369,11 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
         </button>
       </div>
 
-      {tab === 'common' && (
+      {tab === 'roster' && (
         <div class="menu">
           {/*
-            複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事，也是
-            這個分頁存在的理由——它跟臨時加人、列印、結束這一輪同屬
-            「活動進行中會反覆用到」這一類。複製的範圍跟著目前選的分組，
-            所以動作交回 Room 執行。
+            複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事。
+            複製的範圍跟著目前選的分組，所以動作交回 Room 執行。
           */}
           <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
             <IconCopy />
@@ -391,27 +402,6 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
             </span>
           </button>
 
-          {owner && (
-            <button
-              class="menu-item"
-              onClick={() => {
-                // 重新開啟不是破壞性動作，直接做；結束才要走流程。
-                if (closed) { void run(() => setRoomClosed(false)); return }
-                setConfirming('finish')
-              }}
-            >
-              <IconLock />
-              <span>
-                <strong>{closed ? t('reopenRoom') : t('finishRound')}</strong>
-                {!closed && <span class="sub">{t('finishRoundHint')}</span>}
-              </span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {tab === 'roster' && (
-        <div class="menu">
           <button
             class="menu-item"
             onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
@@ -472,10 +462,22 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
             </button>
           )}
 
-          <button class="menu-item" onClick={() => setMode('settings')}>
-            <IconSettings />
-            <span><strong>{t('settings')}</strong></span>
-          </button>
+          {owner && (
+            <button
+              class="menu-item"
+              onClick={() => {
+                // 重新開啟不是破壞性動作，直接做；結束才要走流程。
+                if (closed) { void run(() => setRoomClosed(false)); return }
+                setConfirming('finish')
+              }}
+            >
+              <IconLock />
+              <span>
+                <strong>{closed ? t('reopenRoom') : t('finishRound')}</strong>
+                {!closed && <span class="sub">{t('finishRoundHint')}</span>}
+              </span>
+            </button>
+          )}
 
           {owner && (
             <button class="menu-item danger" onClick={() => setConfirming('delete')}>
