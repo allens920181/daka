@@ -1,7 +1,8 @@
+import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import {
   AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, members,
-  prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
+  prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs,
   peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
   shareOnEnter, showToast, type Peer,
   signIn, signOut, startGoogleSignIn,
@@ -20,7 +21,7 @@ import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash, IconLock,
   IconChevronDown, IconGoogle, IconLink, IconPhone, IconPlus, IconPrinter, IconQr, IconShare,
-  IconTag, IconTrash, IconUndo, IconUser,
+  IconTag, IconTrash, IconUndo,
 } from './icons'
 import { useT } from './t'
 
@@ -346,12 +347,12 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
       )}
     >
       {/*
-        面板頂端曾經有一列「身分標籤＋你的名字＋設定齒輪」，三個都不在了：
+        面板頂端曾經有一列「身分標籤＋暱稱＋設定齒輪」，三個都不在了：
 
         - 身分標籤搬到頂欄的代碼前面（Room.tsx）。它回答的是「我能不能改」，
           那是進空間第一眼就該看到的事，不是點開面板才知道。
-        - 「你的名字」只剩首頁的設定進得去。在空間裡改名字是個一場活動用不到
-          一次的動作，卻常態佔著面板最上面一整列。
+        - 暱稱只剩首頁的設定進得去。在空間裡改暱稱是個一場活動用不到一次的
+          動作，卻常態佔著面板最上面一整列。
         - 設定齒輪跟著拿掉：帳號、名字、主題、語言都是跟這台裝置／這個人有關
           的東西，跟「這個空間」無關，同一個目的地不需要兩個入口。
 
@@ -795,13 +796,44 @@ export function AddWalkInSheet({ group, onClose, onBack }: {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * 設定頁的一列：標籤、目前的值、一顆箭頭；點了才展開自己的內容。
+ *
+ * 定義在元件外面不是風格問題——寫在 SettingsSheet 裡面的話每次 render 都是
+ * 一個新的元件型別，Preact 會把整棵子樹拆掉重建，暱稱打到一半就會掉焦點。
+ */
+function SettingRow({ label, value, open, onToggle, children }: {
+  label: string
+  /** 收合時右邊那段字：這一列現在是什麼。四列都要有，這是不用展開就看得到的資訊。 */
+  value: string
+  open: boolean
+  onToggle: () => void
+  children: ComponentChildren
+}) {
+  return (
+    <div class="field">
+      <button class="select-row" aria-expanded={open} onClick={onToggle}>
+        <span class="label">{label}</span>
+        <span class="select-row-value">
+          <span class="select-row-text">{value}</span>
+          <IconChevronDown class={open ? 'select-row-chevron is-open' : 'select-row-chevron'} />
+        </span>
+      </button>
+      {open && children}
+    </div>
+  )
+}
+
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const t = useT()
   const p = prefs.value
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
-  const [themeOpen, setThemeOpen] = useState(false)
-  const [langOpen, setLangOpen] = useState(false)
+  /*
+    一次只開一列。四列都是「設一次、很少再改」的偏好，同時攤開只是把面板拉長；
+    而且展開的內容（輸入框、登出鍵、分段控制）互相之間沒有關係，不必並排比較。
+  */
+  const [open, setOpen] = useState<null | 'name' | 'account' | 'theme' | 'lang'>(null)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -809,110 +841,105 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return <SignInSheet onCancel={() => setSigningIn(false)} onDone={onClose} />
   }
 
+  const toggle = (row: 'name' | 'account' | 'theme' | 'lang') =>
+    () => setOpen((cur) => (cur === row ? null : row))
+  const themeName = p.theme === 'system' ? t('themeSystem')
+    : p.theme === 'light' ? t('themeLight') : t('themeDark')
+
   return (
     <Sheet title={t('settings')} onClose={onClose}>
+      {/*
+        四列長得一模一樣：暱稱、帳戶、主題、語言。它們是同一種東西——跟這台
+        裝置／這個人有關的偏好，跟任何一個空間無關（所以這個面板只從首頁進得
+        去，見 04-components/overlays.md）。以前暱稱是一直攤開的輸入框、帳戶
+        是一顆 .menu-item，主題與語言才是摺疊列，三種長相排在一起，讀起來像
+        三件不相干的事。收合時右邊直接印出目前的值，不展開也看得到自己設了什麼。
+      */}
       <div class="stack">
-        {/*
-          名字是這台裝置的本機顯示名，帳號是雲端登入——兩件不同的事，曾經
-          擠進同一列（合成一個 .row），但那樣會把「你是誰」跟「這台裝置管
-          不管得動雲端」混成一件事。分開回兩塊：名字維持自己獨立的輸入框；
-          未登入時帳號縮成一顆 .menu-item（管理面板同一套列表元件），整列
-          可點、一行講完「登入」＋為什麼，比原本「標籤＋整寬按鈕＋說明」
-          省事，但沒有跟名字混在一起。
-        */}
-        <div class="field">
-          <label class="label" for="checker-name">{t('yourName')}</label>
+        <SettingRow
+          label={t('yourName')}
+          value={name.trim() || t('notSet')}
+          open={open === 'name'}
+          onToggle={toggle('name')}
+        >
           <input
             id="checker-name" class="input" value={name} maxLength={40}
             onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
             onBlur={() => { void setCheckerName(name) }}
           />
           <span class="hint">{t('yourNameHint')}</span>
-        </div>
+        </SettingRow>
 
-        {isSupabaseConfigured && (session.value ? (
-          <div class="field">
-            <div class="row">
-              <span class="hint" style="flex:1">
-                {t('signedInAs', { email: session.value.email })}
-              </span>
-              <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
-            </div>
-            {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
-                動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
-                不加確認對話框（重新登入就還原），但後果要講出來——所以登出
-                跟登入不一樣，不做成整列可點的 .menu-item：那樣一大塊觸控
-                區域配一個有後果的動作，比一顆刻意小的按鈕更容易誤觸。 */}
-            <p class="hint">{t('signOutWhat')}</p>
-          </div>
-        ) : (
-          <button class="menu-item" onClick={() => setSigningIn(true)}>
-            <IconUser />
-            <span>
-              <strong>{t('signIn')}</strong>
-              <span class="sub">{t('signInWhy')}</span>
-            </span>
-          </button>
-        ))}
+        {/* 沒設定雲端的建置沒有帳戶這回事，整列不出現——不給一個按了只會說
+            「還沒設定雲端連線」的入口。 */}
+        {isSupabaseConfigured && (
+          <SettingRow
+            label={t('account')}
+            value={session.value ? session.value.email : t('notSignedIn')}
+            open={open === 'account'}
+            onToggle={toggle('account')}
+          >
+            {session.value ? (
+              <>
+                {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
+                    動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
+                    不加確認對話框（重新登入就還原），但後果要講出來。 */}
+                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
+                <p class="hint">{t('signOutWhat')}</p>
+              </>
+            ) : (
+              <>
+                <button class="btn btn-sm" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
+                <p class="hint">{t('signInWhy')}</p>
+              </>
+            )}
+          </SettingRow>
+        )}
 
         {/*
-          主題／語言各只有 2-3 個選項，卻常態佔著一整條 .segmented 的高度，
-          而這兩個是「設一次、很少再改」的偏好，不像篩選段是點名全程反覆
-          在用的東西。改成摺疊列：預設收合只顯示目前的值，點了才展開
-          .segmented（跟篩選列、管理面板分頁同一顆元件，見 roll-call.md
-          「分段控制」）；選了選項就收回去，不必再點一次收合。
+          主題／語言各只有 2-3 個選項，攤開就是一整條 .segmented 的高度。展開
+          用的是篩選列同一顆元件（見 roll-call.md「分段控制」）；選了就收回去，
+          不必再點一次收合。
         */}
-        <div class="field">
-          <button class="select-row" aria-expanded={themeOpen} onClick={() => setThemeOpen((v) => !v)}>
-            <span class="label">{t('theme')}</span>
-            <span class="select-row-value">
-              {p.theme === 'system' ? t('themeSystem') : p.theme === 'light' ? t('themeLight') : t('themeDark')}
-              <IconChevronDown class={themeOpen ? 'select-row-chevron is-open' : 'select-row-chevron'} />
-            </span>
-          </button>
-          {themeOpen && (
-            <div class="segmented" role="group" aria-label={t('theme')}>
-              {(['system', 'light', 'dark'] as const).map((theme) => (
-                <button
-                  key={theme}
-                  class="segment"
-                  aria-pressed={p.theme === theme}
-                  onClick={() => { void setPrefs({ theme }); setThemeOpen(false) }}
-                >
-                  {theme === 'system' ? t('themeSystem') : theme === 'light' ? t('themeLight') : t('themeDark')}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <SettingRow
+          label={t('theme')}
+          value={themeName}
+          open={open === 'theme'}
+          onToggle={toggle('theme')}
+        >
+          <div class="segmented" role="group" aria-label={t('theme')}>
+            {(['system', 'light', 'dark'] as const).map((theme) => (
+              <button
+                key={theme}
+                class="segment"
+                aria-pressed={p.theme === theme}
+                onClick={() => { void setPrefs({ theme }); setOpen(null) }}
+              >
+                {theme === 'system' ? t('themeSystem') : theme === 'light' ? t('themeLight') : t('themeDark')}
+              </button>
+            ))}
+          </div>
+        </SettingRow>
 
-        <div class="field">
-          <button class="select-row" aria-expanded={langOpen} onClick={() => setLangOpen((v) => !v)}>
-            <span class="label">{t('language')}</span>
-            <span class="select-row-value">
-              {p.lang === 'zh' ? '中文' : 'English'}
-              <IconChevronDown class={langOpen ? 'select-row-chevron is-open' : 'select-row-chevron'} />
-            </span>
-          </button>
-          {langOpen && (
-            <div class="segmented" role="group" aria-label={t('language')}>
-              {(['zh', 'en'] as const).map((lang) => (
-                <button
-                  key={lang}
-                  class="segment"
-                  aria-pressed={p.lang === lang}
-                  onClick={() => { void setPrefs({ lang }); setLangOpen(false) }}
-                >
-                  {lang === 'zh' ? '中文' : 'English'}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {isSupabaseConfigured && savedRosters.value.length > 0 && (
-          <p class="hint">{t('savedRosters')}：{savedRosters.value.length}</p>
-        )}
+        <SettingRow
+          label={t('language')}
+          value={p.lang === 'zh' ? '中文' : 'English'}
+          open={open === 'lang'}
+          onToggle={toggle('lang')}
+        >
+          <div class="segmented" role="group" aria-label={t('language')}>
+            {(['zh', 'en'] as const).map((lang) => (
+              <button
+                key={lang}
+                class="segment"
+                aria-pressed={p.lang === lang}
+                onClick={() => { void setPrefs({ lang }); setOpen(null) }}
+              >
+                {lang === 'zh' ? '中文' : 'English'}
+              </button>
+            ))}
+          </div>
+        </SettingRow>
       </div>
     </Sheet>
   )

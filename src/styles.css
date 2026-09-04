@@ -340,10 +340,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .select-row:hover { background: var(--surface-2); }
 .select-row .label { flex: 1; }
 .select-row-value {
-  display: inline-flex; align-items: center; gap: var(--sp-1);
+  display: inline-flex; align-items: center; gap: var(--sp-1); min-width: 0;
   font-size: var(--fs-3); color: var(--ink-2);
 }
-.select-row-chevron { transition: transform var(--dur-1) var(--ease); }
+/* 值可能是一整串 Email。截斷的是值，標籤與箭頭不縮——一列裡最不重要的是
+   「你的帳號叫什麼」的後半段，最重要的是這一列在講什麼。 */
+.select-row-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-row-chevron { flex: none; transition: transform var(--dur-1) var(--ease); }
 .select-row-chevron.is-open { transform: rotate(180deg); }
 
 .input, .textarea {

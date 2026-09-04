@@ -108,6 +108,8 @@ ok(`[主揪] 回程是新的代碼 ${newCode}`, newCode !== code)
 // 先給同工一個名字，這樣提示才會說「已由 陳姐 改為…」而不是「已被其他人」。
 await B.p.goto(URL); await B.p.waitForTimeout(900)
 await B.p.locator('button[aria-label="設定"]').click(); await B.p.waitForTimeout(500)
+// 暱稱 2026-09 改成摺疊列，要先點開才有輸入框。
+await B.p.getByRole('button', { name: /^暱稱/ }).click(); await B.p.waitForTimeout(300)
 await B.p.locator('#checker-name').fill('陳姐')
 await B.p.locator('#checker-name').blur(); await B.p.waitForTimeout(400)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(300)
