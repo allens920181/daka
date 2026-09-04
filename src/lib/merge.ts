@@ -147,7 +147,7 @@ export interface RosterSummary {
   /**
    * 今天真的該上車的人頭 = headcount - excusedHeadcount。
    *
-   * 進度條、「x / y 人」、看板都必須用這個當分母。用 headcount 當分母的話，
+   * 進度條、「x / y 人」、結束橫幅都必須用這個當分母。用 headcount 當分母的話，
    * 只要有人請假，全部到齊時畫面就會是「15 / 16」配一條填不滿的進度條——
    * 車長會以為還有一個人沒上車。
    */

@@ -16,8 +16,10 @@ const zh = {
   codePlaceholder: '輸入 6 碼代碼',
   recentRooms: '最近的空間',
   noRecentRooms: '還沒有開過空間。開一個，或用代碼加入別人的。',
-  owner: '我開的',
-  helper: '協助點名',
+  // 身分標籤：跟其他地方講同一個角色時用的名詞一致（helperLimits、
+  // copyRoomHintHelper 都已經寫成「主揪」），不要在標籤裡另外發明一種說法。
+  owner: '主揪',
+  helper: '協助者',
   create: '建立',
   join: '加入',
   forget: '從清單移除',
@@ -102,7 +104,7 @@ const zh = {
   copyFailed: '複製失敗，請長按選取文字',
   downloaded: '已下載 {name}',
   youAre: '你是 {name}',
-  setYourName: '寫上你的名字 ›',
+  setYourName: '還沒寫上你的名字',
   /*
    * 這句話一度是假的：它說「複製空間」只有主揪做得到，但「再開一個」刻意對所有人
    * 開放（Sheets.tsx 的 owner 區塊從「編輯名單」才開始），同一個面板上方 3px 還對
@@ -140,6 +142,11 @@ const zh = {
 
   // 管理
   manage: '管理',
+  // 管理面板分頁（2026-09）：13 個項目攤成一長串選單，掃過去要找的那一項
+  // 常常要滾好幾屏。依「這個動作在動什麼」分兩類：名單本身、空間這個容器。
+  manageTabs: '分類',
+  manageTabRoster: '名單',
+  manageTabSpace: '空間',
   /*
    * 不叫「複製這個空間」。「複製」在這個 app 的其他五個地方都指複製到剪貼簿
    * （複製結果、複製代碼、複製連結、已複製、結果已複製），只有這裡指「開一個
@@ -167,7 +174,6 @@ const zh = {
   roomClosed: '這個空間已關閉',
   deleteRoom: '刪除空間',
   deleteRoomWarning: '刪除後無法復原，所有點名紀錄都會消失。確定嗎？',
-  leaveRoom: '離開空間',
   expiresOn: '{date} 自動刪除',
 
   // 匯出
@@ -273,9 +279,6 @@ const zh = {
   /* 晶片上印的是未到數，aria-label 卻唸「已到 0 / 4」——看到的和聽到的不是同一個
      數字。晶片的數字不加文字標籤（見 roll-call.md），文字說明就得說明那個數字。 */
   groupCount: '{name}：{n} 位沒到',
-  boardMode: '看板模式',
-  boardHint: '平板大字，放門邊給大家看。螢幕不自動關閉。',
-  exitBoard: '離開看板',
   printRoster: '列印紙本名單',
   printHint: '印出空白名單備用，手機沒電時用筆勾。',
 
@@ -312,8 +315,8 @@ const en: Record<MessageKey, string> = {
   codePlaceholder: 'Enter the 6-character code',
   recentRooms: 'Recent rooms',
   noRecentRooms: 'No rooms yet. Open one, or join with a code.',
-  owner: 'Mine',
-  helper: 'Helping',
+  owner: 'Organizer',
+  helper: 'Helper',
   create: 'Create',
   join: 'Join',
   forget: 'Remove from list',
@@ -384,7 +387,7 @@ const en: Record<MessageKey, string> = {
   copyFailed: "Couldn't copy — long-press to select the text",
   downloaded: 'Downloaded {name}',
   youAre: "You're {name}",
-  setYourName: 'Add your name \u203a',
+  setYourName: "You haven't added your name yet",
   helperLimits: "Editing the roster and finishing the round are the organiser's to do.",
   remove: 'Remove',
   removeMember: 'Remove from list',
@@ -413,6 +416,9 @@ const en: Record<MessageKey, string> = {
   scanToJoin: 'Scan to join',
 
   manage: 'Manage',
+  manageTabs: 'Category',
+  manageTabRoster: 'Roster',
+  manageTabSpace: 'Space',
   copyRoom: 'Duplicate room',
   copyRoomHint: 'Same roster, statuses reset. For the return trip.',
   copyRoomHintHelper: "Same roster, statuses reset. You'll own the new room.",
@@ -431,7 +437,6 @@ const en: Record<MessageKey, string> = {
   roomClosed: 'This room is closed',
   deleteRoom: 'Delete room',
   deleteRoomWarning: 'This cannot be undone. Every check-in will be lost. Continue?',
-  leaveRoom: 'Leave room',
   expiresOn: 'Auto-deleted on {date}',
 
   shareArrived: '{arrived} / {total} here',
@@ -517,9 +522,6 @@ const en: Record<MessageKey, string> = {
   changeGroup: 'Change group',
   removeFromGroup: 'Remove from group',
   groupCount: '{name}: {n} missing',
-  boardMode: 'Board mode',
-  boardHint: 'For a tablet at the door. The screen stays awake.',
-  exitBoard: 'Exit board',
   printRoster: 'Print paper roster',
   printHint: 'A blank tick-list, for when a phone dies.',
 

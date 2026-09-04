@@ -57,14 +57,6 @@ export const IconSettings = ({ size = 24, ...r }: P) => (
     <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
   </svg>
 )
-// 管理面板的每一列都要有自己的圖示：五個項目共用 IconList 的話，圖示欄
-// 就失去「一眼掃過去分辨」的功能，只剩裝飾。
-export const IconLeave = ({ size = 20, ...r }: P) => (
-  <svg {...base(size)} {...r}>
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
-)
 export const IconEdit = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -132,13 +124,6 @@ export const IconDuplicate = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <rect x="3" y="3" width="12" height="12" rx="2" />
     <path d="M9 21h10a2 2 0 0 0 2-2V9" />
-  </svg>
-)
-export const IconList = ({ size = 20, ...r }: P) => (
-  <svg {...base(size)} {...r}>
-    <line x1="9" y1="6" x2="20" y2="6" /><line x1="9" y1="12" x2="20" y2="12" /><line x1="9" y1="18" x2="20" y2="18" />
-    <circle cx="4.5" cy="6" r="1.2" fill="currentColor" /><circle cx="4.5" cy="12" r="1.2" fill="currentColor" />
-    <circle cx="4.5" cy="18" r="1.2" fill="currentColor" />
   </svg>
 )
 export const IconLock = ({ size = 20, ...r }: P) => (

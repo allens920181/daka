@@ -44,15 +44,6 @@ describe('設計 token 的靜態檢查', () => {
     expect(hits).toEqual([])
   })
 
-  it('看板字級是具名例外，三階都要定義且只用在 .board', () => {
-    for (const tok of ['--bfs-1', '--bfs-2', '--bfs-3']) {
-      expect(css).toContain(`${tok}:`)
-    }
-    const uses = [...css.matchAll(/([.#][\w-]+[^{]*)\{[^}]*var\(--bfs-\d\)[^}]*\}/g)].map((m) => m[1] ?? '')
-    const strays = uses.filter((sel) => !sel.includes('.board'))
-    expect(strays).toEqual([])
-  })
-
   it('沒有硬寫的十六進位色（token 定義區與列印區除外）', () => {
     const printAt = body.indexOf('@media print')
     const scanned = printAt === -1 ? body : body.slice(0, printAt)

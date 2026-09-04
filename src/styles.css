@@ -78,16 +78,6 @@
   --fs-7: 34px;
   --fs-8: 44px;
 
-  /* --- 看板字級：另一套尺度 --------------------------------------------
-     觀看距離從 30 公分變成 3 公尺，八階字級在這個情境不夠用。
-     這是規範裡的具名例外，見 docs/design/03-tokens.md §4.1。 */
-  /* 看板字級：三階具名例外，只能用在 .board。取 vw 與 vh 的較大者——只掛 vw
-     的話，直立手機（390px 寬）上最大的數字只有 52px，而那台手機的高度有
-     844px 完全沒用到。橫放的平板則由 vw 主導。 */
-  --bfs-1: clamp(18px, max(2.4vw, 2.6vh), 34px);   /* 標籤 */
-  --bfs-2: clamp(26px, max(3.6vw, 4vh), 54px);     /* 未到的名字 */
-  --bfs-3: clamp(52px, max(11vw, 10vh), 168px);    /* 主角數字 */
-
   /* --- 間距（4px 基準）------------------------------------------------- */
   --sp-1: 4px;
   --sp-2: 8px;
@@ -585,9 +575,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /*
  * 平板橫向：名單排成兩欄。
  *
- * 看板模式才是平板的正式定位，但 #/r/<代碼> 在平板上完全可達——掃 QR 進來的
- * 就是這個畫面，而教會團體最常有的閒置裝置正好是平板。1024×768 橫放時只看得到
- * 3 個人（比手機還少），左右各空 208px。
+ * 教會團體最常有的閒置裝置正好是平板，而掃 QR 進來的就是這個畫面，不必另外
+ * 開一個專屬頁面才用得上。1024×768 橫放時原本只看得到 3 個人（比手機還少），
+ * 左右各空 208px。
  *
  * grid 是列優先流動，所以 sort_order 的閱讀順序不變；列高與內容也完全不動。
  */
@@ -720,20 +710,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
   max-height: 180px; overflow-y: auto; text-align: left;
 }
 
-/* 管理面板頂端的身分列：協助者從掃 QR 直接進空間，這是他唯一會看到「我是誰、
-   我少了什麼」的地方。 */
+/*
+ * 管理面板頂端的身分列：協助者從掃 QR 直接進空間，這是他唯一會看到「我是
+ * 誰、我少了什麼」的地方。齒輪（設定）跟著擠在同一列的右端——它是這一列
+ * 唯一的按鈕，跟標籤／名字共用 flex 排版，不必另外佔一列高度。
+ */
 .role-line {
   display: flex; align-items: center; gap: var(--sp-2);
-  margin-bottom: var(--sp-2);
+  margin-bottom: var(--sp-3);
 }
+/* 純顯示，不是按鈕：設定鍵已經是這一列唯一的入口，名字不必再重複一次。 */
 .role-name {
-  flex: 1; min-width: 0; text-align: left;
-  min-height: var(--tap-min); padding: 0 var(--sp-2);
-  border: none; background: transparent; cursor: pointer;
-  font: inherit; font-size: var(--fs-3); font-weight: 600; color: var(--accent);
-  border-radius: var(--r-1);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-3); font-weight: 600; color: var(--ink-2);
 }
-.role-name:active { background: var(--surface-2); }
 
 /* === 狀態畫面 ============================================================ */
 
@@ -803,14 +793,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
   padding: var(--sp-2) var(--sp-4) calc(var(--sp-5) + env(safe-area-inset-bottom));
 
   /*
-   * 下緣的捲動陰影。管理面板在 390×844 上內容有 950px、看得見 743px——「刪除
-   * 空間」永遠在摺線下，中英文都一樣（英文只是多切一項）。面板本來就會捲，
-   * 問題是它完全沒說：底邊剛好是螢幕邊緣，切斷的那一列看起來像壞掉而不是
-   * 「還有」。
+   * 下緣的捲動陰影。原本是管理面板逼出來的：13 項擠成一條選單時內容有 950px，
+   * 390×844 只看得見 743px，「刪除空間」永遠在摺線下。2026-09 把管理面板拆成
+   * 分頁之後單一分頁已經不夠長到會捲（實測最長的分頁 636px），但機制留著：
+   * 「編輯名單」帶著警告文字＋名單解析預覽時量到 661px，長活動名稱、放大字體
+   * 或較矮的手機都可能把任何一個 `.sheet` 推過 88vh。面板本來就會捲，問題是
+   * 它完全沒說：底邊剛好貼齊面板邊緣，切斷的那一列看起來像壞掉而不是「還有」。
    *
    * 兩層漸層的老技巧：遮蓋層 background-attachment: local 跟著內容捲，陰影層
    * scroll 固定不動。捲到底時遮蓋層蓋住陰影，陰影自己消失——不需要 JS，也不會
-   * 在捲到底之後還把「刪除空間」壓得灰灰的。
+   * 在捲到底之後還把最後一列壓得灰灰的。
    */
   background-color: var(--paper);
   background-image:
@@ -827,6 +819,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .sheet-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
 .sheet-title { font-size: var(--fs-5); }
+
+/* 管理面板的分頁（2026-09）：沿用篩選列同一顆 .segmented，不必再學一種新切法。 */
+.sheet .segmented { margin-bottom: var(--sp-3); }
 
 .menu { display: flex; flex-direction: column; gap: 2px; }
 /*
@@ -1051,93 +1046,3 @@ button, input, textarea, select { font: inherit; color: inherit; }
   }
 }
 
-/* ===========================================================================
-   看板模式：平板放在門邊給大家看。
-   唯讀——不做點名，避免路過的人靠上去就改了狀態。
-   =========================================================================== */
-
-.board {
-  min-height: 100vh; min-height: 100dvh;
-  display: flex; flex-direction: column;
-  padding: var(--sp-4) var(--sp-5) calc(var(--sp-4) + env(safe-area-inset-bottom));
-  background: var(--paper);
-}
-
-.board-head { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
-.board-title {
-  font-size: var(--bfs-1); font-weight: 700; color: var(--ink-2);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.board-scope {
-  flex: none; font-size: var(--bfs-1); font-weight: 800; color: var(--accent);
-  padding: 0 var(--sp-3); border: 2px solid var(--accent); border-radius: var(--r-full);
-  white-space: nowrap;
-}
-.board-sync {
-  display: inline-flex; align-items: center; gap: var(--sp-2);
-  margin-left: auto; flex: none;
-}
-.board-sync .sync-dot { width: 14px; height: 14px; }
-/* 3 公尺外分不出顏色差別，所以圓點旁邊一定要有字。 */
-.board-sync-text { font-size: var(--bfs-1); font-weight: 700; }
-
-.board-center {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: var(--sp-2);
-  text-align: center; min-height: 0;
-}
-
-/*
- * 主角。看板最大的字要回答車長真正的問題——「還缺誰」，不是「已經到幾個」。
- * 全部到齊之後才換成那句話。
- */
-.board-hero {
-  display: flex; align-items: baseline; justify-content: center; gap: var(--sp-3);
-  font-size: var(--bfs-3); font-weight: 800; line-height: 1;
-  letter-spacing: -.02em; color: var(--st-pending);
-  font-variant-numeric: tabular-nums; margin: 0;
-}
-.board-hero-unit { font-size: var(--bfs-1); font-weight: 700; letter-spacing: 0; }
-/* 「全部到齊」是四個中文字，用主角字級會撐破一行。 */
-.board-hero.done { color: var(--st-arrived); font-size: var(--bfs-2); }
-
-.board-sub {
-  font-size: var(--bfs-1); font-weight: 700; color: var(--ink-2);
-  font-variant-numeric: tabular-nums; margin: 0;
-}
-
-.board-label { font-size: var(--bfs-1); font-weight: 600; color: var(--ink-2); }
-
-/*
- * 未到者的名字。以前這裡固定 38vh 又 overflow: auto——最需要看板的那一刻
- * （還有 20 個人沒上車）正好是它把名字切掉的時候，而三公尺外沒有人能捲動。
- * 改成吃掉中間所有剩餘空間；人多時自動降一階字級，讓更多名字進得來。
- */
-.board-names {
-  display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
-  gap: var(--sp-2) var(--sp-5);
-  list-style: none; margin: var(--sp-3) 0; padding: 0;
-  flex: 1; min-height: 0; overflow-y: auto; width: 100%;
-}
-.board-names li {
-  font-size: var(--bfs-2); font-weight: 600; color: var(--ink);
-  display: inline-flex; align-items: baseline; gap: var(--sp-1);
-}
-.board-names.dense li { font-size: var(--bfs-1); }
-.board-plus { font-size: var(--bfs-1); color: var(--accent); font-weight: 700; }
-
-.board-foot { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; flex: none; }
-.board-foot .groups { margin-bottom: 0; flex: 1; min-width: 0; }
-/* 看板是給三公尺外看的，但晶片是走過去用手按的——放大一階就夠，不必到 bfs。 */
-.board-foot .group-chip { font-size: var(--fs-4); min-height: var(--tap-lg); }
-
-/*
- * 直立手機上分組列會被「離開看板」擠到只剩半個晶片寬。看板本來就是給平板的，
- * 但手機也擋不住有人這樣用——窄螢幕時讓兩者各佔一行。
- * 640px 是全站唯一的斷點（見 05-patterns.md §5.1）。
- */
-@media (max-width: 640px) {
-  .board-foot { flex-direction: column; align-items: stretch; }
-  .board-foot .groups { width: 100%; flex: none; }
-  .board-foot > .btn { width: 100%; }
-}

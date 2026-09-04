@@ -334,8 +334,9 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 // #13 協助者要有地方寫上自己的名字，否則「誰點的」永遠是匿名。
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(600)
 ok('管理面板有身分列', (await p.locator('.role-line').count()) === 1)
-await p.locator('.role-name').click(); await p.waitForTimeout(500)
-ok('點名字可以進到設定', (await p.locator('#checker-name').count()) === 1)
+// 設定鍵搬進身分列右邊，跟名字同一列（2026-09）；名字本身不再是按鈕。
+await p.locator('.role-line button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+ok('點齒輪可以進到設定', (await p.locator('#checker-name').count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 備註不是「純電話號碼」的話（號碼前後還有別的字），備註欄位跟撥號鍵要
@@ -406,6 +407,7 @@ await p.locator('input[type=search]').fill(''); await p.waitForTimeout(200)
 // <html lang> 要跟著 App 語言，否則螢幕閱讀器會用中文語音唸英文介面。
 ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+// 「設定」跟身分列放在分頁之外，不必先切分頁（2026-09 管理面板分組）。
 await p.getByRole('button',{name:/^設定$/}).click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/English/}).click(); await p.waitForTimeout(600)
 ok('切成英文後 lang=en', (await p.evaluate(() => document.documentElement.lang)) === 'en')
@@ -431,6 +433,8 @@ await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200
 
 // --- 確認對話框 ---
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+// 「刪除空間」搬進「空間」分頁（2026-09 管理面板分組）。
+await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
 ok('刪除空間跳出 alertdialog（不是 window.confirm）', await p.locator('[role=alertdialog]').isVisible())
 ok('對話框有標題與說明', (await p.locator('#dialog-title').textContent())==='刪除空間'
@@ -447,6 +451,9 @@ ok('Esc 關閉對話框，空間仍在', (await p.locator('[role=alertdialog]').
 // 關閉空間在第九項），結果多數空間從未被關閉也從未被匯出，30 天後靜靜消失。
 await p.locator('.member-main').first().click(); await p.waitForTimeout(600)
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
+// 「結束這一輪」在「空間」分頁（2026-09 管理面板分組：常用分頁拿掉，
+// 它跟容器本身的其他動作歸在一起）。
+await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
 ok('「關閉空間」改叫「結束這一輪」', (await p.getByRole('button',{name:/結束這一輪/}).count()) > 0)
 await p.getByRole('button',{name:/結束這一輪/}).click(); await p.waitForTimeout(600)
 const finishPreview = (await p.locator('.result-preview').textContent()) ?? ''
@@ -502,7 +509,7 @@ await p.emulateMedia({media:'screen'})
 
 
 
-// ---- 分組（分車）、看板模式 ----
+// ---- 分組（分車）----
 await p.goto(URL); await p.waitForTimeout(900)
 
 await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
@@ -567,35 +574,6 @@ await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForT
 await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(700)
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))
-
-// --- 看板模式 ---
-await p.locator('.groups .group-chip').first().click(); await p.waitForTimeout(300)
-const groupRoomCode=(await p.locator('.topbar-sub .mono').first().textContent())?.trim()
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
-await p.getByRole('button',{name:/看板模式/}).click(); await p.waitForTimeout(1600)
-ok('進入看板模式', await p.locator('.board').isVisible())
-// 看板最大的字要回答車長真正的問題——「還缺誰」，不是「已經到幾個」。
-const heroNum = async () => ((await p.locator('.board-hero').textContent()) || '').replace('位沒到','').trim()
-ok('看板主角是未到人數（4）', (await heroNum())==='4')
-// 6 列，陳大同請假 → 今天該到 5，王小明已到。
-ok('已到退成副行且分母扣掉請假', (await p.locator('.board-sub').textContent())?.includes('1 / 5'))
-const names=await p.locator('.board-names li').allTextContents()
-ok(`看板列出未到者：${names.map(n=>n.trim()).join('、')}`, names.length===4)
-const numSize=await p.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('.board-hero')).fontSize))
-ok(`看板數字 ${numSize}px（遠距可讀，超出八階是具名例外）`, numSize>=52)
-// 未到的名字不得被切掉：最需要看板的那一刻正是名字最多的時候，而三公尺外
-// 沒有人能捲動。
-ok('未到名單沒有被切掉', await p.evaluate(()=>{
-  const ul=document.querySelector('.board-names'); return !ul || ul.scrollHeight <= ul.clientHeight + 2 }))
-// 三公尺外分不出圓點的顏色差別，同步狀態一定要有字。
-ok('看板同步狀態有文字', ((await p.locator('.board-sync-text').textContent())||'').trim().length > 0)
-
-await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
-ok('看板可切分組：第一車未到 2 人', (await heroNum())==='2')
-await p.getByRole('button',{name:/離開看板/}).click(); await p.waitForTimeout(1200)
-ok('離開看板回到空間', await p.locator('.topbar-name').isVisible() && (await p.locator('.topbar-sub .mono').first().textContent())?.trim()===groupRoomCode)
-
-
 
 
 // ---- 80 人名單的首屏產出 ----
