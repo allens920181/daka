@@ -538,8 +538,21 @@ button, input, textarea, select { font: inherit; color: inherit; }
    留自訂的那顆：它有 48px 的觸控目標與無障礙名稱，原生那顆兩者都沒有。 */
 .search-wrap input[type='search']::-webkit-search-cancel-button,
 .search-wrap input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+/*
+ * 絕對定位的 top／right 是量到 .search-wrap 的 padding box，不是 .input
+ * 的邊緣——兩者曾經是同一件事（.search-wrap 左右內距被簡寫蓋成 0 的時候），
+ * 拆開之後這顆鍵的位置沒有跟著换算，於是往下偏了 4px（top: 50% 量的是連
+ * padding-bottom 一起算的高度，不是 .input 自己的高度）、右邊也超出 .input
+ * 的邊界 12px（right 量的是 .shell 內距之外的螢幕邊緣，不是 .input 內距
+ * 之內的邊緣）。
+ *
+ * top: 0 是因為兩者剛好同高（都是 --tap-min）、.search-wrap 也沒有上內距，
+ * 頂端對齊就等於置中，不必再算 50%。right 加回 .shell 的內距（--sp-4）
+ * 才是量到 .input 的邊緣，剩下的 --sp-1 才是這顆鍵跟 .input 邊界之間真正
+ * 的呼吸空間。
+ */
 .search-clear {
-  position: absolute; right: var(--sp-1); top: 50%; transform: translateY(-50%);
+  position: absolute; right: calc(var(--sp-4) + var(--sp-1)); top: 0;
   width: var(--tap-min); height: var(--tap-min); border: none; background: transparent;
   color: var(--ink-3); font-size: var(--fs-5); cursor: pointer; border-radius: var(--r-1);
 }
