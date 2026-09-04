@@ -710,20 +710,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
   max-height: 180px; overflow-y: auto; text-align: left;
 }
 
-/* 管理面板頂端的身分列：協助者從掃 QR 直接進空間，這是他唯一會看到「我是誰、
-   我少了什麼」的地方。 */
+/*
+ * 管理面板頂端的身分列：協助者從掃 QR 直接進空間，這是他唯一會看到「我是
+ * 誰、我少了什麼」的地方。齒輪（設定）跟著擠在同一列的右端——它是這一列
+ * 唯一的按鈕，跟標籤／名字共用 flex 排版，不必另外佔一列高度。
+ */
 .role-line {
   display: flex; align-items: center; gap: var(--sp-2);
-  margin-bottom: var(--sp-2);
+  margin-bottom: var(--sp-3);
 }
+/* 純顯示，不是按鈕：設定鍵已經是這一列唯一的入口，名字不必再重複一次。 */
 .role-name {
-  flex: 1; min-width: 0; text-align: left;
-  min-height: var(--tap-min); padding: 0 var(--sp-2);
-  border: none; background: transparent; cursor: pointer;
-  font: inherit; font-size: var(--fs-3); font-weight: 600; color: var(--accent);
-  border-radius: var(--r-1);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-3); font-weight: 600; color: var(--ink-2);
 }
-.role-name:active { background: var(--surface-2); }
 
 /* === 狀態畫面 ============================================================ */
 

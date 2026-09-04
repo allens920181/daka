@@ -326,32 +326,27 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
   return (
     <Sheet title={t('manage')} onClose={onClose}>
       {/*
-        身分與名字。協助者是掃 QR 直接進空間的，從來不會經過首頁——在這之前
-        整個 App 沒有任何一條路通往設定，於是「你的名字」永遠是空的，
-        「誰點的」與衝突提示就常態退化成匿名：現場問「這個是誰點的」沒有答案。
-        另外協助者的管理面板會靜默少掉一半項目，這裡也一併說清楚。
+        身分、名字、設定同一列。協助者是掃 QR 直接進空間的，從來不會經過
+        首頁——在這之前整個 App 沒有任何一條路通往設定，於是「你的名字」
+        永遠是空的，「誰點的」與衝突提示就常態退化成匿名：現場問「這個是誰
+        點的」沒有答案。另外協助者的管理面板會靜默少掉一半項目，這裡也一併
+        說清楚。
+
+        帳號、名字、主題、震動回饋全部是跟這台裝置／這個人有關的東西，
+        換一個空間、甚至刪掉這個空間都還在——不屬於底下任何一個分頁，所以
+        設定鍵直接跟著身分／名字放在最上面這一列，不必另外找地方放。
+        齒輪是這一列唯一的按鈕：標籤跟名字只是顯示目前是誰，不是第二個
+        通往設定的入口——同一個目的地兩條路，使用者要多想一次「這兩個是不是
+        不一樣」，跟拿掉「離開空間」是同一個理由。
       */}
       <div class="role-line">
         <span class={owner ? 'tag tag-owner' : 'tag'}>{owner ? t('owner') : t('helper')}</span>
-        <button class="role-name" onClick={() => setMode('settings')}>
-          {myName ? t('youAre', { name: myName }) : t('setYourName')}
+        <span class="role-name">{myName ? t('youAre', { name: myName }) : t('setYourName')}</span>
+        <button class="icon-btn" onClick={() => setMode('settings')} aria-label={t('settings')}>
+          <IconSettings />
         </button>
       </div>
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
-
-      {/*
-        「設定」跟身分列放在分頁之外、算獨立的一小塊：帳號登入、你的名字、
-        主題、震動回饋，全部是跟這台裝置／這個人有關的東西，換一個空間、
-        甚至刪掉這個空間，這些設定都還在——硬塞進「名單」或「空間」，
-        分類軸會歪掉，跟拿掉「常用」分頁是同一個理由。
-        不包在 `.menu` 裡：只是借同一顆 `.menu-item` 的樣式，不是分頁選單
-        的一部分，不然它會變成 DOM 順序上第一個 `.menu-item`，蓋過「名單」
-        分頁裡真正排第一項的複製結果。
-      */}
-      <button class="menu-item" style="margin-bottom:var(--sp-3)" onClick={() => setMode('settings')}>
-        <IconSettings />
-        <span><strong>{t('settings')}</strong></span>
-      </button>
 
       {/*
         擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏。分兩頁，依「這個

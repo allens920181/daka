@@ -334,8 +334,9 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 // #13 協助者要有地方寫上自己的名字，否則「誰點的」永遠是匿名。
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(600)
 ok('管理面板有身分列', (await p.locator('.role-line').count()) === 1)
-await p.locator('.role-name').click(); await p.waitForTimeout(500)
-ok('點名字可以進到設定', (await p.locator('#checker-name').count()) === 1)
+// 設定鍵搬進身分列右邊，跟名字同一列（2026-09）；名字本身不再是按鈕。
+await p.locator('.role-line button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+ok('點齒輪可以進到設定', (await p.locator('#checker-name').count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 備註不是「純電話號碼」的話（號碼前後還有別的字），備註欄位跟撥號鍵要
