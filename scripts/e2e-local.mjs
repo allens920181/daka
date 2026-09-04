@@ -409,10 +409,15 @@ ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) 
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
 // 「設定」跟身分列放在分頁之外，不必先切分頁（2026-09 管理面板分組）。
 await p.getByRole('button',{name:/^設定$/}).click(); await p.waitForTimeout(500)
+// 主題／語言改成摺疊列（2026-09），要先點開才看得到選項；選了選項後
+// 摺疊列自己收回去，所以切回中文前要用英文的「Language」字樣重新展開。
+await p.getByRole('button',{name:/語言/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/English/}).click(); await p.waitForTimeout(600)
 ok('切成英文後 lang=en', (await p.evaluate(() => document.documentElement.lang)) === 'en')
+await p.getByRole('button',{name:/Language/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/中文/}).click(); await p.waitForTimeout(600)
 ok('切回中文後 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
+ok('選了選項後摺疊列自己收回去', (await p.locator('.sheet .segmented').count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 掃描端：單機模式下用代碼加入別人的空間，錯的不是代碼，是這個站台沒有雲端。

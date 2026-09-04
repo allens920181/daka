@@ -19,7 +19,8 @@ import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLock,
-  IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash, IconUndo, IconUser,
+  IconChevronDown, IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
+  IconUndo, IconUser,
 } from './icons'
 import { useT } from './t'
 
@@ -741,6 +742,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const p = prefs.value
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
+  const [themeOpen, setThemeOpen] = useState(false)
+  const [langOpen, setLangOpen] = useState(false)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -794,36 +797,59 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           </button>
         ))}
 
+        {/*
+          主題／語言各只有 2-3 個選項，卻常態佔著一整條 .segmented 的高度，
+          而這兩個是「設一次、很少再改」的偏好，不像篩選段是點名全程反覆
+          在用的東西。改成摺疊列：預設收合只顯示目前的值，點了才展開
+          .segmented（跟篩選列、管理面板分頁同一顆元件，見 roll-call.md
+          「分段控制」）；選了選項就收回去，不必再點一次收合。
+        */}
         <div class="field">
-          <span class="label">{t('theme')}</span>
-          <div class="segmented">
-            {(['system', 'light', 'dark'] as const).map((theme) => (
-              <button
-                key={theme}
-                class="segment"
-                aria-pressed={p.theme === theme}
-                onClick={() => { void setPrefs({ theme }) }}
-              >
-                {theme === 'system' ? t('themeSystem') : theme === 'light' ? t('themeLight') : t('themeDark')}
-              </button>
-            ))}
-          </div>
+          <button class="select-row" aria-expanded={themeOpen} onClick={() => setThemeOpen((v) => !v)}>
+            <span class="label">{t('theme')}</span>
+            <span class="select-row-value">
+              {p.theme === 'system' ? t('themeSystem') : p.theme === 'light' ? t('themeLight') : t('themeDark')}
+              <IconChevronDown class={themeOpen ? 'select-row-chevron is-open' : 'select-row-chevron'} />
+            </span>
+          </button>
+          {themeOpen && (
+            <div class="segmented" role="group" aria-label={t('theme')}>
+              {(['system', 'light', 'dark'] as const).map((theme) => (
+                <button
+                  key={theme}
+                  class="segment"
+                  aria-pressed={p.theme === theme}
+                  onClick={() => { void setPrefs({ theme }); setThemeOpen(false) }}
+                >
+                  {theme === 'system' ? t('themeSystem') : theme === 'light' ? t('themeLight') : t('themeDark')}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div class="field">
-          <span class="label">{t('language')}</span>
-          <div class="segmented">
-            {(['zh', 'en'] as const).map((lang) => (
-              <button
-                key={lang}
-                class="segment"
-                aria-pressed={p.lang === lang}
-                onClick={() => { void setPrefs({ lang }) }}
-              >
-                {lang === 'zh' ? '中文' : 'English'}
-              </button>
-            ))}
-          </div>
+          <button class="select-row" aria-expanded={langOpen} onClick={() => setLangOpen((v) => !v)}>
+            <span class="label">{t('language')}</span>
+            <span class="select-row-value">
+              {p.lang === 'zh' ? '中文' : 'English'}
+              <IconChevronDown class={langOpen ? 'select-row-chevron is-open' : 'select-row-chevron'} />
+            </span>
+          </button>
+          {langOpen && (
+            <div class="segmented" role="group" aria-label={t('language')}>
+              {(['zh', 'en'] as const).map((lang) => (
+                <button
+                  key={lang}
+                  class="segment"
+                  aria-pressed={p.lang === lang}
+                  onClick={() => { void setPrefs({ lang }); setLangOpen(false) }}
+                >
+                  {lang === 'zh' ? '中文' : 'English'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {isSupabaseConfigured && savedRosters.value.length > 0 && (

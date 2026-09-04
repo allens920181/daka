@@ -325,6 +325,27 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .label { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
 .hint { font-size: var(--fs-2); color: var(--ink-3); line-height: 1.5; }
 
+/*
+ * 摺疊選單的觸發列：收合時只佔一列高度顯示目前的值，點了才展開下面的
+ * .segmented。.label 借同一個 class，但這裡要跟值一起排在同一行，
+ * 靠 flex:1 把值推到右邊——跟 .row/.spacer 同一套手法，不用
+ * justify-content: space-between（全站沒有第二個地方這樣寫）。
+ */
+.select-row {
+  display: flex; align-items: center; gap: var(--sp-2); width: 100%;
+  min-height: var(--tap-min); padding: 0 var(--sp-2); margin: 0 calc(var(--sp-2) * -1);
+  border: none; border-radius: var(--r-2); background: transparent;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.select-row:hover { background: var(--surface-2); }
+.select-row .label { flex: 1; }
+.select-row-value {
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  font-size: var(--fs-3); color: var(--ink-2);
+}
+.select-row-chevron { transition: transform var(--dur-1) var(--ease); }
+.select-row-chevron.is-open { transform: rotate(180deg); }
+
 .input, .textarea {
   width: 100%; padding: var(--sp-3) var(--sp-3);
   border: 1px solid var(--rule-strong); border-radius: var(--r-2);
