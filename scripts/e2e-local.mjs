@@ -349,19 +349,51 @@ ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[ar
 // 標題不印在畫面上，但無障礙名稱要留著（2026-09）。
 ok('「更多」不印標題', (await p.locator('.sheet .sheet-title').count()) === 0)
 ok('但無障礙名稱還在', (await p.locator('.sheet').getAttribute('aria-label')) === '更多')
-// 標題拿掉之後那一列只剩一顆孤零零的關閉鍵，所以分頁鍵搬上去跟它同一列——
-// 沒有任何一列是空的，關閉鍵也還在。
-const headRow = await p.evaluate(() => {
-  const seg = document.querySelector('.sheet-head .segmented')?.getBoundingClientRect()
-  const close = [...document.querySelectorAll('.sheet-head .icon-btn')].pop()?.getBoundingClientRect()
-  if (!seg || !close) return null
-  return {
-    sameRow: Math.abs((seg.top + seg.height / 2) - (close.top + close.height / 2)) < 6,
-    overlap: seg.right > close.left + 1,
-  }
-})
-ok('分頁鍵跟關閉鍵同一列', Boolean(headRow?.sameRow))
-ok('而且不互相重疊', headRow?.overlap === false)
+// 標題拿掉之後那一列只剩一顆孤零零的叉叉，所以叉叉也拿掉，整列給分頁鍵。
+// 收起來的三條路：點面板外面、Esc、從頂端那一帶往下滑。
+ok('「更多」沒有關閉鍵了', (await p.locator('.sheet-head .icon-btn').count()) === 0)
+ok('整列都是分頁鍵', (await p.locator('.sheet-head .segmented').count()) === 1)
+
+/** 從 sel 的中心往下（或往旁邊）滑，模擬手勢。 */
+async function swipe(sel, dy, dx = 0) {
+  const box = await p.locator(sel).boundingBox()
+  const x = box.x + box.width / 2
+  const y = box.y + box.height / 2
+  await p.mouse.move(x, y); await p.mouse.down()
+  for (let i = 1; i <= 6; i++) { await p.mouse.move(x + (dx * i) / 6, y + (dy * i) / 6); await p.waitForTimeout(20) }
+  await p.mouse.up(); await p.waitForTimeout(500)
+}
+const reopen = async () => {
+  await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+}
+
+await swipe('.sheet-grip', 30)
+ok('往下滑一點點不會收起來（手指抖一下不該關掉面板）', (await p.locator('.sheet').count()) === 1)
+await swipe('.sheet-grip', 130)
+ok('從握把往下滑收得起來', (await p.locator('.sheet').count()) === 0)
+
+// 手勢區包含標題列，不是只有那條 24px 的握把——但按著分頁鍵往下拖時，
+// Chromium 會把它當成拖曳選取的文字而送出 pointercancel，手勢會在第一公分
+// 就被吃掉。這一條就是在守 .sheet-head 的 user-select: none。
+await reopen()
+await swipe('.sheet-head', 130)
+ok('從分頁鍵那一列往下滑也收得起來', (await p.locator('.sheet').count()) === 0)
+
+// 橫向留給分頁鍵自己（.segmented 是可以橫向捲的），不能被手勢吃掉。
+await reopen()
+await swipe('.sheet .segment >> nth=0', 0, 120)
+ok('橫向滑分頁鍵不會收起面板', (await p.locator('.sheet').count()) === 1)
+await p.getByRole('button', { name: /^分享$/ }).click(); await p.waitForTimeout(300)
+ok('而且分頁鍵照樣按得動',
+   (await p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '分享')
+
+// 另外兩條路也要在。
+await p.mouse.click(195, 120); await p.waitForTimeout(400)
+ok('點面板外面關得掉', (await p.locator('.sheet').count()) === 0)
+await reopen()
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關得掉', (await p.locator('.sheet').count()) === 0)
+await reopen()
 
 // 三個分頁一樣高，而且分頁鍵不隨清單捲動——分頁鍵是同一根手指連續要按的
 // 東西，面板一長高，第二顆鍵就會跑到剛剛按下去的位置底下。
