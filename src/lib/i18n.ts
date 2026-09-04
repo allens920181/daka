@@ -32,6 +32,8 @@ const zh = {
      不共用 create——「產生名單」不會真的建立空間，混用會讓人以為按下去就開了。 */
   generateList: '產生名單',
   confirmCreate: '確認建立',
+  /* 清單畫面的次要按鈕：滑回步驟一改字，不是取消整個流程，所以不叫「返回」。 */
+  adjustList: '調整清單',
   join: '加入',
   forget: '從清單移除',
   /* 分享有代碼、連結、QR 碼三種方式，加入原本只接得住代碼——這顆按鍵補上
@@ -57,8 +59,8 @@ const zh = {
   exampleRoster: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
   /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
   fromNote: '備註裡的號碼',
-  parsePreview: '解析結果',
-  /* 左邊的 label 已經是「解析結果」，不必再說一次「解析出」。 */
+  parsePreview: '清單預覽',
+  /* 左邊的 label 已經是「清單預覽」，不必再說一次「解析出」。 */
   parsedCount: '{n} 人',
   duplicateWarning: '有同名的人：{names}。點一個不會動到另一個，建議加註記區分。',
   skippedLines: '{n} 行看起來不是姓名，已略過',
@@ -332,6 +334,7 @@ const en: Record<MessageKey, string> = {
   create: 'Create',
   generateList: 'Generate the list',
   confirmCreate: 'Confirm & create',
+  adjustList: 'Adjust the list',
   join: 'Join',
   forget: 'Remove from list',
   scanQr: 'Scan a QR code',

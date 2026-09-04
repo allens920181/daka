@@ -807,7 +807,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .room-flow-panel {
   position: absolute; inset: 0; overflow-y: auto;
   max-width: 640px; margin: 0 auto;
-  padding: var(--sp-4) var(--sp-4) 120px;
+  /* 底部留白只要蓋過動作列本身（--sp-2 內距 × 2 ＋ 按鈕高）再加一口呼吸空間
+     就好——用固定的大留白（例如 120px）會在 textarea／解析結果都改用 flex
+     長滿之後留下一截填不到的空白，兩塊本來就會自己內捲，不需要額外的捲動
+     緩衝。 */
+  padding: var(--sp-4) var(--sp-4) calc(var(--sp-2) * 2 + var(--tap-lg) + var(--sp-3) + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: var(--sp-3);
   background: var(--paper);
 }

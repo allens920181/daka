@@ -6,7 +6,7 @@ import { parseRoster } from '../lib/parse'
 import { AppError, isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { RosterEditorField, RosterPreview } from './RosterInput'
-import { IconBack, IconChevronDown } from './icons'
+import { IconBack, IconChevronDown, IconChevronUp } from './icons'
 import { useT } from './t'
 
 export function NewRoom() {
@@ -177,13 +177,18 @@ export function NewRoom() {
               {t('generateList')} <IconChevronDown />
             </button>
           ) : (
-            <button
-              class="btn btn-primary btn-lg btn-block"
-              disabled={working || drafts.length === 0}
-              onClick={() => { void submit() }}
-            >
-              {working ? t('loading') : drafts.length ? `${t('confirmCreate')} ${drafts.length}` : t('confirmCreate')}
-            </button>
+            <>
+              <button class="btn btn-lg" disabled={working} onClick={() => setStep('input')}>
+                <IconChevronUp /> {t('adjustList')}
+              </button>
+              <button
+                class="btn btn-primary btn-lg btn-block"
+                disabled={working || drafts.length === 0}
+                onClick={() => { void submit() }}
+              >
+                {working ? t('loading') : drafts.length ? `${t('confirmCreate')} ${drafts.length}` : t('confirmCreate')}
+              </button>
+            </>
           )}
         </div>
       </div>
