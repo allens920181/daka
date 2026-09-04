@@ -135,7 +135,8 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
     return (
       <Sheet title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
-          <p class="hint">{t('copyRoomHint')}</p>
+          {/* 協助者要知道新空間會是他的——選單列的副標拿掉之後，只剩這裡說得出來。 */}
+          <p class="hint">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</p>
           <div class="field">
             <label class="label" for="copy-name">{t('copyRoomName')}</label>
             <input
@@ -396,29 +397,20 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
             {/* 複製的範圍跟著目前選的分組，所以動作交回 Room 執行。 */}
             <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
               <IconCopy />
-              <span>
-                <strong>{t('copySummary')}</strong>
-                <span class="sub">{t('copySummaryHint')}</span>
-              </span>
+              <span><strong>{t('copySummary')}</strong></span>
             </button>
 
             {/* 協助者站在車門口也用得到，所以不放在 owner 限定的項目裡。 */}
             {!closed && (
               <button class="menu-item" onClick={() => setMode('walkin')}>
                 <IconPlus />
-                <span>
-                  <strong>{t('addWalkIn')}</strong>
-                  <span class="sub">{t('walkInPlaceholder')}</span>
-                </span>
+                <span><strong>{t('addWalkIn')}</strong></span>
               </button>
             )}
 
             <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
               <IconPrinter />
-              <span>
-                <strong>{t('printRoster')}</strong>
-                <span class="sub">{t('printHint')}</span>
-              </span>
+              <span><strong>{t('printRoster')}</strong></span>
             </button>
 
             <button
@@ -456,10 +448,7 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
               }}
             >
               <IconDuplicate />
-              <span>
-                <strong>{t('copyRoom')}</strong>
-                <span class="sub">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</span>
-              </span>
+              <span><strong>{t('copyRoom')}</strong></span>
             </button>
 
             {owner && (
@@ -472,10 +461,7 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
                 }}
               >
                 <IconLock />
-                <span>
-                  <strong>{closed ? t('reopenRoom') : t('finishRound')}</strong>
-                  {!closed && <span class="sub">{t('finishRoundHint')}</span>}
-                </span>
+                <span><strong>{closed ? t('reopenRoom') : t('finishRound')}</strong></span>
               </button>
             )}
 
@@ -520,18 +506,12 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
 
               <button class="menu-item" onClick={() => setMode('shareLink')}>
                 <IconLink />
-                <span>
-                  <strong>{t('roomLink')}</strong>
-                  <span class="sub">{t('shareLinkText')}</span>
-                </span>
+                <span><strong>{t('roomLink')}</strong></span>
               </button>
 
               <button class="menu-item" onClick={() => setMode('shareQr')}>
                 <IconQr />
-                <span>
-                  <strong>{t('roomQr')}</strong>
-                  <span class="sub">{t('scanToJoin')}</span>
-                </span>
+                <span><strong>{t('roomQr')}</strong></span>
               </button>
             </div>
 

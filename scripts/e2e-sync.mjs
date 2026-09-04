@@ -194,9 +194,10 @@ await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 // 沒有保護到任何東西。
 await B.p.locator('.topbar button[aria-label="更多"]').click(); await B.p.waitForTimeout(700)
 ok('[同工] 管理面板裡有「再開一個」', (await B.p.getByRole('button', { name: /再開一個/ }).count()) > 0)
-ok('[同工] 副標說清楚新空間是誰的',
-   ((await B.p.getByRole('button', { name: /再開一個/ }).textContent()) || '').includes('你會是新空間的主揪'))
 await B.p.getByRole('button', { name: /再開一個/ }).click(); await B.p.waitForTimeout(500)
+// 選單列的副標 2026-09 全部拿掉了，「新空間會是你的」改在子畫面說。
+ok('[同工] 子畫面說清楚新空間是誰的',
+   ((await B.p.locator('.sheet .hint').first().textContent()) || '').includes('你會是新空間的主揪'))
 await B.p.locator('#copy-name').fill('回程（同工開的）')
 await B.p.getByRole('button', { name: '確定' }).click(); await B.p.waitForTimeout(2500)
 ok('[同工] 進到自己開的回程空間', (await B.p.locator('.topbar-name').textContent())?.includes('同工開的'))

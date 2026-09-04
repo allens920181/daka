@@ -872,8 +872,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /*
  * 「更多」三個分頁共用的固定高度框。高度以「空間」分頁為基準（主揪看到的四項，
- * 390px 上量到 237px、320px 上因為換行是 257px），取 260px 讓兩種寬度都放得下：
- * 比它長的「名單」在框內捲，比它短的「分享」留白，切分頁時面板高度不變。
+ * 副標拿掉之後每一列都只有一行，390px 與 320px 上都是 230px）：比它長的「名單」
+ * 在框內捲，比它短的「分享」留白，切分頁時面板高度不變。
  *
  * 為什麼要訂死：分頁鍵是同一根手指連續要按的東西，面板一長高，第二顆鍵就跑到
  * 剛剛按下去的位置底下——按第二次會按到隔壁那一頁。
@@ -884,7 +884,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * overscroll-behavior 擋住捲到底之後把底下的名單一起帶走。
  */
 .manage-body {
-  height: min(260px, 44vh);
+  height: min(230px, 44vh);
   overflow-y: auto; overscroll-behavior: contain;
 }
 

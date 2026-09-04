@@ -86,7 +86,6 @@ const zh = {
   dropGone: '{name} 沒有存到：這個空間在伺服器上已經不在了',
   dropMore: '另有 {n} 筆',
   addWalkIn: '臨時加人',
-  walkInPlaceholder: '沒報名但到場的人',
   /* 臨時加人預設已到：這個功能的定義就是「人已經站在你面前」。 */
   walkInIntoGroup: '會加進「{group}」，而且直接算已到。',
   walkInAdded: '{name} 已加入並標記已到',
@@ -164,7 +163,6 @@ const zh = {
   /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉空間」——
      使用者心裡想的是「這件事做完了」，不是「把一個容器關起來」。 */
   finishRound: '結束這一輪',
-  finishRoundHint: '車開了就按這個。結束後不能再點名。',
   finishRoundBody: '紀錄還在。先帶走結果：',
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
@@ -197,7 +195,6 @@ const zh = {
   export: '匯出',
   exportCsv: '下載 CSV',
   copySummary: '複製結果',
-  copySummaryHint: '貼回 LINE 群組。只複製目前這一車。',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
   // 同步
@@ -272,7 +269,6 @@ const zh = {
      數字。晶片的數字不加文字標籤（見 roll-call.md），文字說明就得說明那個數字。 */
   groupCount: '{name}：{n} 位沒到',
   printRoster: '列印紙本名單',
-  printHint: '印出空白名單備用，手機沒電時用筆勾。',
 
   // 通用
   cancel: '取消',
@@ -363,7 +359,6 @@ const en: Record<MessageKey, string> = {
   dropGone: "{name} wasn't saved — this room no longer exists on the server",
   dropMore: '{n} more',
   addWalkIn: 'Add someone',
-  walkInPlaceholder: 'Someone who showed up unregistered',
   walkInIntoGroup: 'Goes into \u201c{group}\u201d, marked as here.',
   walkInAdded: '{name} added and marked here',
   walkInAddedInGroup: '{name} added to \u201c{group}\u201d and marked here',
@@ -419,7 +414,6 @@ const en: Record<MessageKey, string> = {
   editRosterWarning: 'Replacing the roster clears every check-in. Continue?',
   rename: 'Rename',
   finishRound: 'Finish this round',
-  finishRoundHint: 'Once the bus leaves. No more check-ins after.',
   finishRoundBody: 'The record stays. Take the result with you first:',
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
@@ -445,7 +439,6 @@ const en: Record<MessageKey, string> = {
   export: 'Export',
   exportCsv: 'Download CSV',
   copySummary: 'Copy result',
-  copySummaryHint: 'Paste it back to the group chat. Current group only.',
   summaryCopied: 'Result copied — paste it anywhere',
 
   syncOnline: 'Synced',
@@ -507,7 +500,6 @@ const en: Record<MessageKey, string> = {
   removeFromGroup: 'Remove from group',
   groupCount: '{name}: {n} missing',
   printRoster: 'Print paper roster',
-  printHint: 'A blank tick-list, for when a phone dies.',
 
   cancel: 'Cancel',
   confirm: 'Confirm',
