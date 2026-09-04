@@ -12,8 +12,8 @@ import { copyToClipboard } from '../lib/clipboard'
 import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
-import { AddWalkInSheet, ManageSheet, MemberSheet, ShareSheet } from './Sheets'
-import { IconBack, IconCheck, IconCopy, IconMore, IconPhone, IconShare } from './icons'
+import { AddWalkInSheet, ManageSheet, MemberSheet } from './Sheets'
+import { IconBack, IconCheck, IconCopy, IconMore, IconPhone } from './icons'
 import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived' | 'excused'
@@ -51,7 +51,7 @@ export function Room({ code }: { code: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
 
-  // 剛從「再開一個」進來的話，直接把分享面板打開。
+  // 剛從「再開一個」進來的話，直接把「更多」開在分享分頁上。
   useEffect(() => {
     if (status !== 'ready') return
     if (shareOnEnter.value !== code) return
@@ -187,9 +187,11 @@ export function Room({ code }: { code: string }) {
               <SyncBadge />
             </div>
           </button>
-          <button class="icon-btn" onClick={() => setSheet('share')} aria-label={t('share')}>
-            <IconShare />
-          </button>
+          {/*
+            頂欄只剩一顆動作鍵。分享搬進「更多」的分享分頁——它整場只用一次
+            （開場把代碼發出去），卻長期佔著頂欄兩顆位置的其中一顆；而頂欄的
+            位置要留給「一直都要按得到」的東西。
+          */}
           <button class="icon-btn" onClick={() => setSheet('manage')} aria-label={t('manage')}>
             <IconMore />
           </button>
@@ -384,11 +386,15 @@ export function Room({ code }: { code: string }) {
         </div>
       </div>
 
-      {sheet === 'share' && <ShareSheet code={current.code} onClose={() => setSheet(null)} />}
-      {sheet === 'manage' && (
+      {/*
+        分享住在「更多」的分享分頁裡（2026-09），沒有自己的面板了。'share' 這個
+        狀態只剩一個用途：從「再開一個」導進新空間時，把面板直接開在那一頁。
+      */}
+      {(sheet === 'manage' || sheet === 'share') && (
         <ManageSheet
           owner={isOwner.value}
           group={group}
+          initialTab={sheet === 'share' ? 'share' : undefined}
           onCopySummary={() => { void copySummary() }}
           onClose={() => setSheet(null)}
         />

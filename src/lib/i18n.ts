@@ -119,8 +119,7 @@ const zh = {
 
   // 分享
   share: '分享',
-  shareTitle: '讓其他人加入',
-  shareHint: '把代碼或 QR 給他們，不用註冊、不用安裝。',
+  shareHint: '把代碼、連結或二維碼給他們，不用註冊、不用安裝。',
   whoIsHere: '現在在這個空間裡',
   onlyYouHere: '目前只有你。把代碼或 QR 給協助點名的人，他們進來後會出現在這裡。',
   peersHere: '{n} 支手機：{names}',
@@ -133,13 +132,15 @@ const zh = {
   shareLocalBody: '這支手機沒連上雲端，名單只存在這裡。把代碼或連結給別人，他們會看到「找不到這個代碼」。',
   shareLocalHow: '多人一起點，要先設定雲端連線（見專案 README）。你還是可以自己點完，用「複製結果」或列印交出名單。',
   roomCode: '代碼',
+  roomLink: '連結',
+  roomQr: '二維碼',
   copyCode: '複製代碼',
   copyLink: '複製連結',
   copied: '已複製',
   scanToJoin: '掃描加入',
 
-  // 管理
-  manage: '管理',
+  // 更多（程式裡仍叫 manage：這是頂欄 ⋮ 那個面板，鍵名沒跟著文案改）
+  manage: '更多',
   // 管理面板分頁（2026-09）：13 個項目攤成一長串選單，掃過去要找的那一項
   // 常常要滾好幾屏。依「這個動作在動什麼」分兩類：名單本身、空間這個容器。
   manageTabs: '分類',
@@ -386,8 +387,7 @@ const en: Record<MessageKey, string> = {
   add: 'Add',
 
   share: 'Share',
-  shareTitle: 'Let others join',
-  shareHint: 'Give them the code or the QR. No sign-up, no install.',
+  shareHint: 'Give them the code, the link or the QR code. No sign-up, no install.',
   whoIsHere: 'In this room now',
   onlyYouHere: "Just you so far. Give helpers the code or QR — they'll show up here once they join.",
   peersHere: '{n} phones: {names}',
@@ -399,12 +399,14 @@ const en: Record<MessageKey, string> = {
   shareLocalBody: "This phone has no cloud set up, so the list lives only here. Anyone you give the code to will just see \u201cthat code doesn't match a room\u201d.",
   shareLocalHow: 'Sharing one list across phones needs a cloud connection (see the README). You can still finish here and hand the result over with Copy or print.',
   roomCode: 'Room code',
+  roomLink: 'Link',
+  roomQr: 'QR code',
   copyCode: 'Copy code',
   copyLink: 'Copy link',
   copied: 'Copied',
   scanToJoin: 'Scan to join',
 
-  manage: 'Manage',
+  manage: 'More',
   manageTabs: 'Category',
   manageTabRoster: 'Roster',
   manageTabSpace: 'Space',

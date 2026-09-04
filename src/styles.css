@@ -879,6 +879,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--surface); border: 1px solid var(--rule);
   border-radius: var(--r-2); color: var(--ink);
 }
+/*
+ * 連結那一頁先把網址印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE
+ * 群。等寬字讓 l/1、O/0 分得開，`overflow-wrap` 讓長網址折行而不是把面板頂寬。
+ */
+.link-display {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-2); color: var(--ink-2);
+  padding: var(--sp-3); background: var(--surface); border: 1px solid var(--rule);
+  border-radius: var(--r-2); overflow-wrap: anywhere;
+}
 .qr-card {
   /* QR 一律白底黑碼：掃描器要的是對比，不是配色。 */
   background: #fff; padding: var(--sp-3); border-radius: var(--r-2);

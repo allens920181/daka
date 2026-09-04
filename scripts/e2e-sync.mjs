@@ -49,7 +49,7 @@ await B.p.goto(`${URL}#/j/${code}`); await B.p.waitForTimeout(2000)
 ok('[同工] 用分享連結進到同一個空間', (await B.p.locator('.topbar-name').textContent()) === '秋季旅遊 · 出發')
 ok('[同工] 看到同一份名單（5 人）', (await B.p.locator('.member').count()) === 5)
 ok('[同工] 未到也是 4', (await missing(B.p)) === '4')
-ok('[同工] 標示為協助點名而非擁有者', (await B.p.locator('.topbar button[aria-label="管理"]').count()) === 1)
+ok('[同工] 標示為協助點名而非擁有者', (await B.p.locator('.topbar button[aria-label="更多"]').count()) === 1)
 
 // --- 主揪點名 → 同工對帳後看到 ---
 await A.p.locator('.member-main').nth(0).click(); await A.p.waitForTimeout(1200)
@@ -93,7 +93,7 @@ ok('[主揪] 恢復連線後自動補上，未到歸零', (await missing(A.p)) =
 ok('[同工] 同步狀態回到已同步', /已同步/.test((await B.p.locator('.sync').textContent()) || ''))
 
 // --- 再開一個（回程）---
-await A.p.locator('.topbar button[aria-label="管理"]').click(); await A.p.waitForTimeout(600)
+await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(600)
 await A.p.getByRole('button', { name: /再開一個/ }).click(); await A.p.waitForTimeout(400)
 const prefill = await A.p.locator('#copy-name').inputValue()
 ok(`[主揪] 新空間名預帶「回程」：${prefill}`, prefill.includes('回程'))
@@ -116,8 +116,12 @@ await B.p.goto(`${URL}#/r/${newCode}`); await B.p.waitForTimeout(1800)
 // 複製回程空間會換一組新代碼，而五支協助的手機還開著舊空間——他們的畫面完全
 // 沒有變化，會繼續在舊空間打勾。複製完的下一個動作 100% 是把新代碼發出去，
 // 所以分享面板要自己打開。
-ok('[主揪] 複製完自動打開分享面板', (await A.p.locator('.sheet-title').textContent())?.includes('加入'))
-ok('[主揪] 面板裡是新代碼', (await A.p.locator('.code-display').textContent())?.trim() === newCode)
+// 分享 2026-09 搬進「更多」的分享分頁，所以自動打開的是那個面板的那一頁。
+ok('[主揪] 複製完自動打開「更多」', (await A.p.locator('.sheet-title').textContent())?.includes('更多'))
+ok('[主揪] 而且直接停在分享分頁',
+   (await A.p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '分享')
+ok('[主揪] 分享分頁上就是新代碼',
+   (await A.p.locator('.menu-item .sub.mono').first().textContent())?.trim() === newCode)
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 
 // 主揪先把第一個人標成已到
@@ -155,7 +159,7 @@ ok(`[同工] 離線先點了「${targetName}」，本地已入列`,
    /待上傳/.test((await B.p.locator('.sync').textContent()) || ''))
 
 // 主揪關閉空間
-await A.p.locator('.topbar button[aria-label="管理"]').click(); await A.p.waitForTimeout(600)
+await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(600)
 await A.p.getByRole('button', { name: /結束這一輪/ }).click(); await A.p.waitForTimeout(700)
 await A.p.getByRole('button', { name: /^結束這一輪$/ }).last().click(); await A.p.waitForTimeout(1600)
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(400)
@@ -186,7 +190,7 @@ await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 // 而那時候「回程再點一次」是產品方向書明列的核心情境。複製對來源空間完全無害
 // （一個字都不改），名單本來就對所有拿得到代碼的人可見，所以鎖在擁有權後面
 // 沒有保護到任何東西。
-await B.p.locator('.topbar button[aria-label="管理"]').click(); await B.p.waitForTimeout(700)
+await B.p.locator('.topbar button[aria-label="更多"]').click(); await B.p.waitForTimeout(700)
 ok('[同工] 管理面板裡有「再開一個」', (await B.p.getByRole('button', { name: /再開一個/ }).count()) > 0)
 ok('[同工] 副標說清楚新空間是誰的',
    ((await B.p.getByRole('button', { name: /再開一個/ }).textContent()) || '').includes('你會是新空間的主揪'))
@@ -198,7 +202,7 @@ ok('[同工] 名單一起複製過來', (await B.p.locator('.member').count()) =
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(500)
 // 複製的人是新空間的主揪：身分標籤（頂欄）與管理功能都要出現。
 ok('[同工] 在新空間裡是主揪', (await B.p.locator('.topbar-sub .tag-owner').count()) === 1)
-await B.p.locator('.topbar button[aria-label="管理"]').click(); await B.p.waitForTimeout(700)
+await B.p.locator('.topbar button[aria-label="更多"]').click(); await B.p.waitForTimeout(700)
 ok('[同工] 新空間裡有擁有者才有的「編輯名單」', (await B.p.getByRole('button', { name: /編輯名單/ }).count()) > 0)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
 

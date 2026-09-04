@@ -91,7 +91,7 @@ ok('[舊手機] 未登入時首頁沒有「我的活動」', (await A.page.getBy
 // --- 新手機：沒登入，用代碼進得去（協助點名），但管不動 ---
 await B.page.goto(`${URL}#/r/${code}`); await B.page.waitForTimeout(1800)
 ok('[新手機] 用代碼進得去（協助點名不需要帳號）', await B.page.locator('.topbar-name').isVisible())
-await B.page.locator('.topbar button[aria-label="管理"]').click(); await B.page.waitForTimeout(500)
+await B.page.locator('.topbar button[aria-label="更多"]').click(); await B.page.waitForTimeout(500)
 // 「再開一個」刻意對所有人開放（見 schema.sql 的 copy_room），所以不能拿它
 // 當擁有者功能的探針。改用真正只有擁有者做得到的「編輯名單」。
 ok('[新手機] 未登入時看不到擁有者功能', (await B.page.getByRole('button', { name: /編輯名單/ }).count()) === 0)
@@ -134,7 +134,7 @@ await signInWithGoogle(B)
 await B.page.waitForTimeout(600)
 ok('[新手機] 登入後看得到同一場活動', await B.page.getByText('秋季旅遊 · 出發').first().isVisible())
 await B.page.getByText('秋季旅遊 · 出發').first().click(); await B.page.waitForTimeout(1800)
-await B.page.locator('.topbar button[aria-label="管理"]').click(); await B.page.waitForTimeout(600)
+await B.page.locator('.topbar button[aria-label="更多"]').click(); await B.page.waitForTimeout(600)
 ok('[新手機] 現在看得到擁有者功能了', await B.page.getByRole('button', { name: /編輯名單/ }).isVisible())
 
 // 真的改得動（這是「換手機拿得回空間」的實證）
@@ -156,7 +156,7 @@ await A.page.getByRole('button', { name: /^登出$/ }).click(); await A.page.wai
 await A.page.keyboard.press('Escape'); await A.page.waitForTimeout(500)
 ok('[舊手機] 登出後「我的活動」消失', (await A.page.getByText('我的活動').count()) === 0)
 await A.page.goto(`${URL}#/r/${code}`); await A.page.waitForTimeout(1800)
-await A.page.locator('.topbar button[aria-label="管理"]').click(); await A.page.waitForTimeout(600)
+await A.page.locator('.topbar button[aria-label="更多"]').click(); await A.page.waitForTimeout(600)
 ok('[舊手機] 登出後仍管得動自己開的空間（裝置金鑰還在）',
   await A.page.getByRole('button', { name: /編輯名單/ }).isVisible())
 
