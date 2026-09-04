@@ -279,9 +279,6 @@ const zh = {
   /* 晶片上印的是未到數，aria-label 卻唸「已到 0 / 4」——看到的和聽到的不是同一個
      數字。晶片的數字不加文字標籤（見 roll-call.md），文字說明就得說明那個數字。 */
   groupCount: '{name}：{n} 位沒到',
-  boardMode: '看板模式',
-  boardHint: '平板大字，放門邊給大家看。螢幕不自動關閉。',
-  exitBoard: '離開看板',
   printRoster: '列印紙本名單',
   printHint: '印出空白名單備用，手機沒電時用筆勾。',
 
@@ -526,9 +523,6 @@ const en: Record<MessageKey, string> = {
   changeGroup: 'Change group',
   removeFromGroup: 'Remove from group',
   groupCount: '{name}: {n} missing',
-  boardMode: 'Board mode',
-  boardHint: 'For a tablet at the door. The screen stays awake.',
-  exitBoard: 'Exit board',
   printRoster: 'Print paper roster',
   printHint: 'A blank tick-list, for when a phone dies.',
 

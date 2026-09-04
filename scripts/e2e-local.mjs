@@ -506,7 +506,7 @@ await p.emulateMedia({media:'screen'})
 
 
 
-// ---- 分組（分車）、看板模式 ----
+// ---- 分組（分車）----
 await p.goto(URL); await p.waitForTimeout(900)
 
 await p.getByRole('button',{name:/開啟空間/}).first().click(); await p.waitForTimeout(300)
@@ -571,35 +571,6 @@ await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForT
 await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(700)
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))
-
-// --- 看板模式 ---
-await p.locator('.groups .group-chip').first().click(); await p.waitForTimeout(300)
-const groupRoomCode=(await p.locator('.topbar-sub .mono').first().textContent())?.trim()
-await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
-await p.getByRole('button',{name:/看板模式/}).click(); await p.waitForTimeout(1600)
-ok('進入看板模式', await p.locator('.board').isVisible())
-// 看板最大的字要回答車長真正的問題——「還缺誰」，不是「已經到幾個」。
-const heroNum = async () => ((await p.locator('.board-hero').textContent()) || '').replace('位沒到','').trim()
-ok('看板主角是未到人數（4）', (await heroNum())==='4')
-// 6 列，陳大同請假 → 今天該到 5，王小明已到。
-ok('已到退成副行且分母扣掉請假', (await p.locator('.board-sub').textContent())?.includes('1 / 5'))
-const names=await p.locator('.board-names li').allTextContents()
-ok(`看板列出未到者：${names.map(n=>n.trim()).join('、')}`, names.length===4)
-const numSize=await p.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('.board-hero')).fontSize))
-ok(`看板數字 ${numSize}px（遠距可讀，超出八階是具名例外）`, numSize>=52)
-// 未到的名字不得被切掉：最需要看板的那一刻正是名字最多的時候，而三公尺外
-// 沒有人能捲動。
-ok('未到名單沒有被切掉', await p.evaluate(()=>{
-  const ul=document.querySelector('.board-names'); return !ul || ul.scrollHeight <= ul.clientHeight + 2 }))
-// 三公尺外分不出圓點的顏色差別，同步狀態一定要有字。
-ok('看板同步狀態有文字', ((await p.locator('.board-sync-text').textContent())||'').trim().length > 0)
-
-await p.getByRole('button',{name:/第一車/}).click(); await p.waitForTimeout(400)
-ok('看板可切分組：第一車未到 2 人', (await heroNum())==='2')
-await p.getByRole('button',{name:/離開看板/}).click(); await p.waitForTimeout(1200)
-ok('離開看板回到空間', await p.locator('.topbar-name').isVisible() && (await p.locator('.topbar-sub .mono').first().textContent())?.trim()===groupRoomCode)
-
-
 
 
 // ---- 80 人名單的首屏產出 ----

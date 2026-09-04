@@ -79,9 +79,6 @@ function collect() {
     if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') continue
     // inert 子樹（面板開啟時的背景）不屬於當前畫面，整段跳過。
     if (el.closest('[inert]')) continue
-    // 看板模式的觀看距離是 3 公尺，字級另成一套（03-tokens.md §4.1 的具名例外）。
-    // 對比與觸控尺寸仍然要驗，只有字級白名單放行。
-    const inBoard = Boolean(el.closest('.board'))
     const rect = el.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) continue
 
@@ -93,7 +90,7 @@ function collect() {
       .join('')
     if (ownText) {
       const fs = Math.round(parseFloat(cs.fontSize) * 100) / 100
-      if (!inBoard) out.font.push({ fs, el: label(el), text: ownText.slice(0, 20) })
+      out.font.push({ fs, el: label(el), text: ownText.slice(0, 20) })
 
       const bg = bgOf(el)
       const declared = parse(cs.color)
@@ -235,13 +232,6 @@ for (const scheme of ['light', 'dark']) {
   if (await confirmSave.count()) { await confirmSave.click(); await page.waitForTimeout(900) }
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
   await audit(page, scheme, '空間（含分組）')
-
-  // --- 看板模式 ---
-  const roomCode = await page.locator('.topbar-sub .mono').first().textContent().catch(() => null)
-  if (roomCode) {
-    await page.goto(`${URL}#/b/${roomCode.trim()}`); await page.waitForTimeout(1600)
-    await audit(page, scheme, '看板模式')
-  }
 
   await ctx.close()
 }

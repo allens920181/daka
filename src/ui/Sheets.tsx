@@ -18,7 +18,7 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconList, IconLock,
+  IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLock,
   IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash, IconUndo,
 } from './icons'
 import { useT } from './t'
@@ -339,8 +339,8 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
       {/*
-        13 項擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏，而且「編輯
-        名單」跟「看板模式」這種一場活動只按一次跟按十次的東西混在一起找不到
+        擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏，而且「編輯名單」
+        跟「臨時加人」這種一場活動只按一次跟按十次的東西混在一起找不到
         輕重。分頁沿用篩選列同一顆 `.segmented`——它已經是這個 app 裡「切換
         一組看哪個子集合」的固定手勢，不必再學一種新的切法。
       */}
@@ -360,7 +360,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
         <div class="menu">
           {/*
             複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事，也是
-            這個分頁存在的理由——它跟臨時加人、看板、列印、結束這一輪同屬
+            這個分頁存在的理由——它跟臨時加人、列印、結束這一輪同屬
             「活動進行中會反覆用到」這一類。複製的範圍跟著目前選的分組，
             所以動作交回 Room 執行。
           */}
@@ -382,14 +382,6 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
               </span>
             </button>
           )}
-
-          <button class="menu-item" onClick={() => { onClose(); navigate(`/b/${current.code}`) }}>
-            <IconList />
-            <span>
-              <strong>{t('boardMode')}</strong>
-              <span class="sub">{t('boardHint')}</span>
-            </span>
-          </button>
 
           <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
             <IconPrinter />

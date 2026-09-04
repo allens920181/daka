@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { booted } from './lib/store'
 import { navigate, useRoute } from './router'
-import { Board } from './ui/Board'
 import { Home } from './ui/Home'
 import { NewRoom } from './ui/NewRoom'
 import { Room } from './ui/Room'
@@ -25,21 +24,17 @@ export function App() {
   if (joining) return <p class="center-note">{t('loading')}</p>
 
   const inRoom = path.match(/^\/r\/([^/]+)/)
-  const onBoard = path.match(/^\/b\/([^/]+)/)
 
   return (
     <>
-      {onBoard?.[1]
-        ? <Board code={onBoard[1].toUpperCase()} />
-        : inRoom?.[1]
-          ? <Room code={inRoom[1].toUpperCase()} />
-          : path === '/new'
-            ? <NewRoom />
-            : <Home onSettings={() => setSettings(true)} />}
+      {inRoom?.[1]
+        ? <Room code={inRoom[1].toUpperCase()} />
+        : path === '/new'
+          ? <NewRoom />
+          : <Home onSettings={() => setSettings(true)} />}
 
       {settings && <SettingsSheet onClose={() => setSettings(false)} />}
-      {/* 看板是唯讀的，沒人該去點它——一個「復原」按鈕在那裡只會令人困惑。 */}
-      {!onBoard && <Toast />}
+      <Toast />
     </>
   )
 }

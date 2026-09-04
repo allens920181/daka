@@ -126,13 +126,6 @@ export const IconDuplicate = ({ size = 20, ...r }: P) => (
     <path d="M9 21h10a2 2 0 0 0 2-2V9" />
   </svg>
 )
-export const IconList = ({ size = 20, ...r }: P) => (
-  <svg {...base(size)} {...r}>
-    <line x1="9" y1="6" x2="20" y2="6" /><line x1="9" y1="12" x2="20" y2="12" /><line x1="9" y1="18" x2="20" y2="18" />
-    <circle cx="4.5" cy="6" r="1.2" fill="currentColor" /><circle cx="4.5" cy="12" r="1.2" fill="currentColor" />
-    <circle cx="4.5" cy="18" r="1.2" fill="currentColor" />
-  </svg>
-)
 export const IconLock = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
