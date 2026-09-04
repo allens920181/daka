@@ -323,33 +323,6 @@ export async function setCheckerName(name: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// 觸覺回饋
-// ---------------------------------------------------------------------------
-
-/**
- * 點名成功時的短震動。
- *
- * 這不是裝飾：逆光下看不清螢幕、或視線正盯著排隊的人而不是手機時，
- * 震動是「這一下有記到」的第二個確認管道。
- * iOS Safari 不支援 navigator.vibrate，所以這是 Android 才有的加分項。
- */
-/**
- * 震動回饋。逆光下看不清畫面時，手感是第二個確認管道——所以「記上車」和
- * 「從車上拿掉」不能震得一模一樣：一下短震是「收到了」，兩下是「拿掉了」。
- */
-function haptic(pattern: number | number[] = 12): void {
-  if (!prefs.value.haptics) return
-  try {
-    navigator.vibrate?.(pattern)
-  } catch {
-    /* 不支援或被使用者停用，忽略。 */
-  }
-}
-
-const HAPTIC_ADD = 12
-const HAPTIC_REMOVE = [10, 60, 10]
-
-// ---------------------------------------------------------------------------
 // 提示訊息
 // ---------------------------------------------------------------------------
 
@@ -641,7 +614,6 @@ export async function setStatus(memberId: string, status: MemberStatus): Promise
   const { members: next, rev } = applyStatusLocally(members.value, memberId, status, by)
   members.value = next
   rememberChange(memberId)
-  haptic(status === 'arrived' ? HAPTIC_ADD : HAPTIC_REMOVE)
   persistSoon()
 
   await queue({

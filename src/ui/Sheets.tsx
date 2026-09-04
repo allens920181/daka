@@ -19,7 +19,8 @@ import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconLock,
-  IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash, IconUndo,
+  IconChevronDown, IconGoogle, IconPhone, IconPlus, IconPrinter, IconSettings, IconShare, IconTag, IconTrash,
+  IconUndo, IconUser,
 } from './icons'
 import { useT } from './t'
 
@@ -332,7 +333,7 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
         點的」沒有答案。另外協助者的管理面板會靜默少掉一半項目，這裡也一併
         說清楚。
 
-        帳號、名字、主題、震動回饋全部是跟這台裝置／這個人有關的東西，
+        帳號、名字、主題全部是跟這台裝置／這個人有關的東西，
         換一個空間、甚至刪掉這個空間都還在——不屬於底下任何一個分頁，所以
         設定鍵直接跟著身分／名字放在最上面這一列，不必另外找地方放。
         齒輪是這一列唯一的按鈕：標籤跟名字只是顯示目前是誰，不是第二個
@@ -741,6 +742,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const p = prefs.value
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
+  const [themeOpen, setThemeOpen] = useState(false)
+  const [langOpen, setLangOpen] = useState(false)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -751,31 +754,14 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet title={t('settings')} onClose={onClose}>
       <div class="stack">
-        {isSupabaseConfigured && (
-          <div class="field">
-            <span class="label">{t('account')}</span>
-            {session.value ? (
-              <>
-                <div class="row">
-                  <span class="hint" style="flex:1">
-                    {t('signedInAs', { email: session.value.email })}
-                  </span>
-                  <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
-                </div>
-                {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
-                    動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
-                    不加確認對話框（重新登入就還原），但後果要講出來。 */}
-                <p class="hint">{t('signOutWhat')}</p>
-              </>
-            ) : (
-              <>
-                <button class="btn btn-block" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
-                <span class="hint">{t('signInWhy')}</span>
-              </>
-            )}
-          </div>
-        )}
-
+        {/*
+          名字是這台裝置的本機顯示名，帳號是雲端登入——兩件不同的事，曾經
+          擠進同一列（合成一個 .row），但那樣會把「你是誰」跟「這台裝置管
+          不管得動雲端」混成一件事。分開回兩塊：名字維持自己獨立的輸入框；
+          未登入時帳號縮成一顆 .menu-item（管理面板同一套列表元件），整列
+          可點、一行講完「登入」＋為什麼，比原本「標籤＋整寬按鈕＋說明」
+          省事，但沒有跟名字混在一起。
+        */}
         <div class="field">
           <label class="label" for="checker-name">{t('yourName')}</label>
           <input
@@ -786,53 +772,84 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           <span class="hint">{t('yourNameHint')}</span>
         </div>
 
-        <div class="field">
-          <span class="label">{t('theme')}</span>
-          <div class="segmented">
-            {(['system', 'light', 'dark'] as const).map((theme) => (
-              <button
-                key={theme}
-                class="segment"
-                aria-pressed={p.theme === theme}
-                onClick={() => { void setPrefs({ theme }) }}
-              >
-                {theme === 'system' ? t('themeSystem') : theme === 'light' ? t('themeLight') : t('themeDark')}
-              </button>
-            ))}
+        {isSupabaseConfigured && (session.value ? (
+          <div class="field">
+            <div class="row">
+              <span class="hint" style="flex:1">
+                {t('signedInAs', { email: session.value.email })}
+              </span>
+              <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
+            </div>
+            {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
+                動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
+                不加確認對話框（重新登入就還原），但後果要講出來——所以登出
+                跟登入不一樣，不做成整列可點的 .menu-item：那樣一大塊觸控
+                區域配一個有後果的動作，比一顆刻意小的按鈕更容易誤觸。 */}
+            <p class="hint">{t('signOutWhat')}</p>
           </div>
+        ) : (
+          <button class="menu-item" onClick={() => setSigningIn(true)}>
+            <IconUser />
+            <span>
+              <strong>{t('signIn')}</strong>
+              <span class="sub">{t('signInWhy')}</span>
+            </span>
+          </button>
+        ))}
+
+        {/*
+          主題／語言各只有 2-3 個選項，卻常態佔著一整條 .segmented 的高度，
+          而這兩個是「設一次、很少再改」的偏好，不像篩選段是點名全程反覆
+          在用的東西。改成摺疊列：預設收合只顯示目前的值，點了才展開
+          .segmented（跟篩選列、管理面板分頁同一顆元件，見 roll-call.md
+          「分段控制」）；選了選項就收回去，不必再點一次收合。
+        */}
+        <div class="field">
+          <button class="select-row" aria-expanded={themeOpen} onClick={() => setThemeOpen((v) => !v)}>
+            <span class="label">{t('theme')}</span>
+            <span class="select-row-value">
+              {p.theme === 'system' ? t('themeSystem') : p.theme === 'light' ? t('themeLight') : t('themeDark')}
+              <IconChevronDown class={themeOpen ? 'select-row-chevron is-open' : 'select-row-chevron'} />
+            </span>
+          </button>
+          {themeOpen && (
+            <div class="segmented" role="group" aria-label={t('theme')}>
+              {(['system', 'light', 'dark'] as const).map((theme) => (
+                <button
+                  key={theme}
+                  class="segment"
+                  aria-pressed={p.theme === theme}
+                  onClick={() => { void setPrefs({ theme }); setThemeOpen(false) }}
+                >
+                  {theme === 'system' ? t('themeSystem') : theme === 'light' ? t('themeLight') : t('themeDark')}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div class="field">
-          <span class="label">{t('haptics')}</span>
-          <div class="segmented">
-            {([true, false] as const).map((on) => (
-              <button
-                key={String(on)}
-                class="segment"
-                aria-pressed={p.haptics === on}
-                onClick={() => { void setPrefs({ haptics: on }) }}
-              >
-                {on ? t('on') : t('off')}
-              </button>
-            ))}
-          </div>
-          <span class="hint">{t('hapticsHint')}</span>
-        </div>
-
-        <div class="field">
-          <span class="label">{t('language')}</span>
-          <div class="segmented">
-            {(['zh', 'en'] as const).map((lang) => (
-              <button
-                key={lang}
-                class="segment"
-                aria-pressed={p.lang === lang}
-                onClick={() => { void setPrefs({ lang }) }}
-              >
-                {lang === 'zh' ? '中文' : 'English'}
-              </button>
-            ))}
-          </div>
+          <button class="select-row" aria-expanded={langOpen} onClick={() => setLangOpen((v) => !v)}>
+            <span class="label">{t('language')}</span>
+            <span class="select-row-value">
+              {p.lang === 'zh' ? '中文' : 'English'}
+              <IconChevronDown class={langOpen ? 'select-row-chevron is-open' : 'select-row-chevron'} />
+            </span>
+          </button>
+          {langOpen && (
+            <div class="segmented" role="group" aria-label={t('language')}>
+              {(['zh', 'en'] as const).map((lang) => (
+                <button
+                  key={lang}
+                  class="segment"
+                  aria-pressed={p.lang === lang}
+                  onClick={() => { void setPrefs({ lang }); setLangOpen(false) }}
+                >
+                  {lang === 'zh' ? '中文' : 'English'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {isSupabaseConfigured && savedRosters.value.length > 0 && (
