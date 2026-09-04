@@ -160,3 +160,11 @@ export const IconLock = ({ size = 20, ...r }: P) => (
     <rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
   </svg>
 )
+// 掃描加入的觸發鍵，跟分享面板「二維碼」那一列的 IconQr 分開：那顆印的是
+// 要被掃的碼本身，這顆印的是拿去掃別人的相機。
+export const IconCamera = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}>
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </svg>
+)

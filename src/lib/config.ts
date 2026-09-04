@@ -44,3 +44,15 @@ export function inAppBrowser(): boolean {
 export function secureOrigin(): boolean {
   return typeof window === 'undefined' || window.isSecureContext !== false
 }
+
+/**
+ * 這個環境有沒有機會用相機掃 QR 碼加入空間。
+ *
+ * `getUserMedia` 跟 Google 登入的 PKCE 一樣只在安全來源開放，區網的
+ * `http://192.168.x.x` 沒有。支援與否要先問清楚再決定顯不顯示按鈕——
+ * 按了才發現整支 API 是 undefined，看到的會是一個沒有任何說明的空白錯誤。
+ */
+export function canScanQr(): boolean {
+  return secureOrigin() && typeof navigator !== 'undefined'
+    && typeof navigator.mediaDevices?.getUserMedia === 'function'
+}

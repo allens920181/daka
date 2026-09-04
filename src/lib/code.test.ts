@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CODE_ALPHABET, CODE_LENGTH, findConfusables, generateId, generateOwnerKey,
+  CODE_ALPHABET, CODE_LENGTH, extractRoomCode, findConfusables, generateId, generateOwnerKey,
   generateRoomCode, isValidRoomCode, normalizeRoomCode, uuidV4,
 } from './code'
 
@@ -22,6 +22,17 @@ describe('代碼', () => {
     expect(isValidRoomCode('A2B3C4')).toBe(true)
     expect(isValidRoomCode('A0B1CD')).toBe(false)
     expect(findConfusables('A0B1CD').sort()).toEqual(['0', '1'])
+  })
+
+  it('貼連結時抓出裡面的代碼', () => {
+    expect(extractRoomCode('https://example.com/daka/#/j/A2B3C4')).toBe('A2B3C4')
+    expect(extractRoomCode('https://example.com/daka/#/r/a2b3c4?x=1')).toBe('A2B3C4')
+    expect(extractRoomCode('https://example.com/daka/#/j/A2B3C4/')).toBe('A2B3C4')
+  })
+
+  it('貼的不是連結時當成代碼本身，行為跟 normalizeRoomCode 一樣', () => {
+    expect(extractRoomCode(' ab-cd ef ')).toBe('ABCDEF')
+    expect(extractRoomCode('A2B3C4')).toBe('A2B3C4')
   })
 })
 
