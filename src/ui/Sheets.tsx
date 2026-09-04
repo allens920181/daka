@@ -355,22 +355,47 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
         「空間」是空間這個容器。分頁沿用篩選列同一顆 `.segmented`——它已經
         是這個 app 裡「切換一組看哪個子集合」的固定手勢，不必再學一種新的
         切法。
+
+        分頁鍵排列是「空間、名單」，但預設打開的仍是「名單」：這裡的複製
+        結果／臨時加人是收尾與現場最常按的動作，開面板就看得到比較重要，
+        跟哪顆鍵排在左邊是兩件事。
       */}
       <div class="segmented" role="group" aria-label={t('manageTabs')}>
-        <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
-          {t('manageTabRoster')}
-        </button>
         <button class="segment" aria-pressed={tab === 'space'} onClick={() => setTab('space')}>
           {t('manageTabSpace')}
+        </button>
+        <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
+          {t('manageTabRoster')}
         </button>
       </div>
 
       {tab === 'roster' && (
         <div class="menu">
           {/*
-            複製結果排第一：收尾時「把結果貼回 LINE」是最常按的一件事。
-            複製的範圍跟著目前選的分組，所以動作交回 Room 執行。
+            編輯名單、存成常用名單排最前：這兩項通常在活動開始、名單還沒
+            開始點名時就會用到。
           */}
+          {owner && (
+            <button
+              class="menu-item"
+              onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
+            >
+              <IconEdit />
+              <span><strong>{t('editRoster')}</strong></span>
+            </button>
+          )}
+
+          {owner && isSupabaseConfigured && (
+            <button
+              class="menu-item"
+              onClick={() => { setValue(current.name); setMode('saveRoster') }}
+            >
+              <IconBookmark />
+              <span><strong>{t('saveAsRoster')}</strong></span>
+            </button>
+          )}
+
+          {/* 複製的範圍跟著目前選的分組，所以動作交回 Room 執行。 */}
           <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
             <IconCopy />
             <span>
@@ -405,31 +430,19 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
             <IconDownload />
             <span><strong>{t('exportCsv')}</strong></span>
           </button>
-
-          {owner && (
-            <button
-              class="menu-item"
-              onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
-            >
-              <IconEdit />
-              <span><strong>{t('editRoster')}</strong></span>
-            </button>
-          )}
-
-          {owner && isSupabaseConfigured && (
-            <button
-              class="menu-item"
-              onClick={() => { setValue(current.name); setMode('saveRoster') }}
-            >
-              <IconBookmark />
-              <span><strong>{t('saveAsRoster')}</strong></span>
-            </button>
-          )}
         </div>
       )}
 
       {tab === 'space' && (
         <div class="menu">
+          {/* 重新命名排最前：通常在活動一開始、名字還沒定案時就會用到。 */}
+          {owner && (
+            <button class="menu-item" onClick={() => { setValue(current.name); setMode('rename') }}>
+              <IconTag />
+              <span><strong>{t('rename')}</strong></span>
+            </button>
+          )}
+
           {/*
             複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
             沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
@@ -450,13 +463,6 @@ export function ManageSheet({ owner, group, onCopySummary, onClose }: {
               <span class="sub">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</span>
             </span>
           </button>
-
-          {owner && (
-            <button class="menu-item" onClick={() => { setValue(current.name); setMode('rename') }}>
-              <IconTag />
-              <span><strong>{t('rename')}</strong></span>
-            </button>
-          )}
 
           {owner && (
             <button

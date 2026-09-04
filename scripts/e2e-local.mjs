@@ -308,11 +308,12 @@ await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(20
 ok('Esc 清空搜尋字但搜尋框還在', await p.locator('input[type=search]').inputValue() === ''
    && (await p.locator('input[type=search]').count()) === 1)
 
-// 複製結果搬進管理面板，排第一項。
+// 「名單」分頁排序（2026-09）：編輯名單排第一項，複製結果緊接在後。
 await p.locator('.topbar button[aria-label="管理"]').click(); await p.waitForTimeout(500)
 const firstItem = await p.locator('.menu .menu-item').first().textContent()
-ok(`管理面板第一項是複製結果：「${(firstItem || '').trim().split('\n')[0]}」`,
-   (firstItem || '').includes('複製結果'))
+ok(`管理面板第一項是編輯名單：「${(firstItem || '').trim().split('\n')[0]}」`,
+   (firstItem || '').includes('編輯名單'))
+ok('複製結果緊接在編輯名單後面', (await p.getByRole('button', { name: /複製結果/ }).count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // #36 刪除是唯一不可復原的動作，不能一按就沒。

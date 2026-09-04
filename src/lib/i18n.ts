@@ -162,8 +162,6 @@ const zh = {
   editRoster: '編輯名單',
   editRosterWarning: '換掉名單會清除目前所有點名紀錄，確定嗎？',
   rename: '重新命名',
-  closeRoom: '關閉空間',
-  closeRoomHint: '關閉後就不能再點名，但紀錄還在。',
   /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉空間」——
      使用者心裡想的是「這件事做完了」，不是「把一個容器關起來」。 */
   finishRound: '結束這一輪',
@@ -422,8 +420,6 @@ const en: Record<MessageKey, string> = {
   editRoster: 'Edit roster',
   editRosterWarning: 'Replacing the roster clears every check-in. Continue?',
   rename: 'Rename',
-  closeRoom: 'Close room',
-  closeRoomHint: 'No more check-ins, but the record stays.',
   finishRound: 'Finish this round',
   finishRoundHint: 'Once the bus leaves. No more check-ins after.',
   finishRoundBody: 'The record stays. Take the result with you first:',
