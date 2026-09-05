@@ -70,7 +70,10 @@ const zh = {
   skippedLines: '{n} 行看起來不是姓名，已略過',
   emptyRoster: '請先貼上名單',
   savedRosters: '常用名單',
-  saveAsRoster: '存成常用名單',
+  /* 不寫「存成常用名單」：這一列住在「更多」的選單裡，上下都是動作，而「名單」
+     兩個字在那個位置只是把「常用名單」這個名詞整個搬過來——按鈕要說的是動作，
+     存去哪裡由子畫面那句「這份常用名單叫什麼？」接著講。 */
+  saveAsRoster: '存成常用',
   saveRosterPrompt: '這份常用名單叫什麼？',
   useRoster: '套用',
   deleteRoster: '刪除',

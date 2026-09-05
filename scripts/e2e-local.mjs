@@ -390,7 +390,7 @@ ok('面板不再有分頁鍵', (await p.locator('.sheet .segmented').count()) ==
 const manageRows = await p.locator('.sheet .menu-item strong').allTextContents()
 // 空間裡跟首頁看到的是同一份清單（2026-09 合回來），三個時刻搬去底部動作列之後
 // 只剩「一場活動大概碰一次」的那幾項。這一間是單機模式、自己開的，所以
-// 「存成常用名單」不列（要雲端），其餘全在。
+// 「存成常用」不列（要雲端），其餘全在。
 ok(`「更多」是一條平的選單：${manageRows.join('、')}`,
    JSON.stringify(manageRows) === JSON.stringify(['編輯', '匯出名單', '建立副本', '刪除空間']))
 // 列印、CSV 與複製結果 2026-09 合併成「匯出名單」，都在子畫面裡。
