@@ -151,22 +151,22 @@ ok('並標明它是備註裡的號碼',
    ((await p.locator('a[href^="tel:"] .sub').first().textContent()) ?? '').includes('備註'))
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
-// 匯出結果（單機模式）。列印與 CSV 不經過任何伺服器，自己一個人點完照樣要交得出
+// 匯出名單（單機模式）。列印與 CSV 不經過任何伺服器，自己一個人點完照樣要交得出
 // 名單，所以這一列在單機模式下也照樣在。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(600)
 ok('頂欄沒有分享鍵了', (await p.locator('.topbar button[aria-label="分享"]').count()) === 0)
-ok('單機模式仍然匯得出去', (await p.getByRole('button', { name: /^匯出結果$/ }).count()) === 1)
-await p.getByRole('button', { name: /^匯出結果$/ }).click(); await p.waitForTimeout(400)
-// 複製結果 2026-09 收進匯出結果：它跟 CSV、PDF 是同一件事的三種格式。紙本排最後
+ok('單機模式仍然匯得出去', (await p.getByRole('button', { name: /^匯出名單$/ }).count()) === 1)
+await p.getByRole('button', { name: /^匯出名單$/ }).click(); await p.waitForTimeout(400)
+// 複製結果 2026-09 收進匯出名單：它跟 CSV、PDF 是同一件事的三種格式。紙本排最後
 // ——另外三列帶走的是「今天點到哪裡」，只有它帶走的是一張還沒開始點的空白表。
 const exportRows = await p.locator('.sheet .menu-item strong').allTextContents()
-ok(`匯出結果四列：${exportRows.join('、')}`,
+ok(`匯出名單四列：${exportRows.join('、')}`,
    JSON.stringify(exportRows) === JSON.stringify(['複製結果', '下載 CSV', '存成 PDF', '列印紙本名單']))
 const exportHint = (await p.locator('.sheet .hint').first().textContent()) || ''
 ok('匯出頁講清楚 PDF 是從列印畫面存的', exportHint.includes('儲存為 PDF'))
 ok('也講清楚紙本印的是空白格子', exportHint.includes('空白格子'))
 await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
-ok('返回之後回到選單', (await p.getByRole('button', { name: /^匯出結果$/ }).count()) === 1)
+ok('返回之後回到選單', (await p.getByRole('button', { name: /^匯出名單$/ }).count()) === 1)
 // 邀請點名、臨時加人、結束點名 2026-09 搬到底部動作列，選單裡不再各佔一列。
 ok('選單上沒有邀請點名、臨時加人、結束點名',
    (await p.locator('.sheet').getByRole('button', { name: /^邀請點名$|^臨時加人$|^結束點名$/ }).count()) === 0)
@@ -392,8 +392,8 @@ const manageRows = await p.locator('.sheet .menu-item strong').allTextContents()
 // 只剩「一場活動大概碰一次」的那幾項。這一間是單機模式、自己開的，所以
 // 「存成常用名單」不列（要雲端），其餘全在。
 ok(`「更多」是一條平的選單：${manageRows.join('、')}`,
-   JSON.stringify(manageRows) === JSON.stringify(['編輯', '匯出結果', '建立副本', '刪除空間']))
-// 列印、CSV 與複製結果 2026-09 合併成「匯出結果」，都在子畫面裡。
+   JSON.stringify(manageRows) === JSON.stringify(['編輯', '匯出名單', '建立副本', '刪除空間']))
+// 列印、CSV 與複製結果 2026-09 合併成「匯出名單」，都在子畫面裡。
 ok('選單上不直接列列印、CSV、複製結果',
    (await p.getByRole('button', { name: /^列印紙本名單$|^下載 CSV$|^複製結果$/ }).count()) === 0)
 // 編輯名單與重新命名合併成「編輯」，選單上不再各佔一列。
@@ -789,8 +789,8 @@ ok('而且等於分段控制的未到數', (await missing()) === gn[0])
 await ctx.grantPermissions(['clipboard-read','clipboard-write'])
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(300)
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
-// 複製結果 2026-09 收進「匯出結果」子畫面：它跟 CSV、PDF 是同一件事的三種格式。
-await p.getByRole('button',{name:/^匯出結果$/}).click(); await p.waitForTimeout(400)
+// 複製結果 2026-09 收進「匯出名單」子畫面：它跟 CSV、PDF 是同一件事的三種格式。
+await p.getByRole('button',{name:/^匯出名單$/}).click(); await p.waitForTimeout(400)
 await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(700)
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))

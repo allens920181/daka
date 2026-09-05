@@ -215,8 +215,8 @@ for (const scheme of ['light', 'dark']) {
 
   await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(500)
   await audit(page, scheme, '「更多」面板')
-  await page.getByRole('button', { name: /^匯出結果$|^Export results$/ }).click(); await page.waitForTimeout(400)
-  await audit(page, scheme, '「更多」· 匯出結果')
+  await page.getByRole('button', { name: /^匯出名單$|^Export the list$/ }).click(); await page.waitForTimeout(400)
+  await audit(page, scheme, '「更多」· 匯出名單')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   await page.locator('.member').nth(1).locator('.icon-btn').last().click(); await page.waitForTimeout(400)

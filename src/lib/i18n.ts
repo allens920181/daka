@@ -235,7 +235,12 @@ const zh = {
   csvCompanions: '攜伴',
   csvGroup: '分組',
   csvNote: '備註',
-  export: '匯出結果',
+  /*
+   * 受詞是「名單」不是「結果」。這一頁有四列，其中三列帶走的是今天點到哪裡，
+   * 但「列印紙本名單」印的是**空白格子**——它不是結果。四列的共同點只到「把這份
+   * 名單變成帶得走的東西」為止，標籤就寫到那裡；細部差別交給底下那句 hint。
+   */
+  export: '匯出名單',
   exportCsv: '下載 CSV',
   exportPdf: '存成 PDF',
   /* 四列各自給的是不一樣的東西，一句話講完差別，順便講 PDF 怎麼來——瀏覽器
@@ -503,7 +508,7 @@ const en: Record<MessageKey, string> = {
   csvCompanions: 'Companions',
   csvGroup: 'Group',
   csvNote: 'Note',
-  export: 'Export results',
+  export: 'Export the list',
   exportCsv: 'Download CSV',
   exportPdf: 'Save as PDF',
   exportHint: 'Copy, CSV and PDF take the current result with you — for the PDF, choose “Save as PDF” in the print dialog. Printing gives you blank boxes to tick by hand.',
