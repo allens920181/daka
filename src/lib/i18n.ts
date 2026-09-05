@@ -98,7 +98,9 @@ const zh = {
   emptySearchHint: '還有 {n} 位沒到，換個字再找找',
   emptySearchHintDone: '這個名字不在名單上',
   someone: '有一位',
-  draftRestored: '這是你上次還沒開成的名單。',
+  /* 開空間的「更多」面板裡那一項：草稿是標題，「清掉重來」降格當副說明——
+     長句「這是你上次還沒開成的名單」收掉了，欄位裡的文字本身已經在說這件事。 */
+  draftLabel: '草稿',
   draftDiscard: '清掉重來',
   dropClosed: '{name} 沒有存到：這個空間已經關閉了',
   dropNotOwner: '{name} 沒有存到：這台裝置沒有權限改這份名單',
@@ -384,7 +386,7 @@ const en: Record<MessageKey, string> = {
   emptySearchHint: '{n} still missing — try a different spelling',
   emptySearchHintDone: 'That name is not on the list',
   someone: 'Someone',
-  draftRestored: "This is the list you didn't finish last time.",
+  draftLabel: 'Draft',
   draftDiscard: 'Start over',
   dropClosed: "{name} wasn't saved — this room is closed",
   dropNotOwner: "{name} wasn't saved — this device can't edit this list",

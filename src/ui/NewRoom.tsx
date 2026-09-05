@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { createRoom, savedRosters } from '../lib/store'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
 import { isExampleName, isExampleRoster } from '../lib/i18n'
-import { parseRoster } from '../lib/parse'
+import { parseRoster, rosterToText } from '../lib/parse'
 import { AppError, isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { RosterEditorField, RosterPreview } from './RosterInput'
-import { IconBack, IconChevronDown, IconChevronUp } from './icons'
+import { Sheet } from './Sheet'
+import { IconBack, IconBookmark, IconChevronDown, IconChevronUp, IconMore, IconTrash } from './icons'
 import { useT } from './t'
 
 export function NewRoom() {
@@ -19,6 +20,9 @@ export function NewRoom() {
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [restored, setRestored] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  // 「更多」有東西可看才給按鈕：草稿跟常用名單都沒有的話，開了也是空面板。
+  const showMore = restored || isSupabaseConfigured
 
   const result = useMemo(() => parseRoster(text), [text])
   const drafts = result.members
@@ -62,6 +66,14 @@ export function NewRoom() {
     setText('')
   }
 
+  function discardDraft() {
+    setName('')
+    setText('')
+    setRestored(false)
+    void clearDraft()
+    setMoreOpen(false)
+  }
+
   function reviewList() {
     if (drafts.length === 0) return
     // 收鍵盤再滑：清單畫面滑上來時鍵盤還開著，會把剛露出來的名單再擠掉一截。
@@ -100,6 +112,14 @@ export function NewRoom() {
               <IconBack />
             </button>
             <h1 class="topbar-name">{t('openRoom')}</h1>
+            {step === 'input' && showMore && (
+              <>
+                <div class="spacer" />
+                <button class="icon-btn" onClick={() => setMoreOpen(true)} aria-label={t('manage')}>
+                  <IconMore />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -111,18 +131,6 @@ export function NewRoom() {
             aria-hidden={step !== 'input'}
             inert={step !== 'input'}
           >
-            {restored && (
-              <p class="banner banner-muted">
-                {t('draftRestored')}
-                <button
-                  class="btn btn-sm"
-                  onClick={() => { setName(''); setText(''); setRestored(false); void clearDraft() }}
-                >
-                  {t('draftDiscard')}
-                </button>
-              </p>
-            )}
-
             <div class="field">
               <div class="row">
                 <label class="label" for="room-name">{t('roomNameLabel')}</label>
@@ -145,11 +153,7 @@ export function NewRoom() {
               />
             </div>
 
-            <RosterEditorField
-              text={text}
-              onText={setText}
-              rosters={isSupabaseConfigured ? savedRosters.value : undefined}
-            />
+            <RosterEditorField text={text} onText={setText} />
           </div>
 
           {/* 步驟二：看解析結果。從螢幕下緣滑上來蓋住步驟一，「抬頭」跟著名單
@@ -192,6 +196,47 @@ export function NewRoom() {
           )}
         </div>
       </div>
+
+      {moreOpen && (
+        <Sheet title={t('manage')} onClose={() => setMoreOpen(false)}>
+          <div class="stack">
+            {restored && (
+              <button class="menu-item" onClick={discardDraft}>
+                <IconTrash />
+                <span>
+                  <strong>{t('draftLabel')}</strong>
+                  <span class="sub">{t('draftDiscard')}</span>
+                </span>
+              </button>
+            )}
+
+            {isSupabaseConfigured && (
+              <div class="field">
+                <span class="label">{t('savedRosters')}</span>
+                {savedRosters.value.length > 0 ? (
+                  <div class="menu">
+                    {savedRosters.value.map((r) => (
+                      <button
+                        key={r.id}
+                        class="menu-item"
+                        onClick={() => { setText(rosterToText(r.members)); setMoreOpen(false) }}
+                      >
+                        <IconBookmark />
+                        <span>
+                          <strong>{r.name}</strong>
+                          <span class="sub">{t('parsedCount', { n: r.members.length })}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p class="note">{t('noSavedRosters')}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </Sheet>
+      )}
     </>
   )
 }
