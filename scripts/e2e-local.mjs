@@ -80,19 +80,19 @@ ok('搜尋框在，但沒有自動聚焦', (await p.locator('.topbar .search-wra
    && await p.evaluate(() => document.activeElement?.getAttribute('type') !== 'search'))
 const code = (await p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`取得 6 碼代碼: ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
-// 9 列（標題行上面補了回去）扣掉請假的陳大同 → 8 個沒到。分段控制的三個數字
-// 必須自己加得起來：未到 8 ＋ 已到 0 ＋ 請假 1 ＝ 全部 9。
-ok('未到 8（9 列，陳大同請假不算）', (await missing()) === '8')
+// 請假 2026-09 拿掉了：「（請假）」現在只是一則備註，陳大同照樣是未到。
+ok('未到 9（寫著請假的人也還是未到）', (await missing()) === '9')
+ok('分段只剩三段', (await p.locator('.topbar .segment').count()) === 3)
+ok('沒有請假那一段', (await p.getByRole('button', { name: /^請假/ }).count()) === 0)
 // 44px 的數字旁邊只補單位，不把同一個數字再寫一次。
-ok('分段的數字加得起來', Number(await missing()) + Number(await segCount(/^已到/)) + Number(await segCount(/^請假/))
+ok('分段的數字加得起來', Number(await missing()) + Number(await segCount(/^已到/))
    === Number(await segCount(/^全部/)))
-ok('請假的人自己一段，不混在未到裡', (await segCount(/^請假/)) === '1')
 
 
 // 點名
 await p.locator('.member-main').nth(1).click()
 await p.waitForTimeout(500)
-ok('點名後未到 = 7', (await missing()) === '7')
+ok('點名後未到 = 8', (await missing()) === '8')
 ok('該列變成已到', (await p.locator('.member').nth(1).getAttribute('class'))?.includes('is-arrived'))
 ok('出現復原提示', await p.locator('.toast').isVisible())
 
@@ -100,7 +100,7 @@ ok('出現復原提示', await p.locator('.toast').isVisible())
 // 復原
 await p.locator('.toast-action').click()
 await p.waitForTimeout(500)
-ok('復原後未到回到 8', (await missing()) === '8')
+ok('復原後未到回到 9', (await missing()) === '9')
 
 // 篩選
 await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(300)
@@ -108,7 +108,7 @@ await p.locator('.member-main').nth(2).click(); await p.waitForTimeout(300)
 await p.getByRole('button', { name: /^已到/ }).click(); await p.waitForTimeout(300)
 ok('已到篩選顯示 2 人', (await p.locator('.member').count()) === 2)
 await p.getByRole('button', { name: /^未到/ }).click(); await p.waitForTimeout(300)
-ok('未到篩選顯示 6 人', (await p.locator('.member').count()) === 6)
+ok('未到篩選顯示 7 人', (await p.locator('.member').count()) === 7)
 await p.getByRole('button', { name: /^全部/ }).click(); await p.waitForTimeout(300)
 
 // 搜尋。搜尋框住在頂欄（sticky），一直顯示，不必先點才展開。
@@ -139,17 +139,16 @@ await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitFo
 
 // 撥號。解析器不再判斷任何一串數字是什麼——「匯款 700-1234567」曾經被抽成
 // 一支撥出去是空號的假電話，而畫面上沒有一個字說得出為什麼。號碼現在原文留在
-// 備註裡，撥號鍵長在成員面板（顯示層猜錯是可逆、可見的；資料層猜錯不是）。
-ok('名單列上沒有撥號鍵了', (await p.locator('.member a[href^="tel:"]').count()) === 0)
-
-await p.locator('.member').filter({ hasText: '王小明' }).first()
-  .getByRole('button', { name: /更多|more/ }).click()
-await p.waitForTimeout(400)
-const telHref = await p.locator('a[href^="tel:"]').first().getAttribute('href')
-ok(`成員面板把備註裡的號碼做成撥號鍵 ${telHref}`, telHref === 'tel:0912345678')
-ok('並標明它是備註裡的號碼',
-   ((await p.locator('a[href^="tel:"] .sub').first().textContent()) ?? '').includes('備註'))
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+// 備註裡，這顆鍵是顯示層的判斷（猜錯是可逆、可見的；資料層猜錯不是）。
+// 它 2026-09 從成員面板搬回列上：那張面板整個拿掉了，而「看到未到 → 打電話」
+// 是收尾時唯一的下一步。
+const telHref = await p.locator('.member').filter({ hasText: '王小明' }).first()
+  .locator('a[href^="tel:"]').first().getAttribute('href')
+ok(`備註裡的號碼在列上就撥得出去 ${telHref}`, telHref === 'tel:0912345678')
+ok('已到的人不再印撥號鍵（那時候不必打了）', await p.evaluate(() => {
+  const rows = [...document.querySelectorAll('.member.is-arrived')]
+  return rows.every((r) => !r.querySelector('a[href^="tel:"]'))
+}))
 
 // 匯出名單（單機模式）。列印與 CSV 不經過任何伺服器，自己一個人點完照樣要交得出
 // 名單，所以這一列在單機模式下也照樣在。
@@ -189,20 +188,8 @@ ok('單機模式：講清楚別人會看到什麼',
 await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
 ok('返回之後回到選單', (await p.getByRole('button', { name: /^編輯$/ }).count()) === 1)
 
-// 編輯：名稱與名單合併成同一顆「編輯」，裡面用分段控制切（2026-09）。
-await p.getByRole('button', { name: /^編輯$/ }).click(); await p.waitForTimeout(500)
-const editTabs = await p.locator('.sheet .segment').allTextContents()
-ok(`編輯頁的兩半：${editTabs.join('、')}`, JSON.stringify(editTabs) === JSON.stringify(['名稱', '名單']))
-ok('預設停在「名稱」，而且帶著現在的名字',
-   (await p.locator('.sheet .input').first().inputValue()) === '秋季旅遊 · 出發')
-ok('這時候沒有名單那一大塊', (await p.locator('#roster-text').count()) === 0)
-await p.getByRole('button', { name: /^名單$/ }).click(); await p.waitForTimeout(400)
-ok('切到名單就看得到現在的名單', (await p.locator('#roster-text').inputValue()).includes('王小明'))
-ok('切過去不必退回選單再點一次', (await p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '名單')
-ok('名單那一半有換掉名單的警告',
-   ((await p.locator('.sheet .note-warn').first().textContent()) || '').includes('清除目前所有點名紀錄'))
-await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
-
+// 編輯不是面板裡的一頁：按下去面板收掉，整個點名畫面切進編輯模式（2026-09）。
+// 那一段的細節在下面「現場操作測試」那一間量。
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 
@@ -257,65 +244,78 @@ ok(`辨識用的是分車：${tells.join(' / ')}`, tells.includes('第一車') &
 ok('沒有同名的人不會多印晶片',
    (await p.locator('.member').filter({ hasText: '王小明' }).locator('.chip-tell').count()) === 0)
 
-// 「陳大同（請假）」：備註和狀態都是「請假」，畫面上只能出現一次。
-const excusedRow = p.locator('.member.is-excused').first()
-const excusedText = (await excusedRow.locator('.member-meta').textContent()) ?? ''
-ok(`請假不重複印：「${excusedText.trim()}」`, (excusedText.match(/請假/g) || []).length === 1)
+// 名字右邊那顆「更多」與它打開的成員面板 2026-09 整個拿掉了。
+ok('名字右邊沒有「更多」了',
+   (await p.locator('.member').getByRole('button', { name: /更多|more/ }).count()) === 0)
+// 撥號鍵搬回列上：收尾時「看到未到 → 打電話」是唯一的下一步，不能跟著面板消失。
+// 號碼是從備註裡認出來的（解析階段刻意不判斷任何一串數字是什麼）。
+const telHrefAttr = await p.locator('.member').filter({ hasText: '陳怡君' }).first()
+  .locator('a[href^="tel:"]').first().getAttribute('href')
+ok(`備註裡的號碼在列上就撥得出去 ${telHrefAttr}`, telHrefAttr === 'tel:0912345678')
+ok('備註原文仍然不顯示在名單列上',
+   !(await p.locator('.member').filter({ hasText: '陳怡君' }).first()
+     .locator('.chip-note').first().isVisible().catch(() => false)))
 
-// 更多面板的狀態切換鍵不重複名單列已經做得到的事。「標記已到」在任何狀態下
-// 都跟點名單列一樣（Room.tsx 的 toggle()），所以完全不留；「改回未到」只有
-// 從請假出發時才是唯一入口（點名單列只會跳去已到），這個狀態才留。
-const pendingRow = p.locator('.member').filter({ hasText: '王小明' })
-await pendingRow.getByRole('button', { name: /更多|more/ }).click(); await p.waitForTimeout(400)
-ok('未到狀態的更多面板沒有「標記已到」',
-   (await p.getByRole('button', { name: /^標記已到$/ }).count()) === 0)
-ok('未到狀態的更多面板沒有「改回未到」（本來就是未到）',
-   (await p.getByRole('button', { name: /改回未到/ }).count()) === 0)
-ok('未到狀態的更多面板有「標記請假」', await p.getByRole('button', { name: /標記請假/ }).isVisible())
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-
-await excusedRow.getByRole('button', { name: /更多|more/ }).click(); await p.waitForTimeout(400)
-ok('請假狀態的更多面板沒有「標記已到」',
-   (await p.getByRole('button', { name: /^標記已到$/ }).count()) === 0)
-ok('請假狀態的更多面板有「改回未到」（點名單列只會跳去已到，這是唯一入口）',
-   await p.getByRole('button', { name: /改回未到/ }).isVisible())
-const missingBeforeRevert = await missing()
-await p.getByRole('button', { name: /改回未到/ }).click(); await p.waitForTimeout(500)
-ok(`「改回未到」真的讓人變回未到（${missingBeforeRevert} → ${await missing()}）`,
-   Number(await missing()) === Number(missingBeforeRevert) + 1)
-
-// 備註搬進「更多」面板：名單列上的 .chip-note 用 CSS 關掉（DOM 裡還在，紙本
-// 要用），螢幕上看不到；點開「陳怡君」（備註是解析器抓到的電話號碼）的更多
-// 面板才看得到原文。
-const notedRow = dupRows.first()
-ok('備註不再顯示在名單列上',
-   !(await notedRow.locator('.chip-note').first().isVisible().catch(() => false)))
-await notedRow.getByRole('button', { name: /更多|more/ }).click()
-await p.waitForTimeout(400)
-const sheetText = (await p.locator('.sheet').textContent()) ?? ''
-ok('更多面板看得到備註原文（0912345678）', sheetText.includes('0912345678'))
-// 備註整則剛好就是一支電話號碼時，備註欄位跟撥號鍵會印兩次同一組數字——
-// 這種名單（「王小明 0912345678」）最常見，備註欄位在這種情況不該出現。
-ok('備註整則就是電話號碼時不重複印（只從撥號鍵出現一次）',
-   (sheetText.match(/0912345678/g) || []).length === 1)
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-
-// 紙本是例外：手機沒電時拿著這張紙的人沒有「更多」可以點，.chip-note 要在
+// 紙本是例外：手機沒電時拿著這張紙的人只有那張紙，.chip-note 要在
 // @media print 裡換回來。
+const notedRow = p.locator('.member').filter({ hasText: '陳怡君' }).first()
 await p.emulateMedia({ media: 'print' }); await p.waitForTimeout(200)
 ok('列印時備註換回來了', await notedRow.locator('.chip-note').first().isVisible())
 ok('列印的備註是原文（0912345678）',
    ((await notedRow.locator('.chip-note').first().textContent()) ?? '').includes('0912345678'))
 await p.emulateMedia({ media: 'screen' }); await p.waitForTimeout(200)
 
+// ---- 編輯模式（2026-09）----
+// 編輯標題、臨時加人、從名單移除是同一件事的三個方向，所以是同一個模式。
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^編輯$/ }).click(); await p.waitForTimeout(500)
+ok('編輯不開子畫面，面板直接關掉', (await p.locator('.sheet').count()) === 0)
+ok('標題變成可以打字的輸入框', await p.locator('.topbar-name-input').isVisible())
+ok('輸入框帶著現在的名字',
+   (await p.locator('.topbar-name-input').inputValue()) === '現場操作測試')
+ok('每一列右邊長出叉叉',
+   (await p.getByRole('button', { name: /^從名單移除：/ }).count()) === (await p.locator('.member').count()))
+const editDock = await p.locator('.dock .btn').allTextContents()
+ok(`底部只剩一顆「＋」（${editDock.length} 顆按鈕）`, editDock.length === 1)
+ok('那顆的無障礙名稱說得出它做什麼',
+   (await p.locator('.dock .btn').first().getAttribute('aria-label')) === '臨時加人')
+ok('右上角變成「完成」', (await p.getByRole('button', { name: /^完成$/ }).count()) === 1)
+// 手指在一排叉叉旁邊移動，誤觸的代價是有人被標成已到而沒有人發現。
+ok('編輯時戳名字不會改狀態', await p.locator('.member-main').first().isDisabled())
+
+// 改標題：離開輸入框就存。
+await p.locator('.topbar-name-input').fill('現場操作測試 · 改過')
+await p.locator('.topbar-name-input').blur(); await p.waitForTimeout(900)
+await p.getByRole('button', { name: /^完成$/ }).click(); await p.waitForTimeout(400)
+ok('完成之後回到點名畫面', (await p.locator('.topbar-name-input').count()) === 0)
+ok(`標題真的改掉了：「${await p.locator('.topbar-name').textContent()}」`,
+   (await p.locator('.topbar-name').textContent()) === '現場操作測試 · 改過')
+
+// 從名單移除：不可復原、而且會同步到所有裝置，就算已經在編輯模式也要問一次。
+const beforeRemove = await p.locator('.member').count()
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^編輯$/ }).click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^從名單移除：沒填車次的乙$/ }).click(); await p.waitForTimeout(500)
+ok('刪除前有確認對話框', (await p.locator('.dialog').count()) === 1)
+await p.getByRole('button', { name: /^取消$/ }).click(); await p.waitForTimeout(400)
+ok('取消之後人還在', (await p.locator('.member').count()) === beforeRemove)
+await p.getByRole('button', { name: /^從名單移除：沒填車次的乙$/ }).click(); await p.waitForTimeout(400)
+await p.locator('.dialog').getByRole('button', { name: /^移除$/ }).click(); await p.waitForTimeout(900)
+ok(`確認之後真的少一個人（${beforeRemove} → ${await p.locator('.member').count()}）`,
+   (await p.locator('.member').count()) === beforeRemove - 1)
+await p.getByRole('button', { name: /^完成$/ }).click(); await p.waitForTimeout(400)
+
 // #10 臨時加人：站在你面前的人不該被算成「未到」，而且要說一聲。
 const beforeMissing = await missing()
-await p.locator('.dock').getByRole('button',{name:/臨時加人/}).click(); await p.waitForTimeout(500)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^編輯$/ }).click(); await p.waitForTimeout(500)
+await p.locator('.dock .btn').first().click(); await p.waitForTimeout(500)
 await p.locator('#roster-text').fill('路上遇到的人'); await p.waitForTimeout(400)
 await p.getByRole('button',{name:/加入名單/}).click(); await p.waitForTimeout(1200)
 ok(`臨時加人不會讓未到數變多（${beforeMissing} → ${await missing()}）`, (await missing()) === beforeMissing)
 const walkToast = (await p.locator('.toast-text').textContent().catch(() => '')) ?? ''
 ok(`加完有說一聲：「${walkToast}」`, walkToast.includes('路上遇到的人') && walkToast.includes('已到'))
+await p.getByRole('button', { name: /^完成$/ }).click(); await p.waitForTimeout(400)
 
 // #17 Toast 固定在下緣 88px（讓開底部動作列），但面板也是從下緣長上來的：
 // Toast 於是落在選單列之間，實測蓋住「結束這一輪」49px，而且 .toast 是
@@ -353,11 +353,12 @@ await p.locator('.toast-action').click().catch(() => {}); await p.waitForTimeout
 
 // #16 底部動作列 2026-09 回來了，但裝的東西換了。2026-08 拿掉它時，兩個槽位是
 // 「只看未到」（篩選搬進 sticky 頂欄之後變成重複的按鈕）與「複製結果」（一場按
-// 一次、而且不急）。現在裝的是一場活動的三個時刻，三顆在別的地方都按不到，也都
-// 是在人擠在車門口的時候按的。浮動搜尋鍵沒有回來——搜尋框一直開在頂欄裡。
+// 一次、而且不急）。現在裝的是開場與收尾那兩顆，兩顆在別的地方都按不到；
+// 臨時加人同月稍後併進編輯模式底下那顆「＋」。浮動搜尋鍵沒有回來——搜尋框一直
+// 開在頂欄裡。
 const dockLabels = await p.locator('.dock .btn').allTextContents()
-ok(`底部動作列三顆：${dockLabels.join('、')}`,
-   JSON.stringify(dockLabels.map((x) => x.trim())) === JSON.stringify(['邀請點名', '臨時加人', '結束點名']))
+ok(`底部動作列兩顆：${dockLabels.join('、')}`,
+   JSON.stringify(dockLabels.map((x) => x.trim())) === JSON.stringify(['邀請點名', '結束點名']))
 ok('動作列上沒有主要按鈕（這個畫面的主要動作是戳名字）',
    (await p.locator('.dock .btn-primary').count()) === 0)
 ok('也沒有浮動搜尋鍵', (await p.locator('.fab').count()) === 0)
@@ -399,23 +400,18 @@ ok('選單上不直接列列印、CSV、複製結果',
 // 編輯名單與重新命名合併成「編輯」，選單上不再各佔一列。
 ok('選單上沒有「編輯名單」也沒有「重新命名」',
    (await p.getByRole('button', { name: /^編輯名單$|^重新命名$/ }).count()) === 0)
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
-// #36 刪除是唯一不可復原的動作，不能一按就沒。
-await p.locator('.member').filter({ hasText: '王小明' }).locator('.icon-btn').last().click()
-await p.waitForTimeout(500)
-await p.getByRole('button',{name:/從名單移除/}).click(); await p.waitForTimeout(500)
+// #36 刪除是唯一不可復原的動作，不能一按就沒。它 2026-09 搬進編輯模式，
+// 但「進編輯模式」的意思是「我要改這份名單」，不是「我要刪掉這個人」——
+// 所以那一步照樣要問。
+await p.getByRole('button', { name: /^編輯$/ }).click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^從名單移除：/ }).first().click(); await p.waitForTimeout(500)
 ok('刪除前有確認對話框', (await p.locator('.dialog').count()) === 1)
-ok('對話框指出更好的替代做法（標記請假）',
-   ((await p.locator('.dialog').textContent()) || '').includes('標記請假'))
+ok('對話框說清楚後果（所有裝置、不能復原）',
+   ((await p.locator('.dialog').textContent()) || '').includes('所有裝置'))
 await p.getByRole('button',{name:/^取消$/}).click(); await p.waitForTimeout(400)
 ok('取消之後人還在', (await p.locator('.member').filter({ hasText: '王小明' }).count()) === 1)
-// 取消會退回成員面板（而不是整個關掉），這是對的——使用者本來就在那裡。
-ok('取消後退回成員面板而不是全部關掉', (await p.locator('.sheet').count()) === 1)
-// 王小明沒有備註可看，這裡完全沒有「查得到的資訊」區塊——分隔線也不該畫，
-// 兩邊要都有東西才分得開。
-ok('沒有資訊區塊時更多面板不畫分隔線', (await p.locator('.sheet .menu-divider').count()) === 0)
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^完成$/ }).click(); await p.waitForTimeout(400)
 
 // 身分列整列拿掉（2026-09）：標籤搬到頂欄，名字與設定只剩首頁那顆齒輪進得去。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(600)
@@ -424,8 +420,9 @@ ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[ar
 
 // 標題列印的是空間名字（2026-09）：它曾經是「更多」（那兩個字說不出任何一件這裡
 // 做得到的事）、接著是三顆分頁鍵，分頁拿掉之後名字是這一列唯一還說得出東西的東西。
-ok('標題列印的是空間名字', (await p.locator('.sheet .sheet-title').textContent()) === '現場操作測試')
-ok('無障礙名稱跟著標題', (await p.locator('.sheet').getAttribute('aria-label')) === '現場操作測試')
+// 名字在上面的編輯模式測試裡改過了，這裡順便驗它一路傳到面板標題。
+ok('標題列印的是空間名字', (await p.locator('.sheet .sheet-title').textContent()) === '現場操作測試 · 改過')
+ok('無障礙名稱跟著標題', (await p.locator('.sheet').getAttribute('aria-label')) === '現場操作測試 · 改過')
 // 那一列仍然沒有叉叉。收起來的三條路：點面板外面、Esc、從頂端那一帶往下滑。
 ok('「更多」沒有關閉鍵了', (await p.locator('.sheet-head .icon-btn').count()) === 0)
 
@@ -489,8 +486,8 @@ ok('身分標籤排在代碼前面', await p.evaluate(() => {
 }))
 
 // 備註不是「純電話號碼」的話（號碼前後還有別的字），備註欄位跟撥號鍵要
-// 兩個都印：備註欄位比撥號鍵多給了資訊，不算重複。獨立開一間空間測，不然
-// 跟「現場操作測試」混在一起的話，後面一長串斷言都假設還在那個房間裡。
+// 備註裡的號碼前後還有別的字時，撥出去的只能是那串數字。獨立開一間空間測，
+// 不然跟「現場操作測試」混在一起的話，後面一長串斷言都假設還在那個房間裡。
 await p.goto(URL); await p.waitForTimeout(600)
 await p.getByRole('button', { name: /創建空間/ }).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('備註加號碼測試')
@@ -498,12 +495,12 @@ await p.locator('#roster-text').fill('陳大同 0955666777 帶輪椅')
 await p.waitForTimeout(300)
 await generateList()
 await p.getByRole('button', { name: /建立/ }).click(); await p.waitForTimeout(1000)
-await p.locator('.member').first().getByRole('button', { name: /更多|more/ }).click()
-await p.waitForTimeout(400)
-const mixedSheetText = (await p.locator('.sheet').textContent()) ?? ''
-ok('備註帶額外文字時，備註欄位跟撥號鍵都印',
-   mixedSheetText.includes('0955666777 帶輪椅') && mixedSheetText.includes('備註裡的號碼'))
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('備註帶額外文字時，撥號鍵只撥那串數字',
+   (await p.locator('.member a[href^="tel:"]').first().getAttribute('href')) === 'tel:0955666777')
+await p.emulateMedia({ media: 'print' }); await p.waitForTimeout(200)
+ok('紙本仍然印得出備註原文',
+   ((await p.locator('.member .chip-note').first().textContent()) ?? '').includes('0955666777 帶輪椅'))
+await p.emulateMedia({ media: 'screen' }); await p.waitForTimeout(200)
 
 // #15 捲進名單深處之後回得到頂端；#43 名單要是 list、<html lang> 要跟著語言走。
 await p.goto(URL); await p.waitForTimeout(800)
@@ -711,7 +708,7 @@ const resultState = await p.evaluate(() => {
   const blanks = document.querySelector('.print-blanks')
   return {
     arrivedCheck: cs('.member.is-arrived .check')?.backgroundColor ?? null,
-    pendingCheck: cs('.member:not(.is-arrived):not(.is-excused) .check')?.backgroundColor ?? null,
+    pendingCheck: cs('.member:not(.is-arrived) .check')?.backgroundColor ?? null,
     blanksHidden: !blanks || getComputedStyle(blanks).display === 'none',
     rows: document.querySelectorAll('.member').length,
   }
@@ -749,17 +746,9 @@ await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300
 ok('出現分組選擇器', await p.locator('.groups').isVisible())
 const chips = await p.locator('.group-chip').allTextContents()
 ok(`分組晶片：${chips.join(' | ')}`, chips.length===3 && chips[1].includes('第一車') && chips[2].includes('第二車'))
-// 6 列，陳大同請假 → 該到 5，一個都還沒到。
-ok('全部：未到 5（陳大同請假不算）', (await missing())==='5')
+// 6 列，一個都還沒到（「（請假）」現在只是備註）。
+ok('全部：未到 6', (await missing())==='6')
 ok('看全部時有分組分隔', (await p.locator('.group-divider').count())===2)
-
-// 更多面板的分隔線只留一條：查得到的資訊（撥號鍵）跟會改動這個人的動作
-// （狀態鍵、改分組、移除）之間那一條。狀態鍵、改分組、移除以前各自開一條，
-// 三個常常都只裝一兩項東西，面板被切成一截一截。
-await p.locator('.member').filter({ hasText: '王小明' }).getByRole('button', { name: /更多|more/ }).click()
-await p.waitForTimeout(400)
-ok('更多面板只有一條分隔線（資訊與動作之間）', (await p.locator('.sheet .menu-divider').count()) === 1)
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 
 // 選第一車 → 計數只算那一車
@@ -772,8 +761,8 @@ ok('選了分組後不再顯示分隔', (await p.locator('.group-divider').count
 await p.locator('.member-main').nth(0).click(); await p.waitForTimeout(600)
 ok('第一車點一人後未到 2', (await missing())==='2')
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(400)
-// 第二車：陳大同請假、李四、王五 → 2 個沒到。
-ok('第二車未到 2（陳大同請假不算）', (await missing())==='2')
+// 第二車：陳大同、李四、王五 → 3 個沒到。
+ok('第二車未到 3', (await missing())==='3')
 
 
 // 分組晶片上的未到人頭。「全部」也帶一個數字，各車相加要等於它——加不起來的話
@@ -781,7 +770,7 @@ ok('第二車未到 2（陳大同請假不算）', (await missing())==='2')
 // （見 roll-call.md）；攜伴不再解析之後兩者在新名單上相等。
 await p.locator('.groups .group-chip').first().click(); await p.waitForTimeout(400)
 const gn = await p.locator('.group-chip .group-n').allTextContents()
-ok(`晶片數字（全部｜各車）：${gn.join(' / ')}`, gn.length===3 && gn[1]==='2' && gn[2]==='2')
+ok(`晶片數字（全部｜各車）：${gn.join(' / ')}`, gn.length===3 && gn[1]==='2' && gn[2]==='3')
 ok('各車未到相加等於「全部」', Number(gn[1]) + Number(gn[2]) === Number(gn[0]))
 ok('而且等於分段控制的未到數', (await missing()) === gn[0])
 

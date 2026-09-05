@@ -69,21 +69,29 @@ describe('toCsv', () => {
     const enCsv = toCsv([
       member('a', { status: 'arrived' }),
       member('b', { status: 'pending' }),
-      member('c', { status: 'excused' }),
     ], 'en')
     expect(enCsv).toContain(',Here,')
     expect(enCsv).toContain(',Missing,')
-    expect(enCsv).toContain(',Excused,')
-    expect(enCsv).not.toMatch(/已到|未到|請假/)
+    expect(enCsv).not.toMatch(/已到|未到/)
   })
 
-  it('三種狀態都有中文標籤', () => {
+  it('兩種狀態都有中文標籤', () => {
     const csv = toCsv([
-      member('a', { status: 'arrived' }), member('b', { status: 'pending' }), member('c', { status: 'excused' }),
+      member('a', { status: 'arrived' }), member('b', { status: 'pending' }),
     ], 'zh')
     expect(csv).toContain('a,已到')
     expect(csv).toContain('b,未到')
-    expect(csv).toContain('c,請假')
+  })
+
+  /*
+   * 請假 2026-09 拿掉了，但資料庫沒有跟著遷移（見 types.ts）：還活著的空間裡
+   * 可能就有 status = 'excused' 的人。查表查不到時要退回「未到」，不能讓 CSV
+   * 印出一格 undefined——那份檔案是要交出去的。
+   */
+  it('讀到舊資料的請假狀態時退回未到，不會印出 undefined', () => {
+    const csv = toCsv([{ ...member('a'), status: 'excused' as never }], 'zh')
+    expect(csv).toContain('a,未到')
+    expect(csv).not.toContain('undefined')
   })
 
   it('無效時間戳不會噴出 Invalid Date', () => {
@@ -112,17 +120,27 @@ describe('toShareText', () => {
     expect(text).toContain('未到 2 位：李美花、陳大同')
   })
 
-  it('請假的人不算進分母，貼回 LINE 的數字不會自相矛盾', () => {
-    // 3 人報名、1 人請假、其餘全到 → 「已到 2 / 2 人」＋「全部到齊」。
-    // 用名單總人頭當分母的話這裡會寫成「已到 2 / 3 人」配「全部到齊」。
+  it('全部到齊時分子等於分母，而且說得出「全部到齊」', () => {
     const text = toShareText(room, [
       member('王小明', { status: 'arrived' }),
       member('李美花', { status: 'arrived' }),
-      member('陳大同', { status: 'excused' }),
     ], 'zh')
     expect(text).toContain('已到 2 / 2 人')
     expect(text).toContain('全部到齊')
-    expect(text).toContain('請假 1 位：陳大同')
+  })
+
+  /*
+   * 請假 2026-09 拿掉了，但資料庫沒有跟著遷移（見 types.ts）：舊空間裡可能
+   * 還有 status = 'excused' 的人。他們現在就是「還沒到」——絕不能兩邊都不算，
+   * 那會讓貼回 LINE 的那段字漏掉一個人。
+   */
+  it('舊資料的請假狀態算成未到，不會憑空消失', () => {
+    const text = toShareText(room, [
+      member('王小明', { status: 'arrived' }),
+      { ...member('陳大同'), status: 'excused' as never },
+    ], 'zh')
+    expect(text).toContain('已到 1 / 2 人')
+    expect(text).toContain('未到 1 位：陳大同')
   })
 
   /*
@@ -155,20 +173,11 @@ describe('toShareText', () => {
     expect(text).toContain('　第二車（3）：李四＋2')
   })
 
-  it('請假人數也是人頭', () => {
-    const text = toShareText(room, [
-      member('王小明', { status: 'arrived' }),
-      member('陳大同', { status: 'excused', companions: 3 }),
-    ], 'zh')
-    expect(text).toContain('請假 4 位：陳大同＋3')
-  })
-
   it('已到人頭 + 未到人頭 = 分母（這就是列數版本做不到的事）', () => {
     const text = toShareText(room, [
       member('王小明', { status: 'arrived', companions: 1 }),
       member('李美花', { companions: 1 }),
       member('李四', { companions: 2 }),
-      member('陳大同', { status: 'excused' }),
     ], 'zh')
     const arrived = Number(/已到 (\d+) \//.exec(text)?.[1])
     const total = Number(/已到 \d+ \/ (\d+) 人/.exec(text)?.[1])
@@ -187,13 +196,11 @@ describe('toShareText', () => {
     const text = toShareText(enRoom, [
       member('Amy', { group_label: 'Bus 1', companions: 1 }),
       member('Ben', { group_label: 'Bus 2' }),
-      member('Cara', { status: 'excused' }),
     ], 'en')
     expect(text).toContain('0 / 3 here')
     expect(text).toContain('3 missing:')
     // 英文的攜伴記號是半形 +，中文是全形＋（withCompanions）
     expect(text).toContain('  Bus 1 (2): Amy+1')
-    expect(text).toContain('1 excused: Cara')
     expect(text).not.toMatch(/[\u4e00-\u9fff]/)
   })
 
@@ -202,14 +209,6 @@ describe('toShareText', () => {
     const text = toShareText(enRoom, [member('Amy', { status: 'arrived' })], 'en')
     expect(text).toContain('Everyone is here')
     expect(text).not.toMatch(/[\u4e00-\u9fff]/)
-  })
-
-  it('請假者的攜伴也一起扣掉', () => {
-    const text = toShareText(room, [
-      member('王小明', { status: 'arrived' }),
-      member('陳大同', { status: 'excused', companions: 3 }),
-    ], 'zh')
-    expect(text).toContain('已到 1 / 1 人')
   })
 
   it('附上時間：貼進 LINE 群之後辦公室要知道這是幾點的狀態', () => {
@@ -266,12 +265,4 @@ describe('toShareText', () => {
     expect(text).toContain('已到 3 / 4 人')
   })
 
-  it('請假另外列一行，不混進未到', () => {
-    const text = toShareText(room, [
-      member('王小明', { status: 'excused' }),
-      member('李美花', { status: 'pending' }),
-    ], 'zh')
-    expect(text).toContain('未到 1 位：李美花')
-    expect(text).toContain('請假 1 位：王小明')
-  })
 })

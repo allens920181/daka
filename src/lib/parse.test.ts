@@ -230,9 +230,9 @@ describe('parseRoster 名字與備註的切分', () => {
     expect(split('陳伯伯 (02)2345-6789')).toEqual(['陳伯伯', '(02)2345-6789'])
   })
 
-  it('請假仍然只看括號裡的字，不會被前面那串號碼沖淡', () => {
-    expect(parseRoster('李美花 0912345678（請假）').members[0]).toMatchObject({
-      name: '李美花', note: '0912345678 請假', status: 'excused',
+  it('括號備註與行尾那段接得起來，順序照原文', () => {
+    expect(parseRoster('李美花 0912345678（素食）').members[0]).toMatchObject({
+      name: '李美花', note: '0912345678 素食',
     })
   })
 
@@ -319,32 +319,27 @@ describe('dialableFrom', () => {
   })
 })
 
-describe('parseRoster 請假狀態', () => {
-  it('名單上寫請假的人直接是請假狀態，不會混進未到', () => {
+describe('parseRoster 不再判斷狀態', () => {
+  /*
+   * 請假 2026-09 整個拿掉了。解析器因此也不再從備註猜狀態——「（請假）」現在
+   * 就只是一則備註，跟「（素食）」一樣。這一條守著那件事：解析出來的人一律
+   * 沒有 status，狀態只能是點名當下按出來的。
+   */
+  it('寫著請假的人只是帶著一則備註，狀態由現場決定', () => {
     const m = parseRoster('陳大同（請假）').members[0]
-    expect(m).toMatchObject({ name: '陳大同', note: '請假', status: 'excused' })
+    expect(m).toMatchObject({ name: '陳大同', note: '請假' })
+    expect(m?.status).toBeUndefined()
   })
 
-  it('認得多種說法', () => {
-    for (const word of ['請假', '不去', '不參加', '取消', '缺席', 'absent', 'Excused']) {
-      expect(parseRoster(`王小明（${word}）`).members[0]?.status).toBe('excused')
-    }
-  })
-
-  it('一般備註不會被誤判', () => {
-    for (const word of ['素食', '坐前排', '晚點到', '會遲到']) {
+  it('任何一種說法都不再變成狀態', () => {
+    for (const word of ['請假', '不去', '取消', 'absent', 'Excused']) {
       expect(parseRoster(`王小明（${word}）`).members[0]?.status).toBeUndefined()
     }
   })
 
-  it('長句子不誤判：「請假單已交但還是會去」', () => {
+  it('長句子照樣原文留在備註裡', () => {
     const m = parseRoster('王小明（請假單已交但還是會去）').members[0]
-    expect(m?.status).toBeUndefined()
     expect(m?.note).toBe('請假單已交但還是會去')
-  })
-
-  it('沒有備註時沒有 status 欄位', () => {
-    expect(parseRoster('王小明').members[0]?.status).toBeUndefined()
   })
 })
 
@@ -394,8 +389,8 @@ describe('parseRoster 分組', () => {
   })
 
   it('帶括號備註的人不會被當成標題', () => {
-    const m = parseRoster('王小明（請假）').members[0]
-    expect(m).toMatchObject({ name: '王小明', note: '請假', group_label: null })
+    const m = parseRoster('王小明（素食）').members[0]
+    expect(m).toMatchObject({ name: '王小明', note: '素食', group_label: null })
   })
 
   it('回報出現過的分組，依順序', () => {
@@ -427,7 +422,6 @@ describe('parseRoster 分組', () => {
       ['王小明', '第一車'], ['李美花', '第一車'],
       ['陳大同', '第二車'], ['王媽媽 帶2人', '第二車'],
     ])
-    expect(r.members[3]).toMatchObject({ status: 'excused' })
   })
 })
 
@@ -448,12 +442,15 @@ describe('填入範例的文字', () => {
       expect(r.members.length).toBe(text.split('\n').length)
     })
 
-    it(`${lang}：撥得出去的號碼與請假都示範到`, () => {
+    it(`${lang}：撥得出去的號碼與備註都示範到`, () => {
       const r = parseRoster(messages[lang].exampleRoster)
       // 電話不再是欄位，而是備註裡撥得出去的一段——範例仍要示範到這件事，
       // 否則第一次用的人不會知道號碼該寫在哪裡。
       expect(r.members.some((m) => dialableFrom(m.note).length > 0)).toBe(true)
-      expect(r.members.some((m) => m.status === 'excused')).toBe(true)
+      // 括號備註也要有一個：那是名單上最常見的第二種資訊。
+      expect(r.members.some((m) => (m.note ?? '').length > 0 && dialableFrom(m.note).length === 0)).toBe(true)
+      // 狀態不再從文字猜，範例裡也不該有人帶著狀態進來。
+      expect(r.members.every((m) => m.status === undefined)).toBe(true)
       // 攜伴已經不解析了，範例裡的 `+1` 只會是備註。
       expect(r.members.every((m) => m.companions === 0)).toBe(true)
     })

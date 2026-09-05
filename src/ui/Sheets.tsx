@@ -1,10 +1,10 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom, groups,
-  identity, members, myRooms, openMenuOnEnter, prefs, recentRooms, removeMember, renameRoom,
-  renameSavedRoster, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
-  peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setStatusWithUndo,
+  AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom,
+  identity, members, myRooms, openMenuOnEnter, prefs, recentRooms, renameSavedRoster, requestCode,
+  room, saveRosterAs, savedRosters,
+  peers, presenceReady, session, setCheckerName, setPrefs,
   showToast, type Peer,
   signIn, signOut, startGoogleSignIn,
 } from '../lib/store'
@@ -13,16 +13,15 @@ import { copyToClipboard } from '../lib/clipboard'
 import { inAppBrowser, secureOrigin } from '../lib/config'
 import { csvFilename, downloadFile, toCsv } from '../lib/export'
 import { formatDate } from '../lib/format'
-import { dialableFrom, isExcusedNote, rosterToText, telHref } from '../lib/parse'
-import type { Member, SavedRoster } from '../lib/types'
+import type { SavedRoster } from '../lib/types'
 import { currentRoute, joinUrl, navigate } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconCalendar, IconClose, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash,
-  IconChevronDown, IconGoogle, IconLink, IconMore, IconPdf, IconPhone, IconPrinter,
-  IconQr, IconShare, IconTrash, IconUndo,
+  IconBookmark, IconClose, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash,
+  IconChevronDown, IconGoogle, IconLink, IconMore, IconPdf, IconPrinter,
+  IconQr, IconShare, IconTrash,
 } from './icons'
 import { useT } from './t'
 
@@ -108,11 +107,9 @@ function printSheet(mode: 'blank' | 'result', onClose: () => void): void {
 
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'edit' | 'saveRoster' | 'export' | 'copy' | 'remove'
+type ManageMode = 'menu' | 'saveRoster' | 'export' | 'copy' | 'remove'
   | 'invite' | 'inviteCode' | 'inviteLink' | 'inviteQr'
-/** 「編輯」底下的兩半：這場活動叫什麼、有誰。 */
-type EditTab = 'name' | 'roster'
-type Confirming = null | 'replaceRoster' | 'delete' | 'forget'
+type Confirming = null | 'delete' | 'forget'
 
 /**
  * 空間的「更多」。**整個 app 只有這一份清單**（2026-09）。
@@ -131,20 +128,20 @@ type Confirming = null | 'replaceRoster' | 'delete' | 'forget'
  * `.dock`）：那三顆是一場活動的三個時刻，每次都要先開一層選單才按得到是不對的。
  * 這裡留下來的是「一場活動大概碰一次、而且不趕時間」的那幾項。
  */
-export function ManageSheet({ owner, initialMode, onCopySummary, onClose }: {
+export function ManageSheet({ owner, initialMode, onCopySummary, onEdit, onClose }: {
   owner: boolean
   /** 剛建立完副本、或從底部動作列按「邀請點名」進來時，直接開在邀請頁。 */
   initialMode?: ManageMode
   /** 複製結果由 Room 執行：它握著「目前這一車」的名單與 Toast，實作只留一份。 */
   onCopySummary: () => void
+  /** 「編輯」不是面板裡的一頁，是點名畫面自己的一個狀態，所以交回 Room 開。 */
+  onEdit: () => void
   onClose: () => void
 }) {
   const t = useT()
   const [mode, setMode] = useState<ManageMode>(initialMode ?? 'menu')
-  const [editTab, setEditTab] = useState<EditTab>('name')
   const [confirming, setConfirming] = useState<Confirming>(null)
   const [value, setValue] = useState('')
-  const [rosterText, setRosterText] = useState('')
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -170,72 +167,6 @@ export function ManageSheet({ owner, initialMode, onCopySummary, onClose }: {
       return
     }
     setWorking(false)
-  }
-
-  /*
-    編輯：名稱與名單在同一頁，用一顆分段控制切（2026-09 合併）。
-
-    它們原本是兩列（「重新命名」「編輯名單」），而那兩列動的是同一份東西的兩半
-    ——「這場活動叫什麼」跟「有誰」。分成兩列等於要使用者在按下去之前先替自己
-    的意圖分類，可是真正要改的時候常常是兩個一起改（名字打錯、順便補上兩個人）。
-    合併之後那個分類還在，只是搬到頁面裡面用一顆分段控制講完，而且切過去不必
-    退回選單再點一次。
-  */
-  if (mode === 'edit') {
-    const drafts = draftsFrom(rosterText)
-    return (
-      <Sheet title={t('edit')} onClose={onClose} onBack={() => setMode('menu')}>
-        <div class="segmented" role="group" aria-label={t('edit')}>
-          <button class="segment" aria-pressed={editTab === 'name'} onClick={() => setEditTab('name')}>
-            {t('editName')}
-          </button>
-          <button class="segment" aria-pressed={editTab === 'roster'} onClick={() => setEditTab('roster')}>
-            {t('roster')}
-          </button>
-        </div>
-
-        {editTab === 'name' ? (
-          <div class="stack">
-            <input
-              class="input" value={value} maxLength={80} aria-label={t('editName')}
-              onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
-            />
-            {error && <p class="note note-warn">{error}</p>}
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || !value.trim()}
-              onClick={() => { void run(async () => { await renameRoom(current.code, value); setMode('menu') }) }}
-            >
-              {working ? t('loading') : t('save')}
-            </button>
-          </div>
-        ) : (
-          <div class="stack">
-            <p class="note note-warn">{t('editRosterWarning')}</p>
-            <RosterInput text={rosterText} onText={setRosterText} />
-            {error && <p class="note note-warn">{error}</p>}
-            <button
-              class="btn btn-primary btn-block"
-              disabled={working || drafts.length === 0}
-              onClick={() => setConfirming('replaceRoster')}
-            >
-              {working ? t('loading') : drafts.length ? `${t('save')} ${drafts.length}` : t('save')}
-            </button>
-          </div>
-        )}
-
-        {confirming === 'replaceRoster' && (
-          <ConfirmDialog
-            title={t('editRoster')}
-            body={t('editRosterWarning')}
-            confirmLabel={t('save')}
-            danger
-            onClose={() => setConfirming(null)}
-            onConfirm={() => { void run(async () => { await replaceRoster(drafts); setMode('menu') }) }}
-          />
-        )}
-      </Sheet>
-    )
   }
 
   if (mode === 'saveRoster') {
@@ -553,21 +484,15 @@ export function ManageSheet({ owner, initialMode, onCopySummary, onClose }: {
         破壞性的兩項排最後，而且中間隔著一整段距離。
       */}
       <div class="menu">
-        {/* 名稱與名單在同一頁，用分段控制切——它們是同一份東西的兩半。 */}
-        {owner && (
-          <button
-            class="menu-item"
-            onClick={() => {
-              setValue(current.name)
-              setRosterText(rosterToText(members.value))
-              setEditTab('name')
-              setMode('edit')
-            }}
-          >
-            <IconEdit />
-            <span><strong>{t('edit')}</strong></span>
-          </button>
-        )}
+        {/*
+          編輯不開子畫面，直接把點名畫面切進編輯模式（見 Room.tsx）：名字右邊
+          長出叉叉、底下變成一顆「＋」、標題變成可以改的輸入框。改的是眼前這份
+          名單，不是它的文字複本。協助者也進得去——他只是看不到叉叉與標題。
+        */}
+        <button class="menu-item" onClick={() => { onEdit(); }}>
+          <IconEdit />
+          <span><strong>{t('edit')}</strong></span>
+        </button>
 
         {owner && isSupabaseConfigured && (
           <button
@@ -620,168 +545,6 @@ export function ManageSheet({ owner, initialMode, onCopySummary, onClose }: {
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
       <p class="hint" style="margin-top:14px">{t('expiresOn', { date: expires })}</p>
 
-    </Sheet>
-  )
-}
-
-// ---------------------------------------------------------------------------
-
-export function MemberSheet({ member, owner, onClose }: {
-  member: Member; owner: boolean; onClose: () => void
-}) {
-  const t = useT()
-  const closed = Boolean(room.value?.closed_at)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
-
-  // 「陳大同（請假）」這種名單，note 是「請假」，下面又有一顆會標成「請假」的
-  // 狀態切換鍵：兩個都印備註原文的話，這個面板會同時看到「備註：請假」與
-  // 一顆已經在講同一件事的按鈕，備註沒有多給任何資訊，純粹是雜訊。
-  const noteIsStatus = member.status === 'excused' && isExcusedNote(member.note)
-
-  const notedPhones = dialableFrom(member.note)
-  // 「王小明 0912345678」這種名單，note 整則就是一支電話號碼：備註欄位跟
-  // 下面的撥號鍵會連續印兩次一模一樣的數字。撥號鍵已經把這串數字講完了
-  // （還多了一顆可以按），備註原文在這裡沒有多給任何資訊，是重複。
-  const noteIsJustPhone = notedPhones.length === 1 && member.note?.trim() === notedPhones[0]
-  const extraPhones = notedPhones.filter((d) => d.replace(/\D/g, '') !== member.phone)
-
-  // 分隔線只留一條，畫在「查得到的資訊」與「會改動這個人的動作」之間——這是
-  // 唯一真的需要隔開的界線。下面的狀態鍵、改分組、移除，本來各自帶一條自己的
-  // 分隔線，三個都只裝一兩項東西，畫面被切成一截一截，比它們要分開的東西還
-  // 顯眼。狀態鍵改用文字位置分開、移除鍵單靠 .danger 的紅色跟排在最後（跟
-  // ManageSheet 的「刪除空間」同一套做法），都不必再各自開一條線。
-  const hasInfoSection = (member.note && !noteIsStatus && !noteIsJustPhone) || Boolean(member.phone) || extraPhones.length > 0
-  const hasActionsSection = !closed || owner
-
-  // 從名單列點名有 5 秒復原；從這裡做同一件事卻什麼都沒有。同一個結果要有
-  // 同一種安全網，否則使用者學不會「哪一種操作可以反悔」。
-  function mark(status: Member['status'], label: string): void {
-    void setStatusWithUndo(member.id, status, (m) => `${m.name} · ${label}`, t('undo'))
-    onClose()
-  }
-
-  if (confirmingDelete) {
-    return (
-      <ConfirmDialog
-        title={t('confirmRemoveMemberTitle', { name: member.name })}
-        body={t('confirmRemoveMemberBody')}
-        confirmLabel={t('remove')}
-        danger
-        onConfirm={() => { void removeMember(member.id); onClose() }}
-        onClose={() => setConfirmingDelete(false)}
-      />
-    )
-  }
-
-  return (
-    <Sheet title={member.name} onClose={onClose}>
-      <div class="menu">
-        {/*
-          備註原文搬到這裡：名單列只留辨識晶片與狀態，備註本身查才需要，不必
-          一直印在畫面上。放在撥號鍵之前，因為下面那些從備註裡認出來的號碼
-          （見下一段註解）就是從這段文字裡抽出來的——先看到原文，再看到抽出
-          的號碼，順序才對得上。
-        */}
-        {member.note && !noteIsStatus && !noteIsJustPhone && (
-          <div class="field" style="padding: var(--sp-2) 12px 8px">
-            <span class="label">{t('noteLabel')}</span>
-            <p style="margin:0">{member.note}</p>
-          </div>
-        )}
-
-        {/*
-          撥號鍵有兩個來源。上面那個是結構化的 phone 欄位——舊名單留下來的，
-          解析器現在不再產生它（見 `parse.ts` 的 `NAME_TAIL`）。下面那些是從備註
-          裡認出來的：解析階段刻意不判斷任何一串數字是什麼，這個判斷改在這裡做，
-          因為**顯示層猜錯是可逆、可見的**（多一顆鍵，備註原文一字未動），而存進
-          資料庫的假號碼是看不見的。
-        */}
-        {member.phone && (
-          <a class="menu-item" href={`tel:${member.phone}`}>
-            <IconPhone />
-            <span>
-              <strong class="mono">{member.phone}</strong>
-              <span class="sub">{member.name}</span>
-            </span>
-          </a>
-        )}
-
-        {extraPhones.map((d) => (
-          <a key={d} class="menu-item" href={telHref(d)}>
-            <IconPhone />
-            <span>
-              <strong class="mono">{d}</strong>
-              <span class="sub">{t('fromNote')}</span>
-            </span>
-          </a>
-        ))}
-
-        {hasInfoSection && hasActionsSection && <div class="menu-divider" />}
-
-        {/*
-          「標記已到」不放在這裡：名單列整片可點就是切換已到，任何狀態
-          點下去都會變成已到（見 Room.tsx 的 toggle()）——面板裡再放一顆
-          一模一樣的按鈕只是重複，是這個面板看起來雜亂的原因之一。
-
-          「改回未到」只在請假狀態才留：從已到點名單列就會變回未到，這條
-          路本來就有；但從請假點名單列只會跳去已到，回未到沒有第二條路，
-          這顆鍵是唯一入口，不能一起拿掉。
-        */}
-        {!closed && member.status === 'excused' && (
-          <button class="menu-item" onClick={() => mark('pending', t('missing'))}>
-            <IconUndo />
-            <span><strong>{t('markMissing')}</strong></span>
-          </button>
-        )}
-        {!closed && member.status !== 'excused' && (
-          <button class="menu-item" onClick={() => mark('excused', t('excused'))}>
-            <IconCalendar />
-            <span><strong>{t('markExcused')}</strong></span>
-          </button>
-        )}
-
-        {owner && groups.value.length > 0 && (
-          <div class="field" style="padding: var(--sp-2) 12px 8px">
-            <span class="label">{t('changeGroup')}</span>
-            <div class="groups">
-              {groups.value.map((g) => (
-                <button
-                  key={g}
-                  class="group-chip"
-                  aria-pressed={member.group_label === g}
-                  onClick={() => { void setMemberGroup(member.id, g); onClose() }}
-                >
-                  {g}
-                </button>
-              ))}
-              {member.group_label && (
-                <button
-                  class="group-chip"
-                  onClick={() => { void setMemberGroup(member.id, null); onClose() }}
-                >
-                  {t('removeFromGroup')}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/*
-          移除不再自己開一條分隔線：狀態鍵、改分組、移除三個都只裝一兩項
-          東西，各自一條線會把面板切成一截一截，比它們要分開的東西還顯眼。
-          移除單靠 .danger 的紅色跟排在最後跟其他動作分開——跟 ManageSheet
-          的「刪除空間」同一套做法，這個面板不必另外發明一條規則。
-        */}
-        {owner && (
-          <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
-            <IconTrash />
-            <span>
-              <strong>{t('removeMember')}</strong>
-              <span class="sub">{t('removeMemberSub')}</span>
-            </span>
-          </button>
-        )}
-      </div>
     </Sheet>
   )
 }

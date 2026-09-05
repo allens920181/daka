@@ -2,10 +2,10 @@ import { Fragment } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
-  openMenuOnEnter, prefs, room, setRoomClosed, setStatusWithUndo, showToast,
+  openMenuOnEnter, prefs, removeMember, renameRoom, room, setRoomClosed, setStatusWithUndo, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
-import { isExcusedNote } from '../lib/parse'
+import { dialableFrom, telHref } from '../lib/parse'
 import type { Member, MemberStatus } from '../lib/types'
 import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
 import { copyToClipboard } from '../lib/clipboard'
@@ -13,12 +13,12 @@ import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
 import { ConfirmDialog } from './Sheet'
-import { AddWalkInSheet, ManageSheet, MemberSheet } from './Sheets'
-import { IconBack, IconCheck, IconCopy, IconDownload, IconMore, IconPhone } from './icons'
+import { AddWalkInSheet, ManageSheet } from './Sheets'
+import { IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPhone, IconPlus } from './icons'
 import { useT } from './t'
 
-type Filter = 'all' | 'pending' | 'arrived' | 'excused'
-type OpenSheet = null | 'manage' | 'walkin' | { member: Member }
+type Filter = 'all' | 'pending' | 'arrived'
+type OpenSheet = null | 'manage' | 'walkin'
 /** 「更多」要開在哪一頁（底部動作列的「邀請點名」、首頁那顆「更多」、剛建立完副本）。 */
 type MenuMode = 'invite' | undefined
 
@@ -58,6 +58,16 @@ export function Room({ code }: { code: string }) {
   // 那份選單——整個 app 只有那一份清單，首頁不另做一份能力比較弱的。
   const [menuMode, setMenuMode] = useState<MenuMode>(undefined)
   const [confirmFinish, setConfirmFinish] = useState(false)
+  /*
+    編輯模式（2026-09）。編輯名單這件事以前是一張面板：把整份名單倒成一個
+    textarea 讓人重貼，而「臨時加人」與「從名單移除」又各自散在別的地方——
+    同一件事有三個入口、三種長相。現在它是這個畫面自己的一個狀態：名字右邊
+    長出叉叉、底下那條動作列變成一顆「＋」、標題變成可以直接改的輸入框。
+    改的是眼前這份名單，不是它的文字複本。
+  */
+  const [editing, setEditing] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [removing, setRemoving] = useState<Member | null>(null)
   useEffect(() => {
     if (status !== 'ready') return
     const pending = openMenuOnEnter.value
@@ -103,7 +113,6 @@ export function Room({ code }: { code: string }) {
     return scoped.filter((m) => {
       if (filter === 'pending' && m.status !== 'pending') return false
       if (filter === 'arrived' && m.status !== 'arrived') return false
-      if (filter === 'excused' && m.status !== 'excused') return false
       if (!q) return true
       // 備註也要比對：電話已經不是解析出來的欄位，號碼現在原文躺在備註裡
       // （見 parse.ts 的 NAME_TAIL）。少了這一行，「用 0912 找人」就無聲失效。
@@ -126,8 +135,27 @@ export function Room({ code }: { code: string }) {
 
   if (!current) return <RoomSkeleton label={t('loading')} />
 
+  /** 標題改完就存。空白視同沒改（store 那邊也擋，這裡先擋一次少一次請求）。 */
+  async function saveName() {
+    const next = nameDraft.trim()
+    if (!current || !next || next === current.name) return
+    try {
+      await renameRoom(current.code, next)
+    } catch (e) {
+      showToast(errorMessage(e, t))
+    }
+  }
+
+  async function remove(m: Member) {
+    try {
+      await removeMember(m.id)
+    } catch (e) {
+      showToast(errorMessage(e, t))
+    }
+  }
+
   async function toggle(m: Member) {
-    if (closed) return
+    if (closed || editing) return
     const next: MemberStatus = m.status === 'arrived' ? 'pending' : 'arrived'
     await setStatusWithUndo(
       m.id,
@@ -155,7 +183,6 @@ export function Room({ code }: { code: string }) {
     showToast(ok ? t('summaryCopied') : t('copyFailed'))
   }
 
-  // 分母是「今天該到的人頭」而不是名單總人頭：請假的人不該讓進度條永遠差一截。
   // 空名單不是「全部到齊」，只是還沒有人。
   const allHere = s.people > 0 && s.pending === 0
   const groupLabel = group === UNGROUPED ? t('ungrouped') : group
@@ -173,17 +200,24 @@ export function Room({ code }: { code: string }) {
             <IconBack />
           </button>
           {/*
-            點頂欄回到頂端。200 人的名單捲到底之後，要回到搜尋框得往上滑
-            17 個螢幕——而 overscroll-behavior-y: none 連「用力甩」都擋掉了。
-            這是行動裝置的既有慣例（狀態列／標題列回頂），不必再教。
+            編輯模式下標題那一格換成輸入框（2026-09）。它不是巢狀在「回到頂端」
+            那顆按鈕裡——按鈕裡再放一個輸入框是無效的 HTML，各家瀏覽器對焦行為
+            也不一致——而是整格換掉：編輯的時候沒有人要回頂端。
+
+            主揪限定：改名字是主揪的事，協助者進編輯模式只是為了那顆「＋」。
           */}
-          <button
-            class="topbar-title"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            aria-label={t('backToTop')}
-          >
-            <h1 class="topbar-name">{current.name}</h1>
-            <div class="topbar-sub">
+          {editing && isOwner.value ? (
+            <div class="topbar-title">
+              <input
+                class="topbar-name-input"
+                value={nameDraft}
+                maxLength={80}
+                aria-label={t('editName')}
+                onInput={(e) => setNameDraft((e.currentTarget as HTMLInputElement).value)}
+                onBlur={() => { void saveName() }}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur() }}
+              />
+              <div class="topbar-sub">
               {/*
                 身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
                 這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），
@@ -202,16 +236,58 @@ export function Room({ code }: { code: string }) {
                 <span class="mono">{current.code}</span>
               )}
               <SyncBadge />
+              </div>
             </div>
-          </button>
+          ) : (
+            /*
+              點頂欄回到頂端。200 人的名單捲到底之後，要回到搜尋框得往上滑
+              17 個螢幕——而 overscroll-behavior-y: none 連「用力甩」都擋掉了。
+              這是行動裝置的既有慣例（狀態列／標題列回頂），不必再教。
+            */
+            <button
+              class="topbar-title"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              aria-label={t('backToTop')}
+            >
+              <h1 class="topbar-name">{current.name}</h1>
+              <div class="topbar-sub">
+              {/*
+                身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
+                這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），
+                是進空間第一眼就該知道的事，不該要先點開管理面板才看得到。
+                排在代碼前面：代碼與同步狀態講的是「這是哪個空間、連上了沒」，
+                身分講的是「我」，順序從人到空間再到連線。
+              */}
+              <span class={isOwner.value ? 'tag tag-owner' : 'tag'}>
+                {isOwner.value ? t('owner') : t('helper')}
+              </span>
+              {closed ? (
+                // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
+                // 戳名字沒反應，協助者完全不知道為什麼。
+                <span class="topbar-count closed">{t('roomClosedShort')}</span>
+              ) : (
+                <span class="mono">{current.code}</span>
+              )}
+              <SyncBadge />
+              </div>
+            </button>
+          )}
           {/*
             頂欄只剩一顆動作鍵。分享搬進「更多」的分享分頁——它整場只用一次
             （開場把代碼發出去），卻長期佔著頂欄兩顆位置的其中一顆；而頂欄的
             位置要留給「一直都要按得到」的東西。
           */}
-          <button class="icon-btn" onClick={() => setSheet('manage')} aria-label={t('manage')}>
-            <IconMore />
-          </button>
+          {/*
+            編輯時這顆變成「完成」。編輯模式沒有自己的頂欄，也不該有——它改的
+            就是眼前這份名單，離開的路要留在原地，而不是另外長一條。
+          */}
+          {editing ? (
+            <button class="btn btn-sm" onClick={() => setEditing(false)}>{t('done')}</button>
+          ) : (
+            <button class="icon-btn" onClick={() => setSheet('manage')} aria-label={t('manage')}>
+              <IconMore />
+            </button>
+          )}
         </div>
         {/*
           搜尋框長在頂欄裡，一直顯示，不是點了才展開。
@@ -264,9 +340,6 @@ export function Room({ code }: { code: string }) {
             <Segment active={filter === 'all'} onClick={() => setFilter('all')} label={t('all')} count={s.people} />
             <Segment active={filter === 'pending'} onClick={() => setFilter('pending')} label={t('missing')} count={s.pending} />
             <Segment active={filter === 'arrived'} onClick={() => setFilter('arrived')} label={t('arrived')} count={s.arrived} />
-            {s.excused > 0 && (
-              <Segment active={filter === 'excused'} onClick={() => setFilter('excused')} label={t('excused')} count={s.excused} />
-            )}
           </div>
         </div>
       </div>
@@ -393,8 +466,9 @@ export function Room({ code }: { code: string }) {
                     member={m}
                     showGroup={duplicated.has(m.name)}
                     closed={closed}
+                    editing={editing && isOwner.value}
                     onToggle={() => { void toggle(m) }}
-                    onDetail={() => setSheet({ member: m })}
+                    onRemove={() => setRemoving(m)}
                   />
                 </Fragment>
               )
@@ -417,28 +491,34 @@ export function Room({ code }: { code: string }) {
       */}
       <div class="dock dock-roll">
         <div class="dock-inner">
-          <button
-            class="btn btn-block"
-            onClick={() => { setMenuMode('invite'); setSheet('manage') }}
-          >
-            {t('invite')}
-          </button>
-
-          {/* 協助者站在車門口也用得到，所以不限主揪。 */}
-          {!closed && (
-            <button class="btn btn-block" onClick={() => setSheet('walkin')}>
-              {t('addWalkIn')}
+          {editing ? (
+            /*
+              編輯時整條動作列只剩一顆「＋」。加人與刪人是同一件事的兩個方向，
+              擺在同一個模式裡才對得起來：右邊的叉叉拿掉人，底下的加號補上人。
+              協助者也按得到——站在車門口把臨時來的人補進去是他們的日常。
+            */
+            <button class="btn btn-block" onClick={() => setSheet('walkin')} aria-label={t('addWalkIn')}>
+              <IconPlus />
             </button>
-          )}
+          ) : (
+            <>
+              <button
+                class="btn btn-block"
+                onClick={() => { setMenuMode('invite'); setSheet('manage') }}
+              >
+                {t('invite')}
+              </button>
 
-          {isOwner.value && (
-            <button
-              class="btn btn-block"
-              // 重新開啟不是破壞性動作，直接做；結束才要走流程。
-              onClick={() => { if (closed) { void setClosed(false) } else { setConfirmFinish(true) } }}
-            >
-              {closed ? t('reopenRoom') : t('finishRound')}
-            </button>
+              {isOwner.value && (
+                <button
+                  class="btn btn-block"
+                  // 重新開啟不是破壞性動作，直接做；結束才要走流程。
+                  onClick={() => { if (closed) { void setClosed(false) } else { setConfirmFinish(true) } }}
+                >
+                  {closed ? t('reopenRoom') : t('finishRound')}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -477,12 +557,25 @@ export function Room({ code }: { code: string }) {
           owner={isOwner.value}
           initialMode={menuMode}
           onCopySummary={() => { void copySummary() }}
+          onEdit={() => { setNameDraft(current.name); setEditing(true); setSheet(null) }}
           onClose={() => { setSheet(null); setMenuMode(undefined) }}
         />
       )}
       {sheet === 'walkin' && <AddWalkInSheet group={group} onClose={() => setSheet(null)} />}
-      {sheet && typeof sheet === 'object' && (
-        <MemberSheet member={sheet.member} owner={isOwner.value} onClose={() => setSheet(null)} />
+
+      {/*
+        從名單移除是這個畫面上唯一不可復原、而且會同步到所有裝置的動作，
+        所以就算已經先進了編輯模式，還是要問一次。
+      */}
+      {removing && (
+        <ConfirmDialog
+          title={t('confirmRemoveMemberTitle', { name: removing.name })}
+          body={t('confirmRemoveMemberBody')}
+          confirmLabel={t('remove')}
+          danger
+          onClose={() => setRemoving(null)}
+          onConfirm={() => { const m = removing; setRemoving(null); void remove(m) }}
+        />
       )}
     </>
   )
@@ -510,11 +603,17 @@ function Segment({ active, onClick, label, count }: {
   )
 }
 
-function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
-  member: Member; closed: boolean; showGroup: boolean; onToggle: () => void; onDetail: () => void
+function MemberRow({ member, closed, showGroup, editing, onToggle, onRemove }: {
+  member: Member
+  closed: boolean
+  showGroup: boolean
+  /** 編輯模式：右邊那格換成叉叉，戳名字不再改狀態。 */
+  editing: boolean
+  onToggle: () => void
+  onRemove: () => void
 }) {
   const t = useT()
-  const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}${member.status === 'excused' ? ' is-excused' : ''}`
+  const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}`
   const time = member.status_at ? formatTime(member.status_at) : null
 
   // 名單裡有同名的人時（showGroup），這一列要多給一點辨識用的資訊。分車最
@@ -523,16 +622,23 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
     ? member.group_label ?? (member.phone ? t('phoneTail', { tail: member.phone.slice(-4) }) : null)
     : null
 
-  // 「陳大同（請假）」這種名單，note 是「請假」而狀態也是請假：兩個都印的話
-  // 螢幕與紙本都會出現「請假 請假」。狀態自己會說，備註就不必再說一次。
-  const noteIsStatus = member.status === 'excused' && isExcusedNote(member.note)
+  /*
+    撥號。號碼有兩個來源：舊名單留下的結構化 phone 欄位，以及備註裡的一串數字
+    ——解析階段刻意不判斷任何一串數字是什麼（見 parse.ts 的 NAME_TAIL），那個
+    判斷改在這裡做，因為**顯示層猜錯是可逆、可見的**（多一顆鍵，備註原文一字
+    未動），而存進資料庫的假號碼是看不見的。
+
+    它 2026-09 從成員面板搬回這一列：那張面板整個拿掉了，而「看到未到 → 打電話」
+    是收尾時唯一的下一步，不能跟著面板一起消失。
+  */
+  const dialable = member.phone ?? dialableFrom(member.note)[0] ?? null
 
   return (
     <div class={cls} role="listitem">
       <button
         class="member-main"
         onClick={onToggle}
-        disabled={closed}
+        disabled={closed || editing}
         aria-pressed={member.status === 'arrived'}
         aria-label={`${member.name} · ${member.status === 'arrived' ? t('markMissing') : t('markArrived')}`}
       >
@@ -545,40 +651,40 @@ function MemberRow({ member, closed, showGroup, onToggle, onDetail }: {
               <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
             )}
             {/*
-              備註原文不再顯示在螢幕上，搬進「更多」面板（見 MemberSheet）——
-              這一列只留住「哪一個人」（辨識晶片）與「現在什麼狀態」，備註本身
-              是查才需要的細節，而且長度不受控，印在這裡會把行高撐開，破壞
+              備註原文不顯示在螢幕上：這一列只留住「哪一個人」（辨識晶片）與
+              「現在什麼狀態」，備註本身長度不受控，印在這裡會把行高撐開，破壞
               80 人名單一屏看幾個人的預算。.chip-note 用 CSS 在螢幕上關掉
               （見 styles.css 的 `.member .chip-note`），但紙本上要留著：手機
-              沒電時拿著這張紙的人沒有「更多」可以點，理由跟 .print-phone
-              一樣。
+              沒電時拿著這張紙的人只有那張紙，理由跟 .print-phone 一樣。
             */}
-            {member.note && !noteIsStatus && <span class="chip chip-note">{member.note}</span>}
+            {member.note && <span class="chip chip-note">{member.note}</span>}
             {member.status === 'arrived' && time && (
               <span>{member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}</span>
             )}
-            {member.status === 'excused' && <span class="meta-excused">{t('excused')}</span>}
           </span>
         </span>
       </button>
 
       {/* 紙本上要看得到電話：收尾時「看到未到 → 打電話」是唯一的下一步，
           而螢幕上電話只做成 tel: 圖示按鈕，列印時整個 .member-side 會被藏起來。 */}
-      {member.phone && <span class="print-phone" aria-hidden="true">{member.phone}</span>}
+      {dialable && <span class="print-phone" aria-hidden="true">{dialable}</span>}
 
       <div class="member-side">
-        {member.phone && member.status === 'pending' && (
-          <a
-            class="icon-btn call-btn"
-            href={`tel:${member.phone}`}
-            aria-label={t('callMember', { name: member.name })}
-          >
-            <IconPhone />
-          </a>
+        {editing ? (
+          <button class="icon-btn" onClick={onRemove} aria-label={`${t('removeMember')}：${member.name}`}>
+            <IconClose />
+          </button>
+        ) : (
+          dialable && member.status === 'pending' && (
+            <a
+              class="icon-btn call-btn"
+              href={telHref(dialable)}
+              aria-label={t('callMember', { name: member.name })}
+            >
+              <IconPhone />
+            </a>
+          )
         )}
-        <button class="icon-btn" onClick={onDetail} aria-label={`${member.name} ${t('manage')}`}>
-          <IconMore />
-        </button>
       </div>
     </div>
   )
