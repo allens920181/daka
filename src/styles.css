@@ -685,6 +685,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border-left: 1px solid var(--rule);
 }
 .member.is-arrived .member-side { border-left-color: var(--st-arrived-line); }
+/* 編輯模式沒有那條界線：它是為了隔開「點名」與「打電話」兩個相鄰的觸控目標，
+   而編輯時整列的點名區是停用的——沒有東西要跟叉叉隔開，剩下的只是一條線。 */
+.member.is-editing .member-side { border-left: none; padding-left: 0; }
 .call-btn { color: var(--accent); }
 /* 已經打過的號碼收斂成中性色：那一格的意思從「該打這個」變成「打過了」。 */
 

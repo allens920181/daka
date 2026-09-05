@@ -1,7 +1,7 @@
 import { Fragment } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import {
-  connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
+  connection, dismissToast, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
   openMenuOnEnter, prefs, removeMember, renameRoom, room, setRoomClosed, setStatusWithUndo, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
@@ -68,6 +68,18 @@ export function Room({ code }: { code: string }) {
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [removing, setRemoving] = useState<Member | null>(null)
+
+  /**
+   * 進編輯模式。Toast 要當場收掉——它上面那顆「復原」也是點名操作，而編輯模式
+   * 的規則是「這個模式裡改不到誰到了沒」。剩一顆浮在畫面下緣的復原鍵就是那條
+   * 規則唯一的破口。
+   */
+  function startEditing() {
+    if (!current) return
+    dismissToast()
+    setNameDraft(current.name)
+    setEditing(true)
+  }
   useEffect(() => {
     if (status !== 'ready') return
     const pending = openMenuOnEnter.value
@@ -204,6 +216,11 @@ export function Room({ code }: { code: string }) {
             那顆按鈕裡——按鈕裡再放一個輸入框是無效的 HTML，各家瀏覽器對焦行為
             也不一致——而是整格換掉：編輯的時候沒有人要回頂端。
 
+            **身分、代碼、同步狀態那一列在編輯模式下不印。** 它們回答的是「我能
+            不能改、這是哪一間、存進去了沒」，是點名當下要一直看得到的東西；
+            編輯時畫面上該只剩「這份名單長什麼樣」。少了那一列，輸入框那 48px
+            的手指高度也剛好補回原本兩行的位置，頂欄不會忽高忽低。
+
             主揪限定：改名字是主揪的事，協助者進編輯模式只是為了那顆「＋」。
           */}
           {editing && isOwner.value ? (
@@ -217,26 +234,6 @@ export function Room({ code }: { code: string }) {
                 onBlur={() => { void saveName() }}
                 onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur() }}
               />
-              <div class="topbar-sub">
-              {/*
-                身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
-                這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），
-                是進空間第一眼就該知道的事，不該要先點開管理面板才看得到。
-                排在代碼前面：代碼與同步狀態講的是「這是哪個空間、連上了沒」，
-                身分講的是「我」，順序從人到空間再到連線。
-              */}
-              <span class={isOwner.value ? 'tag tag-owner' : 'tag'}>
-                {isOwner.value ? t('owner') : t('helper')}
-              </span>
-              {closed ? (
-                // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
-                // 戳名字沒反應，協助者完全不知道為什麼。
-                <span class="topbar-count closed">{t('roomClosedShort')}</span>
-              ) : (
-                <span class="mono">{current.code}</span>
-              )}
-              <SyncBadge />
-              </div>
             </div>
           ) : (
             /*
@@ -250,39 +247,40 @@ export function Room({ code }: { code: string }) {
               aria-label={t('backToTop')}
             >
               <h1 class="topbar-name">{current.name}</h1>
-              <div class="topbar-sub">
-              {/*
-                身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
-                這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），
-                是進空間第一眼就該知道的事，不該要先點開管理面板才看得到。
-                排在代碼前面：代碼與同步狀態講的是「這是哪個空間、連上了沒」，
-                身分講的是「我」，順序從人到空間再到連線。
-              */}
-              <span class={isOwner.value ? 'tag tag-owner' : 'tag'}>
-                {isOwner.value ? t('owner') : t('helper')}
-              </span>
-              {closed ? (
-                // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
-                // 戳名字沒反應，協助者完全不知道為什麼。
-                <span class="topbar-count closed">{t('roomClosedShort')}</span>
-              ) : (
-                <span class="mono">{current.code}</span>
+              {!editing && (
+                <div class="topbar-sub">
+                  {/*
+                    身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
+                    這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），
+                    是進空間第一眼就該知道的事，不該要先點開管理面板才看得到。
+                    排在代碼前面：代碼與同步狀態講的是「這是哪個空間、連上了沒」，
+                    身分講的是「我」，順序從人到空間再到連線。
+                  */}
+                  <span class={isOwner.value ? 'tag tag-owner' : 'tag'}>
+                    {isOwner.value ? t('owner') : t('helper')}
+                  </span>
+                  {closed ? (
+                    // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
+                    // 戳名字沒反應，協助者完全不知道為什麼。
+                    <span class="topbar-count closed">{t('roomClosedShort')}</span>
+                  ) : (
+                    <span class="mono">{current.code}</span>
+                  )}
+                  <SyncBadge />
+                </div>
               )}
-              <SyncBadge />
-              </div>
             </button>
           )}
           {/*
-            頂欄只剩一顆動作鍵。分享搬進「更多」的分享分頁——它整場只用一次
-            （開場把代碼發出去），卻長期佔著頂欄兩顆位置的其中一顆；而頂欄的
-            位置要留給「一直都要按得到」的東西。
-          */}
-          {/*
-            編輯時這顆變成「完成」。編輯模式沒有自己的頂欄，也不該有——它改的
-            就是眼前這份名單，離開的路要留在原地，而不是另外長一條。
+            編輯時這顆變成打勾（＝完成）。編輯模式沒有自己的頂欄，也不該有——
+            它改的就是眼前這份名單，離開的路要留在原地，而不是另外長一條。
+            用圖示而不是文字：這一格在點名模式下是圖示鍵，換成一顆文字鍵會讓
+            整條頂欄在切換模式時跳一下寬度。無障礙名稱仍然是「完成」。
           */}
           {editing ? (
-            <button class="btn btn-sm" onClick={() => setEditing(false)}>{t('done')}</button>
+            <button class="icon-btn" onClick={() => setEditing(false)} aria-label={t('done')}>
+              <IconCheck size={24} />
+            </button>
           ) : (
             <button class="icon-btn" onClick={() => setSheet('manage')} aria-label={t('manage')}>
               <IconMore />
@@ -557,7 +555,7 @@ export function Room({ code }: { code: string }) {
           owner={isOwner.value}
           initialMode={menuMode}
           onCopySummary={() => { void copySummary() }}
-          onEdit={() => { setNameDraft(current.name); setEditing(true); setSheet(null) }}
+          onEdit={() => { startEditing(); setSheet(null) }}
           onClose={() => { setSheet(null); setMenuMode(undefined) }}
         />
       )}
@@ -613,7 +611,7 @@ function MemberRow({ member, closed, showGroup, editing, onToggle, onRemove }: {
   onRemove: () => void
 }) {
   const t = useT()
-  const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}`
+  const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}${editing ? ' is-editing' : ''}`
   const time = member.status_at ? formatTime(member.status_at) : null
 
   // 名單裡有同名的人時（showGroup），這一列要多給一點辨識用的資訊。分車最
