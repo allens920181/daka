@@ -216,7 +216,7 @@ ok('[同工] 名單一起複製過來', (await B.p.locator('.member').count()) =
 // 複製的人是新空間的主揪：身分標籤（頂欄）與管理功能都要出現。
 ok('[同工] 在新空間裡是主揪', (await B.p.locator('.topbar-sub .tag-owner').count()) === 1)
 await B.p.locator('.topbar button[aria-label="更多"]').click(); await B.p.waitForTimeout(700)
-ok('[同工] 新空間裡有擁有者才有的「編輯名單」', (await B.p.getByRole('button', { name: /編輯名單/ }).count()) > 0)
+ok('[同工] 新空間裡有擁有者才有的「編輯」', (await B.p.getByRole('button', { name: /^編輯$/ }).count()) > 0)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
 
 // --- 掃 QR 時連不上：要說話，不能永遠留在骨架上（#23）---------------------

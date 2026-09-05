@@ -94,11 +94,11 @@ ok('[舊手機] 未登入時首頁沒有「我的活動」', (await A.page.getBy
 await B.page.goto(`${URL}#/r/${code}`); await B.page.waitForTimeout(1800)
 ok('[新手機] 用代碼進得去（協助點名不需要帳號）', await B.page.locator('.topbar-name').isVisible())
 await B.page.locator('.topbar button[aria-label="更多"]').click(); await B.page.waitForTimeout(500)
-ok('[新手機] 未登入時看不到擁有者功能', (await B.page.getByRole('button', { name: /編輯名單/ }).count()) === 0)
+ok('[新手機] 未登入時看不到擁有者功能', (await B.page.getByRole('button', { name: /^編輯$/ }).count()) === 0)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
 // 「建立副本」刻意對所有人開放（見 schema.sql 的 copy_room），所以不能拿它
-// 當擁有者功能的探針——上面改用真正只有擁有者做得到的「編輯名單」。它 2026-09
+// 當擁有者功能的探針——上面改用真正只有擁有者做得到的「編輯」。它 2026-09
 // 搬到首頁每個空間右邊那顆「更多」裡，跟重新命名、刪除空間排在一起。
 await B.page.goto(URL); await B.page.waitForTimeout(900)
 await B.page.getByRole('button', { name: /^更多：/ }).first().click(); await B.page.waitForTimeout(500)
@@ -144,7 +144,7 @@ await B.page.waitForTimeout(600)
 ok('[新手機] 登入後看得到同一場活動', await B.page.getByText('秋季旅遊 · 出發').first().isVisible())
 await B.page.getByText('秋季旅遊 · 出發').first().click(); await B.page.waitForTimeout(1800)
 await B.page.locator('.topbar button[aria-label="更多"]').click(); await B.page.waitForTimeout(600)
-ok('[新手機] 現在看得到擁有者功能了', await B.page.getByRole('button', { name: /編輯名單/ }).isVisible())
+ok('[新手機] 現在看得到擁有者功能了', await B.page.getByRole('button', { name: /^編輯$/ }).isVisible())
 
 // 真的改得動（這是「換手機拿得回空間」的實證）
 await B.page.getByRole('button', { name: /重新命名/ }).click(); await B.page.waitForTimeout(400)
@@ -167,7 +167,7 @@ ok('[舊手機] 登出後「我的活動」消失', (await A.page.getByText('我
 await A.page.goto(`${URL}#/r/${code}`); await A.page.waitForTimeout(1800)
 await A.page.locator('.topbar button[aria-label="更多"]').click(); await A.page.waitForTimeout(600)
 ok('[舊手機] 登出後仍管得動自己開的空間（裝置金鑰還在）',
-  await A.page.getByRole('button', { name: /編輯名單/ }).isVisible())
+  await A.page.getByRole('button', { name: /^編輯$/ }).isVisible())
 
 // --- 備援路徑仍然通：Google 在內建瀏覽器裡會被擋，那時這條是唯一的路 ---
 const C = await phone('備援手機')

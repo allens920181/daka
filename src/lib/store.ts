@@ -62,6 +62,18 @@ export const pendingUploads = computed(() =>
  * 只有你」——那正是這個產品最不能犯的那種錯。不知道就不要說。
  */
 export interface Peer { name: string | null; at: number }
+/**
+ * 進到某個空間之後要自動打開「更多」——以及要停在它的哪一頁。
+ *
+ * 兩個用途，都是「下一個動作幾乎確定是什麼」的時刻：
+ * - 首頁每一列右邊那顆「更多」：那份清單只有一份（見 Sheets.tsx 的 ManageSheet），
+ *   所以先進空間再打開它，而不是在首頁另做一份能力比較弱的。
+ * - 剛建立完副本：副本是新代碼，而五支協助的手機還開著舊空間——他們的畫面完全
+ *   沒有變化，會繼續在舊空間打勾。這是整條動線裡最貴的失敗，而且是靜默的，
+ *   所以直接停在邀請頁。
+ */
+export const openMenuOnEnter = signal<{ code: string; mode?: 'invite' } | null>(null)
+
 export const peers = signal<Peer[]>([])
 export const presenceReady = signal(false)
 

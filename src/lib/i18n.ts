@@ -36,6 +36,10 @@ const zh = {
   adjustList: '調整清單',
   join: '加入',
   forget: '從清單移除',
+  /* 雲端模式下移掉只是不再列出來，代碼還在、還進得去；單機模式下那份名單只
+     存在這支手機裡，移掉就是真的沒了——同一顆鍵，兩種後果，要分開講。 */
+  forgetWarning: '這個空間會從清單上消失。你還是可以用代碼再進來。',
+  forgetWarningLocal: '這支手機沒有連上雲端，這個空間只存在這裡。從清單移除等於刪掉它，而且沒有辦法再進來。',
   /* 分享有代碼、連結、QR 碼三種方式，加入原本只接得住代碼——這顆按鍵補上
      第三條路：直接用相機掃別人給的 QR 碼。連結貼進代碼框則由 extractRoomCode
      接住，不需要另外的入口。 */
@@ -184,6 +188,13 @@ const zh = {
   copyRoomHintHelper: '同一份名單、狀態全部歸零。你會是新空間的主揪。',
   copyRoomName: '新空間叫什麼？',
   returnTrip: '回程',
+  /*
+   * 編輯名稱與編輯名單 2026-09 合併成同一顆「編輯」。它們動的是同一份東西的
+   * 兩半（這場活動叫什麼、有誰），拆成兩列會逼使用者先分類自己要改什麼，
+   * 而那個分類在點進去之後用一顆分段控制就講完了。
+   */
+  edit: '編輯',
+  editName: '名稱',
   editRoster: '編輯名單',
   editRosterWarning: '換掉名單會清除目前所有點名紀錄，確定嗎？',
   rename: '重新命名',
@@ -349,6 +360,8 @@ const en: Record<MessageKey, string> = {
   adjustList: 'Adjust the list',
   join: 'Join',
   forget: 'Remove from list',
+  forgetWarning: 'It disappears from your list. You can still join again with the code.',
+  forgetWarningLocal: 'This phone has no cloud, so this room lives only here. Removing it from the list deletes it, and there is no way back in.',
   scanQr: 'Scan a QR code',
   scanQrHint: 'Point the QR code at the frame',
   errNoCamera: "This browser can't scan with the camera. Use a code or link instead.",
@@ -456,6 +469,8 @@ const en: Record<MessageKey, string> = {
   copyRoomHintHelper: "Same roster, statuses reset. You'll own the new room.",
   copyRoomName: 'Name the new room',
   returnTrip: 'Return',
+  edit: 'Edit',
+  editName: 'Name',
   editRoster: 'Edit roster',
   editRosterWarning: 'Replacing the roster clears every check-in. Continue?',
   rename: 'Rename',

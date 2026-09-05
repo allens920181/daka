@@ -2,7 +2,7 @@ import { Fragment } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
-  prefs, room, setStatusWithUndo, showToast,
+  openMenuOnEnter, prefs, room, setStatusWithUndo, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
 import { isExcusedNote } from '../lib/parse'
@@ -18,6 +18,8 @@ import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived' | 'excused'
 type OpenSheet = null | 'manage' | 'walkin' | { member: Member }
+/** 進來就要打開的那一頁（首頁那顆「更多」、剛建立完副本）。 */
+type EnterMode = 'invite' | undefined
 
 /**
  * 「未分組」這個晶片的內部值。用一個不可能當成分組名的哨符，而不是 null——
@@ -50,6 +52,18 @@ export function Room({ code }: { code: string }) {
     // t 隨語言變動，但重新進空間沒有意義；只依 code。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
+
+  // 首頁每一列右邊那顆「更多」與「建立副本」都是先進空間、再打開空間自己的
+  // 那份選單——整個 app 只有那一份清單，首頁不另做一份能力比較弱的。
+  const [enterMode, setEnterMode] = useState<EnterMode>(undefined)
+  useEffect(() => {
+    if (status !== 'ready') return
+    const pending = openMenuOnEnter.value
+    if (pending?.code !== code) return
+    openMenuOnEnter.value = null
+    setEnterMode(pending.mode)
+    setSheet('manage')
+  }, [status, code])
 
   const current = room.value
   const all = members.value
@@ -378,17 +392,13 @@ export function Room({ code }: { code: string }) {
         </div>
       </div>
 
-      {/*
-        邀請點名 2026-09 搬到首頁那個空間選單去了（RoomActionsSheet）：發代碼是
-        開場前的事，這個畫面是點名進行中的事。空間裡看得到代碼的地方仍然有一個
-        ——頂欄那一行一直印著它。
-      */}
       {sheet === 'manage' && (
         <ManageSheet
           owner={isOwner.value}
           group={group}
+          initialMode={enterMode}
           onCopySummary={() => { void copySummary() }}
-          onClose={() => setSheet(null)}
+          onClose={() => { setSheet(null); setEnterMode(undefined) }}
         />
       )}
       {sheet === 'walkin' && <AddWalkInSheet group={group} onClose={() => setSheet(null)} />}

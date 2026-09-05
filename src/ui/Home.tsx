@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { connection, forgetRecentRoom, myRooms, prefs, recentRooms, session } from '../lib/store'
+import { connection, myRooms, openMenuOnEnter, prefs, recentRooms, session } from '../lib/store'
 import { formatDate } from '../lib/format'
 import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '../lib/code'
 import { canScanQr } from '../lib/config'
@@ -8,7 +8,6 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { IconCamera, IconChevronDown, IconMore, IconPlus, IconSettings } from './icons'
 import { ScanSheet } from './Scan'
-import { RoomActionsSheet } from './Sheets'
 import { useT } from './t'
 
 type RoomFilter = 'all' | 'mine' | 'others'
@@ -29,13 +28,6 @@ export function Home({ onSettings }: { onSettings: () => void }) {
   const [scanOpen, setScanOpen] = useState(false)
   const [filter, setFilter] = useState<RoomFilter>('all')
   const codeInputRef = useRef<HTMLInputElement>(null)
-  /*
-    正在開著誰的動作選單（2026-09）。邀請點名、重新命名、建立副本、刪除空間
-    都住在這裡：它們動的是「空間這個容器」，而首頁這份清單就是使用者心裡
-    「我有哪些空間」的地方——要複製一份、要改個名字、要刪掉，都是在看這份清單
-    的時候想到的，不必先進去那個空間再從裡面找。
-  */
-  const [target, setTarget] = useState<Target | null>(null)
 
   // 按「加入空間」展開輸入框時把焦點直接放進去：不必再點第二下。
   useEffect(() => {
@@ -217,16 +209,11 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                   </button>
                   {/*
                     這裡原本是一顆垃圾桶（從清單移除），而且只長在移得掉的那幾列上。
-                    它現在是每一列都有的「更多」，從清單移除搬進選單裡跟刪除空間排在
-                    一起：兩顆看起來一樣的垃圾桶做的是兩件不同的事（一個只是不看了，
-                    一個是真的刪掉），圖示分不出來，寫成兩列文字才分得出來。
+                    它現在是每一列都有的「更多」，從清單移除搬進那份選單裡跟刪除空間
+                    排在一起：兩顆看起來一樣的垃圾桶做的是兩件不同的事（一個只是不看
+                    了，一個是真的刪掉），圖示分不出來，寫成兩列文字才分得出來。
                   */}
-                  <MoreButton
-                    name={r.name}
-                    onClick={() => setTarget({
-                      code: r.code, name: r.name, owner: r.isOwner, forgettable: r.removable,
-                    })}
-                  />
+                  <MoreButton name={r.name} code={r.code} />
                 </div>
               ))}
             </div>
@@ -238,44 +225,30 @@ export function Home({ onSettings }: { onSettings: () => void }) {
         )}
       </div>
 
-      {target && (
-        <RoomActionsSheet
-          /* 換一個空間就換一張面板：key 換掉會重新掛載，子畫面與輸入框跟著歸零。 */
-          key={target.code}
-          code={target.code}
-          name={target.name}
-          owner={target.owner}
-          initialMode={target.mode}
-          onForget={target.forgettable
-            ? () => { void forgetRecentRoom(target.code); setTarget(null) }
-            : undefined}
-          /* 複製完直接跳到新空間的邀請頁：舊代碼還在五支手機上，不發新的出去
-             的話兩邊會各點各的。 */
-          onCopied={(code, name) => setTarget({ code, name, owner: true, mode: 'invite' })}
-          onClose={() => setTarget(null)}
-        />
-      )}
     </div>
   )
 }
 
-interface Target {
-  code: string
-  name: string
-  owner: boolean
-  /** 「我的活動」那份清單是帳號那邊的，移除了也會再長回來，所以不給那一列。 */
-  forgettable?: boolean
-  mode?: 'invite'
-}
-
 /**
- * 清單每一列右邊那顆「更多」。無障礙名稱要帶空間名字：一屏上有七顆一模一樣的
- * 「更多」時，只唸得出「更多」的那一顆是哪一個空間的完全聽不出來。
+ * 清單每一列右邊那顆「更多」。
+ *
+ * 它進到那個空間再打開空間自己的「更多」（`openMenuOnEnter`），不是在首頁另外
+ * 開一份選單：同一顆「更多」在兩個地方打開不一樣的東西，使用者就得先想「我剛剛
+ * 是從哪裡按的」。而且那份清單裡的每一項（編輯、臨時加人、匯出結果、結束這一輪）
+ * 動的都是空間的即時資料，先進去才做得到——留在首頁只能做出一份能力比較弱的
+ * 第二種選單，那正是要消滅的東西。
+ *
+ * 無障礙名稱要帶空間名字：一屏上有七顆一模一樣的「更多」時，只唸得出「更多」的
+ * 那一顆是哪一個空間的完全聽不出來。
  */
-function MoreButton({ name, onClick }: { name: string; onClick: () => void }) {
+function MoreButton({ name, code }: { name: string; code: string }) {
   const t = useT()
   return (
-    <button class="icon-btn" onClick={onClick} aria-label={`${t('manage')}：${name}`}>
+    <button
+      class="icon-btn"
+      aria-label={`${t('manage')}：${name}`}
+      onClick={() => { openMenuOnEnter.value = { code }; navigate(`/r/${code}`) }}
+    >
       <IconMore />
     </button>
   )

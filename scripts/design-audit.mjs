@@ -225,7 +225,10 @@ for (const scheme of ['light', 'dark']) {
 
   // --- 分組（分車）---
   await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(400)
-  await page.getByRole('button', { name: /編輯名單|Edit roster/ }).click(); await page.waitForTimeout(400)
+  // 編輯名稱與編輯名單 2026-09 合併成一顆「編輯」，名單在第二半。
+  await page.getByRole('button', { name: /^編輯$|^Edit$/ }).click(); await page.waitForTimeout(400)
+  await audit(page, scheme, '「更多」· 編輯')
+  await page.getByRole('button', { name: /^名單$|^Roster$/ }).click(); await page.waitForTimeout(400)
   await page.locator('#roster-text').fill(
     '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（請假）\n張三\n李四')
   await page.waitForTimeout(400)
