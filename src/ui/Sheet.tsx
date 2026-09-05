@@ -136,7 +136,7 @@ export function ConfirmDialog({
   danger?: boolean
   onConfirm: () => void
   onClose: () => void
-  /** 決定之前要先看到的東西（例如結束這一輪時的結果預覽），放在說明與按鈕之間。 */
+  /** 決定之前要先看到的東西（例如結束點名時的結果預覽），放在說明與按鈕之間。 */
   children?: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)

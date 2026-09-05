@@ -163,10 +163,9 @@ await target.locator('.member-main').click(); await B.p.waitForTimeout(700)
 ok(`[同工] 離線先點了「${targetName}」，本地已入列`,
    /待上傳/.test((await B.p.locator('.sync').textContent()) || ''))
 
-// 主揪關閉空間
-await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(600)
-await A.p.getByRole('button', { name: /結束這一輪/ }).click(); await A.p.waitForTimeout(700)
-await A.p.getByRole('button', { name: /^結束這一輪$/ }).last().click(); await A.p.waitForTimeout(1600)
+// 主揪關閉空間。結束點名 2026-09 在底部動作列上，不必先開「更多」。
+await A.p.locator('.dock').getByRole('button', { name: /^結束點名$/ }).click(); await A.p.waitForTimeout(700)
+await A.p.getByRole('button', { name: /^結束點名$/ }).last().click(); await A.p.waitForTimeout(1600)
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(400)
 
 // 同工恢復連線 → 那一筆會被拒絕
@@ -216,7 +215,7 @@ ok('[同工] 名單一起複製過來', (await B.p.locator('.member').count()) =
 // 複製的人是新空間的主揪：身分標籤（頂欄）與管理功能都要出現。
 ok('[同工] 在新空間裡是主揪', (await B.p.locator('.topbar-sub .tag-owner').count()) === 1)
 await B.p.locator('.topbar button[aria-label="更多"]').click(); await B.p.waitForTimeout(700)
-ok('[同工] 新空間裡有擁有者才有的「編輯名單」', (await B.p.getByRole('button', { name: /編輯名單/ }).count()) > 0)
+ok('[同工] 新空間裡有擁有者才有的「編輯」', (await B.p.getByRole('button', { name: /^編輯$/ }).count()) > 0)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
 
 // --- 掃 QR 時連不上：要說話，不能永遠留在骨架上（#23）---------------------

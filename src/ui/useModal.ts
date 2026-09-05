@@ -77,7 +77,7 @@ export function useModal(
     document.body.style.overflow = 'hidden'
 
     // Toast 固定在畫面下緣 88px（讓開底部動作列），但面板是從下緣長上來的，
-    // 於是 Toast 正好落在選單中間——實測它蓋住「結束這一輪」49px，而且
+    // 於是 Toast 正好落在選單中間——實測它蓋住當時選單最底下那一列 49px，而且
     // .toast 是 pointer-events: auto，那五秒內那一列按不下去。
     // 標記模態層開啟，讓 CSS 把 Toast 移到上緣的遮罩區。用計數器是因為面板
     // 之上還會疊確認對話框，關掉對話框時面板還開著。

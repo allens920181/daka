@@ -215,8 +215,8 @@ for (const scheme of ['light', 'dark']) {
 
   await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(500)
   await audit(page, scheme, '「更多」面板')
-  await page.getByRole('button', { name: /^匯出結果$|^Export results$/ }).click(); await page.waitForTimeout(400)
-  await audit(page, scheme, '「更多」· 匯出結果')
+  await page.getByRole('button', { name: /^匯出名單$|^Export the list$/ }).click(); await page.waitForTimeout(400)
+  await audit(page, scheme, '「更多」· 匯出名單')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   await page.locator('.member').nth(1).locator('.icon-btn').last().click(); await page.waitForTimeout(400)
@@ -225,7 +225,10 @@ for (const scheme of ['light', 'dark']) {
 
   // --- 分組（分車）---
   await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(400)
-  await page.getByRole('button', { name: /編輯名單|Edit roster/ }).click(); await page.waitForTimeout(400)
+  // 編輯名稱與編輯名單 2026-09 合併成一顆「編輯」，名單在第二半。
+  await page.getByRole('button', { name: /^編輯$|^Edit$/ }).click(); await page.waitForTimeout(400)
+  await audit(page, scheme, '「更多」· 編輯')
+  await page.getByRole('button', { name: /^名單$|^Roster$/ }).click(); await page.waitForTimeout(400)
   await page.locator('#roster-text').fill(
     '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（請假）\n張三\n李四')
   await page.waitForTimeout(400)
@@ -236,14 +239,18 @@ for (const scheme of ['light', 'dark']) {
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
   await audit(page, scheme, '空間（含分組）')
 
-  // 首頁每個空間右邊那顆「更多」（2026-09）：邀請點名、重新命名、建立副本、
-  // 刪除空間都住在這裡。單機模式（沒設定 Supabase 的建置，也就是這支腳本跑的
-  // 那個）邀請頁只有一塊說明，三種方式一個都不列。
+  // 首頁每個空間右邊那顆「更多」（2026-09）：它進到那個空間再打開空間自己的
+  // 那份選單，首頁不另做一份。
   await page.goto(URL); await page.waitForTimeout(900)
-  await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(500)
-  await audit(page, scheme, '首頁 · 空間選單')
-  await page.getByRole('button', { name: /^邀請點名$|^Invite$/ }).click(); await page.waitForTimeout(600)
-  await audit(page, scheme, '首頁 · 邀請點名')
+  await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(1500)
+  await audit(page, scheme, '首頁的「更多」帶進來的選單')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+
+  // 邀請點名在底部動作列上（2026-09）。單機模式（沒設定 Supabase 的建置，也就是
+  // 這支腳本跑的那個）邀請頁只有一塊說明，三種方式一個都不列。
+  await page.locator('.dock').getByRole('button', { name: /^邀請點名$|^Invite$/ }).click()
+  await page.waitForTimeout(700)
+  await audit(page, scheme, '邀請點名')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   await ctx.close()

@@ -36,6 +36,10 @@ const zh = {
   adjustList: '調整清單',
   join: '加入',
   forget: '從清單移除',
+  /* 雲端模式下移掉只是不再列出來，代碼還在、還進得去；單機模式下那份名單只
+     存在這支手機裡，移掉就是真的沒了——同一顆鍵，兩種後果，要分開講。 */
+  forgetWarning: '這個空間會從清單上消失。你還是可以用代碼再進來。',
+  forgetWarningLocal: '這支手機沒有連上雲端，這個空間只存在這裡。從清單移除等於刪掉它，而且沒有辦法再進來。',
   /* 分享有代碼、連結、QR 碼三種方式，加入原本只接得住代碼——這顆按鍵補上
      第三條路：直接用相機掃別人給的 QR 碼。連結貼進代碼框則由 extractRoomCode
      接住，不需要另外的入口。 */
@@ -66,7 +70,10 @@ const zh = {
   skippedLines: '{n} 行看起來不是姓名，已略過',
   emptyRoster: '請先貼上名單',
   savedRosters: '常用名單',
-  saveAsRoster: '存成常用名單',
+  /* 不寫「存成常用名單」：這一列住在「更多」的選單裡，上下都是動作，而「名單」
+     兩個字在那個位置只是把「常用名單」這個名詞整個搬過來——按鈕要說的是動作，
+     存去哪裡由子畫面那句「這份常用名單叫什麼？」接著講。 */
+  saveAsRoster: '存成常用',
   saveRosterPrompt: '這份常用名單叫什麼？',
   useRoster: '套用',
   deleteRoster: '刪除',
@@ -184,18 +191,30 @@ const zh = {
   copyRoomHintHelper: '同一份名單、狀態全部歸零。你會是新空間的主揪。',
   copyRoomName: '新空間叫什麼？',
   returnTrip: '回程',
+  /*
+   * 編輯名稱與編輯名單 2026-09 合併成同一顆「編輯」。它們動的是同一份東西的
+   * 兩半（這場活動叫什麼、有誰），拆成兩列會逼使用者先分類自己要改什麼，
+   * 而那個分類在點進去之後用一顆分段控制就講完了。
+   */
+  edit: '編輯',
+  editName: '名稱',
   editRoster: '編輯名單',
   editRosterWarning: '換掉名單會清除目前所有點名紀錄，確定嗎？',
   rename: '重新命名',
-  /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉空間」——
-     使用者心裡想的是「這件事做完了」，不是「把一個容器關起來」。 */
-  finishRound: '結束這一輪',
+  /* 「車開了」那一刻的動作。名字用「結束點名」而不是「關閉空間」——使用者心裡
+     想的是「這件事做完了」，不是「把一個容器關起來」。也不叫「結束這一輪」：
+     它 2026-09 搬到底部動作列，跟「邀請點名」並排，兩顆鍵講的要是同一件事的
+     開頭與結尾（點名），而不是一顆講點名、一顆講輪次。 */
+  finishRound: '結束點名',
   finishRoundBody: '紀錄還在。先帶走結果：',
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
   roomClosed: '這個空間已關閉',
   deleteRoom: '刪除空間',
   deleteRoomWarning: '刪除後無法復原，所有點名紀錄都會消失。確定嗎？',
+  /* 同一頁上的兩個選項差在「只有我看不到」還是「所有人都沒了」。這句話要先講，
+     因為兩顆鍵長得一樣、後果卻差很遠。 */
+  deleteHint: '「從清單移除」只影響這支手機，別人照樣進得去；「刪除空間」是所有人的紀錄一起沒。',
   expiresOn: '{date} 自動刪除',
 
   // 匯出
@@ -219,7 +238,12 @@ const zh = {
   csvCompanions: '攜伴',
   csvGroup: '分組',
   csvNote: '備註',
-  export: '匯出結果',
+  /*
+   * 受詞是「名單」不是「結果」。這一頁有四列，其中三列帶走的是今天點到哪裡，
+   * 但「列印紙本名單」印的是**空白格子**——它不是結果。四列的共同點只到「把這份
+   * 名單變成帶得走的東西」為止，標籤就寫到那裡；細部差別交給底下那句 hint。
+   */
+  export: '匯出名單',
   exportCsv: '下載 CSV',
   exportPdf: '存成 PDF',
   /* 四列各自給的是不一樣的東西，一句話講完差別，順便講 PDF 怎麼來——瀏覽器
@@ -349,6 +373,8 @@ const en: Record<MessageKey, string> = {
   adjustList: 'Adjust the list',
   join: 'Join',
   forget: 'Remove from list',
+  forgetWarning: 'It disappears from your list. You can still join again with the code.',
+  forgetWarningLocal: 'This phone has no cloud, so this room lives only here. Removing it from the list deletes it, and there is no way back in.',
   scanQr: 'Scan a QR code',
   scanQrHint: 'Point the QR code at the frame',
   errNoCamera: "This browser can't scan with the camera. Use a code or link instead.",
@@ -456,16 +482,19 @@ const en: Record<MessageKey, string> = {
   copyRoomHintHelper: "Same roster, statuses reset. You'll own the new room.",
   copyRoomName: 'Name the new room',
   returnTrip: 'Return',
+  edit: 'Edit',
+  editName: 'Name',
   editRoster: 'Edit roster',
   editRosterWarning: 'Replacing the roster clears every check-in. Continue?',
   rename: 'Rename',
-  finishRound: 'Finish this round',
+  finishRound: 'Finish roll call',
   finishRoundBody: 'The record stays. Take the result with you first:',
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
   roomClosed: 'This room is closed',
   deleteRoom: 'Delete room',
   deleteRoomWarning: 'This cannot be undone. Every check-in will be lost. Continue?',
+  deleteHint: 'Removing from the list only affects this phone — everyone else can still get in. Deleting takes the record away from everyone.',
   expiresOn: 'Auto-deleted on {date}',
 
   shareArrived: '{arrived} / {total} here',
@@ -482,7 +511,7 @@ const en: Record<MessageKey, string> = {
   csvCompanions: 'Companions',
   csvGroup: 'Group',
   csvNote: 'Note',
-  export: 'Export results',
+  export: 'Export the list',
   exportCsv: 'Download CSV',
   exportPdf: 'Save as PDF',
   exportHint: 'Copy, CSV and PDF take the current result with you — for the PDF, choose “Save as PDF” in the print dialog. Printing gives you blank boxes to tick by hand.',

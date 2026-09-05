@@ -2,22 +2,25 @@ import { Fragment } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
-  prefs, room, setStatusWithUndo, showToast,
+  openMenuOnEnter, prefs, room, setRoomClosed, setStatusWithUndo, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
 import { isExcusedNote } from '../lib/parse'
 import type { Member, MemberStatus } from '../lib/types'
-import { toShareText } from '../lib/export'
+import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
 import { copyToClipboard } from '../lib/clipboard'
 import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
+import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet, MemberSheet } from './Sheets'
-import { IconBack, IconCheck, IconCopy, IconMore, IconPhone } from './icons'
+import { IconBack, IconCheck, IconCopy, IconDownload, IconMore, IconPhone } from './icons'
 import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived' | 'excused'
 type OpenSheet = null | 'manage' | 'walkin' | { member: Member }
+/** 「更多」要開在哪一頁（底部動作列的「邀請點名」、首頁那顆「更多」、剛建立完副本）。 */
+type MenuMode = 'invite' | undefined
 
 /**
  * 「未分組」這個晶片的內部值。用一個不可能當成分組名的哨符，而不是 null——
@@ -50,6 +53,19 @@ export function Room({ code }: { code: string }) {
     // t 隨語言變動，但重新進空間沒有意義；只依 code。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
+
+  // 首頁每一列右邊那顆「更多」與「建立副本」都是先進空間、再打開空間自己的
+  // 那份選單——整個 app 只有那一份清單，首頁不另做一份能力比較弱的。
+  const [menuMode, setMenuMode] = useState<MenuMode>(undefined)
+  const [confirmFinish, setConfirmFinish] = useState(false)
+  useEffect(() => {
+    if (status !== 'ready') return
+    const pending = openMenuOnEnter.value
+    if (pending?.code !== code) return
+    openMenuOnEnter.value = null
+    setMenuMode(pending.mode)
+    setSheet('manage')
+  }, [status, code])
 
   const current = room.value
   const all = members.value
@@ -121,6 +137,15 @@ export function Room({ code }: { code: string }) {
     )
   }
 
+  /** 結束／重新開啟。離線時會失敗，那時候要當面說，不能靜默。 */
+  async function setClosed(next: boolean) {
+    try {
+      await setRoomClosed(next)
+    } catch (e) {
+      showToast(errorMessage(e, t))
+    }
+  }
+
   async function copySummary() {
     if (!current) return
     // scoped 已經是「目前這一車」的名單；標題用看得懂的字，不是內部哨符。
@@ -161,7 +186,7 @@ export function Room({ code }: { code: string }) {
             <div class="topbar-sub">
               {/*
                 身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
-                這個畫面上哪些事做得動（改名單、結束這一輪都只有主揪能做），
+                這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），
                 是進空間第一眼就該知道的事，不該要先點開管理面板才看得到。
                 排在代碼前面：代碼與同步狀態講的是「這是哪個空間、連上了沒」，
                 身分講的是「我」，順序從人到空間再到連線。
@@ -379,16 +404,80 @@ export function Room({ code }: { code: string }) {
       </div>
 
       {/*
-        邀請點名 2026-09 搬到首頁那個空間選單去了（RoomActionsSheet）：發代碼是
-        開場前的事，這個畫面是點名進行中的事。空間裡看得到代碼的地方仍然有一個
-        ——頂欄那一行一直印著它。
+        底部動作列（2026-09 回來）。裝的是一場活動的三個時刻：開場把代碼發出去、
+        現場有人臨時要加、車開了收尾。它們原本都在「更多」選單裡，每一次都要先
+        開一層才按得到——而這三顆正好是在人擠在車門口、手裡還拿著名單的時候按的。
+
+        2026-08 曾經拿掉底部動作列，那時候兩個槽位裝的是「只看未到」（跟篩選列
+        重複）與「複製結果」（一場按一次，而且不急）。這一次裝的東西不一樣：三顆
+        都是別的地方按不到的動作，也都不是可以慢慢找的。
+
+        主要按鈕一顆都不放：這個畫面的主要動作是戳名字，動作列上放一顆搶眼的鍵
+        只會在收尾之前一直誘導誤觸。
       */}
+      <div class="dock dock-roll">
+        <div class="dock-inner">
+          <button
+            class="btn btn-block"
+            onClick={() => { setMenuMode('invite'); setSheet('manage') }}
+          >
+            {t('invite')}
+          </button>
+
+          {/* 協助者站在車門口也用得到，所以不限主揪。 */}
+          {!closed && (
+            <button class="btn btn-block" onClick={() => setSheet('walkin')}>
+              {t('addWalkIn')}
+            </button>
+          )}
+
+          {isOwner.value && (
+            <button
+              class="btn btn-block"
+              // 重新開啟不是破壞性動作，直接做；結束才要走流程。
+              onClick={() => { if (closed) { void setClosed(false) } else { setConfirmFinish(true) } }}
+            >
+              {closed ? t('reopenRoom') : t('finishRound')}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/*
+        「車開了」是唯一一次所有人的注意力同時落在同一件事上，也是唯一一次能把
+        結果送出去的機會。以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、
+        下載 CSV 在面板第一項、關閉空間在第九項），結果多數空間從未被關閉也從未
+        被匯出，30 天後靜靜消失。把結果攤在確認鍵前面，順手就交出去了。
+      */}
+      {confirmFinish && current && (
+        <ConfirmDialog
+          title={t('finishRound')}
+          body={t('finishRoundBody')}
+          confirmLabel={t('finishRound')}
+          onClose={() => setConfirmFinish(false)}
+          onConfirm={() => { void setClosed(true) }}
+        >
+          <pre class="result-preview">{toShareText(current, all, prefs.value.lang)}</pre>
+          <div class="row" style="margin-bottom:12px">
+            <button class="btn btn-block" onClick={() => { void copySummary() }}>
+              <IconCopy /> {t('copySummary')}
+            </button>
+            <button
+              class="btn btn-block"
+              onClick={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
+            >
+              <IconDownload /> {t('exportCsv')}
+            </button>
+          </div>
+        </ConfirmDialog>
+      )}
+
       {sheet === 'manage' && (
         <ManageSheet
           owner={isOwner.value}
-          group={group}
+          initialMode={menuMode}
           onCopySummary={() => { void copySummary() }}
-          onClose={() => setSheet(null)}
+          onClose={() => { setSheet(null); setMenuMode(undefined) }}
         />
       )}
       {sheet === 'walkin' && <AddWalkInSheet group={group} onClose={() => setSheet(null)} />}

@@ -791,6 +791,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 會把次要按鈕壓到換行，於是「臨時加人」在每一張空間截圖裡都斷成兩行。
  */
 .dock-inner { max-width: 640px; margin: 0 auto; display: flex; gap: var(--sp-2); }
+/*
+ * 點名畫面的動作列一次放三顆（邀請點名、臨時加人、結束點名），而開空間那條
+ * 最多兩顆。三顆各四個字，在 320px 上加起來剛好超過一列：272px 的可用寬度
+ * 除以三是 90px，而四個字（60px）＋ .btn 原本的左右內距（32px）是 92px。
+ * 這一列的內距收窄到 8px，字才不會被擠掉。
+ */
+.dock-roll .btn { padding: 0 var(--sp-2); }
 .dock-inner > .btn { flex: none; }
 .dock-inner > .btn-block { flex: 1 1 auto; min-width: 0; width: auto; }
 
@@ -1031,7 +1038,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 面板開著的時候 Toast 改貼上緣。
  *
  * 下緣的 88px 是為了讓開底部動作列（開空間畫面的 `.dock` 還在用這個間距），
- * 但面板是從下緣長上來的：Toast 於是落在選單列之間，蓋住「結束這一輪」49px，
+ * 但面板是從下緣長上來的：Toast 於是落在選單列之間，蓋住當時最底下那一列 49px，
  * 而且 .toast 是 pointer-events: auto，
  * 那五秒內那一列按不下去。深色下更難看出它是外來的——Toast 底色和
  * .menu-item:hover 同一個 --surface-2，圓角與左右內縮也同一套。
