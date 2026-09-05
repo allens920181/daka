@@ -239,14 +239,18 @@ for (const scheme of ['light', 'dark']) {
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
   await audit(page, scheme, '空間（含分組）')
 
-  // 首頁每個空間右邊那顆「更多」（2026-09）：邀請點名、重新命名、建立副本、
-  // 刪除空間都住在這裡。單機模式（沒設定 Supabase 的建置，也就是這支腳本跑的
-  // 那個）邀請頁只有一塊說明，三種方式一個都不列。
+  // 首頁每個空間右邊那顆「更多」（2026-09）：它進到那個空間再打開空間自己的
+  // 那份選單，首頁不另做一份。
   await page.goto(URL); await page.waitForTimeout(900)
-  await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(500)
-  await audit(page, scheme, '首頁 · 空間選單')
-  await page.getByRole('button', { name: /^邀請點名$|^Invite$/ }).click(); await page.waitForTimeout(600)
-  await audit(page, scheme, '首頁 · 邀請點名')
+  await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(1500)
+  await audit(page, scheme, '首頁的「更多」帶進來的選單')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+
+  // 邀請點名在底部動作列上（2026-09）。單機模式（沒設定 Supabase 的建置，也就是
+  // 這支腳本跑的那個）邀請頁只有一塊說明，三種方式一個都不列。
+  await page.locator('.dock').getByRole('button', { name: /^邀請點名$|^Invite$/ }).click()
+  await page.waitForTimeout(700)
+  await audit(page, scheme, '邀請點名')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   await ctx.close()

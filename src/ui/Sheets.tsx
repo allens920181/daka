@@ -4,14 +4,14 @@ import {
   AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom, groups,
   identity, members, myRooms, openMenuOnEnter, prefs, recentRooms, removeMember, renameRoom,
   renameSavedRoster, replaceRoster, requestCode, room, saveRosterAs, savedRosters,
-  peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
+  peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setStatusWithUndo,
   showToast, type Peer,
   signIn, signOut, startGoogleSignIn,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { copyToClipboard } from '../lib/clipboard'
 import { inAppBrowser, secureOrigin } from '../lib/config'
-import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
+import { csvFilename, downloadFile, toCsv } from '../lib/export'
 import { formatDate } from '../lib/format'
 import { dialableFrom, isExcusedNote, rosterToText, telHref } from '../lib/parse'
 import type { Member, SavedRoster } from '../lib/types'
@@ -21,7 +21,7 @@ import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconClose, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash,
-  IconLock, IconChevronDown, IconGoogle, IconLink, IconMore, IconPdf, IconPhone, IconPlus, IconPrinter,
+  IconChevronDown, IconGoogle, IconLink, IconMore, IconPdf, IconPhone, IconPrinter,
   IconQr, IconShare, IconTrash, IconUndo,
 } from './icons'
 import { useT } from './t'
@@ -108,11 +108,11 @@ function printSheet(mode: 'blank' | 'result', onClose: () => void): void {
 
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'edit' | 'saveRoster' | 'walkin' | 'export' | 'copy'
+type ManageMode = 'menu' | 'edit' | 'saveRoster' | 'export' | 'copy' | 'remove'
   | 'invite' | 'inviteCode' | 'inviteLink' | 'inviteQr'
 /** 「編輯」底下的兩半：這場活動叫什麼、有誰。 */
 type EditTab = 'name' | 'roster'
-type Confirming = null | 'replaceRoster' | 'finish' | 'delete' | 'forget'
+type Confirming = null | 'replaceRoster' | 'delete' | 'forget'
 
 /**
  * 空間的「更多」。**整個 app 只有這一份清單**（2026-09）。
@@ -123,15 +123,17 @@ type Confirming = null | 'replaceRoster' | 'finish' | 'delete' | 'forget'
  * 現在首頁那顆「更多」直接把人帶進空間再打開這一份（`openMenuOnEnter`），
  * 兩邊看到的永遠一模一樣。
  *
- * 順帶：先進空間才打開，這份清單裡的每一項才都做得到——編輯名單、臨時加人、
- * 匯出結果、結束這一輪動的都是這個空間的即時資料，在首頁那種「還沒載入」的
- * 狀態下只能做出一份能力比較弱的第二種選單，那正是要消滅的東西。
+ * 順帶：先進空間才打開，這份清單裡的每一項才都做得到——編輯、匯出結果動的都是
+ * 這個空間的即時資料，在首頁那種「還沒載入」的狀態下只做得出一份能力比較弱的
+ * 第二種選單，那正是要消滅的東西。
+ *
+ * 邀請點名、臨時加人、結束點名 2026-09 從這裡搬到底部動作列（`Room.tsx` 的
+ * `.dock`）：那三顆是一場活動的三個時刻，每次都要先開一層選單才按得到是不對的。
+ * 這裡留下來的是「一場活動大概碰一次、而且不趕時間」的那幾項。
  */
-export function ManageSheet({ owner, group, initialMode, onCopySummary, onClose }: {
+export function ManageSheet({ owner, initialMode, onCopySummary, onClose }: {
   owner: boolean
-  /** 目前正在看的那一車。臨時加人要繼承它。 */
-  group: string | null
-  /** 剛建立完副本時直接開在邀請頁：那一刻的下一個動作 100% 是把新代碼發出去。 */
+  /** 剛建立完副本、或從底部動作列按「邀請點名」進來時，直接開在邀請頁。 */
   initialMode?: ManageMode
   /** 複製結果由 Room 執行：它握著「目前這一車」的名單與 Toast，實作只留一份。 */
   onCopySummary: () => void
@@ -148,7 +150,6 @@ export function ManageSheet({ owner, group, initialMode, onCopySummary, onClose 
 
   const current = room.value
   if (!current) return null
-  const closed = Boolean(current.closed_at)
   const url = joinUrl(current.code)
   // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。
   const localOnly = connection.value === 'local-only'
@@ -267,8 +268,6 @@ export function ManageSheet({ owner, group, initialMode, onCopySummary, onClose 
       </Sheet>
     )
   }
-
-  if (mode === 'walkin') return <AddWalkInSheet group={group} onClose={onClose} onBack={() => setMode('menu')} />
 
   if (mode === 'copy') {
     return (
@@ -466,6 +465,69 @@ export function ManageSheet({ owner, group, initialMode, onCopySummary, onClose 
     )
   }
 
+  /*
+    不要了。兩個選項擺在同一頁，因為它們的差別要並排看才看得出來：「從清單移除」
+    只影響這支手機（別人照樣進得去），「刪除空間」是所有人的紀錄一起沒。
+
+    單機模式是例外：那份名單只存在這支手機裡，移除等於刪掉，所以那時候的警告換
+    一句話說，而且才用 danger。
+  */
+  if (mode === 'remove') {
+    return (
+      <Sheet title={t('deleteRoom')} onClose={onClose} onBack={() => setMode('menu')}>
+        <p class="hint" style="margin-bottom:10px">{t('deleteHint')}</p>
+        <div class="menu">
+          {forgettable && (
+            <button class="menu-item" onClick={() => setConfirming('forget')}>
+              <IconClose size={20} />
+              <span><strong>{t('forget')}</strong></span>
+            </button>
+          )}
+
+          {owner && (
+            <button class="menu-item danger" onClick={() => setConfirming('delete')}>
+              <IconTrash />
+              <span><strong>{t('deleteRoom')}</strong></span>
+            </button>
+          )}
+        </div>
+
+        {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+
+        {/*
+          從清單移除也要問一次。它在首頁曾經是一顆一按就生效的垃圾桶，但在單機
+          模式下它同時會清掉本機那份快照——那個空間就真的沒了，而按鍵旁邊沒有
+          一個字說得出這件事。
+        */}
+        {confirming === 'forget' && (
+          <ConfirmDialog
+            title={t('forget')}
+            body={localOnly ? t('forgetWarningLocal') : t('forgetWarning')}
+            confirmLabel={t('forget')}
+            danger={localOnly}
+            onClose={() => setConfirming(null)}
+            onConfirm={() => { void run(async () => {
+              await forgetRecentRoom(current.code)
+              onClose()
+              navigate('/')
+            }) }}
+          />
+        )}
+
+        {confirming === 'delete' && (
+          <ConfirmDialog
+            title={t('deleteRoom')}
+            body={t('deleteRoomWarning')}
+            confirmLabel={t('deleteRoom')}
+            danger
+            onClose={() => setConfirming(null)}
+            onConfirm={() => { void run(async () => { await deleteRoom(current.code); onClose(); navigate('/') }) }}
+          />
+        )}
+      </Sheet>
+    )
+  }
+
   const expires = formatDate(current.expires_at, prefs.value.lang)
 
   return (
@@ -487,15 +549,10 @@ export function ManageSheet({ owner, group, initialMode, onCopySummary, onClose 
 
       {/*
         排列照一場活動的時間軸走：發代碼、把名單弄對（出發前）→ 臨時加人（現場）
-        → 匯出結果、結束這一輪（車開了）→ 建立副本（回程）→ 不要了（清單、刪除）。
+        → 匯出結果（車開了）→ 建立副本（回程）→ 刪除空間（不要了）。
         破壞性的兩項排最後，而且中間隔著一整段距離。
       */}
       <div class="menu">
-        <button class="menu-item" onClick={() => setMode('invite')}>
-          <IconShare />
-          <span><strong>{t('invite')}</strong></span>
-        </button>
-
         {/* 名稱與名單在同一頁，用分段控制切——它們是同一份東西的兩半。 */}
         {owner && (
           <button
@@ -522,33 +579,11 @@ export function ManageSheet({ owner, group, initialMode, onCopySummary, onClose 
           </button>
         )}
 
-        {/* 協助者站在車門口也用得到，所以不放在 owner 限定的項目裡。 */}
-        {!closed && (
-          <button class="menu-item" onClick={() => setMode('walkin')}>
-            <IconPlus />
-            <span><strong>{t('addWalkIn')}</strong></span>
-          </button>
-        )}
-
         {/* 匯出不經過伺服器，單機模式下照樣在。 */}
         <button class="menu-item" onClick={() => setMode('export')}>
           <IconDownload />
           <span><strong>{t('export')}</strong></span>
         </button>
-
-        {owner && (
-          <button
-            class="menu-item"
-            onClick={() => {
-              // 重新開啟不是破壞性動作，直接做；結束才要走流程。
-              if (closed) { void run(() => setRoomClosed(false)); return }
-              setConfirming('finish')
-            }}
-          >
-            <IconLock />
-            <span><strong>{closed ? t('reopenRoom') : t('finishRound')}</strong></span>
-          </button>
-        )}
 
         {/*
           複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
@@ -569,19 +604,13 @@ export function ManageSheet({ owner, group, initialMode, onCopySummary, onClose 
         </button>
 
         {/*
-          「從清單移除」跟「刪除空間」隔壁排，是刻意的：它們以前一個是首頁清單上的
-          垃圾桶圖示、一個藏在面板第九項，長得完全不像同一種東西，但使用者想的都是
-          「我不要再看到這個」。擺在一起、各自寫清楚做了什麼，才選得對。
+          「從清單移除」收進「刪除空間」裡（2026-09）。按下去的當下想的是同一件事
+          ——「我不要再看到這個」——差別在那句話是對誰說的：只有這支手機看不到，
+          還是所有人的紀錄一起沒。選單上並排兩列等於要人在按之前就先分清楚，而那
+          正好是點進去才講得完的事。
         */}
-        {forgettable && (
-          <button class="menu-item" onClick={() => setConfirming('forget')}>
-            <IconClose size={20} />
-            <span><strong>{t('forget')}</strong></span>
-          </button>
-        )}
-
-        {owner && (
-          <button class="menu-item danger" onClick={() => setConfirming('delete')}>
+        {(owner || forgettable) && (
+          <button class="menu-item danger" onClick={() => setMode('remove')}>
             <IconTrash />
             <span><strong>{t('deleteRoom')}</strong></span>
           </button>
@@ -591,69 +620,6 @@ export function ManageSheet({ owner, group, initialMode, onCopySummary, onClose 
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
       <p class="hint" style="margin-top:14px">{t('expiresOn', { date: expires })}</p>
 
-      {/*
-        「車開了」是唯一一次所有人的注意力同時落在同一件事上，也是唯一一次能把
-        結果送出去的機會。以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、
-        下載 CSV 在面板第一項、關閉空間在第九項），結果多數空間從未被關閉也從未
-        被匯出，30 天後靜靜消失。把結果攤在確認鍵前面，順手就交出去了。
-      */}
-      {confirming === 'finish' && (
-        <ConfirmDialog
-          title={t('finishRound')}
-          body={t('finishRoundBody')}
-          confirmLabel={t('finishRound')}
-          onClose={() => setConfirming(null)}
-          onConfirm={() => { void run(() => setRoomClosed(true)) }}
-        >
-          <pre class="result-preview">{toShareText(current, members.value, prefs.value.lang)}</pre>
-          <div class="row" style="margin-bottom:12px">
-            <button
-              class="btn btn-block"
-              onClick={() => { void copyText(toShareText(current, members.value, prefs.value.lang), t('summaryCopied'), t('copyFailed')) }}
-            >
-              <IconCopy /> {t('copySummary')}
-            </button>
-            <button
-              class="btn btn-block"
-              onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
-            >
-              <IconDownload /> {t('exportCsv')}
-            </button>
-          </div>
-        </ConfirmDialog>
-      )}
-
-      {/*
-        從清單移除也要問一次。它在首頁曾經是一顆一按就生效的垃圾桶，但在單機模式
-        下它同時會清掉本機那份快照——那個空間就真的沒了，而按鍵旁邊沒有一個字
-        說得出這件事。現在它跟刪除空間隔壁排，更不能讓兩顆長得一樣的鍵一顆要確認、
-        一顆不用。
-      */}
-      {confirming === 'forget' && (
-        <ConfirmDialog
-          title={t('forget')}
-          body={localOnly ? t('forgetWarningLocal') : t('forgetWarning')}
-          confirmLabel={t('forget')}
-          danger={localOnly}
-          onClose={() => setConfirming(null)}
-          onConfirm={() => { void run(async () => {
-            await forgetRecentRoom(current.code)
-            onClose()
-            navigate('/')
-          }) }}
-        />
-      )}
-
-      {confirming === 'delete' && (
-        <ConfirmDialog
-          title={t('deleteRoom')}
-          body={t('deleteRoomWarning')}
-          confirmLabel={t('deleteRoom')}
-          danger
-          onClose={() => setConfirming(null)}
-          onConfirm={() => { void run(async () => { await deleteRoom(current.code); onClose(); navigate('/') }) }}
-        />
-      )}
     </Sheet>
   )
 }

@@ -163,10 +163,9 @@ await target.locator('.member-main').click(); await B.p.waitForTimeout(700)
 ok(`[同工] 離線先點了「${targetName}」，本地已入列`,
    /待上傳/.test((await B.p.locator('.sync').textContent()) || ''))
 
-// 主揪關閉空間
-await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(600)
-await A.p.getByRole('button', { name: /結束這一輪/ }).click(); await A.p.waitForTimeout(700)
-await A.p.getByRole('button', { name: /^結束這一輪$/ }).last().click(); await A.p.waitForTimeout(1600)
+// 主揪關閉空間。結束點名 2026-09 在底部動作列上，不必先開「更多」。
+await A.p.locator('.dock').getByRole('button', { name: /^結束點名$/ }).click(); await A.p.waitForTimeout(700)
+await A.p.getByRole('button', { name: /^結束點名$/ }).last().click(); await A.p.waitForTimeout(1600)
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(400)
 
 // 同工恢復連線 → 那一筆會被拒絕

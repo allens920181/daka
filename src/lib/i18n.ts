@@ -198,15 +198,20 @@ const zh = {
   editRoster: '編輯名單',
   editRosterWarning: '換掉名單會清除目前所有點名紀錄，確定嗎？',
   rename: '重新命名',
-  /* 「車開了」那一刻的動作。名字用「結束這一輪」而不是「關閉空間」——
-     使用者心裡想的是「這件事做完了」，不是「把一個容器關起來」。 */
-  finishRound: '結束這一輪',
+  /* 「車開了」那一刻的動作。名字用「結束點名」而不是「關閉空間」——使用者心裡
+     想的是「這件事做完了」，不是「把一個容器關起來」。也不叫「結束這一輪」：
+     它 2026-09 搬到底部動作列，跟「邀請點名」並排，兩顆鍵講的要是同一件事的
+     開頭與結尾（點名），而不是一顆講點名、一顆講輪次。 */
+  finishRound: '結束點名',
   finishRoundBody: '紀錄還在。先帶走結果：',
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
   roomClosed: '這個空間已關閉',
   deleteRoom: '刪除空間',
   deleteRoomWarning: '刪除後無法復原，所有點名紀錄都會消失。確定嗎？',
+  /* 同一頁上的兩個選項差在「只有我看不到」還是「所有人都沒了」。這句話要先講，
+     因為兩顆鍵長得一樣、後果卻差很遠。 */
+  deleteHint: '「從清單移除」只影響這支手機，別人照樣進得去；「刪除空間」是所有人的紀錄一起沒。',
   expiresOn: '{date} 自動刪除',
 
   // 匯出
@@ -474,13 +479,14 @@ const en: Record<MessageKey, string> = {
   editRoster: 'Edit roster',
   editRosterWarning: 'Replacing the roster clears every check-in. Continue?',
   rename: 'Rename',
-  finishRound: 'Finish this round',
+  finishRound: 'Finish roll call',
   finishRoundBody: 'The record stays. Take the result with you first:',
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
   roomClosed: 'This room is closed',
   deleteRoom: 'Delete room',
   deleteRoomWarning: 'This cannot be undone. Every check-in will be lost. Continue?',
+  deleteHint: 'Removing from the list only affects this phone — everyone else can still get in. Deleting takes the record away from everyone.',
   expiresOn: 'Auto-deleted on {date}',
 
   shareArrived: '{arrived} / {total} here',
