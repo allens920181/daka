@@ -279,9 +279,19 @@ const editDock = await p.locator('.dock .btn').allTextContents()
 ok(`底部只剩一顆「＋」（${editDock.length} 顆按鈕）`, editDock.length === 1)
 ok('那顆的無障礙名稱說得出它做什麼',
    (await p.locator('.dock .btn').first().getAttribute('aria-label')) === '臨時加人')
-ok('右上角變成「完成」', (await p.getByRole('button', { name: /^完成$/ }).count()) === 1)
+ok('右上角變成打勾（無障礙名稱仍然是「完成」）',
+   (await p.getByRole('button', { name: /^完成$/ }).locator('svg').count()) === 1)
+// 這個模式裡改不到誰到了沒——三條路都要斷。
 // 手指在一排叉叉旁邊移動，誤觸的代價是有人被標成已到而沒有人發現。
 ok('編輯時戳名字不會改狀態', await p.locator('.member-main').first().isDisabled())
+// 「復原」也是點名操作，所以進編輯模式時 Toast 要當場收掉。
+ok('進編輯模式時 Toast 收掉了（不留一顆浮著的「復原」）',
+   (await p.locator('.toast').count()) === 0)
+// 身分、代碼、同步狀態回答的是點名當下的問題，編輯時畫面上只該剩名單。
+ok('編輯時不印身分、代碼、同步狀態', (await p.locator('.topbar-sub').count()) === 0)
+// 那條界線是為了隔開「點名」與「打電話」；編輯時點名區是停用的，沒有東西要隔。
+ok('叉叉左邊沒有那條界線', await p.evaluate(() =>
+  getComputedStyle(document.querySelector('.member.is-editing .member-side')).borderLeftStyle === 'none'))
 
 // 改標題：離開輸入框就存。
 await p.locator('.topbar-name-input').fill('現場操作測試 · 改過')
