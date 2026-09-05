@@ -140,22 +140,6 @@ export const IconTrash = ({ size = 20, ...r }: P) => (
     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 )
-// 成員面板的「標記請假」。日曆而不是打勾／打叉：請假是行事曆上的一個安排，
-// 不是對錯判斷，跟旁邊「改回未到」的復原箭頭要能一眼分開。
-export const IconCalendar = ({ size = 20, ...r }: P) => (
-  <svg {...base(size)} {...r}>
-    <rect x="3" y="4" width="18" height="18" rx="2" />
-    <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
-    <line x1="3" y1="10" x2="21" y2="10" />
-  </svg>
-)
-// 成員面板的「改回未到」：從請假回到未到是唯一沒有名單列捷徑的路（點名單列
-// 只會跳去已到），復原箭頭直接呼應這是「退回上一步」。
-export const IconUndo = ({ size = 20, ...r }: P) => (
-  <svg {...base(size)} {...r}>
-    <polyline points="9 14 4 9 9 4" /><path d="M20 20v-7a4 4 0 0 0-4-4H4" />
-  </svg>
-)
 export const IconClose = ({ size = 24, ...r }: P) => (
   <svg {...base(size)} {...r}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
 )

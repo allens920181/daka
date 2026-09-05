@@ -4,11 +4,15 @@ import { translate } from './i18n'
 import { summarize } from './merge'
 import { formatTime } from './format'
 
-const STATUS_KEY: Record<Member['status'], MessageKey> = {
+/*
+ * 舊資料裡還會有 'excused'（請假 2026-09 拿掉了，但資料庫沒有跟著遷移，
+ * 見 types.ts）。這張表因此要收得下未知的值，不能讓 CSV 印出 undefined。
+ */
+const STATUS_KEY: Record<string, MessageKey> = {
   arrived: 'arrived',
   pending: 'missing',
-  excused: 'excused',
 }
+const statusKey = (status: string): MessageKey => STATUS_KEY[status] ?? 'missing'
 
 function csvCell(value: string | number | null): string {
   const s = value === null ? '' : String(value)
@@ -45,7 +49,7 @@ export function toCsv(members: readonly Member[], lang: Lang): string {
     .map((k) => csvCell(t(k)))
   const rows = members.map((m) => [
     csvCell(m.name),
-    csvCell(t(STATUS_KEY[m.status])),
+    csvCell(t(statusKey(m.status))),
     csvCell(localTime(m.status_at)),
     csvCell(m.status_by ?? ''),
     // 電話這一格走 csvText：其餘欄位是文字沒錯，但只有它是「看起來像數字的文字」。
@@ -78,8 +82,7 @@ export function toShareText(
 ): string {
   const t = (key: MessageKey, vars?: Record<string, string | number>) => translate(lang, key, vars)
   const s = summarize(scoped)
-  const missing = scoped.filter((m) => m.status === 'pending')
-  const excused = scoped.filter((m) => m.status === 'excused')
+  const missing = scoped.filter((m) => m.status !== 'arrived')
   const names = (list: readonly Member[]) =>
     list
       .map((m) => (m.companions > 0 ? `${m.name}${t('withCompanions', { n: m.companions })}` : m.name))
@@ -105,9 +108,6 @@ export function toShareText(
     }
   } else {
     lines.push(t('allHere'))
-  }
-  if (excused.length > 0) {
-    lines.push(t('shareExcusedLine', { n: heads(excused), names: names(excused) }))
   }
   return lines.join('\n')
 }

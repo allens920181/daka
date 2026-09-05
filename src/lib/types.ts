@@ -1,5 +1,12 @@
-/** 成員狀態。pending = 還沒到，arrived = 已到，excused = 請假／不去。 */
-export type MemberStatus = 'pending' | 'arrived' | 'excused'
+/**
+ * 成員狀態。pending = 還沒到，arrived = 已到。
+ *
+ * 曾經還有 excused（請假），2026-09 整個功能拿掉了。**資料庫那邊沒有跟著改**
+ * （`schema.sql` 的 check 仍收 'excused'）：改欄位要遷移，而還活著的空間裡
+ * 可能就有請假的人。這一端只是不再寫入它，讀到舊資料時當成 pending——
+ * 所有依狀態查表的地方都必須容得下這個值，見 `export.ts` 的 STATUS_KEY。
+ */
+export type MemberStatus = 'pending' | 'arrived'
 
 export interface Member {
   id: string

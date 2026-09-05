@@ -55,7 +55,7 @@
 | --- | --- | --- |
 | CSS class | 小寫連字號，區塊在前 | `.member-name`、`.toast-action` |
 | 變體 class | 獨立的修飾詞，與基底並用 | `class="btn btn-primary"` |
-| 狀態 class | `is-` 前綴 | `.is-arrived`、`.is-excused` |
+| 狀態 class | `is-` 前綴 | `.is-arrived`、`.is-on` |
 | Design token | `--<類別>-<階>` | `--fs-4`、`--st-pending` |
 | i18n key | camelCase，依語意不依位置 | `missingCount` 而不是 `roomHeaderNumber` |
 | 元件檔 | PascalCase `.tsx` | `Room.tsx`、`Sheet.tsx` |
@@ -88,7 +88,7 @@
 | 問題 | 單位 | 出現在哪 |
 | --- | --- | --- |
 | 還有幾個人沒上車？ | **人頭** | 分組晶片、結束橫幅、貼回 LINE 的文字 |
-| 按下去會看到幾列？ | **列數** | 分段控制（全部／未到／已到／請假）、`建立（12）` |
+| 按下去會看到幾列？ | **列數** | 分段控制（全部／未到／已到）、`建立（12）` |
 
 攜伴已經不從貼上的文字裡解析，所以新名單上這兩個數字相等；舊名單仍會不一樣
 （李美花＋1、李四＋2 時，人頭 11 而分段「未到 8」）。錯的不是它們不相等，錯的

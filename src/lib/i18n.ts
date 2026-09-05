@@ -60,7 +60,7 @@ const zh = {
   exampleName: '秋季旅遊 · 出發',
   /* 範例的每一行都必須解析得出一個人（parse.test.ts 會驗）。分組標題不放進來——
      預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範一件看不到的事。 */
-  exampleRoster: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（請假）\n４．張三\n- 李四\n王五 帶2人',
+  exampleRoster: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（坐輪椅）\n４．張三\n- 李四\n王五 帶2人',
   /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
   fromNote: '備註裡的號碼',
   parsePreview: '清單預覽',
@@ -84,7 +84,6 @@ const zh = {
   // 點名
   missing: '未到',
   arrived: '已到',
-  excused: '請假',
   all: '全部',
   searchPlaceholder: '搜尋姓名…',
   allHere: '全部到齊',
@@ -97,7 +96,8 @@ const zh = {
   withCompanions: '＋{n}',
   markArrived: '標記已到',
   markMissing: '改回未到',
-  markExcused: '標記請假',
+  /** 編輯模式的出口。這個 app 裡「完成」只有這一個意思：改完了，回去點名。 */
+  done: '完成',
   undo: '復原',
   undone: '已復原',
   checkedBy: '{name} 於 {time}',
@@ -145,9 +145,8 @@ const zh = {
   helperLimits: '編輯名單、結束這一輪只有主揪做得到。',
   remove: '移除',
   removeMember: '從名單移除',
-  removeMemberSub: '這個動作不能復原',
   confirmRemoveMemberTitle: '把「{name}」從名單移除？',
-  confirmRemoveMemberBody: '這個人會從所有裝置的名單上消失，而且不能復原。只是今天不來的話，用「標記請假」比較好——請假的人還留在名單上，只是不算進今天該到的人。',
+  confirmRemoveMemberBody: '這個人會從所有裝置的名單上消失，而且不能復原。',
   add: '加入名單',
 
   // 邀請點名（2026-09 從空間裡的「更多」搬到首頁每個空間的選單）
@@ -192,14 +191,13 @@ const zh = {
   copyRoomName: '新空間叫什麼？',
   returnTrip: '回程',
   /*
-   * 編輯名稱與編輯名單 2026-09 合併成同一顆「編輯」。它們動的是同一份東西的
-   * 兩半（這場活動叫什麼、有誰），拆成兩列會逼使用者先分類自己要改什麼，
-   * 而那個分類在點進去之後用一顆分段控制就講完了。
+   * 編輯名稱、臨時加人、從名單移除 2026-09 合併成同一顆「編輯」，而且它不開
+   * 子畫面——按下去是點名畫面自己切進編輯模式。三件事動的都是眼前這份名單，
+   * 拆成三個入口只是逼使用者先替自己的意圖分類。
    */
   edit: '編輯',
+  /** 編輯模式下標題輸入框的無障礙名稱。 */
   editName: '名稱',
-  editRoster: '編輯名單',
-  editRosterWarning: '換掉名單會清除目前所有點名紀錄，確定嗎？',
   rename: '重新命名',
   /* 「車開了」那一刻的動作。名字用「結束點名」而不是「關閉空間」——使用者心裡
      想的是「這件事做完了」，不是「把一個容器關起來」。也不叫「結束這一輪」：
@@ -227,7 +225,6 @@ const zh = {
   shareMissingHeader: '未到 {n} 位：',
   shareMissingLine: '未到 {n} 位：{names}',
   shareGroupLine: '　{name}（{n}）：{names}',
-  shareExcusedLine: '請假 {n} 位：{names}',
   /** 名字之間的分隔符。中文用頓號，英文用逗號加空格。 */
   listSeparator: '、',
   csvName: '姓名',
@@ -341,7 +338,7 @@ const zh = {
   themeSystem: '跟隨系統',
   yourName: '暱稱',
   /* 引號在這個 app 的用法是「照抄你會在畫面上看到的字」（shareLocalBody 引
-     errRoomNotFound、confirmRemoveMemberBody 引 markExcused）。但「由你點的」
+     errRoomNotFound）。但「由你點的」
      全專案 grep 不到——名字下面真正出現的是 checkedBy「王小明 於 02:58」。
      英文版一直是對的（who checked each name），這裡把中文補上。 */
   yourNameHint: '選填。填了之後其他人會看到是你點的。',
@@ -386,7 +383,7 @@ const en: Record<MessageKey, string> = {
   exampleFill: 'Fill in an example',
   exampleClear: 'Clear the example',
   exampleName: 'Autumn trip · Departure',
-  exampleRoster: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (absent)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
+  exampleRoster: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (wheelchair)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
   fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
@@ -404,7 +401,6 @@ const en: Record<MessageKey, string> = {
 
   missing: 'Missing',
   arrived: 'Here',
-  excused: 'Excused',
   all: 'All',
   searchPlaceholder: 'Search names…',
   allHere: 'Everyone is here',
@@ -414,7 +410,7 @@ const en: Record<MessageKey, string> = {
   withCompanions: '+{n}',
   markArrived: 'Mark here',
   markMissing: 'Mark missing',
-  markExcused: 'Mark excused',
+  done: 'Done',
   undo: 'Undo',
   undone: 'Undone',
   checkedBy: '{name} at {time}',
@@ -451,9 +447,8 @@ const en: Record<MessageKey, string> = {
   helperLimits: "Editing the roster and finishing the round are the organiser's to do.",
   remove: 'Remove',
   removeMember: 'Remove from list',
-  removeMemberSub: "This can't be undone",
   confirmRemoveMemberTitle: 'Remove \u201c{name}\u201d from the list?',
-  confirmRemoveMemberBody: "They disappear from every device's list and this can't be undone. If they're just not coming today, use Mark excused instead \u2014 excused people stay on the list and simply don't count toward today's total.",
+  confirmRemoveMemberBody: "They disappear from every device's list and this can't be undone.",
   add: 'Add',
 
   invite: 'Invite',
@@ -484,8 +479,6 @@ const en: Record<MessageKey, string> = {
   returnTrip: 'Return',
   edit: 'Edit',
   editName: 'Name',
-  editRoster: 'Edit roster',
-  editRosterWarning: 'Replacing the roster clears every check-in. Continue?',
   rename: 'Rename',
   finishRound: 'Finish roll call',
   finishRoundBody: 'The record stays. Take the result with you first:',
@@ -501,7 +494,6 @@ const en: Record<MessageKey, string> = {
   shareMissingHeader: '{n} missing:',
   shareMissingLine: '{n} missing: {names}',
   shareGroupLine: '  {name} ({n}): {names}',
-  shareExcusedLine: '{n} excused: {names}',
   listSeparator: ', ',
   csvName: 'Name',
   csvStatus: 'Status',

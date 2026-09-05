@@ -43,8 +43,9 @@ await A.p.getByRole('button', { name: /產生名單/ }).click(); await A.p.waitF
 await A.p.getByRole('button', { name: /建立/ }).click(); await A.p.waitForTimeout(1600)
 const code = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`[主揪] 空間建立於伺服器，代碼 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
-// 5 列裡陳大同請假，剩 4 列。攜伴不再解析，所以李美花的「+1」只是備註。
-ok('[主揪] 未到 4（請假的不算）', (await missing(A.p)) === '4')
+// 5 列都還沒到（請假 2026-09 拿掉了，「（請假）」只是一則備註）。
+// 攜伴不再解析，所以李美花的「+1」也只是備註。
+ok('[主揪] 未到 5', (await missing(A.p)) === '5')
 
 // --- 同工用連結加入 ---
 await B.p.goto(`${URL}#/j/${code}`); await B.p.waitForTimeout(2000)
@@ -116,7 +117,7 @@ await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(400)
 await A.p.goto(`${URL}#/r/${newCode}`); await A.p.waitForTimeout(2200)
 ok('[主揪] 進入新空間', (await A.p.locator('.topbar-name').textContent())?.includes('回程'))
 ok('[主揪] 回程名單一樣是 5 人', (await A.p.locator('.member').count()) === 5)
-ok('[主揪] 已到全部歸零、請假保留 → 未到 4', (await missing(A.p)) === '4')
+ok('[主揪] 副本的狀態全部歸零 → 未到 5', (await missing(A.p)) === '5')
 
 // --- 衝突提示：我改的被別人蓋掉時，要看得見 ---
 // 先給同工一個名字，這樣提示才會說「已由 陳姐 改為…」而不是「已被其他人」。
@@ -157,7 +158,7 @@ ok('[主揪] 別人改我沒碰過的人，不跳提示', (await A.p.locator('.t
 await reconcile(A)
 await B.ctx.setOffline(true); await B.p.waitForTimeout(400)
 // 找一個目前還沒到的人來點。
-const target = B.p.locator('.member:not(.is-arrived):not(.is-excused)').first()
+const target = B.p.locator('.member:not(.is-arrived)').first()
 const targetName = (await target.locator('.member-name').textContent())?.trim()
 await target.locator('.member-main').click(); await B.p.waitForTimeout(700)
 ok(`[同工] 離線先點了「${targetName}」，本地已入列`,

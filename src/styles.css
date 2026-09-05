@@ -651,18 +651,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* 狀態同時用顏色與形狀表達：逆光下顏色會失真，色盲者看不出色相。 */
 .member.is-arrived { background: var(--st-arrived-soft); border-color: var(--st-arrived-line); }
-/*
- * 請假的列要「在場但不需要行動」，但不能用整列 opacity 做——那會把 13px 的
- * 說明文字壓到 2.5:1，而且自動檢查驗不到（getComputedStyle 讀不到祖先的
- * opacity）。改成逐項指定顏色，每一項自己都達標。
- */
-.member.is-excused { background: var(--surface); }
-.member.is-excused .member-name { color: var(--ink-2); }
-.member.is-excused .member-meta { color: var(--ink-3); }
-/* 請假的圈用虛線表達就夠了。再壓暗會把它推到 2:1——而它是名單上唯一表示
-   「這個人的狀態」的形狀，不能比背景還淡。 */
-.member.is-excused .check { border-color: var(--check-line); }
-
 .check {
   width: 30px; height: 30px; flex: none; border-radius: 50%;
   border: 2px solid var(--check-line);
@@ -670,7 +658,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
   transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
 .member.is-arrived .check { background: var(--st-arrived); border-color: var(--st-arrived); color: var(--surface); }
-.member.is-excused .check { border-style: dashed; }
 
 .member-body { min-width: 0; flex: 1; }
 /*
@@ -682,7 +669,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-5); font-weight: 600; line-height: 1.25;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.member.is-excused .member-name { text-decoration: line-through; text-decoration-thickness: 1px; }
 .member-meta {
   display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap;
   font-size: var(--fs-2); color: var(--ink-3); margin-top: 1px;
@@ -925,6 +911,21 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sheet-title { font-size: var(--fs-5); }
 
 /*
+ * 編輯模式的標題（2026-09）。它就長在標題原本的位置上，同一個字級、同一個
+ * 字重——換掉的只有「可以打字」這件事，所以底下多一條線，其餘什麼都不加。
+ * 框線、圓角、填色都會讓它看起來像一個「跑到頂欄裡的表單」，而它其實還是標題。
+ */
+.topbar-name-input {
+  /* 它是要用手指點進去的，所以自己要有一根手指的高度——標題那一行只有 25px。
+     頂欄因此在編輯模式下高一點點，那是對的：這個模式本來就長得不一樣。 */
+  width: 100%; min-width: 0; min-height: var(--tap-min); padding: 0 0 2px;
+  border: none; border-bottom: 2px solid var(--accent); border-radius: 0;
+  background: transparent; color: inherit;
+  font-size: var(--fs-4); font-weight: 700; line-height: 1.25;
+}
+.topbar-name-input:focus { outline: none; border-bottom-color: var(--accent); }
+
+/*
  * 面板不再有分頁，也不再有固定高度的內容框（2026-09）：分頁是為了 13 項擠成
  * 一長串才發明的，項目搬走一半之後最長的一份選單只有五列，面板自己就裝得下。
  * 內容真的長過 88vh 時仍然是整張 .sheet 在捲——它本來就會捲，也本來就有捲動
@@ -1132,7 +1133,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
     border-radius: 0; background: #fff !important;
     display: flex; align-items: baseline;
   }
-  .member.is-arrived, .member.is-excused { background: #fff !important; opacity: 1; }
+  .member.is-arrived { background: #fff !important; opacity: 1; }
   .member-main { min-height: 0; padding: 4pt 0; flex: 1; }
   /*
    * 紙本一律印空白格子讓人用筆勾。邊框色要壓成黑的：已到的那一格在螢幕上是綠框
@@ -1144,7 +1145,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
            background: #fff !important; color: transparent !important; opacity: 1; }
   .check svg { display: none; }
   .member-name { font-size: 11pt; color: #000; }
-  .member.is-excused .member-name { text-decoration: line-through; color: #333; }
   .member-meta { color: #555; font-size: 8.5pt; }
   .chip, .chip-count, .chip-note, .chip-tell, .chip-data {
     background: none !important; border: none !important; padding: 0 !important;
@@ -1152,7 +1152,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   }
   .chip::after { content: "　"; }
   /* 螢幕上用 `.member .chip-note { display: none }` 關掉的備註，紙本要換回來：
-     手機沒電時拿著這張紙的人沒有「更多」面板可以點。 */
+     手機沒電時拿著這張紙的人只有那張紙。 */
   .member .chip-note { display: inline-flex; }
 
   /*
@@ -1180,9 +1180,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
   :root[data-print='result'] .check svg { display: block; }
   :root[data-print='result'] .member:not(.is-arrived) .check {
     background: #fff !important; color: transparent !important;
-  }
-  :root[data-print='result'] .member.is-excused .check {
-    background: #fff !important; border-style: dashed;
   }
   :root[data-print='result'] .print-blanks { display: none; }
 }

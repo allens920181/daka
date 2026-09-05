@@ -109,7 +109,7 @@ function myRecentChanges(): Set<string> {
   return new Set(recentlyChanged.keys())
 }
 
-const STATUS_KEY = { arrived: 'arrived', pending: 'missing', excused: 'excused' } as const
+const STATUS_KEY = { arrived: 'arrived', pending: 'missing' } as const
 
 /**
  * 告訴使用者他剛才的點名被別人改掉了。
@@ -752,11 +752,10 @@ export async function copyRoom(source: string, newName: string): Promise<string>
     if (!cached) throw new AppError('room-not-found')
     const code = generateRoomCode()
     const copy: Room = { ...localRoom(code, title), copied_from: cached.room.id }
-    // 請假的人在回程一樣不會出現，保留狀態；已到的才歸零。
+    // 狀態全部歸零：副本是「同一份名單，重新點一次」。
     const drafts = cached.members.map<DraftMember>((m) => ({
       name: m.name, note: m.note, phone: m.phone,
       companions: m.companions, group_label: m.group_label,
-      ...(m.status === 'excused' ? { status: 'excused' as const } : {}),
     }))
     await saveRoom(copy, toMembers(copy.id, drafts))
     recentRooms.value = await rememberRoom({ code, name: title, isOwner: true, lastSeen: Date.now() })
@@ -790,30 +789,6 @@ async function ownerAction(run: () => Promise<{ room: Room; members: Member[] }>
   } finally {
     busy.value = false
   }
-}
-
-export async function replaceRoster(drafts: readonly DraftMember[]): Promise<void> {
-  const r = room.value
-  if (!r) return
-  if (!isSupabaseConfigured) {
-    const next = toMembers(r.id, drafts)
-    members.value = next
-    await persistNow()
-    return
-  }
-  await ownerAction(() => api.replaceRoster(r.code, identity.value.ownerKey, drafts))
-}
-
-export async function setMemberGroup(memberId: string, groupLabel: string | null): Promise<void> {
-  const r = room.value
-  if (!r) return
-  const label = groupLabel?.trim().slice(0, 20) || null
-  if (!isSupabaseConfigured) {
-    members.value = members.value.map((m) => (m.id === memberId ? { ...m, group_label: label } : m))
-    await persistNow()
-    return
-  }
-  await ownerAction(() => api.setMemberGroup(r.code, identity.value.ownerKey, memberId, label))
 }
 
 export async function removeMember(memberId: string): Promise<void> {
