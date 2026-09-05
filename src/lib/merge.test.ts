@@ -49,7 +49,7 @@ describe('pickWinner', () => {
 
   it('平手時採用遠端，讓所有裝置得到相同結果', () => {
     const local = member('a', { status: 'arrived', rev: 100, status_by: '甲' })
-    const remote = member('a', { status: 'excused', rev: 100, status_by: '乙' })
+    const remote = member('a', { status: 'pending', rev: 100, status_by: '乙' })
     expect(pickWinner(local, remote)).toBe(remote)
     expect(pickWinner(remote, local)).toBe(local)
   })
@@ -99,7 +99,7 @@ describe('mergeMembers', () => {
     const versions: Member[] = [
       { ...base, status: 'arrived', rev: 500, status_by: '甲' },
       { ...base, status: 'pending', rev: 300, status_by: '乙' },
-      { ...base, status: 'excused', rev: 800, status_by: '丙' },
+      { ...base, status: 'arrived', rev: 800, status_by: '丙' },
       { ...base, status: 'arrived', rev: 200, status_by: '丁' },
       { ...base, status: 'pending', rev: 700, status_by: '戊' },
     ]
@@ -112,7 +112,7 @@ describe('mergeMembers', () => {
     const shuffled = fold([versions[2]!, versions[0]!, versions[4]!, versions[1]!, versions[3]!])
 
     // rev 最大的（丙，800）勝出，且與合併順序無關。
-    expect(forward[0]).toMatchObject({ rev: 800, status: 'excused', status_by: '丙' })
+    expect(forward[0]).toMatchObject({ rev: 800, status: 'arrived', status_by: '丙' })
     expect(backward[0]).toEqual(forward[0])
     expect(shuffled[0]).toEqual(forward[0])
   })
@@ -167,49 +167,41 @@ describe('summarize', () => {
       member('a', { status: 'arrived', companions: 2 }),
       member('b', { status: 'arrived' }),
       member('c', { status: 'pending', companions: 1 }),
-      member('d', { status: 'excused', companions: 5 }),
+      member('d', { status: 'pending', companions: 5 }),
     ]
     expect(summarize(members)).toEqual({
       people: 4, headcount: 12,
       arrived: 2, arrivedHeadcount: 4,
-      pending: 1, pendingHeadcount: 2,
-      excused: 1, excusedHeadcount: 6, expectedHeadcount: 6,
+      pending: 2, pendingHeadcount: 8,
+      expectedHeadcount: 12,
     })
   })
 
-  it('請假的人與他們的攜伴不算進今天該到的人頭', () => {
-    // 12 人報名，其中一位請假並帶 5 人 → 今天該上車的是 6 個人頭。
+  /*
+   * 請假 2026-09 拿掉之後 expectedHeadcount 就等於 headcount。這幾條仍然守著
+   * 那個欄位：進度條、「x / y 人」、結束橫幅的分母都是它，而「今天該到幾個」
+   * 與「名單上有幾個」是兩個問題——哪天再長出「不算今天」的狀態，要改的只有
+   * summarize 那一行，這裡會先紅。
+   */
+  it('該到的人頭就是名單上的人頭', () => {
     const s = summarize([
       member('a', { status: 'arrived', companions: 2 }),
       member('b', { status: 'arrived' }),
       member('c', { status: 'pending', companions: 1 }),
-      member('d', { status: 'excused', companions: 5 }),
+      member('d', { status: 'pending', companions: 5 }),
     ])
     expect(s.headcount).toBe(12)
-    expect(s.excusedHeadcount).toBe(6)
-    expect(s.expectedHeadcount).toBe(6)
+    expect(s.expectedHeadcount).toBe(12)
   })
 
-  it('全部到齊時分子等於分母，進度條才會滿（請假不該讓它永遠差一截）', () => {
+  it('全部到齊時分子等於分母，進度條才會滿', () => {
     const s = summarize([
       member('a', { status: 'arrived', companions: 2 }),
       member('b', { status: 'arrived' }),
-      member('c', { status: 'excused' }),
     ])
     expect(s.pending).toBe(0)
     expect(s.arrivedHeadcount).toBe(s.expectedHeadcount)
     expect(s.expectedHeadcount).toBe(4)
-  })
-
-  it('全員請假時分母是 0，呼叫端要自己避開除以零', () => {
-    const s = summarize([member('a', { status: 'excused' })])
-    expect(s.expectedHeadcount).toBe(0)
-  })
-
-  it('請假不算未到', () => {
-    const s = summarize([member('a', { status: 'excused' }), member('b', { status: 'pending' })])
-    expect(s.pending).toBe(1)
-    expect(s.excused).toBe(1)
   })
 
   it('空名單', () => {
@@ -264,7 +256,7 @@ describe('detectOverrides', () => {
 
   it('一次可以回報多筆', () => {
     const before = [member('a', { status: 'arrived', rev: 1 }), member('b', { status: 'arrived', rev: 1 })]
-    const after = [member('a', { status: 'pending', rev: 9 }), member('b', { status: 'excused', rev: 9 })]
+    const after = [member('a', { status: 'pending', rev: 9 }), member('b', { status: 'pending', rev: 9 })]
     expect(detectOverrides(before, after, mine('a', 'b'))).toHaveLength(2)
   })
 })

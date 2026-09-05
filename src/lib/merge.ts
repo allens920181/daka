@@ -134,22 +134,17 @@ export function detectOverrides(
 export interface RosterSummary {
   /** 名單列數。 */
   people: number
-  /** 名單上的總人頭，含攜伴、含請假。這是「原本報名幾個人」。 */
+  /** 名單上的總人頭，含攜伴。 */
   headcount: number
   arrived: number
   arrivedHeadcount: number
-  /** 還沒到（不含請假）。這是主畫面要突顯的數字。 */
+  /** 還沒到。這是主畫面要突顯的數字。 */
   pending: number
   pendingHeadcount: number
-  excused: number
-  /** 請假者的人頭，含他們的攜伴。 */
-  excusedHeadcount: number
   /**
-   * 今天真的該上車的人頭 = headcount - excusedHeadcount。
-   *
-   * 進度條、「x / y 人」、結束橫幅都必須用這個當分母。用 headcount 當分母的話，
-   * 只要有人請假，全部到齊時畫面就會是「15 / 16」配一條填不滿的進度條——
-   * 車長會以為還有一個人沒上車。
+   * 今天該上車的人頭。請假 2026-09 拿掉之後它就等於 headcount，但欄位留著：
+   * 進度條、「x / y 人」、結束橫幅用的都是它，而「該到幾個」與「名單上有幾個」
+   * 是兩個不同的問題——哪天再長出「不算今天」的狀態，要改的只有這一行。
    */
   expectedHeadcount: number
 }
@@ -159,7 +154,7 @@ export function summarize(members: readonly Member[]): RosterSummary {
     people: members.length, headcount: 0,
     arrived: 0, arrivedHeadcount: 0,
     pending: 0, pendingHeadcount: 0,
-    excused: 0, excusedHeadcount: 0, expectedHeadcount: 0,
+    expectedHeadcount: 0,
   }
   for (const m of members) {
     const heads = 1 + m.companions
@@ -167,14 +162,11 @@ export function summarize(members: readonly Member[]): RosterSummary {
     if (m.status === 'arrived') {
       s.arrived++
       s.arrivedHeadcount += heads
-    } else if (m.status === 'excused') {
-      s.excused++
-      s.excusedHeadcount += heads
     } else {
       s.pending++
       s.pendingHeadcount += heads
     }
   }
-  s.expectedHeadcount = s.headcount - s.excusedHeadcount
+  s.expectedHeadcount = s.headcount
   return s
 }

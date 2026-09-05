@@ -1,4 +1,4 @@
-import type { DraftMember, MemberStatus } from './types'
+import type { DraftMember } from './types'
 
 /**
  * 一位成員在原始文字裡的來源位置。
@@ -125,45 +125,11 @@ function splitInlineNumbering(line: string): string[] {
   return sliceAt(line, inlineBoundaries(line))
 }
 
-/**
- * 名單上寫「（請假）」的人，狀態就該直接是請假，而不是備註。
- * 否則他會混在未到清單裡被打電話——而他早就說過不去了。
- * 只認短備註，避免「請假單已交但還是會去」這種句子被誤判。
- */
-const EXCUSED_WORDS = ['請假', '不去', '不參加', '不能去', '不出席', '取消', '缺席', '退出']
-const EXCUSED_WORDS_EN = ['absent', 'excused', 'cancel', 'not going', 'no show']
-
-/**
- * 這則備註本身就是「請假」的意思嗎？
- *
- * 名單上寫「陳大同（請假）」時，備註是「請假」而狀態也會被判成請假。畫面上
- * 兩個都印的話就會出現「請假 請假」——螢幕上與紙本上都是。狀態自己會說，
- * 備註就不必再說一次。（「請假 已請假單」這種有額外資訊的備註仍要印出來，
- * 所以比對的是整則備註，不是「有沒有包含請假兩個字」。）
- */
-export function isExcusedNote(note: string | null): boolean {
-  if (!note) return false
-  const trimmed = note.trim()
-  const lower = trimmed.toLowerCase()
-  return EXCUSED_WORDS.includes(trimmed) || EXCUSED_WORDS_EN.includes(lower)
-}
-
-function statusFromNote(note: string | null): MemberStatus | undefined {
-  if (!note) return undefined
-  const trimmed = note.trim()
-  if (trimmed.length > 8) return undefined
-  const lower = trimmed.toLowerCase()
-  const hit = EXCUSED_WORDS.some((w) => trimmed.includes(w)) ||
-              EXCUSED_WORDS_EN.some((w) => lower.includes(w))
-  return hit ? 'excused' : undefined
-}
-
 function parseEntry(raw: string): DraftMember | null {
   let s = raw.replace(LEADING_MARKER, '').trim()
   if (!s) return null
 
-  // 括號備註先抽，而且與行尾那段分開存著：「請假」的判定只看括號裡的字
-  // （`李美花 0912345678（請假）` 的狀態仍要是請假，不能被前面那串數字沖淡）。
+  // 括號備註先抽，而且與行尾那段分開存著。
   let paren: string | null = null
   const parenMatch = s.match(NOTE_PAREN)
   const inner = (parenMatch?.[1] ?? '').trim()
@@ -193,7 +159,6 @@ function parseEntry(raw: string): DraftMember | null {
   // 兩段備註接起來，行尾那段在前——原文裡它通常就排在括號前面。
   const merged = [tail, paren].filter(Boolean).join(' ')
   const trimmedNote = merged ? merged.slice(0, 200) : null
-  const status = statusFromNote(paren)
 
   return {
     name: name.slice(0, 60),
@@ -203,7 +168,6 @@ function parseEntry(raw: string): DraftMember | null {
     // 這個欄位只剩舊名單的資料會有值（`rosterToText` 仍然寫得出來）。
     companions: 0,
     group_label: null,
-    ...(status ? { status } : {}),
   }
 }
 

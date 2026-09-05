@@ -219,24 +219,25 @@ for (const scheme of ['light', 'dark']) {
   await audit(page, scheme, '「更多」· 匯出名單')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
-  await page.locator('.member').nth(1).locator('.icon-btn').last().click(); await page.waitForTimeout(400)
-  await audit(page, scheme, '成員面板')
-  await page.keyboard.press('Escape'); await page.waitForTimeout(300)
+  // 編輯模式（2026-09）：標題變輸入框、每一列右邊長出叉叉、動作列剩一顆「＋」。
+  // 成員面板同時拿掉了，所以這裡驗的是那個模式，不是那張面板。
+  await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(400)
+  await page.getByRole('button', { name: /^編輯$|^Edit$/ }).click(); await page.waitForTimeout(500)
+  await audit(page, scheme, '編輯模式')
+  await page.getByRole('button', { name: /^完成$|^Done$/ }).click(); await page.waitForTimeout(400)
 
   // --- 分組（分車）---
-  await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(400)
-  // 編輯名稱與編輯名單 2026-09 合併成一顆「編輯」，名單在第二半。
-  await page.getByRole('button', { name: /^編輯$|^Edit$/ }).click(); await page.waitForTimeout(400)
-  await audit(page, scheme, '「更多」· 編輯')
-  await page.getByRole('button', { name: /^名單$|^Roster$/ }).click(); await page.waitForTimeout(400)
+  // 名單結構只在貼上的時候決定（整份重貼那條路 2026-09 拿掉了），所以分組要
+  // 另外開一間空間，從第一步就帶著車次標記。
+  await page.goto(URL); await page.waitForTimeout(700)
+  await page.getByRole('button', { name: /創建空間|Create a room/ }).first().click()
+  await page.waitForTimeout(300)
+  await page.locator('#room-name').fill('秋季旅遊 · 分車')
   await page.locator('#roster-text').fill(
-    '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（請假）\n張三\n李四')
+    '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（坐輪椅）\n張三\n李四')
   await page.waitForTimeout(400)
-  await page.locator('.sheet').getByRole('button', { name: /儲存|Save/ }).click(); await page.waitForTimeout(500)
-  await page.getByRole('button', { name: /^刪除空間$|^Delete room$/ }).count().catch(() => 0)
-  const confirmSave = page.locator('[role=alertdialog] .btn-danger')
-  if (await confirmSave.count()) { await confirmSave.click(); await page.waitForTimeout(900) }
-  await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+  await page.getByRole('button', { name: /產生名單|Generate/ }).click(); await page.waitForTimeout(500)
+  await page.getByRole('button', { name: /建立|Create/ }).click(); await page.waitForTimeout(1300)
   await audit(page, scheme, '空間（含分組）')
 
   // 首頁每個空間右邊那顆「更多」（2026-09）：它進到那個空間再打開空間自己的
