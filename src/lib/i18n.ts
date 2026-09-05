@@ -70,6 +70,8 @@ const zh = {
   saveRosterPrompt: '這份常用名單叫什麼？',
   useRoster: '套用',
   deleteRoster: '刪除',
+  confirmDeleteRosterTitle: '刪除「{name}」？',
+  deleteRosterWarning: '刪除後不能復原。',
   noSavedRosters: '還沒有常用名單。名單載入後可以存起來，下次直接套用。',
 
   // 點名
@@ -98,9 +100,12 @@ const zh = {
   emptySearchHint: '還有 {n} 位沒到，換個字再找找',
   emptySearchHintDone: '這個名字不在名單上',
   someone: '有一位',
-  /* 開空間的「更多」面板裡那一項：草稿是標題，「清掉重來」降格當副說明——
-     長句「這是你上次還沒開成的名單」收掉了，欄位裡的文字本身已經在說這件事。 */
-  draftLabel: '草稿',
+  /* 開空間偵測到草稿：跳出對話框當場問，不再放著讓人自己找到「更多」才決定。
+     取消鍵（安全、不會弄丟東西）留給「繼續使用」，Esc／點背景也會落在這一邊；
+     「清掉重來」要按下那顆鍵才會發生。 */
+  draftPromptTitle: '要繼續使用上次的草稿嗎？',
+  draftPromptBody: '上次沒建立完成的名單已經還原到欄位裡了。',
+  draftKeep: '繼續使用草稿',
   draftDiscard: '清掉重來',
   dropClosed: '{name} 沒有存到：這個空間已經關閉了',
   dropNotOwner: '{name} 沒有存到：這台裝置沒有權限改這份名單',
@@ -362,6 +367,8 @@ const en: Record<MessageKey, string> = {
   saveRosterPrompt: 'Name this saved roster',
   useRoster: 'Use',
   deleteRoster: 'Delete',
+  confirmDeleteRosterTitle: 'Delete "{name}"?',
+  deleteRosterWarning: "This can't be undone.",
   noSavedRosters: 'No saved rosters yet. Save one to reuse it next time.',
 
   missing: 'Missing',
@@ -386,7 +393,9 @@ const en: Record<MessageKey, string> = {
   emptySearchHint: '{n} still missing — try a different spelling',
   emptySearchHintDone: 'That name is not on the list',
   someone: 'Someone',
-  draftLabel: 'Draft',
+  draftPromptTitle: 'Continue with your last draft?',
+  draftPromptBody: "The list you hadn't finished is back in the fields below.",
+  draftKeep: 'Keep the draft',
   draftDiscard: 'Start over',
   dropClosed: "{name} wasn't saved — this room is closed",
   dropNotOwner: "{name} wasn't saved — this device can't edit this list",

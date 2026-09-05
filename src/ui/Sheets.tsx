@@ -1,8 +1,9 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, groups, identity, members,
-  prefs, removeMember, renameRoom, replaceRoster, requestCode, room, saveRosterAs,
+  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, deleteSavedRoster, groups,
+  identity, members, prefs, removeMember, renameRoom, renameSavedRoster, replaceRoster, requestCode,
+  room, saveRosterAs, savedRosters,
   peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
   shareOnEnter, showToast, type Peer,
   signIn, signOut, startGoogleSignIn,
@@ -13,14 +14,14 @@ import { inAppBrowser, secureOrigin } from '../lib/config'
 import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
 import { formatDate } from '../lib/format'
 import { dialableFrom, isExcusedNote, rosterToText, telHref } from '../lib/parse'
-import type { Member } from '../lib/types'
+import type { Member, SavedRoster } from '../lib/types'
 import { currentRoute, joinUrl, navigate } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash, IconLock,
-  IconChevronDown, IconGoogle, IconLink, IconPhone, IconPlus, IconPrinter, IconQr, IconShare,
+  IconChevronDown, IconGoogle, IconLink, IconMore, IconPhone, IconPlus, IconPrinter, IconQr, IconShare,
   IconTag, IconTrash, IconUndo,
 } from './icons'
 import { useT } from './t'
@@ -789,6 +790,123 @@ export function AddWalkInSheet({ group, onClose, onBack }: {
         >
           {drafts.length ? `${t('add')} ${drafts.length}` : t('add')}
         </button>
+      </div>
+    </Sheet>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+type SavedRosterMode = 'list' | 'actions' | 'rename'
+
+/**
+ * 常用名單清單。開空間的「常用」鍵直接開這一頁——不再是「更多」底下的一個
+ * 分頁，這個按鈕本身現在只做這一件事。每一列可以直接點來套用；右邊的
+ * 「更多」另外開一層，管重新命名跟刪除，避免整列變成一顆按鈕之後塞不進
+ * 兩種完全不同的動作（套用 vs. 改名單本身）。
+ */
+export function SavedRostersSheet({ onApply, onClose }: {
+  onApply: (roster: SavedRoster) => void
+  onClose: () => void
+}) {
+  const t = useT()
+  const [mode, setMode] = useState<SavedRosterMode>('list')
+  const [active, setActive] = useState<SavedRoster | null>(null)
+  const [value, setValue] = useState('')
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function run(fn: () => Promise<void>): Promise<void> {
+    setWorking(true)
+    setError(null)
+    try {
+      await fn()
+    } catch (e) {
+      setError(errorMessage(e, t))
+      setWorking(false)
+      return
+    }
+    setWorking(false)
+  }
+
+  if (mode === 'actions' && active) {
+    return (
+      <Sheet title={active.name} onClose={onClose} onBack={() => setMode('list')}>
+        <div class="menu">
+          <button class="menu-item" onClick={() => { setValue(active.name); setMode('rename') }}>
+            <IconEdit />
+            <span><strong>{t('rename')}</strong></span>
+          </button>
+          <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
+            <IconTrash />
+            <span><strong>{t('deleteRoster')}</strong></span>
+          </button>
+        </div>
+        {error && <p class="note note-warn">{error}</p>}
+
+        {confirmingDelete && (
+          <ConfirmDialog
+            title={t('confirmDeleteRosterTitle', { name: active.name })}
+            body={t('deleteRosterWarning')}
+            confirmLabel={t('deleteRoster')}
+            danger
+            onClose={() => setConfirmingDelete(false)}
+            onConfirm={() => { void run(async () => { await deleteSavedRoster(active.id); setMode('list') }) }}
+          />
+        )}
+      </Sheet>
+    )
+  }
+
+  if (mode === 'rename' && active) {
+    return (
+      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('actions')}>
+        <div class="stack">
+          <input
+            class="input" value={value} maxLength={80} aria-label={t('rename')}
+            onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
+          />
+          {error && <p class="note note-warn">{error}</p>}
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => { await renameSavedRoster(active, value); setMode('list') }) }}
+          >
+            {t('save')}
+          </button>
+        </div>
+      </Sheet>
+    )
+  }
+
+  return (
+    <Sheet title={t('savedRosters')} onClose={onClose}>
+      <div class="stack">
+        {savedRosters.value.length === 0 ? (
+          <p class="note">{t('noSavedRosters')}</p>
+        ) : (
+          <div class="menu">
+            {savedRosters.value.map((r) => (
+              <div class="row" key={r.id}>
+                <button class="menu-item" style="flex:1; min-width:0" onClick={() => onApply(r)}>
+                  <IconBookmark />
+                  <span>
+                    <strong>{r.name}</strong>
+                    <span class="sub">{t('parsedCount', { n: r.members.length })}</span>
+                  </span>
+                </button>
+                <button
+                  class="icon-btn"
+                  onClick={() => { setActive(r); setMode('actions') }}
+                  aria-label={`${r.name} ${t('manage')}`}
+                >
+                  <IconMore />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Sheet>
   )

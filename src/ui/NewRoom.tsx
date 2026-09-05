@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
-import { createRoom, savedRosters } from '../lib/store'
+import { createRoom } from '../lib/store'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
 import { isExampleName, isExampleRoster } from '../lib/i18n'
 import { parseRoster, rosterToText } from '../lib/parse'
 import { AppError, isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { RosterEditorField, RosterPreview } from './RosterInput'
-import { Sheet } from './Sheet'
-import { IconBack, IconBookmark, IconChevronDown, IconChevronUp, IconMore, IconTrash } from './icons'
+import { ConfirmDialog } from './Sheet'
+import { SavedRostersSheet } from './Sheets'
+import { IconBack, IconBookmark, IconChevronDown, IconChevronUp } from './icons'
 import { useT } from './t'
 
 export function NewRoom() {
@@ -20,9 +21,7 @@ export function NewRoom() {
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [restored, setRestored] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)
-  // 「更多」有東西可看才給按鈕：草稿跟常用名單都沒有的話，開了也是空面板。
-  const showMore = restored || isSupabaseConfigured
+  const [savedRostersOpen, setSavedRostersOpen] = useState(false)
 
   const result = useMemo(() => parseRoster(text), [text])
   const drafts = result.members
@@ -71,7 +70,6 @@ export function NewRoom() {
     setText('')
     setRestored(false)
     void clearDraft()
-    setMoreOpen(false)
   }
 
   function reviewList() {
@@ -112,11 +110,11 @@ export function NewRoom() {
               <IconBack />
             </button>
             <h1 class="topbar-name">{t('openRoom')}</h1>
-            {step === 'input' && showMore && (
+            {step === 'input' && isSupabaseConfigured && (
               <>
                 <div class="spacer" />
-                <button class="icon-btn" onClick={() => setMoreOpen(true)} aria-label={t('manage')}>
-                  <IconMore />
+                <button class="icon-btn" onClick={() => setSavedRostersOpen(true)} aria-label={t('savedRosters')}>
+                  <IconBookmark />
                 </button>
               </>
             )}
@@ -197,45 +195,25 @@ export function NewRoom() {
         </div>
       </div>
 
-      {moreOpen && (
-        <Sheet title={t('manage')} onClose={() => setMoreOpen(false)}>
-          <div class="stack">
-            {restored && (
-              <button class="menu-item" onClick={discardDraft}>
-                <IconTrash />
-                <span>
-                  <strong>{t('draftLabel')}</strong>
-                  <span class="sub">{t('draftDiscard')}</span>
-                </span>
-              </button>
-            )}
+      {/* 草稿一偵測到就當場問，不是放著等人自己找到「常用」旁邊的入口才決定。
+          取消鍵（安全、Esc／點背景都會落在這一邊）留給「繼續使用」；
+          「清掉重來」要按下那顆鍵才會發生，見 Sheet.tsx 的 `cancelLabel`。 */}
+      {restored && (
+        <ConfirmDialog
+          title={t('draftPromptTitle')}
+          body={t('draftPromptBody')}
+          confirmLabel={t('draftDiscard')}
+          cancelLabel={t('draftKeep')}
+          onClose={() => setRestored(false)}
+          onConfirm={discardDraft}
+        />
+      )}
 
-            {isSupabaseConfigured && (
-              <div class="field">
-                <span class="label">{t('savedRosters')}</span>
-                {savedRosters.value.length > 0 ? (
-                  <div class="menu">
-                    {savedRosters.value.map((r) => (
-                      <button
-                        key={r.id}
-                        class="menu-item"
-                        onClick={() => { setText(rosterToText(r.members)); setMoreOpen(false) }}
-                      >
-                        <IconBookmark />
-                        <span>
-                          <strong>{r.name}</strong>
-                          <span class="sub">{t('parsedCount', { n: r.members.length })}</span>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p class="note">{t('noSavedRosters')}</p>
-                )}
-              </div>
-            )}
-          </div>
-        </Sheet>
+      {savedRostersOpen && (
+        <SavedRostersSheet
+          onApply={(r) => { setText(rosterToText(r.members)); setSavedRostersOpen(false) }}
+          onClose={() => setSavedRostersOpen(false)}
+        />
       )}
     </>
   )
