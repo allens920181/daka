@@ -247,9 +247,9 @@ for (const scheme of ['light', 'dark']) {
   await audit(page, scheme, '首頁的「更多」帶進來的選單')
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
 
-  // 邀請點名在底部動作列上（2026-09）。單機模式（沒設定 Supabase 的建置，也就是
-  // 這支腳本跑的那個）邀請頁只有一塊說明，三種方式一個都不列。
-  await page.locator('.dock').getByRole('button', { name: /^邀請點名$|^Invite$/ }).click()
+  // 邀請點名在頂欄那顆分享圖示上（2026-09）。單機模式（沒設定 Supabase 的建置，
+  // 也就是這支腳本跑的那個）邀請頁只有一塊說明，三種方式一個都不列。
+  await page.locator('.topbar button[aria-label="邀請點名"], .topbar button[aria-label="Invite"]').click()
   await page.waitForTimeout(700)
   await audit(page, scheme, '邀請點名')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)

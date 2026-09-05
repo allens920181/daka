@@ -145,10 +145,9 @@ await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitFo
 const telHref = await p.locator('.member').filter({ hasText: '王小明' }).first()
   .locator('a[href^="tel:"]').first().getAttribute('href')
 ok(`備註裡的號碼在列上就撥得出去 ${telHref}`, telHref === 'tel:0912345678')
-ok('已到的人不再印撥號鍵（那時候不必打了）', await p.evaluate(() => {
-  const rows = [...document.querySelectorAll('.member.is-arrived')]
-  return rows.every((r) => !r.querySelector('a[href^="tel:"]'))
-}))
+// 它長在備註那一行的號碼後面（2026-09），所以不分狀態都印：那一行是備註本身。
+ok('撥號鍵貼在備註那一行裡', await p.evaluate(() =>
+  Boolean(document.querySelector('.member-note > a.note-call[href^="tel:"]'))))
 
 // 匯出名單（單機模式）。列印與 CSV 不經過任何伺服器，自己一個人點完照樣要交得出
 // 名單，所以這一列在單機模式下也照樣在。
@@ -166,15 +165,22 @@ ok('匯出頁講清楚 PDF 是從列印畫面存的', exportHint.includes('儲�
 ok('也講清楚紙本印的是空白格子', exportHint.includes('空白格子'))
 await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
 ok('返回之後回到選單', (await p.getByRole('button', { name: /^匯出名單$/ }).count()) === 1)
-// 邀請點名、臨時加人、結束點名 2026-09 搬到底部動作列，選單裡不再各佔一列。
+// 邀請點名（頂欄）、臨時加人（編輯模式的「＋」）、結束點名（動作列）都不在選單裡。
 ok('選單上沒有邀請點名、臨時加人、結束點名',
    (await p.locator('.sheet').getByRole('button', { name: /^邀請點名$|^臨時加人$|^結束點名$/ }).count()) === 0)
+// 自動刪除的日期印在「刪除空間」那一列右邊，不再是面板底下飄著的一句灰字。
+ok('刪除空間那一列右邊就是自動刪除的日期',
+   /自動刪除$/.test(((await p.locator('.sheet .menu-item.danger .sub').textContent()) ?? '').trim()))
+ok('面板底下不再另外印一句到期日',
+   (await p.locator('.sheet > .hint').count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 邀請點名（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、連結、二維碼對任何
 // 人都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為
 // 是自己打錯而重打三次。邀請頁必須當場說出來，不能照樣列出那三種方式。
-await p.locator('.dock').getByRole('button', { name: /^邀請點名$/ }).click(); await p.waitForTimeout(900)
+await p.keyboard.press('Escape'); await p.waitForTimeout(300)
+// 邀請點名 2026-09 搬到頂欄那顆分享圖示，就在「更多」左邊。
+await p.locator('.topbar button[aria-label="邀請點名"]').click(); await p.waitForTimeout(900)
 ok('單機模式：邀請頁說「這個空間只有你看得到」',
    ((await p.locator('.note-warn').textContent()) || '').includes('只有你看得到'))
 ok('單機模式：不列代碼', (await p.getByRole('button', { name: /^代碼/ }).count()) === 0)
@@ -252,17 +258,17 @@ ok('名字右邊沒有「更多」了',
 const telHrefAttr = await p.locator('.member').filter({ hasText: '陳怡君' }).first()
   .locator('a[href^="tel:"]').first().getAttribute('href')
 ok(`備註裡的號碼在列上就撥得出去 ${telHrefAttr}`, telHrefAttr === 'tel:0912345678')
-ok('備註原文仍然不顯示在名單列上',
-   !(await p.locator('.member').filter({ hasText: '陳怡君' }).first()
-     .locator('.chip-note').first().isVisible().catch(() => false)))
-
-// 紙本是例外：手機沒電時拿著這張紙的人只有那張紙，.chip-note 要在
-// @media print 裡換回來。
+// 備註 2026-09 當副標題印在名字底下：那正是它被寫下來的原因。
 const notedRow = p.locator('.member').filter({ hasText: '陳怡君' }).first()
+ok('備註印在名字底下', await notedRow.locator('.member-note').first().isVisible())
+ok('印的是原文（0912345678）',
+   ((await notedRow.locator('.member-note').first().textContent()) ?? '').includes('0912345678'))
+
+// 紙本上同一行也要在，而且不截行——紙上沒有「點開來看」這回事。
 await p.emulateMedia({ media: 'print' }); await p.waitForTimeout(200)
-ok('列印時備註換回來了', await notedRow.locator('.chip-note').first().isVisible())
-ok('列印的備註是原文（0912345678）',
-   ((await notedRow.locator('.chip-note').first().textContent()) ?? '').includes('0912345678'))
+ok('列印時備註也在', await notedRow.locator('.member-note').first().isVisible())
+ok('列印時不印那顆撥號鍵（紙上撥不了號，號碼本身印在右邊）',
+   !(await notedRow.locator('.note-call').first().isVisible().catch(() => false)))
 await p.emulateMedia({ media: 'screen' }); await p.waitForTimeout(200)
 
 // ---- 編輯模式（2026-09）----
@@ -283,7 +289,23 @@ ok('右上角變成打勾（無障礙名稱仍然是「完成」）',
    (await p.getByRole('button', { name: /^完成$/ }).locator('svg').count()) === 1)
 // 這個模式裡改不到誰到了沒——三條路都要斷。
 // 手指在一排叉叉旁邊移動，誤觸的代價是有人被標成已到而沒有人發現。
-ok('編輯時戳名字不會改狀態', await p.locator('.member-main').first().isDisabled())
+// 戳名字現在改成「編輯這一個人」，所以不能再用 disabled 驗——驗的是狀態沒動。
+const beforeArrived = await segCount(/^已到/)
+await p.locator('.member-main').first().click(); await p.waitForTimeout(400)
+ok(`編輯時戳名字不會改狀態（已到 ${beforeArrived} → ${await segCount(/^已到/)}）`,
+   (await segCount(/^已到/)) === beforeArrived)
+// 戳下去打開的是那一列自己的兩個輸入框：名字與備註。
+ok('戳名字會打開那一列的輸入框', (await p.locator('.member-name-input').count()) === 1)
+ok('備註也一起改得動', (await p.locator('.member-note-input').count()) === 1)
+ok('一次只開一列', (await p.locator('.member-name-input').count()) === 1)
+const editedName = `${await p.locator('.member-name-input').inputValue()}（改過）`
+await p.locator('.member-name-input').fill(editedName)
+await p.locator('.member-note-input').fill('臨時換人')
+await p.locator('.member-note-input').blur(); await p.waitForTimeout(700)
+ok(`改完就存：「${await p.locator('.member').first().locator('.member-name').textContent()}」`,
+   (await p.locator('.member').first().locator('.member-name').textContent()) === editedName)
+ok('備註也存下來了，而且就印在名字底下',
+   ((await p.locator('.member').first().locator('.member-note').textContent()) ?? '').includes('臨時換人'))
 // 「復原」也是點名操作，所以進編輯模式時 Toast 要當場收掉。
 ok('進編輯模式時 Toast 收掉了（不留一顆浮著的「復原」）',
    (await p.locator('.toast').count()) === 0)
@@ -361,22 +383,27 @@ const toastBack = await p.evaluate(() => {
 ok(`面板關掉後 Toast 回到下緣（top=${toastBack}）`, toastBack > 400)
 await p.locator('.toast-action').click().catch(() => {}); await p.waitForTimeout(400)
 
-// #16 底部動作列 2026-09 回來了，但裝的東西換了。2026-08 拿掉它時，兩個槽位是
-// 「只看未到」（篩選搬進 sticky 頂欄之後變成重複的按鈕）與「複製結果」（一場按
-// 一次、而且不急）。現在裝的是開場與收尾那兩顆，兩顆在別的地方都按不到；
-// 臨時加人同月稍後併進編輯模式底下那顆「＋」。浮動搜尋鍵沒有回來——搜尋框一直
-// 開在頂欄裡。
+// #16 底部動作列 2026-09 回來了，但裝的東西換了兩次：先是一場活動的三個時刻，
+// 接著臨時加人併進編輯模式的「＋」、邀請點名搬上頂欄，於是只剩收尾那一顆。
+// 判準沒變（反覆要按、而且在別處按不到），變的是有幾顆通得過。
 const dockLabels = await p.locator('.dock .btn').allTextContents()
-ok(`底部動作列兩顆：${dockLabels.join('、')}`,
-   JSON.stringify(dockLabels.map((x) => x.trim())) === JSON.stringify(['邀請點名', '結束點名']))
+ok(`底部動作列只剩一顆：${dockLabels.join('、')}`,
+   JSON.stringify(dockLabels.map((x) => x.trim())) === JSON.stringify(['結束點名']))
+// 邀請整場只按一次，但那一次是開場。頂欄那兩顆圖示鍵一組，不佔一列人名的高度。
+ok('邀請點名在頂欄，就在「更多」左邊', await p.evaluate(() => {
+  const btns = [...document.querySelectorAll('.topbar-inner > button.icon-btn')]
+  const share = btns.findIndex((b) => b.getAttribute('aria-label') === '邀請點名')
+  const more = btns.findIndex((b) => b.getAttribute('aria-label') === '更多')
+  return share >= 0 && more === share + 1
+}))
 ok('動作列上沒有主要按鈕（這個畫面的主要動作是戳名字）',
    (await p.locator('.dock .btn-primary').count()) === 0)
 ok('也沒有浮動搜尋鍵', (await p.locator('.fab').count()) === 0)
 ok('搜尋框一直開在頂欄裡，不必點開',
    (await p.locator('.topbar .search-wrap input[type=search]').count()) === 1)
-// 分享 2026-09 也收進「更多」了：頂欄只剩「更多」一顆動作鍵。
-ok('頂欄只剩「更多」一顆動作鍵',
-   (await p.locator('.topbar-inner > button.icon-btn').count()) === 2
+// 分享 2026-09 先收進「更多」，同月又搬回頂欄——但是以圖示鍵的身分，跟「更多」一組。
+ok('頂欄的動作鍵是分享與更多兩顆（加上返回鍵共三顆）',
+   (await p.locator('.topbar-inner > button.icon-btn').count()) === 3
    && (await p.locator('.topbar button[aria-label="更多"]').count()) === 1)
 ok('頂欄不再有放大鏡（搜尋只有一個入口）',
    (await p.locator('.topbar button[aria-label*="搜尋"]').count()) === 0)
@@ -509,7 +536,7 @@ ok('備註帶額外文字時，撥號鍵只撥那串數字',
    (await p.locator('.member a[href^="tel:"]').first().getAttribute('href')) === 'tel:0955666777')
 await p.emulateMedia({ media: 'print' }); await p.waitForTimeout(200)
 ok('紙本仍然印得出備註原文',
-   ((await p.locator('.member .chip-note').first().textContent()) ?? '').includes('0955666777 帶輪椅'))
+   ((await p.locator('.member .member-note').first().textContent()) ?? '').includes('0955666777 帶輪椅'))
 await p.emulateMedia({ media: 'screen' }); await p.waitForTimeout(200)
 
 // #15 捲進名單深處之後回得到頂端；#43 名單要是 list、<html lang> 要跟著語言走。

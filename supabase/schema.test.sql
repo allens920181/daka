@@ -300,3 +300,19 @@ select public.create_room('PRM234','授權測試','ownerkey-jjjjjjjjjjjjjjjjjjj'
   '[{"name":"甲"}]'::jsonb) #>> '{room,code}' as still_works;
 select public.get_room('PRM234') #>> '{members,0,name}' as read_works;
 reset role;
+
+-- ========== 18. edit_member（只動名字與備註，不碰狀態）==========
+set role anon;
+\echo '--- 18. edit_member ---'
+select jsonb_pretty(
+  public.edit_member('K7F2QM', 'ownerkey-aaaaaaaaaaaaaaaaaaaa',
+    (select id from public.room_members where room_id = public._room_id('K7F2QM') order by sort_order limit 1),
+    '王小明（改過）', '臨時換人')
+);
+\echo '--- 18b. 非擁有者改不動（應該失敗）---'
+\set ON_ERROR_STOP off
+select public.edit_member('K7F2QM', 'not-the-owner-key-000000000',
+  (select id from public.room_members where room_id = public._room_id('K7F2QM') order by sort_order limit 1),
+  '亂改', null);
+\set ON_ERROR_STOP on
+reset role;

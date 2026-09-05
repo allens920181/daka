@@ -669,6 +669,40 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-5); font-weight: 600; line-height: 1.25;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/*
+ * 備註當副標題（2026-09）。它以前只印在紙上，理由是長度不受控會撐開行高——
+ * 那個代價還在（有備註的列高一行），換到的是「誰坐輪椅、誰只到中午」不必點
+ * 開任何東西就看得到，而那正是備註被寫下來的原因。兩行封頂：再長就截斷，
+ * 一列不該因為有人寫了一整段話而變成半個螢幕。
+ */
+.member-note {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--fs-3); color: var(--ink-2); line-height: 1.35; margin-top: 2px;
+}
+/* 撥號鍵貼在號碼後面。它疊在整片可點的名單列上，所以要自己撐出 44px 的
+   觸控高度——用內距撐、再用負外距收回來，那一行的視覺高度一格都沒有多長。 */
+.note-call {
+  display: inline-flex; align-items: center; vertical-align: -3px;
+  /* 16px 的圖示 ＋ 四邊 16px 內距 ＝ 48×48 的觸控目標；負外距把撐出去的部分
+     全部收回來，那一行的視覺高度與寬度一格都沒有多長。 */
+  margin: calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) calc(var(--sp-1) - var(--sp-4));
+  padding: var(--sp-4);
+  color: var(--accent);
+}
+
+/* 編輯模式下這一列變成兩個輸入框。長相沿用它們取代的那兩行字（名字大一階、
+   備註小一階），只多一條底線說「這裡可以打字」——跟頂欄的標題輸入框同一套。 */
+.member-edit { cursor: default; }
+.member-name-input, .member-note-input {
+  width: 100%; min-width: 0; padding: 0 0 2px; margin-bottom: 2px;
+  border: none; border-bottom: 2px solid var(--accent); border-radius: 0;
+  background: transparent; color: inherit;
+}
+.member-name-input { font-size: var(--fs-5); font-weight: 600; line-height: 1.25; }
+.member-note-input { font-size: var(--fs-3); color: var(--ink-2); line-height: 1.35; }
+.member-name-input:focus, .member-note-input:focus { outline: none; }
+
 .member-meta {
   display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap;
   font-size: var(--fs-2); color: var(--ink-3); margin-top: 1px;
@@ -715,14 +749,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border: 1px solid var(--accent); padding: 0 var(--sp-2);
 }
 .chip-note { background: var(--surface-2); color: var(--ink-2); }
-/*
- * 點名畫面的名單列不再顯示備註（2026-09，見 04-components/overlays.md
- * 「成員面板的規則 › 備註」）——備註搬進了成員面板。這條規則只關掉 .member
- * 底下的 .chip-note，不動 RosterInput 那份解析預覽（.preview-row 底下的
- * 同一個 class，貼上名單當下就是要看到備註，還沒有「更多」面板可以點）。
- * @media print 裡會把它換回來：手機沒電時拿著紙本的人沒有「更多」可點。
- */
-.member .chip-note { display: none; }
 .chip-data {
   background: var(--surface-2); color: var(--ink-2); font-weight: 500;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1154,9 +1180,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
     color: #333 !important; font-weight: 400;
   }
   .chip::after { content: "　"; }
-  /* 螢幕上用 `.member .chip-note { display: none }` 關掉的備註，紙本要換回來：
-     手機沒電時拿著這張紙的人只有那張紙。 */
-  .member .chip-note { display: inline-flex; }
+  /* 備註 2026-09 起螢幕上就是名字底下那一行，紙本沿用同一個元素；只把它
+     壓成一般文字，並且不截行——紙上沒有「點開來看」這回事。 */
+  .member-note {
+    display: block; -webkit-line-clamp: none; overflow: visible;
+    font-size: 9pt; color: #333;
+  }
+  .note-call { display: none; }
 
   /*
    * 每一車從新的一欄開始。一欄一車，剛好可以撕開分給兩個顧車的人——這比

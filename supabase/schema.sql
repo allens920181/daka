@@ -440,6 +440,39 @@ end;
 $$;
 
 -- 移除單一成員。
+-- 改一個人的名字或備註（2026-09 的編輯模式用這個）。
+--
+-- 以前要改一個字得把整份名單倒成文字重貼（`replace_roster`），而那會清掉所有
+-- 點名狀態——為了改一個錯字讓 40 個已到歸零，沒有人會做這件事，於是名單就
+-- 一直錯著。這支只動 name 與 note，狀態、sort_order、rev 一律不碰。
+create or replace function public.edit_member(
+  p_code      text,
+  p_owner_key text,
+  p_member_id uuid,
+  p_name      text,
+  p_note      text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_id uuid := public._owned_room_id(p_code, p_owner_key);
+begin
+  if btrim(coalesce(p_name, '')) = '' then
+    raise exception 'empty_name' using errcode = '22023';
+  end if;
+
+  update public.room_members
+     set name = left(btrim(p_name), 60),
+         note = nullif(left(btrim(coalesce(p_note, '')), 200), '')
+   where room_id = v_id and id = p_member_id;
+
+  return public._room_snapshot(v_id);
+end;
+$$;
+
 create or replace function public.remove_member(
   p_code      text,
   p_owner_key text,
@@ -822,6 +855,7 @@ grant execute on function public.set_member_status(text, uuid, text, bigint, tex
 grant execute on function public.add_member(text, text, text, int, text, uuid, text) to anon, authenticated;
 grant execute on function public.replace_roster(text, text, jsonb)               to anon, authenticated;
 grant execute on function public.remove_member(text, text, uuid)                 to anon, authenticated;
+grant execute on function public.edit_member(text, text, uuid, text, text)       to anon, authenticated;
 grant execute on function public.set_member_group(text, text, uuid, text)        to anon, authenticated;
 grant execute on function public.copy_room(text, text, text, text)               to anon, authenticated;
 grant execute on function public.rename_room(text, text, text)                   to anon, authenticated;

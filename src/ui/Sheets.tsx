@@ -534,16 +534,24 @@ export function ManageSheet({ owner, initialMode, onCopySummary, onEdit, onClose
           還是所有人的紀錄一起沒。選單上並排兩列等於要人在按之前就先分清楚，而那
           正好是點進去才講得完的事。
         */}
+        {/*
+          自動刪除的日期印在這一列右邊（2026-09），不再是面板底下一句飄著的
+          灰字。那句話講的就是「這個空間什麼時候會不見」，跟這一列是同一件事的
+          兩種發生方式——你按，或是時間到。跟分享頁「代碼」那一列右邊印著代碼
+          本身同一種做法：**印的是值，不是說明**。
+        */}
         {(owner || forgettable) && (
           <button class="menu-item danger" onClick={() => setMode('remove')}>
             <IconTrash />
-            <span><strong>{t('deleteRoom')}</strong></span>
+            <span>
+              <strong>{t('deleteRoom')}</strong>
+              <span class="sub">{t('expiresOn', { date: expires })}</span>
+            </span>
           </button>
         )}
       </div>
 
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
-      <p class="hint" style="margin-top:14px">{t('expiresOn', { date: expires })}</p>
 
     </Sheet>
   )

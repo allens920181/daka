@@ -134,6 +134,11 @@ export const api = {
   removeMember: (code: string, ownerKey: string, memberId: string) =>
     rpc<RoomSnapshot>('remove_member', { p_code: code, p_owner_key: ownerKey, p_member_id: memberId }),
 
+  editMember: (code: string, ownerKey: string, memberId: string, name: string, note: string | null) =>
+    rpc<RoomSnapshot>('edit_member', {
+      p_code: code, p_owner_key: ownerKey, p_member_id: memberId, p_name: name, p_note: note,
+    }),
+
   setMemberGroup: (code: string, ownerKey: string, memberId: string, groupLabel: string | null) =>
     rpc<RoomSnapshot>('set_member_group', {
       p_code: code, p_owner_key: ownerKey, p_member_id: memberId, p_group_label: groupLabel,

@@ -1,7 +1,8 @@
 import { Fragment } from 'preact'
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import type { JSX } from 'preact'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
-  connection, dismissToast, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
+  connection, dismissToast, editMember, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
   openMenuOnEnter, prefs, removeMember, renameRoom, room, setRoomClosed, setStatusWithUndo, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
@@ -14,7 +15,9 @@ import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
 import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
-import { IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPhone, IconPlus } from './icons'
+import {
+  IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPhone, IconPlus, IconShare,
+} from './icons'
 import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived'
@@ -68,6 +71,9 @@ export function Room({ code }: { code: string }) {
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [removing, setRemoving] = useState<Member | null>(null)
+  /** 編輯模式下正在改的是哪一列。一次只開一列：兩個名字同時是輸入框時，
+   *  沒有人看得出自己剛剛在改誰。 */
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   /**
    * 進編輯模式。Toast 要當場收掉——它上面那顆「復原」也是點名操作，而編輯模式
@@ -78,6 +84,7 @@ export function Room({ code }: { code: string }) {
     if (!current) return
     dismissToast()
     setNameDraft(current.name)
+    setEditingId(null)
     setEditing(true)
   }
   useEffect(() => {
@@ -153,6 +160,16 @@ export function Room({ code }: { code: string }) {
     if (!current || !next || next === current.name) return
     try {
       await renameRoom(current.code, next)
+    } catch (e) {
+      showToast(errorMessage(e, t))
+    }
+  }
+
+  async function saveMember(m: Member, name: string, note: string) {
+    setEditingId(null)
+    if (name.trim() === m.name && (note.trim() || null) === m.note) return
+    try {
+      await editMember(m.id, name, note)
     } catch (e) {
       showToast(errorMessage(e, t))
     }
@@ -277,6 +294,21 @@ export function Room({ code }: { code: string }) {
             用圖示而不是文字：這一格在點名模式下是圖示鍵，換成一顆文字鍵會讓
             整條頂欄在切換模式時跳一下寬度。無障礙名稱仍然是「完成」。
           */}
+          {/*
+            邀請點名（2026-09 從底部動作列搬上來）。它整場只按一次，但那一次是
+            開場：把代碼發出去。放在頂欄那顆「更多」左邊，兩顆圖示鍵一組——
+            底下那條動作列因此只剩收尾那一顆，不必為了一個開場動作永久佔著
+            一列人名的高度。編輯模式下不印：那時候畫面上只該剩名單。
+          */}
+          {!editing && (
+            <button
+              class="icon-btn"
+              onClick={() => { setMenuMode('invite'); setSheet('manage') }}
+              aria-label={t('invite')}
+            >
+              <IconShare />
+            </button>
+          )}
           {editing ? (
             <button class="icon-btn" onClick={() => setEditing(false)} aria-label={t('done')}>
               <IconCheck size={24} />
@@ -465,7 +497,10 @@ export function Room({ code }: { code: string }) {
                     showGroup={duplicated.has(m.name)}
                     closed={closed}
                     editing={editing && isOwner.value}
+                    editingThis={editingId === m.id}
                     onToggle={() => { void toggle(m) }}
+                    onEdit={() => setEditingId(m.id)}
+                    onSave={(name, note) => { void saveMember(m, name, note) }}
                     onRemove={() => setRemoving(m)}
                   />
                 </Fragment>
@@ -487,6 +522,9 @@ export function Room({ code }: { code: string }) {
         主要按鈕一顆都不放：這個畫面的主要動作是戳名字，動作列上放一顆搶眼的鍵
         只會在收尾之前一直誘導誤觸。
       */}
+      {/* 協助者在點名模式下沒有動作列可放的東西（結束點名是主揪的事），那就
+          不要留一條空的橫條佔掉一列人名。 */}
+      {(editing || isOwner.value) && (
       <div class="dock dock-roll">
         <div class="dock-inner">
           {editing ? (
@@ -499,27 +537,17 @@ export function Room({ code }: { code: string }) {
               <IconPlus />
             </button>
           ) : (
-            <>
-              <button
-                class="btn btn-block"
-                onClick={() => { setMenuMode('invite'); setSheet('manage') }}
-              >
-                {t('invite')}
-              </button>
-
-              {isOwner.value && (
-                <button
-                  class="btn btn-block"
-                  // 重新開啟不是破壞性動作，直接做；結束才要走流程。
-                  onClick={() => { if (closed) { void setClosed(false) } else { setConfirmFinish(true) } }}
-                >
-                  {closed ? t('reopenRoom') : t('finishRound')}
-                </button>
-              )}
-            </>
+            <button
+              class="btn btn-block"
+              // 重新開啟不是破壞性動作，直接做；結束才要走流程。
+              onClick={() => { if (closed) { void setClosed(false) } else { setConfirmFinish(true) } }}
+            >
+              {closed ? t('reopenRoom') : t('finishRound')}
+            </button>
           )}
         </div>
       </div>
+      )}
 
       {/*
         「車開了」是唯一一次所有人的注意力同時落在同一件事上，也是唯一一次能把
@@ -601,16 +629,24 @@ function Segment({ active, onClick, label, count }: {
   )
 }
 
-function MemberRow({ member, closed, showGroup, editing, onToggle, onRemove }: {
+function MemberRow({
+  member, closed, showGroup, editing, editingThis, onToggle, onEdit, onSave, onRemove,
+}: {
   member: Member
   closed: boolean
   showGroup: boolean
-  /** 編輯模式：右邊那格換成叉叉，戳名字不再改狀態。 */
+  /** 編輯模式：右邊那格換成叉叉，戳名字改成編輯這一列。 */
   editing: boolean
+  /** 正在改的就是這一列：名字與備註換成輸入框。 */
+  editingThis: boolean
   onToggle: () => void
+  onEdit: () => void
+  onSave: (name: string, note: string) => void
   onRemove: () => void
 }) {
   const t = useT()
+  const nameRef = useRef<HTMLInputElement>(null)
+  const noteRef = useRef<HTMLInputElement>(null)
   const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}${editing ? ' is-editing' : ''}`
   const time = member.status_at ? formatTime(member.status_at) : null
 
@@ -626,36 +662,112 @@ function MemberRow({ member, closed, showGroup, editing, onToggle, onRemove }: {
     判斷改在這裡做，因為**顯示層猜錯是可逆、可見的**（多一顆鍵，備註原文一字
     未動），而存進資料庫的假號碼是看不見的。
 
-    它 2026-09 從成員面板搬回這一列：那張面板整個拿掉了，而「看到未到 → 打電話」
-    是收尾時唯一的下一步，不能跟著面板一起消失。
+    2026-09 之後這顆鍵長在備註那一行的號碼後面，不再是列右邊獨立的一格：
+    備註本來就印出來了，號碼就在那行字裡，撥號鍵貼著它才對得起來。
   */
   const dialable = member.phone ?? dialableFrom(member.note)[0] ?? null
+
+  /*
+    這一列正在被改：名字與備註各一個輸入框，離開就存。
+
+    兩個框都是**非受控**的（`defaultValue` ＋ ref 讀值），而不是把值放進 state
+    或閉包變數：這個畫面每 15 秒會對帳一次，只要那時候重新 render，受控的
+    `value` 就會把使用者正在打的字蓋回伺服器上的舊名字。
+  */
+  if (editingThis) {
+    /*
+      焦點從姓名跳到備註時**不能**收起來：那兩個框是同一件事的兩半，中間按一下
+      Tab 就結束編輯的話，備註永遠改不到。所以只有焦點真的離開這一列才存檔。
+    */
+    const commit = (e: JSX.TargetedFocusEvent<HTMLInputElement>) => {
+      const row = e.currentTarget.closest('.member')
+      const next = e.relatedTarget
+      if (row && next instanceof Node && row.contains(next)) return
+      onSave(nameRef.current?.value ?? member.name, noteRef.current?.value ?? '')
+    }
+    return (
+      <div class={cls} role="listitem">
+        <div class="member-main member-edit">
+          <span class="check" aria-hidden="true"><IconCheck /></span>
+          <span class="member-body">
+            <input
+              ref={nameRef}
+              class="member-name-input"
+              autofocus
+              defaultValue={member.name}
+              maxLength={60}
+              aria-label={t('nameLabel')}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur() }}
+              onBlur={commit}
+            />
+            <input
+              ref={noteRef}
+              class="member-note-input"
+              defaultValue={member.note ?? ''}
+              maxLength={200}
+              placeholder={t('noteLabel')}
+              aria-label={t('noteLabel')}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur() }}
+              onBlur={commit}
+            />
+          </span>
+        </div>
+
+        <div class="member-side">
+          <button class="icon-btn" onClick={onRemove} aria-label={`${t('removeMember')}：${member.name}`}>
+            <IconClose />
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div class={cls} role="listitem">
       <button
         class="member-main"
-        onClick={onToggle}
-        disabled={closed || editing}
-        aria-pressed={member.status === 'arrived'}
-        aria-label={`${member.name} · ${member.status === 'arrived' ? t('markMissing') : t('markArrived')}`}
+        onClick={editing ? onEdit : onToggle}
+        disabled={closed && !editing}
+        aria-pressed={editing ? undefined : member.status === 'arrived'}
+        aria-label={editing
+          ? `${t('edit')}：${member.name}`
+          : `${member.name} · ${member.status === 'arrived' ? t('markMissing') : t('markArrived')}`}
       >
         <span class="check"><IconCheck /></span>
         <span class="member-body">
           <span class="member-name">{member.name}</span>
+          {/*
+            備註當副標題印在名字底下（2026-09）。它曾經只在紙本上出現，理由是
+            長度不受控會撐開行高、吃掉「80 人一屏看得到幾個人」的預算——那個
+            代價還在（有備註的列高一行），換到的是「誰坐輪椅、誰只到中午」
+            不必點開任何東西就看得到，而那正是備註被寫下來的原因。
+          */}
+          {member.note && (
+            <span class="member-note">
+              {member.note}
+              {dialable && (
+                /*
+                  撥號鍵貼在號碼後面。列右邊那一格 2026-09 讓給編輯模式的叉叉，
+                  而「看到未到 → 打電話」是收尾唯一的下一步，不能沒有入口。
+                  stopPropagation：這顆鍵疊在整片可點的名單列上，不擋的話按下去
+                  會先把人標成已到再撥號。
+                */
+                <a
+                  class="note-call"
+                  href={telHref(dialable)}
+                  aria-label={t('callMember', { name: member.name })}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <IconPhone size={16} />
+                </a>
+              )}
+            </span>
+          )}
           <span class="member-meta">
             {tell && <span class="chip chip-tell">{tell}</span>}
             {member.companions > 0 && (
               <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
             )}
-            {/*
-              備註原文不顯示在螢幕上：這一列只留住「哪一個人」（辨識晶片）與
-              「現在什麼狀態」，備註本身長度不受控，印在這裡會把行高撐開，破壞
-              80 人名單一屏看幾個人的預算。.chip-note 用 CSS 在螢幕上關掉
-              （見 styles.css 的 `.member .chip-note`），但紙本上要留著：手機
-              沒電時拿著這張紙的人只有那張紙，理由跟 .print-phone 一樣。
-            */}
-            {member.note && <span class="chip chip-note">{member.note}</span>}
             {member.status === 'arrived' && time && (
               <span>{member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}</span>
             )}
@@ -664,26 +776,16 @@ function MemberRow({ member, closed, showGroup, editing, onToggle, onRemove }: {
       </button>
 
       {/* 紙本上要看得到電話：收尾時「看到未到 → 打電話」是唯一的下一步，
-          而螢幕上電話只做成 tel: 圖示按鈕，列印時整個 .member-side 會被藏起來。 */}
+          而螢幕上電話是備註那行裡的一顆圖示鍵，列印時 .note-call 會被藏起來。 */}
       {dialable && <span class="print-phone" aria-hidden="true">{dialable}</span>}
 
-      <div class="member-side">
-        {editing ? (
+      {editing && (
+        <div class="member-side">
           <button class="icon-btn" onClick={onRemove} aria-label={`${t('removeMember')}：${member.name}`}>
             <IconClose />
           </button>
-        ) : (
-          dialable && member.status === 'pending' && (
-            <a
-              class="icon-btn call-btn"
-              href={telHref(dialable)}
-              aria-label={t('callMember', { name: member.name })}
-            >
-              <IconPhone />
-            </a>
-          )
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
