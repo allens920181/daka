@@ -72,6 +72,13 @@ export const IconQr = ({ size = 20, ...r }: P) => (
     <line x1="18" y1="18" x2="18" y2="21" /><line x1="21" y1="18" x2="21" y2="21" />
   </svg>
 )
+// 匯出那三列各有自己的圖示：紙本用印表機、CSV 用下載、PDF 用一張文件。
+export const IconPdf = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" /><line x1="8" y1="17" x2="16" y2="17" />
+  </svg>
+)
 export const IconDownload = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" />

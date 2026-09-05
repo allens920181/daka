@@ -2,7 +2,7 @@ import { Fragment } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import {
   connection, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
-  prefs, room, setStatusWithUndo, shareOnEnter, showToast,
+  prefs, room, setStatusWithUndo, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
 import { isExcusedNote } from '../lib/parse'
@@ -17,7 +17,7 @@ import { IconBack, IconCheck, IconCopy, IconMore, IconPhone } from './icons'
 import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived' | 'excused'
-type OpenSheet = null | 'share' | 'manage' | 'walkin' | { member: Member }
+type OpenSheet = null | 'manage' | 'walkin' | { member: Member }
 
 /**
  * 「未分組」這個晶片的內部值。用一個不可能當成分組名的哨符，而不是 null——
@@ -50,14 +50,6 @@ export function Room({ code }: { code: string }) {
     // t 隨語言變動，但重新進空間沒有意義；只依 code。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
-
-  // 剛從「再開一個」進來的話，直接把「更多」開在分享分頁上。
-  useEffect(() => {
-    if (status !== 'ready') return
-    if (shareOnEnter.value !== code) return
-    shareOnEnter.value = null
-    setSheet('share')
-  }, [status, code])
 
   const current = room.value
   const all = members.value
@@ -387,14 +379,14 @@ export function Room({ code }: { code: string }) {
       </div>
 
       {/*
-        分享住在「更多」的分享分頁裡（2026-09），沒有自己的面板了。'share' 這個
-        狀態只剩一個用途：從「再開一個」導進新空間時，把面板直接開在那一頁。
+        邀請點名 2026-09 搬到首頁那個空間選單去了（RoomActionsSheet）：發代碼是
+        開場前的事，這個畫面是點名進行中的事。空間裡看得到代碼的地方仍然有一個
+        ——頂欄那一行一直印著它。
       */}
-      {(sheet === 'manage' || sheet === 'share') && (
+      {sheet === 'manage' && (
         <ManageSheet
           owner={isOwner.value}
           group={group}
-          initialTab={sheet === 'share' ? 'share' : undefined}
           onCopySummary={() => { void copySummary() }}
           onClose={() => setSheet(null)}
         />

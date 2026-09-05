@@ -38,6 +38,8 @@ await A.p.getByRole('button', { name: /開啟空間/ }).first().click(); await A
 await A.p.locator('#room-name').fill('秋季旅遊 · 出發')
 await A.p.locator('#roster-text').fill('王小明 0912345678\n李美花 +1\n陳大同（請假）\n張三\n李四')
 await A.p.waitForTimeout(300)
+// 開空間 2026-09 拆成兩步：貼名單 →「產生名單」→ 看解析結果 →「建立」。
+await A.p.getByRole('button', { name: /產生名單/ }).click(); await A.p.waitForTimeout(500)
 await A.p.getByRole('button', { name: /建立/ }).click(); await A.p.waitForTimeout(1600)
 const code = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`[主揪] 空間建立於伺服器，代碼 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
@@ -92,17 +94,29 @@ await reconcile(A)
 ok('[主揪] 恢復連線後自動補上，未到歸零', (await missing(A.p)) === '0')
 ok('[同工] 同步狀態回到已同步', /已同步/.test((await B.p.locator('.sync').textContent()) || ''))
 
-// --- 再開一個（回程）---
-await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(600)
-await A.p.getByRole('button', { name: /再開一個/ }).click(); await A.p.waitForTimeout(400)
+// --- 建立副本（回程）---
+// 2026-09 從空間裡的「更多」搬到首頁每個空間右邊那顆「更多」：它動的是空間這個
+// 容器，而首頁那份清單就是「我有哪些空間」的地方。
+await A.p.goto(URL); await A.p.waitForTimeout(1000)
+await A.p.getByRole('button', { name: /^更多：/ }).first().click(); await A.p.waitForTimeout(600)
+await A.p.getByRole('button', { name: /建立副本/ }).click(); await A.p.waitForTimeout(400)
 const prefill = await A.p.locator('#copy-name').inputValue()
 ok(`[主揪] 新空間名預帶「回程」：${prefill}`, prefill.includes('回程'))
-await A.p.getByRole('button', { name: '確定' }).click(); await A.p.waitForTimeout(2200)
+await A.p.getByRole('button', { name: '確定' }).click(); await A.p.waitForTimeout(2500)
+
+// 複製回程空間會換一組新代碼，而五支協助的手機還開著舊空間——他們的畫面完全
+// 沒有變化，會繼續在舊空間打勾。複製完的下一個動作 100% 是把新代碼發出去，
+// 所以面板自己停在新空間的邀請頁。
+ok('[主揪] 複製完直接停在新空間的邀請頁',
+   (await A.p.locator('.sheet').getAttribute('aria-label')) === '邀請點名')
+const newCode = (await A.p.locator('.menu-item .sub.mono').first().textContent())?.trim()
+ok(`[主揪] 邀請頁上就是新代碼 ${newCode}`, Boolean(newCode) && newCode !== code)
+await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(400)
+
+await A.p.goto(`${URL}#/r/${newCode}`); await A.p.waitForTimeout(2200)
 ok('[主揪] 進入新空間', (await A.p.locator('.topbar-name').textContent())?.includes('回程'))
 ok('[主揪] 回程名單一樣是 5 人', (await A.p.locator('.member').count()) === 5)
 ok('[主揪] 已到全部歸零、請假保留 → 未到 4', (await missing(A.p)) === '4')
-const newCode = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
-ok(`[主揪] 回程是新的代碼 ${newCode}`, newCode !== code)
 
 // --- 衝突提示：我改的被別人蓋掉時，要看得見 ---
 // 先給同工一個名字，這樣提示才會說「已由 陳姐 改為…」而不是「已被其他人」。
@@ -114,19 +128,6 @@ await B.p.locator('#checker-name').fill('陳姐')
 await B.p.locator('#checker-name').blur(); await B.p.waitForTimeout(400)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(300)
 await B.p.goto(`${URL}#/r/${newCode}`); await B.p.waitForTimeout(1800)
-
-// 複製回程空間會換一組新代碼，而五支協助的手機還開著舊空間——他們的畫面完全
-// 沒有變化，會繼續在舊空間打勾。複製完的下一個動作 100% 是把新代碼發出去，
-// 所以分享面板要自己打開。
-// 分享 2026-09 搬進「更多」的分享分頁，所以自動打開的是那個面板的那一頁。
-// 「更多」面板不印標題（2026-09），無障礙名稱還在 .sheet 的 aria-label 上。
-ok('[主揪] 複製完自動打開「更多」',
-   (await A.p.locator('.sheet').getAttribute('aria-label'))?.includes('更多'))
-ok('[主揪] 而且直接停在分享分頁',
-   (await A.p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '分享')
-ok('[主揪] 分享分頁上就是新代碼',
-   (await A.p.locator('.menu-item .sub.mono').first().textContent())?.trim() === newCode)
-await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 
 // 主揪先把第一個人標成已到
 await A.p.locator('.member-main').nth(0).click(); await A.p.waitForTimeout(1400)
@@ -179,9 +180,11 @@ ok('[同工] 訊息說得出原因（空間已關閉）', /關閉/.test(dropNoti
 
 // --- presence：不知道就不要說（#5）-----------------------------------------
 // 這個假後端只有 REST，沒有 Realtime——正好模擬「公司防火牆擋 WebSocket」那種
-// 情況。REST 通了不代表 presence 也通了，所以分享面板不能在別人明明已經進來時
+// 情況。REST 通了不代表 presence 也通了，所以面板不能在別人明明已經進來時
 // 說「目前只有你」。沒把握就整區不顯示。
-await A.p.locator('.topbar button[aria-label="分享"]').click(); await A.p.waitForTimeout(1500)
+// 「現在在這個空間裡」留在空間裡的「更多」面板（2026-09）：邀請點名搬去首頁了，
+// 但 presence 只有正在這個空間裡的裝置數得到，首頁上根本沒有這個數字。
+await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(1500)
 ok('[主揪] 同步指示是已同步（REST 通）', /已同步/.test((await A.p.locator('.sync').textContent()) || ''))
 ok('[主揪] 但 presence 沒通，就不顯示「現在在這個空間裡」',
    (await A.p.getByText('現在在這個空間裡').count()) === 0)
@@ -194,17 +197,22 @@ await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 // 而那時候「回程再點一次」是產品方向書明列的核心情境。複製對來源空間完全無害
 // （一個字都不改），名單本來就對所有拿得到代碼的人可見，所以鎖在擁有權後面
 // 沒有保護到任何東西。
-await B.p.locator('.topbar button[aria-label="更多"]').click(); await B.p.waitForTimeout(700)
-ok('[同工] 管理面板裡有「再開一個」', (await B.p.getByRole('button', { name: /再開一個/ }).count()) > 0)
-await B.p.getByRole('button', { name: /再開一個/ }).click(); await B.p.waitForTimeout(500)
+await B.p.goto(URL); await B.p.waitForTimeout(1000)
+await B.p.getByRole('button', { name: /^更多：/ }).first().click(); await B.p.waitForTimeout(700)
+ok('[同工] 首頁的空間選單裡有「建立副本」', (await B.p.getByRole('button', { name: /建立副本/ }).count()) > 0)
+ok('[同工] 但沒有主揪才做得到的重新命名與刪除空間',
+   (await B.p.getByRole('button', { name: /重新命名|刪除空間/ }).count()) === 0)
+await B.p.getByRole('button', { name: /建立副本/ }).click(); await B.p.waitForTimeout(500)
 // 選單列的副標 2026-09 全部拿掉了，「新空間會是你的」改在子畫面說。
 ok('[同工] 子畫面說清楚新空間是誰的',
    ((await B.p.locator('.sheet .hint').first().textContent()) || '').includes('你會是新空間的主揪'))
 await B.p.locator('#copy-name').fill('回程（同工開的）')
 await B.p.getByRole('button', { name: '確定' }).click(); await B.p.waitForTimeout(2500)
+const helperCode = (await B.p.locator('.menu-item .sub.mono').first().textContent())?.trim()
+await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
+await B.p.goto(`${URL}#/r/${helperCode}`); await B.p.waitForTimeout(2200)
 ok('[同工] 進到自己開的回程空間', (await B.p.locator('.topbar-name').textContent())?.includes('同工開的'))
 ok('[同工] 名單一起複製過來', (await B.p.locator('.member').count()) === 5)
-await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(500)
 // 複製的人是新空間的主揪：身分標籤（頂欄）與管理功能都要出現。
 ok('[同工] 在新空間裡是主揪', (await B.p.locator('.topbar-sub .tag-owner').count()) === 1)
 await B.p.locator('.topbar button[aria-label="更多"]').click(); await B.p.waitForTimeout(700)

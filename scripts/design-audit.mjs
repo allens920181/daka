@@ -204,25 +204,19 @@ for (const scheme of ['light', 'dark']) {
   await page.waitForTimeout(400)
   await audit(page, scheme, '創建空間')
 
+  // 開空間 2026-09 拆成兩步（貼名單 →「產生名單」→ 看解析結果 →「建立」），
+  // 解析結果與「建立」都住在第二步，要先把名單產出來。
+  await page.getByRole('button', { name: /產生名單|Generate/ }).click(); await page.waitForTimeout(500)
+  await audit(page, scheme, '創建空間 · 解析結果')
+
   await page.getByRole('button', { name: /建立|Create/ }).click(); await page.waitForTimeout(1200)
   await page.locator('.member-main').nth(0).click(); await page.waitForTimeout(500)
   await audit(page, scheme, '空間（含 Toast）')
 
-  // 分享住在「更多」的分享分頁裡（2026-09）。單機模式（沒設定 Supabase 的建置，
-  // 也就是這支腳本跑的那個）分享分頁只有一塊說明，三種方式一個都不列——所以
-  // 子頁面存在才驗，不存在也不算失敗。
   await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(500)
   await audit(page, scheme, '「更多」面板')
-  await page.getByRole('button', { name: /^分享$|^Share$/ }).click(); await page.waitForTimeout(400)
-  await audit(page, scheme, '「更多」· 分享分頁')
-  const codeRow = page.getByRole('button', { name: /^代碼|^Room code/ })
-  if (await codeRow.count()) {
-    await codeRow.click(); await page.waitForTimeout(400)
-    await audit(page, scheme, '分享 · 代碼')
-    await page.locator('.sheet-head .icon-btn').first().click(); await page.waitForTimeout(300)
-    await page.getByRole('button', { name: /^二維碼|^QR code/ }).click(); await page.waitForTimeout(1400)
-    await audit(page, scheme, '分享 · 二維碼')
-  }
+  await page.getByRole('button', { name: /^匯出結果$|^Export results$/ }).click(); await page.waitForTimeout(400)
+  await audit(page, scheme, '「更多」· 匯出結果')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   await page.locator('.member').nth(1).locator('.icon-btn').last().click(); await page.waitForTimeout(400)
@@ -241,6 +235,16 @@ for (const scheme of ['light', 'dark']) {
   if (await confirmSave.count()) { await confirmSave.click(); await page.waitForTimeout(900) }
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
   await audit(page, scheme, '空間（含分組）')
+
+  // 首頁每個空間右邊那顆「更多」（2026-09）：邀請點名、重新命名、建立副本、
+  // 刪除空間都住在這裡。單機模式（沒設定 Supabase 的建置，也就是這支腳本跑的
+  // 那個）邀請頁只有一塊說明，三種方式一個都不列。
+  await page.goto(URL); await page.waitForTimeout(900)
+  await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(500)
+  await audit(page, scheme, '首頁 · 空間選單')
+  await page.getByRole('button', { name: /^邀請點名$|^Invite$/ }).click(); await page.waitForTimeout(600)
+  await audit(page, scheme, '首頁 · 邀請點名')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   await ctx.close()
 }

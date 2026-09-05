@@ -18,7 +18,7 @@ import { countForRoom, dequeue, enqueue, flushOrder, pendingAddIds } from './out
 import {
   DEFAULT_PREFS, type Prefs, type RecentRoom,
   dropRecentRoom, forgetRoom, loadIdentity, loadOutbox, loadPrefs, loadRecentRooms,
-  loadRoom, rememberRoom, saveIdentity, saveOutbox, savePrefs, saveRoom,
+  loadRoom, rememberRoom, renameRecentRoom, saveIdentity, saveOutbox, savePrefs, saveRoom,
 } from './storage'
 
 // ---------------------------------------------------------------------------
@@ -53,14 +53,6 @@ export const groups = computed(() => groupsOf(members.value))
 export const pendingUploads = computed(() =>
   room.value ? countForRoom(outbox.value, room.value.code) : 0,
 )
-/**
- * 剛複製出來的代碼。空間畫面進來看到自己就會自動打開分享面板，然後清掉。
- *
- * 複製回程空間會換一組新代碼，而五支協助的手機還開著舊空間——他們的畫面完全沒有
- * 變化，會繼續在舊空間打勾。這是整條動線裡最貴的失敗，而且是靜默的。
- */
-export const shareOnEnter = signal<string | null>(null)
-
 /**
  * 目前在這個空間裡的裝置（含自己）。
  *
@@ -734,17 +726,22 @@ export async function createRoom(name: string, drafts: readonly DraftMember[]): 
   throw new AppError('unknown', 'could not allocate a room code')
 }
 
-/** 再開一個：同一份名單、狀態歸零。這是回程點名的做法。 */
-export async function copyCurrentRoom(newName: string): Promise<string> {
-  const r = room.value
-  if (!r) throw new AppError('room-not-found')
-  const title = newName.trim() || `${r.name}（複製）`
+/**
+ * 建立副本：同一份名單、狀態歸零。這是回程點名的做法。
+ *
+ * 吃的是代碼而不是「目前這一間」（2026-09）：這一列搬到首頁的空間選單之後，
+ * 按下去的當下根本沒有進到任何一個空間裡。
+ */
+export async function copyRoom(source: string, newName: string): Promise<string> {
+  const cached = await loadRoom(source)
+  const title = newName.trim() || (cached ? `${cached.room.name}（複製）` : source)
 
   if (!isSupabaseConfigured) {
+    if (!cached) throw new AppError('room-not-found')
     const code = generateRoomCode()
-    const copy: Room = { ...localRoom(code, title), copied_from: r.id }
+    const copy: Room = { ...localRoom(code, title), copied_from: cached.room.id }
     // 請假的人在回程一樣不會出現，保留狀態；已到的才歸零。
-    const drafts = members.value.map<DraftMember>((m) => ({
+    const drafts = cached.members.map<DraftMember>((m) => ({
       name: m.name, note: m.note, phone: m.phone,
       companions: m.companions, group_label: m.group_label,
       ...(m.status === 'excused' ? { status: 'excused' as const } : {}),
@@ -757,7 +754,7 @@ export async function copyCurrentRoom(newName: string): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateRoomCode()
     try {
-      const snap = await api.copyRoom(r.code, identity.value.ownerKey, code, title)
+      const snap = await api.copyRoom(source, identity.value.ownerKey, code, title)
       await saveRoom(snap.room, snap.members)
       recentRooms.value = await rememberRoom({ code, name: title, isOwner: true, lastSeen: Date.now() })
       void refreshMyRooms()
@@ -818,20 +815,34 @@ export async function removeMember(memberId: string): Promise<void> {
   await ownerAction(() => api.removeMember(r.code, identity.value.ownerKey, memberId))
 }
 
-export async function renameRoom(name: string): Promise<void> {
-  const r = room.value
-  if (!r) return
+/**
+ * 重新命名。跟建立副本、刪除空間一樣吃代碼：這三項 2026-09 都搬到首頁那個
+ * 空間選單裡，按下去的當下沒有「目前這一間」。
+ *
+ * 正在看的剛好就是這一間時才更新畫面與廣播——`channel` 是目前這一間的頻道，
+ * 拿它去廣播別間的改動是錯的。別台裝置最慢 15 秒後的定期對帳會拿到新名字。
+ */
+export async function renameRoom(code: string, name: string): Promise<void> {
   const title = name.trim().slice(0, 80)
   if (!title) return
   if (!isSupabaseConfigured) {
-    room.value = { ...r, name: title }
-    await persistNow()
+    const cached = await loadRoom(code)
+    if (!cached) throw new AppError('room-not-found')
+    const next = { ...cached.room, name: title }
+    await saveRoom(next, cached.members)
+    if (currentCode === code) room.value = next
   } else {
-    await ownerAction(() => api.renameRoom(r.code, identity.value.ownerKey, title))
+    const snap = await api.renameRoom(code, identity.value.ownerKey, title)
+    await saveRoom(snap.room, snap.members)
+    if (currentCode === code) {
+      room.value = snap.room
+      members.value = snap.members
+      broadcast('roster', { at: Date.now() })
+    }
+    void refreshMyRooms()
   }
-  recentRooms.value = await rememberRoom({
-    code: r.code, name: title, isOwner: true, lastSeen: Date.now(),
-  })
+  // 只改名字，不動清單順序：改個名字不代表你剛用過這個空間。
+  recentRooms.value = await renameRecentRoom(code, title)
 }
 
 export async function setRoomClosed(closed: boolean): Promise<void> {
@@ -845,16 +856,16 @@ export async function setRoomClosed(closed: boolean): Promise<void> {
   await ownerAction(() => api.setClosed(r.code, identity.value.ownerKey, closed))
 }
 
-export async function deleteCurrentRoom(): Promise<void> {
-  const r = room.value
-  if (!r) return
+export async function deleteRoom(code: string): Promise<void> {
   if (isSupabaseConfigured) {
-    await api.deleteRoom(r.code, identity.value.ownerKey)
+    await api.deleteRoom(code, identity.value.ownerKey)
     void refreshMyRooms()
   }
-  await forgetRoom(r.code)
-  recentRooms.value = await dropRecentRoom(r.code)
-  leaveRoom()
+  // 先離開再清快取：leaveRoom() 會把手上的空間寫回本機（persistNow），順序反過來
+  // 的話剛刪掉的那一間會被自己重新寫回去。
+  if (currentCode === code) leaveRoom()
+  await forgetRoom(code)
+  recentRooms.value = await dropRecentRoom(code)
 }
 
 export async function forgetRecentRoom(code: string): Promise<void> {

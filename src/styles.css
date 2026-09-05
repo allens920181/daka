@@ -903,6 +903,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sheet.is-dragging .sheet-grip { cursor: grabbing; }
 .sheet-head {
   display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3);
+  /* 這一列是「往下滑收起面板」的手勢區，所以它自己要有一根手指的高度。有返回鍵
+     或關閉鍵的子畫面本來就被 48px 的圖示鍵撐開，只印標題的那幾張不會——量到
+     26px，手指往下劃第一公分就已經滑出這一列，手勢連接管都來不及。 */
+  min-height: var(--tap-min);
   touch-action: pan-x;
 }
 /*
@@ -913,32 +917,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sheet-grip, .sheet-head { user-select: none; -webkit-user-select: none; }
 .sheet-title { font-size: var(--fs-5); }
 
-/* 「更多」面板的分頁（2026-09）：沿用篩選列同一顆 .segmented，不必再學一種新切法。 */
-.sheet .segmented { margin-bottom: var(--sp-3); }
 /*
- * 分頁鍵住在標題列裡，跟關閉鍵同一列（2026-09）：標題拿掉之後那一列只剩一顆
- * 孤零零的叉叉，白佔 48px。分頁鍵撐滿剩下的寬度，關閉鍵是 flex: none 不會被
- * 擠掉；分頁鍵自己擠不下時 .segmented 本來就會橫向捲。
+ * 面板不再有分頁，也不再有固定高度的內容框（2026-09）：分頁是為了 13 項擠成
+ * 一長串才發明的，項目搬走一半之後最長的一份選單只有五列，面板自己就裝得下。
+ * 內容真的長過 88vh 時仍然是整張 .sheet 在捲——它本來就會捲，也本來就有捲動
+ * 陰影說得出「底下還有」。
  */
-.sheet-head > .segmented { flex: 1; min-width: 0; margin-bottom: 0; }
-
-/*
- * 「更多」三個分頁共用的固定高度框。高度以「空間」分頁為基準（主揪看到的四項，
- * 副標拿掉之後每一列都只有一行，390px 與 320px 上都是 230px）：比它長的「名單」
- * 在框內捲，比它短的「分享」留白，切分頁時面板高度不變。
- *
- * 為什麼要訂死：分頁鍵是同一根手指連續要按的東西，面板一長高，第二顆鍵就跑到
- * 剛剛按下去的位置底下——按第二次會按到隔壁那一頁。
- *
- * 捲的是這個框而不是整張 .sheet，所以分頁鍵留在框外面，往下捲清單時它一直在
- * 原位。矮螢幕改用 44vh 收斂：整張面板一旦超過 .sheet 的 88vh 就換成面板自己
- * 捲，那時分頁鍵反而會跟著捲走，正好是這裡要避免的事。
- * overscroll-behavior 擋住捲到底之後把底下的名單一起帶走。
- */
-.manage-body {
-  height: min(230px, 44vh);
-  overflow-y: auto; overscroll-behavior: contain;
-}
 
 .menu { display: flex; flex-direction: column; gap: 2px; }
 /*
@@ -1143,8 +1127,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
   }
   .member.is-arrived, .member.is-excused { background: #fff !important; opacity: 1; }
   .member-main { min-height: 0; padding: 4pt 0; flex: 1; }
-  /* 紙本一律印空白格子讓人用筆勾 */
+  /*
+   * 紙本一律印空白格子讓人用筆勾。邊框色要壓成黑的：已到的那一格在螢幕上是綠框
+   * （--st-arrived，沒有被上面的列印 token 蓋掉），印出來會變成「已經勾過的人是
+   * 綠圈、其他人是黑框」——一份號稱空白的表上有半套紀錄，比全有或全無都糟。
+   */
   .check { width: 12pt; height: 12pt; border: 1pt solid #000; border-radius: 2pt;
+           border-color: #000 !important;
            background: #fff !important; color: transparent !important; opacity: 1; }
   .check svg { display: none; }
   .member-name { font-size: 11pt; color: #000; }
@@ -1171,5 +1160,23 @@ button, input, textarea, select { font: inherit; color: inherit; }
     display: inline; font-size: 9pt; color: #333; white-space: nowrap;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
+
+  /*
+   * 「存成 PDF」印的是另一份文件：目前的點名結果，不是空白表。同一份版面，
+   * 兩種用途——空白的那份是活動當下的備援（手機沒電），這一份是活動之後要交
+   * 出去的東西，所以格子照狀態填、簽名欄不印（已經有誰在什麼時候點的紀錄）。
+   * 記號由 Sheets.tsx 的 printSheet('result') 下在 <html> 上。
+   */
+  :root[data-print='result'] .check {
+    background: #000 !important; color: #fff !important; border-color: #000;
+  }
+  :root[data-print='result'] .check svg { display: block; }
+  :root[data-print='result'] .member:not(.is-arrived) .check {
+    background: #fff !important; color: transparent !important;
+  }
+  :root[data-print='result'] .member.is-excused .check {
+    background: #fff !important; border-style: dashed;
+  }
+  :root[data-print='result'] .print-blanks { display: none; }
 }
 

@@ -1,11 +1,11 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, connection, copyCurrentRoom, deleteCurrentRoom, deleteSavedRoster, groups,
+  AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, groups,
   identity, members, prefs, removeMember, renameRoom, renameSavedRoster, replaceRoster, requestCode,
   room, saveRosterAs, savedRosters,
   peers, presenceReady, session, setCheckerName, setMemberGroup, setPrefs, setRoomClosed, setStatusWithUndo,
-  shareOnEnter, showToast, type Peer,
+  showToast, type Peer,
   signIn, signOut, startGoogleSignIn,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -15,14 +15,14 @@ import { csvFilename, downloadFile, toCsv, toShareText } from '../lib/export'
 import { formatDate } from '../lib/format'
 import { dialableFrom, isExcusedNote, rosterToText, telHref } from '../lib/parse'
 import type { Member, SavedRoster } from '../lib/types'
-import { currentRoute, joinUrl, navigate } from '../router'
+import { currentRoute, joinUrl } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash, IconLock,
-  IconChevronDown, IconGoogle, IconLink, IconMore, IconPhone, IconPlus, IconPrinter, IconQr, IconShare,
-  IconTag, IconTrash, IconUndo,
+  IconBookmark, IconCalendar, IconClose, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash,
+  IconLock, IconChevronDown, IconGoogle, IconLink, IconMore, IconPdf, IconPhone, IconPlus, IconPrinter,
+  IconQr, IconShare, IconTag, IconTrash, IconUndo,
 } from './icons'
 import { useT } from './t'
 
@@ -84,32 +84,52 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
   await copyText(url, t('copied'), t('copyFailed'))
 }
 
+/**
+ * 列印。`mode` 決定印出來的是哪一份文件：
+ * - 'blank'：空白格子的紙本，手機沒電時拿筆勾。
+ * - 'result'：目前的點名結果，交差用；在列印畫面選「儲存為 PDF」就是一個檔案。
+ *
+ * 記號下在 <html> 上讓 @media print 讀，列印畫面關掉之後一定要拿掉，不然下一次
+ * 列印會沿用上一次的樣子。afterprint 在某些瀏覽器不會來，所以再壓一個逾時保底。
+ */
+function printSheet(mode: 'blank' | 'result', onClose: () => void): void {
+  const root = document.documentElement
+  if (mode === 'result') root.dataset.print = 'result'
+  const done = () => {
+    delete root.dataset.print
+    window.removeEventListener('afterprint', done)
+  }
+  window.addEventListener('afterprint', done)
+  setTimeout(done, 60_000)
+  // 先關面板：遮罩在紙上是看不到的，但使用者按完要看得到自己的名單。
+  onClose()
+  setTimeout(() => window.print(), 60)
+}
+
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'walkin'
-  | 'shareCode' | 'shareLink' | 'shareQr'
-// 「更多」面板分頁（2026-09）。依「這個動作在動什麼」分類：'roster' 底下是
-// 名單本身——資料與跟這份名單有關的現場動作；'space' 底下是空間這個容器；
-// 'share' 底下是把這個空間交出去的三種方式。曾經想過一個「常用」分頁裝複製
-// 結果／臨時加人／結束這一輪，但「多常按」跟「動什麼」是兩種不同的分類軸，
-// 「結束這一輪」整場只按一次卻歸在「常用」裡本身就矛盾，所以拿掉，三個分頁
-// 都用同一種分類方式貫穿到底。
-type ManageTab = 'roster' | 'space' | 'share'
-type Confirming = null | 'delete' | 'replaceRoster' | 'finish'
+type ManageMode = 'menu' | 'roster' | 'saveRoster' | 'walkin' | 'export'
+type Confirming = null | 'replaceRoster' | 'finish'
 
-export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }: {
+/**
+ * 空間裡的「更多」。2026-09 之後這裡只剩「這一場點名正在進行」時用得到的東西：
+ * 名單本身、現場加人、把結果交出去、結束這一輪。
+ *
+ * 重新命名、建立副本、刪除空間、邀請點名搬到首頁那個空間選單去了（`RoomActionsSheet`）
+ * ——它們動的是「空間這個容器」，跟正在進行的點名無關，而且首頁才是同時看得到
+ * 自己有哪些空間的地方。少了那四項之後剩下的五列不必再分頁：分頁是為了 13 項
+ * 擠成一長串才發明的，五列一眼看得完，再切一層分類只是多一次點擊。
+ */
+export function ManageSheet({ owner, group, onCopySummary, onClose }: {
   owner: boolean
   /** 目前正在看的那一車。臨時加人要繼承它。 */
   group: string | null
-  /** 「再開一個」導進新空間時直接開在分享分頁：那一刻的下一個動作 100% 是把新代碼發出去。 */
-  initialTab?: ManageTab
   /** 複製結果由 Room 執行：它握著「目前這一車」的名單與 Toast，實作只留一份。 */
   onCopySummary: () => void
   onClose: () => void
 }) {
   const t = useT()
   const [mode, setMode] = useState<ManageMode>('menu')
-  const [tab, setTab] = useState<ManageTab>(initialTab ?? 'roster')
   const [confirming, setConfirming] = useState<Confirming>(null)
   const [value, setValue] = useState('')
   const [rosterText, setRosterText] = useState('')
@@ -131,61 +151,6 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
       return
     }
     setWorking(false)
-  }
-
-  if (mode === 'copy') {
-    return (
-      <Sheet title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
-        <div class="stack">
-          {/* 協助者要知道新空間會是他的——選單列的副標拿掉之後，只剩這裡說得出來。 */}
-          <p class="hint">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</p>
-          <div class="field">
-            <label class="label" for="copy-name">{t('copyRoomName')}</label>
-            <input
-              id="copy-name" class="input" value={value} maxLength={80}
-              onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
-            />
-          </div>
-          {error && <p class="note note-warn">{error}</p>}
-          <button
-            class="btn btn-primary btn-block"
-            disabled={working || !value.trim()}
-            onClick={() => { void run(async () => {
-              const code = await copyCurrentRoom(value)
-              onClose()
-              // 回程空間是新的代碼，五支協助的手機還開著舊空間——複製完的下一個
-              // 動作 100% 是把新的代碼發出去。不主動提醒的話，主揪會直接
-              // 開始點名，而其他人繼續在舊空間打勾，兩邊的數字各走各的。
-              shareOnEnter.value = code
-              navigate(`/r/${code}`)
-            }) }}
-          >
-            {working ? t('loading') : t('confirm')}
-          </button>
-        </div>
-      </Sheet>
-    )
-  }
-
-  if (mode === 'rename') {
-    return (
-      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('menu')}>
-        <div class="stack">
-          <input
-            class="input" value={value} maxLength={80} aria-label={t('rename')}
-            onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
-          />
-          {error && <p class="note note-warn">{error}</p>}
-          <button
-            class="btn btn-primary btn-block"
-            disabled={working || !value.trim()}
-            onClick={() => { void run(async () => { await renameRoom(value); setMode('menu') }) }}
-          >
-            {t('save')}
-          </button>
-        </div>
-      </Sheet>
-    )
   }
 
   if (mode === 'roster') {
@@ -252,293 +217,149 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
 
   if (mode === 'walkin') return <AddWalkInSheet group={group} onClose={onClose} onBack={() => setMode('menu')} />
 
-  const url = joinUrl(current.code)
-
   /*
-    分享的三種方式各自一頁，不再全部疊在同一張面板上。代碼那一頁只有代碼：
-    06:50 的車門口是隔著一支手臂把它唸出去，那個字級（.code-display）需要
-    整頁的寬度，旁邊再擺 QR 與連結只會讓三件事互相搶。
+    把這一場的結果交出去的四種方式。複製結果 2026-09 從選單搬進來：它跟 CSV、
+    PDF 是同一件事的三種格式（貼進 LINE、進試算表、存成檔案），分開放在兩層
+    選單裡只會讓人以為它們是不同的東西。
+
+    紙本與 PDF 走的是同一個列印畫面，但印出來的是兩份不同的文件：紙本印空白
+    格子（手機沒電時用筆勾），PDF 印目前的點名結果（交差用）。差別由
+    <html data-print> 決定，見 styles.css 的 @media print。所以紙本排在最後：
+    另外三列帶走的都是「今天點到哪裡」，只有它帶走的是一張還沒開始點的表。
+
+    瀏覽器沒有「下載 PDF」這種 API，PDF 一律是從列印畫面選「儲存為 PDF」存下來
+    的——所以標籤寫「存成 PDF」而不是「下載 PDF」，上面那句 hint 也直說會跳出
+    列印畫面。要真的產出一個 .pdf 檔就得自己畫版面再嵌一份中文字型，那是好幾 MB
+    的字型檔，對一個要在 6:50 的停車場用爛網路開起來的工具划不來。
   */
-  if (mode === 'shareCode') {
+  if (mode === 'export') {
     return (
-      <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('menu')}>
-        <div class="stack">
-          <div class="code-display">{current.code}</div>
-          <button
-            class="btn btn-primary btn-block"
-            onClick={() => { void copyText(current.code, t('copied'), t('copyFailed')) }}
-          >
-            <IconCopy /> {t('copyCode')}
+      <Sheet title={t('export')} onClose={onClose} onBack={() => setMode('menu')}>
+        <p class="hint" style="margin-bottom:10px">{t('exportHint')}</p>
+        <div class="menu">
+          {/* 複製的範圍跟著目前選的分組，所以動作交回 Room 執行。 */}
+          <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
+            <IconCopy />
+            <span><strong>{t('copySummary')}</strong></span>
           </button>
-        </div>
-      </Sheet>
-    )
-  }
 
-  if (mode === 'shareLink') {
-    return (
-      <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('menu')}>
-        <div class="stack">
-          {/* 連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。 */}
-          <p class="link-display">{url}</p>
-          <button class="btn btn-primary btn-block" onClick={() => { void shareLink(url, t) }}>
-            <IconShare /> {t('shareLink')}
-          </button>
           <button
-            class="btn btn-block"
-            onClick={() => { void copyText(url, t('copied'), t('copyFailed')) }}
+            class="menu-item"
+            onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
           >
-            <IconCopy /> {t('copyLink')}
+            <IconDownload />
+            <span><strong>{t('exportCsv')}</strong></span>
           </button>
-        </div>
-      </Sheet>
-    )
-  }
 
-  if (mode === 'shareQr') {
-    return (
-      <Sheet title={t('roomQr')} onClose={onClose} onBack={() => setMode('menu')}>
-        <div class="stack">
-          <QrCard code={current.code} url={url} />
-          <p class="hint">{t('scanToJoin')}</p>
+          <button class="menu-item" onClick={() => printSheet('result', onClose)}>
+            <IconPdf />
+            <span><strong>{t('exportPdf')}</strong></span>
+          </button>
+
+          <button class="menu-item" onClick={() => printSheet('blank', onClose)}>
+            <IconPrinter />
+            <span><strong>{t('printRoster')}</strong></span>
+          </button>
         </div>
       </Sheet>
     )
   }
 
   const expires = formatDate(current.expires_at, prefs.value.lang)
-  // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。
-  const localOnly = connection.value === 'local-only'
   const here = peers.value
 
   return (
     <Sheet
-      title={t('manage')}
+      title={current.name}
       onClose={onClose}
       /*
-        標題列放的是分頁鍵，不是標題（`head`）。「更多」兩個字說不出任何一件
-        這裡做得到的事，而分頁鍵已經寫著空間、名單、分享；標題拿掉之後那一列
-        只剩一顆孤零零的關閉鍵，白佔一整列高度——把分頁鍵搬上去，關閉鍵就有
-        了同伴，也省下一列給清單。無障礙名稱仍然是「更多」。
+        標題列印的是空間的名字。它曾經是「更多」（那兩個字說不出任何一件這裡做得到
+        的事，所以拿掉），接著是三顆分頁鍵（分頁 2026-09 也拿掉了）。名字是這一列
+        唯一還說得出東西的東西：這些動作要動的是哪一個空間——首頁那個同名的選單
+        （`RoomActionsSheet`）也是這樣標的。
 
-        分頁鍵擠不下時 `.segmented` 本來就會自己橫向捲（英文的三個字比較長），
-        關閉鍵是 flex: none，不會被擠掉。
-
-        擠在一條選單裡，掃過去要找的那一項常常要滾好幾屏。分頁依「這個動作
-        在動什麼」分類：「名單」是名單本身的資料與跟它有關的現場動作，「空間」
-        是空間這個容器，「分享」是把這個空間交出去的三種方式。沿用篩選列同一顆
-        `.segmented`——它已經是這個 app 裡「切換一組看哪個子集合」的固定手勢。
-
-        排列是「空間、名單、分享」，但預設打開的仍是「名單」：那裡的複製結果／
-        臨時加人是收尾與現場最常按的動作，開面板就看得到比較重要，跟哪顆鍵排在
-        左邊是兩件事。
+        用 `head` 傳而不是用 `title` 印，是為了不要那顆關閉鍵：收起來靠點面板外面、
+        Esc、或從這一列往下滑，三條路都在，都不佔位置。無障礙名稱一樣是這個名字。
       */
-      head={(
-        <div class="segmented" role="group" aria-label={t('manageTabs')}>
-          <button class="segment" aria-pressed={tab === 'space'} onClick={() => setTab('space')}>
-            {t('manageTabSpace')}
-          </button>
-          <button class="segment" aria-pressed={tab === 'roster'} onClick={() => setTab('roster')}>
-            {t('manageTabRoster')}
-          </button>
-          <button class="segment" aria-pressed={tab === 'share'} onClick={() => setTab('share')}>
-            {t('share')}
-          </button>
-        </div>
-      )}
+      head={<h2 class="sheet-title">{current.name}</h2>}
     >
-      {/*
-        面板頂端曾經有一列「身分標籤＋暱稱＋設定齒輪」，三個都不在了：
-
-        - 身分標籤搬到頂欄的代碼前面（Room.tsx）。它回答的是「我能不能改」，
-          那是進空間第一眼就該看到的事，不是點開面板才知道。
-        - 暱稱只剩首頁的設定進得去。在空間裡改暱稱是個一場活動用不到一次的
-          動作，卻常態佔著面板最上面一整列。
-        - 設定齒輪跟著拿掉：帳號、名字、主題、語言都是跟這台裝置／這個人有關
-          的東西，跟「這個空間」無關，同一個目的地不需要兩個入口。
-
-        協助者少掉一半項目這件事仍然要講，所以 helperLimits 這句留著。
-      */}
+      {/* 協助者看到的項目少一半，要有一句話說清楚少了什麼。 */}
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
       {/*
-        三個分頁的內容裝在同一個固定高度的框裡（`.manage-body`），高度以「空間」
-        分頁為基準：比它長的「名單」在框內捲，比它短的「分享」留白。切分頁時
-        面板不再忽高忽低——分頁鍵是同一顆手指連續要按的東西，面板一長高，下一
-        顆鍵就跑到剛剛按下去的位置底下。
-
-        捲的是這個框而不是整張面板，所以分頁鍵永遠留在框外面、永遠在頂端。
+        排列照一場活動的時間軸走：出發前（編輯名單、存成常用名單）→ 現場
+        （臨時加人）→ 車開了（匯出結果、結束這一輪）。結束這一輪排最後，它是
+        這裡唯一一個「按完就不一樣了」的動作。
       */}
-      <div class="manage-body">
-        {tab === 'roster' && (
-          <div class="menu">
-            {/*
-              編輯名單、存成常用名單排最前：這兩項通常在活動開始、名單還沒
-              開始點名時就會用到。
-            */}
-            {owner && (
-              <button
-                class="menu-item"
-                onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
-              >
-                <IconEdit />
-                <span><strong>{t('editRoster')}</strong></span>
-              </button>
-            )}
-
-            {owner && isSupabaseConfigured && (
-              <button
-                class="menu-item"
-                onClick={() => { setValue(current.name); setMode('saveRoster') }}
-              >
-                <IconBookmark />
-                <span><strong>{t('saveAsRoster')}</strong></span>
-              </button>
-            )}
-
-            {/* 複製的範圍跟著目前選的分組，所以動作交回 Room 執行。 */}
-            <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
-              <IconCopy />
-              <span><strong>{t('copySummary')}</strong></span>
-            </button>
-
-            {/* 協助者站在車門口也用得到，所以不放在 owner 限定的項目裡。 */}
-            {!closed && (
-              <button class="menu-item" onClick={() => setMode('walkin')}>
-                <IconPlus />
-                <span><strong>{t('addWalkIn')}</strong></span>
-              </button>
-            )}
-
-            <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
-              <IconPrinter />
-              <span><strong>{t('printRoster')}</strong></span>
-            </button>
-
-            <button
-              class="menu-item"
-              onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
-            >
-              <IconDownload />
-              <span><strong>{t('exportCsv')}</strong></span>
-            </button>
-          </div>
+      <div class="menu">
+        {owner && (
+          <button
+            class="menu-item"
+            onClick={() => { setRosterText(rosterToText(members.value)); setMode('roster') }}
+          >
+            <IconEdit />
+            <span><strong>{t('editRoster')}</strong></span>
+          </button>
         )}
 
-        {tab === 'space' && (
-          <div class="menu">
-            {/* 重新命名排最前：通常在活動一開始、名字還沒定案時就會用到。 */}
-            {owner && (
-              <button class="menu-item" onClick={() => { setValue(current.name); setMode('rename') }}>
-                <IconTag />
-                <span><strong>{t('rename')}</strong></span>
-              </button>
-            )}
-
-            {/*
-              複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
-              沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
-              方向書明列的核心情境，現場卻只能重貼一次 LINE 接龍重開空間。
-              複製對來源空間完全無害（一個字都不改），而名單本來就對所有拿得到代碼
-              的人可見，所以把它鎖在擁有權後面沒有保護到任何東西。
-            */}
-            <button
-              class="menu-item"
-              onClick={() => {
-                setValue(current.name.includes(t('returnTrip')) ? current.name : `${current.name} · ${t('returnTrip')}`)
-                setMode('copy')
-              }}
-            >
-              <IconDuplicate />
-              <span><strong>{t('copyRoom')}</strong></span>
-            </button>
-
-            {owner && (
-              <button
-                class="menu-item"
-                onClick={() => {
-                  // 重新開啟不是破壞性動作，直接做；結束才要走流程。
-                  if (closed) { void run(() => setRoomClosed(false)); return }
-                  setConfirming('finish')
-                }}
-              >
-                <IconLock />
-                <span><strong>{closed ? t('reopenRoom') : t('finishRound')}</strong></span>
-              </button>
-            )}
-
-            {owner && (
-              <button class="menu-item danger" onClick={() => setConfirming('delete')}>
-                <IconTrash />
-                <span><strong>{t('deleteRoom')}</strong></span>
-              </button>
-            )}
-          </div>
+        {owner && isSupabaseConfigured && (
+          <button
+            class="menu-item"
+            onClick={() => { setValue(current.name); setMode('saveRoster') }}
+          >
+            <IconBookmark />
+            <span><strong>{t('saveAsRoster')}</strong></span>
+          </button>
         )}
 
-        {/*
-          分享從頂欄那顆圖示鍵搬進這裡（2026-09）。三種方式各自一列、各自一頁，
-          順序照現場真的會用到的先後：代碼是隔著車門喊得出去的東西，連結是貼進
-          LINE 群的，二維碼要對方拿起手機對著你的螢幕——愈往下愈需要兩個人站在
-          一起。
-        */}
-        {tab === 'share' && (localOnly ? (
-          /*
-            單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。這個空間真的
-            只存在這支手機裡，代碼、連結、二維碼對任何人都沒有用——發出去只會讓
-            五個同工站在車門口看到「找不到這個代碼。請確認有沒有打錯」，然後以為
-            是自己打錯而重打三次。所以這一頁不列那三種方式，改成講清楚會發生什麼。
-          */
-          <div class="stack">
-            <p class="note note-warn">
-              <strong>{t('shareLocalTitle')}</strong><br />{t('shareLocalBody')}
-            </p>
-            <p class="hint">{t('shareLocalHow')}</p>
-          </div>
-        ) : (
-          <>
-            <div class="menu">
-              <button class="menu-item" onClick={() => setMode('shareCode')}>
-                <IconHash />
-                <span>
-                  <strong>{t('roomCode')}</strong>
-                  <span class="sub mono">{current.code}</span>
-                </span>
-              </button>
+        {/* 協助者站在車門口也用得到，所以不放在 owner 限定的項目裡。 */}
+        {!closed && (
+          <button class="menu-item" onClick={() => setMode('walkin')}>
+            <IconPlus />
+            <span><strong>{t('addWalkIn')}</strong></span>
+          </button>
+        )}
 
-              <button class="menu-item" onClick={() => setMode('shareLink')}>
-                <IconLink />
-                <span><strong>{t('roomLink')}</strong></span>
-              </button>
+        {/* 匯出不經過伺服器，單機模式下照樣在。 */}
+        <button class="menu-item" onClick={() => setMode('export')}>
+          <IconDownload />
+          <span><strong>{t('export')}</strong></span>
+        </button>
 
-              <button class="menu-item" onClick={() => setMode('shareQr')}>
-                <IconQr />
-                <span><strong>{t('roomQr')}</strong></span>
-              </button>
-            </div>
-
-            <p class="hint" style="margin-top:12px">{t('shareHint')}</p>
-
-            {/*
-              誰已經進來了。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到
-              的前提是五個人在同一個地方——他們散在兩台車的前後門。更常見的失敗是
-              有人掃了二維碼但停在瀏覽器的「要開啟嗎」對話框上，自己以為進來了；等到
-              07:12 發現有一車根本沒人在點，已經沒有第二次機會。
-              離線時不顯示（誠實原則：那時候這個數字只是舊的）。
-            */}
-            {connection.value === 'online' && presenceReady.value && (
-              <div class="field" style="margin-top:12px">
-                <span class="label">{t('whoIsHere')}</span>
-                <p class="note">
-                  {here.length <= 1
-                    ? t('onlyYouHere')
-                    : t('peersHere', { n: here.length, names: peerNames(here, t) })}
-                </p>
-              </div>
-            )}
-          </>
-        ))}
+        {owner && (
+          <button
+            class="menu-item"
+            onClick={() => {
+              // 重新開啟不是破壞性動作，直接做；結束才要走流程。
+              if (closed) { void run(() => setRoomClosed(false)); return }
+              setConfirming('finish')
+            }}
+          >
+            <IconLock />
+            <span><strong>{closed ? t('reopenRoom') : t('finishRound')}</strong></span>
+          </button>
+        )}
       </div>
+
+      {/*
+        誰已經進來了。這一區跟著空間走，不跟著「邀請點名」搬去首頁：presence 只有
+        「正在這個空間裡」的裝置才數得到，首頁上根本沒有這個數字。
+
+        06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到的前提是五個人在同一個
+        地方——他們散在兩台車的前後門。更常見的失敗是有人掃了二維碼但停在瀏覽器的
+        「要開啟嗎」對話框上，自己以為進來了；等到 07:12 發現有一車根本沒人在點，
+        已經沒有第二次機會。離線時不顯示（誠實原則：那時候這個數字只是舊的）。
+      */}
+      {connection.value === 'online' && presenceReady.value && (
+        <div class="field" style="margin-top:12px">
+          <span class="label">{t('whoIsHere')}</span>
+          <p class="note">
+            {here.length <= 1
+              ? t('onlyYouHere')
+              : t('peersHere', { n: here.length, names: peerNames(here, t) })}
+          </p>
+        </div>
+      )}
 
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
       <p class="hint" style="margin-top:14px">{t('expiresOn', { date: expires })}</p>
@@ -574,15 +395,278 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
           </div>
         </ConfirmDialog>
       )}
+    </Sheet>
+  )
+}
 
-      {confirming === 'delete' && (
+// ---------------------------------------------------------------------------
+
+type RoomActionMode = 'menu' | 'invite' | 'inviteCode' | 'inviteLink' | 'inviteQr' | 'rename' | 'copy'
+
+/**
+ * 首頁上單一空間的動作選單（2026-09）。
+ *
+ * 邀請點名、重新命名、建立副本、刪除空間動的都是「空間這個容器」，一場活動
+ * 通常只在開始或結束時各碰一次。它們原本住在空間裡的「更多」面板，跟點名當下
+ * 的動作混在一起；搬到首頁之後兩邊都變乾淨：首頁那份清單本來就是「我有哪些
+ * 空間」，要重新命名、要複製一份、要刪掉，都是在看那份清單的時候想到的。
+ *
+ * 這裡吃的是代碼而不是 `room.value`：首頁上沒有「目前這一間」，store 那三個
+ * 動作也跟著改成吃代碼。
+ */
+export function RoomActionsSheet({
+  code, name, owner, initialMode, onForget, onCopied, onClose,
+}: {
+  code: string
+  name: string
+  owner: boolean
+  /** 剛複製完直接開在邀請頁：那一刻的下一個動作 100% 是把新代碼發出去。 */
+  initialMode?: RoomActionMode
+  /** 只有「最近的空間」清得掉；「我的活動」是帳號那邊的清單，清掉也會再長回來。 */
+  onForget?: () => void
+  onCopied: (code: string, name: string) => void
+  onClose: () => void
+}) {
+  const t = useT()
+  const [mode, setMode] = useState<RoomActionMode>(initialMode ?? 'menu')
+  const [value, setValue] = useState('')
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+
+  const url = joinUrl(code)
+  // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。
+  const localOnly = connection.value === 'local-only'
+
+  async function run(fn: () => Promise<void>): Promise<void> {
+    setWorking(true)
+    setError(null)
+    try {
+      await fn()
+    } catch (e) {
+      setError(errorMessage(e, t))
+      setWorking(false)
+      return
+    }
+    setWorking(false)
+  }
+
+  if (mode === 'rename') {
+    return (
+      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('menu')}>
+        <div class="stack">
+          <input
+            class="input" value={value} maxLength={80} aria-label={t('rename')}
+            onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
+          />
+          {error && <p class="note note-warn">{error}</p>}
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            /* 改完就關：這張面板的標題是舊名字（它是 prop），留在原地會自相矛盾，
+               而關掉之後清單上那一列就是新名字。 */
+            onClick={() => { void run(async () => { await renameRoom(code, value); onClose() }) }}
+          >
+            {working ? t('loading') : t('save')}
+          </button>
+        </div>
+      </Sheet>
+    )
+  }
+
+  if (mode === 'copy') {
+    return (
+      <Sheet title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
+        <div class="stack">
+          {/* 協助者要知道新空間會是他的——選單列的副標拿掉之後，只剩這裡說得出來。 */}
+          <p class="hint">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</p>
+          <div class="field">
+            <label class="label" for="copy-name">{t('copyRoomName')}</label>
+            <input
+              id="copy-name" class="input" value={value} maxLength={80}
+              onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
+            />
+          </div>
+          {error && <p class="note note-warn">{error}</p>}
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => {
+              const title = value.trim()
+              const next = await copyRoom(code, title)
+              // 副本是新的代碼，五支協助的手機還開著舊空間——複製完的下一個動作
+              // 100% 是把新的代碼發出去。不主動把邀請頁推到面前的話，主揪會直接
+              // 開始點名，而其他人繼續在舊空間打勾，兩邊的數字各走各的。
+              onCopied(next, title)
+            }) }}
+          >
+            {working ? t('loading') : t('confirm')}
+          </button>
+        </div>
+      </Sheet>
+    )
+  }
+
+  /*
+    邀請的三種方式各自一頁，不全部疊在同一張面板上。代碼那一頁只有代碼：
+    06:50 的車門口是隔著一支手臂把它唸出去，那個字級（.code-display）需要
+    整頁的寬度，旁邊再擺 QR 與連結只會讓三件事互相搶。
+  */
+  if (mode === 'inviteCode') {
+    return (
+      <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')}>
+        <div class="stack">
+          <div class="code-display">{code}</div>
+          <button
+            class="btn btn-primary btn-block"
+            onClick={() => { void copyText(code, t('copied'), t('copyFailed')) }}
+          >
+            <IconCopy /> {t('copyCode')}
+          </button>
+        </div>
+      </Sheet>
+    )
+  }
+
+  if (mode === 'inviteLink') {
+    return (
+      <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')}>
+        <div class="stack">
+          {/* 連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。 */}
+          <p class="link-display">{url}</p>
+          <button class="btn btn-primary btn-block" onClick={() => { void shareLink(url, t) }}>
+            <IconShare /> {t('shareLink')}
+          </button>
+          <button
+            class="btn btn-block"
+            onClick={() => { void copyText(url, t('copied'), t('copyFailed')) }}
+          >
+            <IconCopy /> {t('copyLink')}
+          </button>
+        </div>
+      </Sheet>
+    )
+  }
+
+  if (mode === 'inviteQr') {
+    return (
+      <Sheet title={t('roomQr')} onClose={onClose} onBack={() => setMode('invite')}>
+        <div class="stack">
+          <QrCard code={code} url={url} />
+          <p class="hint">{t('scanToJoin')}</p>
+        </div>
+      </Sheet>
+    )
+  }
+
+  if (mode === 'invite') {
+    return (
+      <Sheet title={t('invite')} onClose={onClose} onBack={() => setMode('menu')}>
+        {/*
+          單機模式下這個空間真的只存在這支手機裡，代碼、連結、二維碼對任何人都
+          沒有用——發出去只會讓五個同工站在車門口看到「找不到這個代碼。請確認有
+          沒有打錯」，然後以為是自己打錯而重打三次。所以那三列不列，改成講清楚
+          會發生什麼。
+        */}
+        {localOnly ? (
+          <div class="stack">
+            <p class="note note-warn">
+              <strong>{t('shareLocalTitle')}</strong><br />{t('shareLocalBody')}
+            </p>
+            <p class="hint">{t('shareLocalHow')}</p>
+          </div>
+        ) : (
+          <>
+            <div class="menu">
+              <button class="menu-item" onClick={() => setMode('inviteCode')}>
+                <IconHash />
+                <span>
+                  <strong>{t('roomCode')}</strong>
+                  <span class="sub mono">{code}</span>
+                </span>
+              </button>
+
+              <button class="menu-item" onClick={() => setMode('inviteLink')}>
+                <IconLink />
+                <span><strong>{t('roomLink')}</strong></span>
+              </button>
+
+              <button class="menu-item" onClick={() => setMode('inviteQr')}>
+                <IconQr />
+                <span><strong>{t('roomQr')}</strong></span>
+              </button>
+            </div>
+            <p class="hint" style="margin-top:12px">{t('shareHint')}</p>
+          </>
+        )}
+      </Sheet>
+    )
+  }
+
+  return (
+    <Sheet title={name} onClose={onClose}>
+      <div class="menu">
+        {/* 邀請排最前：這是四項裡唯一會在活動當天用到的。 */}
+        <button class="menu-item" onClick={() => setMode('invite')}>
+          <IconShare />
+          <span><strong>{t('invite')}</strong></span>
+        </button>
+
+        {owner && (
+          <button class="menu-item" onClick={() => { setValue(name); setMode('rename') }}>
+            <IconTag />
+            <span><strong>{t('rename')}</strong></span>
+          </button>
+        )}
+
+        {/*
+          複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
+          沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
+          方向書明列的核心情境，現場卻只能重貼一次 LINE 接龍重開空間。
+          複製對來源空間完全無害（一個字都不改），而名單本來就對所有拿得到代碼
+          的人可見，所以把它鎖在擁有權後面沒有保護到任何東西。
+        */}
+        <button
+          class="menu-item"
+          onClick={() => {
+            setValue(name.includes(t('returnTrip')) ? name : `${name} · ${t('returnTrip')}`)
+            setMode('copy')
+          }}
+        >
+          <IconDuplicate />
+          <span><strong>{t('copyRoom')}</strong></span>
+        </button>
+
+        {/*
+          「從清單移除」跟「刪除空間」隔壁排，是刻意的：它們以前一個是清單上的
+          垃圾桶圖示、一個藏在面板第九項，長得完全不像同一種東西，但使用者想的
+          都是「我不要再看到這個」。擺在一起、各自寫清楚做了什麼，才選得對。
+        */}
+        {onForget && (
+          <button class="menu-item" onClick={onForget}>
+            <IconClose size={20} />
+            <span><strong>{t('forget')}</strong></span>
+          </button>
+        )}
+
+        {owner && (
+          <button class="menu-item danger" onClick={() => setConfirming(true)}>
+            <IconTrash />
+            <span><strong>{t('deleteRoom')}</strong></span>
+          </button>
+        )}
+      </div>
+
+      {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+
+      {confirming && (
         <ConfirmDialog
           title={t('deleteRoom')}
           body={t('deleteRoomWarning')}
           confirmLabel={t('deleteRoom')}
           danger
-          onClose={() => setConfirming(null)}
-          onConfirm={() => { void run(async () => { await deleteCurrentRoom(); onClose(); navigate('/') }) }}
+          onClose={() => setConfirming(false)}
+          onConfirm={() => { void run(async () => { await deleteRoom(code); onClose() }) }}
         />
       )}
     </Sheet>
