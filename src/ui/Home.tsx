@@ -86,6 +86,33 @@ export function Home({ onSettings }: { onSettings: () => void }) {
   const visibleRows = filter === 'all' ? rows : rows.filter((r) => (filter === 'mine' ? r.isOwner : !r.isOwner))
   const emptyText = filter === 'mine' ? t('myRoomsEmpty') : filter === 'others' ? t('noOtherRooms') : t('noRecentRooms')
 
+  // 「創建空間」屬於「我的」——它生出來的空間就是主揪自己的；「加入空間」屬於
+  // 「他人的」——會加進來的本來就是別人開的空間。「所有」是兩邊的聯集，兩顆
+  // 都置頂。並排時各自 flex:1，單獨出現時滿版寬度跟底下的列對齊。
+  const showCreate = filter !== 'others'
+  const showJoin = filter !== 'mine'
+
+  const createButton = (block: boolean) => (
+    <button
+      class={block ? 'btn btn-primary btn-lg btn-block' : 'btn btn-primary btn-lg'}
+      style={block ? undefined : 'flex:1'}
+      onClick={() => navigate('/new')}
+    >
+      <IconPlus /> {t('openRoom')}
+    </button>
+  )
+  const joinButton = (block: boolean) => (
+    <button
+      class={block ? 'btn btn-lg btn-block' : 'btn btn-lg'}
+      style={block ? undefined : 'flex:1'}
+      aria-expanded={joinOpen}
+      aria-controls="join-panel"
+      onClick={() => setJoinOpen((v) => !v)}
+    >
+      {t('joinRoom')} <IconChevronDown class={`select-row-chevron${joinOpen ? ' is-open' : ''}`} />
+    </button>
+  )
+
   return (
     <div class="shell">
       <div class="home-head row">
@@ -103,64 +130,7 @@ export function Home({ onSettings }: { onSettings: () => void }) {
       )}
 
       <div class="stack">
-        <div class="row" style="gap:8px">
-          <button
-            class="btn btn-lg"
-            style="flex:1"
-            aria-expanded={joinOpen}
-            aria-controls="join-panel"
-            onClick={() => setJoinOpen((v) => !v)}
-          >
-            {t('joinRoom')} <IconChevronDown class={`select-row-chevron${joinOpen ? ' is-open' : ''}`} />
-          </button>
-          <button class="btn btn-primary btn-lg" style="flex:1" onClick={() => navigate('/new')}>
-            <IconPlus /> {t('openRoom')}
-          </button>
-        </div>
-
-        {joinOpen && (
-          <div class="card" id="join-panel">
-            <div class="stack">
-              <input
-                ref={codeInputRef}
-                class="input code-input"
-                value={code}
-                // 沒有 maxLength：貼上的常常是整條連結，得讓 extractRoomCode 先從裡面
-                // 抓出代碼，原生的長度限制會在那之前就把後半段截斷。裁到固定長度
-                // 改成抓完代碼之後才做，抓出來的碼本來就只有 6 碼。
-                inputMode="text"
-                autocapitalize="characters"
-                autocomplete="off"
-                spellcheck={false}
-                aria-label={t('codePlaceholder')}
-                placeholder="——————"
-                onInput={(e) => {
-                  const raw = (e.currentTarget as HTMLInputElement).value
-                  setCode(extractRoomCode(raw).slice(0, CODE_LENGTH + 2))
-                  setError(null)
-                }}
-                onKeyDown={(e) => { if (e.key === 'Enter') join() }}
-              />
-              {error && <p class="note note-warn">{error}</p>}
-              <button
-                class="btn btn-block"
-                disabled={extractRoomCode(code).length < CODE_LENGTH}
-                onClick={join}
-              >
-                {t('join')}
-              </button>
-              {canScanQr() && (
-                <button class="btn btn-ghost btn-block" onClick={() => setScanOpen(true)}>
-                  <IconCamera /> {t('scanQr')}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {scanOpen && <ScanSheet onClose={() => setScanOpen(false)} />}
-
-        <div class="field">
+        <div class="stack">
           <div class="segmented" role="group" aria-label={t('filter')}>
             <button class="segment" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
               {t('roomFilterAll')}
@@ -172,6 +142,55 @@ export function Home({ onSettings }: { onSettings: () => void }) {
               {t('roomFilterOthers')}
             </button>
           </div>
+
+          {showCreate && showJoin ? (
+            <div class="row" style="gap:8px">
+              {joinButton(false)}
+              {createButton(false)}
+            </div>
+          ) : showCreate ? createButton(true) : joinButton(true)}
+
+          {showJoin && joinOpen && (
+            <div class="card" id="join-panel">
+              <div class="stack">
+                <input
+                  ref={codeInputRef}
+                  class="input code-input"
+                  value={code}
+                  // 沒有 maxLength：貼上的常常是整條連結，得讓 extractRoomCode 先從裡面
+                  // 抓出代碼，原生的長度限制會在那之前就把後半段截斷。裁到固定長度
+                  // 改成抓完代碼之後才做，抓出來的碼本來就只有 6 碼。
+                  inputMode="text"
+                  autocapitalize="characters"
+                  autocomplete="off"
+                  spellcheck={false}
+                  aria-label={t('codePlaceholder')}
+                  placeholder="——————"
+                  onInput={(e) => {
+                    const raw = (e.currentTarget as HTMLInputElement).value
+                    setCode(extractRoomCode(raw).slice(0, CODE_LENGTH + 2))
+                    setError(null)
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') join() }}
+                />
+                {error && <p class="note note-warn">{error}</p>}
+                <button
+                  class="btn btn-block"
+                  disabled={extractRoomCode(code).length < CODE_LENGTH}
+                  onClick={join}
+                >
+                  {t('join')}
+                </button>
+                {canScanQr() && (
+                  <button class="btn btn-ghost btn-block" onClick={() => setScanOpen(true)}>
+                    <IconCamera /> {t('scanQr')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {scanOpen && <ScanSheet onClose={() => setScanOpen(false)} />}
 
           {visibleRows.length === 0 ? (
             <p class="note">{emptyText}</p>
