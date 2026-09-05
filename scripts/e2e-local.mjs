@@ -16,6 +16,11 @@ const ok = (label, cond) => { console.log((cond ? '  PASS  ' : '  FAIL  ') + lab
 // 計分區（44px 大字＋「N / M 人」＋進度條）已經整塊拿掉：攜伴不再解析之後，
 // 它和「未到 N」說的是同一件事。畫面上的那個數字現在長在頂欄的分段控制裡。
 const missing = async () => ((await p.getByRole('button', { name: /^未到/ }).textContent()) || '').replace(/\D/g, '')
+/** 開空間第一步（貼名單）走到第二步（看解析結果）。「建立」只長在第二步。 */
+const generateList = async () => {
+  await p.getByRole('button', { name: /產生名單/ }).click()
+  await p.waitForTimeout(500)
+}
 const segCount = async (name) => ((await p.getByRole('button', { name }).first().textContent()) || '').replace(/\D/g, '')
 
 await p.goto(URL); await p.waitForTimeout(1200)
@@ -37,6 +42,9 @@ await p.locator('#roster-text').fill(`秋季旅遊報名
 陳怡君
 陳怡君`)
 await p.waitForTimeout(400)
+// 開空間 2026-09 拆成兩步：貼名單 →「產生名單」→ 看解析結果 →「建立」。解析
+// 結果不再跟輸入框擠同一屏，所以預覽與「建立」都要先走到第二步才碰得到。
+await generateList()
 const previewRows = await p.locator('.preview-row').count()
 ok(`解析預覽 ${previewRows} 列（標題行也算一人，共 9）`, previewRows === 9)
 
@@ -48,6 +56,8 @@ ok('第一列是被誤判成人的標題行',
 await p.locator('.preview-row').first().locator('.preview-remove').click()
 await p.waitForTimeout(400)
 ok('移除之後預覽剩 8 列', (await p.locator('.preview-row').count()) === 8)
+// 文字才是唯一的真相——回第一步看那個 textarea，被移掉的那一列真的從文字裡消失了。
+await p.getByRole('button', { name: /調整清單/ }).click(); await p.waitForTimeout(400)
 ok('移除是去改文字，不是只改預覽',
    !((await p.locator('#roster-text').inputValue()).includes('秋季旅遊報名')))
 ok('其他人一個都沒少',
@@ -56,6 +66,7 @@ ok('其他人一個都沒少',
 // 復原：把它加回去，讓後面的斷言仍然跑在 9 個人的名單上。
 await p.locator('#roster-text').fill('秋季旅遊報名\n' + await p.locator('#roster-text').inputValue())
 await p.waitForTimeout(400)
+await generateList()
 ok('補回去之後又是 9 列', (await p.locator('.preview-row').count()) === 9)
 ok('同名警告出現', await p.locator('.note-warn').first().isVisible())
 
@@ -215,6 +226,7 @@ await p.locator('#roster-text').fill(`沒填車次的甲
 陳怡君 0955666777
 陳大同（請假）`)
 await p.waitForTimeout(400)
+await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
 
 // #28 沒有分車的人也要有自己的晶片與標題，否則兩個顧車的志工會同時漏掉他們。
@@ -465,6 +477,7 @@ await p.getByRole('button', { name: /創建空間/ }).first().click(); await p.w
 await p.locator('#room-name').fill('備註加號碼測試')
 await p.locator('#roster-text').fill('陳大同 0955666777 帶輪椅')
 await p.waitForTimeout(300)
+await generateList()
 await p.getByRole('button', { name: /建立/ }).click(); await p.waitForTimeout(1000)
 await p.locator('.member').first().getByRole('button', { name: /更多|more/ }).click()
 await p.waitForTimeout(400)
@@ -479,6 +492,7 @@ await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitF
 await p.locator('#room-name').fill('長名單測試')
 await p.locator('#roster-text').fill(Array.from({length: 40}, (_, i) => `同工${String(i+1).padStart(2,'0')}`).join('\n'))
 await p.waitForTimeout(400)
+await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300)
 ok('名單是 list 地標', (await p.locator('.list[role=list]').count()) === 1)
 ok('每一列是 listitem', (await p.locator('.member[role=listitem]').count()) === 40)
@@ -552,6 +566,7 @@ await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitF
 await p.locator('#room-name').fill('確認對話框測試')
 await p.locator('#roster-text').fill('王小明\n李美花\n陳大同')
 await p.waitForTimeout(300)
+await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
 
 // --- 確認對話框 ---
@@ -702,6 +717,7 @@ await p.locator('#roster-text').fill(`【第一車】
 await p.waitForTimeout(400)
 const preview = await p.locator('.preview-row').count()
 ok(`解析預覽 ${preview} 人（標題行不算人）`, preview===6)
+await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300)
 
 // --- 分組 UI ---
@@ -767,6 +783,7 @@ await p.locator('#roster-text').fill(
   ['【第一車】', ...Array.from({length:40},(_,i)=>`第一車學員${String(i+1).padStart(2,'0')}`),
    '【第二車】', ...Array.from({length:40},(_,i)=>`第二車學員${String(i+1).padStart(2,'0')}`)].join('\n'))
 await p.waitForTimeout(800)
+await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(2200)
 const fold = await p.evaluate(() => {
   const rows = [...document.querySelectorAll('.member')]

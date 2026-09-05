@@ -204,6 +204,11 @@ for (const scheme of ['light', 'dark']) {
   await page.waitForTimeout(400)
   await audit(page, scheme, '創建空間')
 
+  // 開空間 2026-09 拆成兩步（貼名單 →「產生名單」→ 看解析結果 →「建立」），
+  // 解析結果與「建立」都住在第二步，要先把名單產出來。
+  await page.getByRole('button', { name: /產生名單|Generate/ }).click(); await page.waitForTimeout(500)
+  await audit(page, scheme, '創建空間 · 解析結果')
+
   await page.getByRole('button', { name: /建立|Create/ }).click(); await page.waitForTimeout(1200)
   await page.locator('.member-main').nth(0).click(); await page.waitForTimeout(500)
   await audit(page, scheme, '空間（含 Toast）')

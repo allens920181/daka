@@ -38,6 +38,8 @@ await A.p.getByRole('button', { name: /開啟空間/ }).first().click(); await A
 await A.p.locator('#room-name').fill('秋季旅遊 · 出發')
 await A.p.locator('#roster-text').fill('王小明 0912345678\n李美花 +1\n陳大同（請假）\n張三\n李四')
 await A.p.waitForTimeout(300)
+// 開空間 2026-09 拆成兩步：貼名單 →「產生名單」→ 看解析結果 →「建立」。
+await A.p.getByRole('button', { name: /產生名單/ }).click(); await A.p.waitForTimeout(500)
 await A.p.getByRole('button', { name: /建立/ }).click(); await A.p.waitForTimeout(1600)
 const code = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`[主揪] 空間建立於伺服器，代碼 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))

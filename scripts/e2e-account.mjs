@@ -80,6 +80,8 @@ await A.page.getByRole('button', { name: /開啟空間/ }).first().click(); awai
 await A.page.locator('#room-name').fill('秋季旅遊 · 出發')
 await A.page.locator('#roster-text').fill('王小明\n李美花 +1\n陳大同')
 await A.page.waitForTimeout(300)
+// 開空間 2026-09 拆成兩步：貼名單 →「產生名單」→ 看解析結果 →「建立」。
+await A.page.getByRole('button', { name: /產生名單/ }).click(); await A.page.waitForTimeout(500)
 await A.page.getByRole('button', { name: /建立/ }).click(); await A.page.waitForTimeout(1400)
 const code = (await A.page.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`[舊手機] 未登入就開好空間 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code ?? ''))
