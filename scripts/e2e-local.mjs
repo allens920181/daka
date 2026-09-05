@@ -140,14 +140,54 @@ ok('並標明它是備註裡的號碼',
    ((await p.locator('a[href^="tel:"] .sub').first().textContent()) ?? '').includes('備註'))
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
-// 分享（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、連結、二維碼對任何
-// 人都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為
-// 是自己打錯而重打三次。分享分頁必須當場說出來，不能照樣列出那三種方式。
-// 分享 2026-09 從頂欄搬進「更多」的第三個分頁。
+// 匯出結果（單機模式）。列印與 CSV 不經過任何伺服器，自己一個人點完照樣要交得出
+// 名單，所以這一列在單機模式下也照樣在。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(600)
 ok('頂欄沒有分享鍵了', (await p.locator('.topbar button[aria-label="分享"]').count()) === 0)
-await p.getByRole('button', { name: /^分享$/ }).click(); await p.waitForTimeout(1200)
-ok('單機模式：分享分頁說「這個空間只有你看得到」',
+// 邀請點名 2026-09 搬到首頁的空間選單：發代碼是開場前的事，這個面板是點名當下的事。
+ok('空間裡的「更多」不再有邀請點名', (await p.getByRole('button', { name: /^邀請點名$/ }).count()) === 0)
+ok('也不再有代碼、連結、二維碼',
+   (await p.getByRole('button', { name: /^代碼|^連結|^二維碼/ }).count()) === 0)
+ok('重新命名、建立副本、刪除空間也都不在了',
+   (await p.getByRole('button', { name: /重新命名|建立副本|刪除空間/ }).count()) === 0)
+ok('單機模式仍然匯得出去', (await p.getByRole('button', { name: /^匯出結果$/ }).count()) === 1)
+await p.getByRole('button', { name: /^匯出結果$/ }).click(); await p.waitForTimeout(400)
+// 複製結果 2026-09 收進匯出結果：它跟 CSV、PDF 是同一件事的三種格式。紙本排最後
+// ——另外三列帶走的是「今天點到哪裡」，只有它帶走的是一張還沒開始點的空白表。
+const exportRows = await p.locator('.sheet .menu-item strong').allTextContents()
+ok(`匯出結果四列：${exportRows.join('、')}`,
+   JSON.stringify(exportRows) === JSON.stringify(['複製結果', '下載 CSV', '存成 PDF', '列印紙本名單']))
+const exportHint = (await p.locator('.sheet .hint').first().textContent()) || ''
+ok('匯出頁講清楚 PDF 是從列印畫面存的', exportHint.includes('儲存為 PDF'))
+ok('也講清楚紙本印的是空白格子', exportHint.includes('空白格子'))
+await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
+ok('返回之後回到選單', (await p.getByRole('button', { name: /^匯出結果$/ }).count()) === 1)
+
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
+
+// 首頁：每個空間右邊的「更多」（2026-09）。邀請點名、重新命名、建立副本、刪除空間
+// 動的都是「空間這個容器」，搬到首頁跟空間清單放在一起——要複製一份、要改名、要刪掉，
+// 都是在看那份清單的時候想到的。
+await p.goto(URL); await p.waitForTimeout(900)
+ok('首頁清單每一列右邊都有一顆「更多」',
+   (await p.getByRole('button', { name: /^更多：/ }).count()) === (await p.locator('.recent-item').count()))
+ok('無障礙名稱說得出是哪一個空間',
+   (await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).count()) === 1)
+ok('列上那顆垃圾桶不見了（從清單移除搬進選單，跟刪除空間排在一起才分得出差別）',
+   (await p.getByRole('button', { name: /^從清單移除：/ }).count()) === 0)
+await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(500)
+ok('面板標題就是那個空間的名字',
+   (await p.locator('.sheet-title').textContent()) === '秋季旅遊 · 出發')
+const spaceRows = await p.locator('.sheet .menu-item strong').allTextContents()
+ok(`空間選單：${spaceRows.join('、')}`,
+   JSON.stringify(spaceRows) === JSON.stringify(['邀請點名', '重新命名', '建立副本', '從清單移除', '刪除空間']))
+
+// 邀請點名（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、連結、二維碼對任何
+// 人都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為
+// 是自己打錯而重打三次。邀請頁必須當場說出來，不能照樣列出那三種方式。
+await p.getByRole('button', { name: /^邀請點名$/ }).click(); await p.waitForTimeout(800)
+ok('單機模式：邀請頁說「這個空間只有你看得到」',
    ((await p.locator('.note-warn').textContent()) || '').includes('只有你看得到'))
 ok('單機模式：不列代碼', (await p.getByRole('button', { name: /^代碼/ }).count()) === 0)
 ok('單機模式：不列連結', (await p.getByRole('button', { name: /^連結/ }).count()) === 0)
@@ -157,20 +197,10 @@ ok('單機模式：不產 QR', (await p.locator('.qr-card img').count()) === 0)
 ok('單機模式：不給「複製連結」', (await p.getByRole('button', { name: /傳給別人|複製連結/ }).count()) === 0)
 ok('單機模式：講清楚別人會看到什麼',
    ((await p.locator('.note-warn').textContent()) || '').includes('找不到這個代碼'))
-// 但「匯出」照樣在：列印與 CSV 不經過任何伺服器，自己一個人點完照樣要交得出名單。
-ok('單機模式仍然匯得出去', (await p.getByRole('button', { name: /^匯出$/ }).count()) === 1)
-await p.getByRole('button', { name: /^匯出$/ }).click(); await p.waitForTimeout(400)
-const exportRows = await p.locator('.sheet .menu-item strong').allTextContents()
-ok(`匯出頁三列：${exportRows.join('、')}`,
-   JSON.stringify(exportRows) === JSON.stringify(['列印紙本名單', '下載 CSV', '存成 PDF']))
-ok('匯出頁講清楚 PDF 是從列印畫面存的',
-   ((await p.locator('.sheet .hint').first().textContent()) || '').includes('儲存為 PDF'))
 await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
-ok('返回之後回到分享分頁',
-   (await p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '分享')
-
+ok('返回之後回到空間選單', (await p.getByRole('button', { name: /^邀請點名$/ }).count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
+ok('Esc 關閉空間選單', (await p.locator('.sheet').count()) === 0)
 
 // ---- 現場操作：同名辨識、未分組、臨時加人、刪除確認 ----
 await p.goto(URL); await p.waitForTimeout(900)
@@ -328,15 +358,16 @@ await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(20
 ok('Esc 清空搜尋字但搜尋框還在', await p.locator('input[type=search]').inputValue() === ''
    && (await p.locator('input[type=search]').count()) === 1)
 
-// 「名單」分頁排序（2026-09）：編輯名單排第一項，複製結果緊接在後。
+// 「更多」不再分頁（2026-09）：空間那一組搬到首頁之後只剩幾列，一眼看得完，
+// 再切一層分類只是多一次點擊。排列照一場活動的時間軸：出發前 → 現場 → 車開了。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
-const firstItem = await p.locator('.menu .menu-item').first().textContent()
-ok(`管理面板第一項是編輯名單：「${(firstItem || '').trim().split('\n')[0]}」`,
-   (firstItem || '').includes('編輯名單'))
-// 列印與 CSV 2026-09 合併成「匯出」搬進分享分頁：名單分頁只留會動到名單的動作。
-ok('名單分頁不再有列印與下載 CSV',
-   (await p.getByRole('button', { name: /列印紙本名單|下載 CSV/ }).count()) === 0)
-ok('複製結果緊接在編輯名單後面', (await p.getByRole('button', { name: /複製結果/ }).count()) === 1)
+ok('面板不再有分頁鍵', (await p.locator('.sheet .segmented').count()) === 0)
+const manageRows = await p.locator('.sheet .menu-item strong').allTextContents()
+ok(`「更多」是一條平的選單：${manageRows.join('、')}`,
+   JSON.stringify(manageRows) === JSON.stringify(['編輯名單', '臨時加人', '匯出結果', '結束這一輪']))
+// 列印、CSV 與複製結果 2026-09 合併成「匯出結果」，都在子畫面裡。
+ok('選單上不直接列列印、CSV、複製結果',
+   (await p.getByRole('button', { name: /^列印紙本名單$|^下載 CSV$|^複製結果$/ }).count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // #36 刪除是唯一不可復原的動作，不能一按就沒。
@@ -360,13 +391,12 @@ await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForT
 ok('「更多」面板沒有身分列了', (await p.locator('.sheet .role-line').count()) === 0)
 ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[aria-label="設定"]').count()) === 0)
 
-// 標題不印在畫面上，但無障礙名稱要留著（2026-09）。
-ok('「更多」不印標題', (await p.locator('.sheet .sheet-title').count()) === 0)
-ok('但無障礙名稱還在', (await p.locator('.sheet').getAttribute('aria-label')) === '更多')
-// 標題拿掉之後那一列只剩一顆孤零零的叉叉，所以叉叉也拿掉，整列給分頁鍵。
-// 收起來的三條路：點面板外面、Esc、從頂端那一帶往下滑。
+// 標題列印的是空間名字（2026-09）：它曾經是「更多」（那兩個字說不出任何一件這裡
+// 做得到的事）、接著是三顆分頁鍵，分頁拿掉之後名字是這一列唯一還說得出東西的東西。
+ok('標題列印的是空間名字', (await p.locator('.sheet .sheet-title').textContent()) === '現場操作測試')
+ok('無障礙名稱跟著標題', (await p.locator('.sheet').getAttribute('aria-label')) === '現場操作測試')
+// 那一列仍然沒有叉叉。收起來的三條路：點面板外面、Esc、從頂端那一帶往下滑。
 ok('「更多」沒有關閉鍵了', (await p.locator('.sheet-head .icon-btn').count()) === 0)
-ok('整列都是分頁鍵', (await p.locator('.sheet-head .segmented').count()) === 1)
 
 /** 從 sel 的中心往下（或往旁邊）滑，模擬手勢。 */
 async function swipe(sel, dy, dx = 0) {
@@ -386,20 +416,17 @@ ok('往下滑一點點不會收起來（手指抖一下不該關掉面板）', (
 await swipe('.sheet-grip', 130)
 ok('從握把往下滑收得起來', (await p.locator('.sheet').count()) === 0)
 
-// 手勢區包含標題列，不是只有那條 24px 的握把——但按著分頁鍵往下拖時，
-// Chromium 會把它當成拖曳選取的文字而送出 pointercancel，手勢會在第一公分
-// 就被吃掉。這一條就是在守 .sheet-head 的 user-select: none。
+// 手勢區包含標題列，不是只有那條 24px 的握把——但按著標題往下拖時，Chromium 會
+// 把它當成拖曳選取的文字而送出 pointercancel，手勢會在第一公分就被吃掉。
+// 這一條就是在守 .sheet-head 的 user-select: none。
 await reopen()
 await swipe('.sheet-head', 130)
-ok('從分頁鍵那一列往下滑也收得起來', (await p.locator('.sheet').count()) === 0)
+ok('從標題那一列往下滑也收得起來', (await p.locator('.sheet').count()) === 0)
 
-// 橫向留給分頁鍵自己（.segmented 是可以橫向捲的），不能被手勢吃掉。
+// 先動到橫向的就不是「把面板推回去」，手勢要把這一次讓出去。
 await reopen()
-await swipe('.sheet .segment >> nth=0', 0, 120)
-ok('橫向滑分頁鍵不會收起面板', (await p.locator('.sheet').count()) === 1)
-await p.getByRole('button', { name: /^分享$/ }).click(); await p.waitForTimeout(300)
-ok('而且分頁鍵照樣按得動',
-   (await p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '分享')
+await swipe('.sheet-head', 0, 120)
+ok('橫向滑標題列不會收起面板', (await p.locator('.sheet').count()) === 1)
 
 // 另外兩條路也要在。
 await p.mouse.click(195, 120); await p.waitForTimeout(400)
@@ -409,37 +436,17 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關得掉', (await p.locator('.sheet').count()) === 0)
 await reopen()
 
-// 三個分頁一樣高，而且分頁鍵不隨清單捲動——分頁鍵是同一根手指連續要按的
-// 東西，面板一長高，第二顆鍵就會跑到剛剛按下去的位置底下。
-const tabGeom = []
-for (const label of ['空間', '名單', '分享']) {
-  await p.getByRole('button', { name: new RegExp(`^${label}$`) }).click(); await p.waitForTimeout(250)
-  const sheet = await p.locator('.sheet').boundingBox()
-  const seg = await p.locator('.sheet .segmented').boundingBox()
-  tabGeom.push({ label, h: Math.round(sheet.height), segY: Math.round(seg.y) })
-}
-ok(`三個分頁一樣高（${tabGeom.map((g) => `${g.label} ${g.h}`).join('、')}）`,
-   new Set(tabGeom.map((g) => g.h)).size === 1)
-ok(`分頁鍵位置也不動（y=${[...new Set(tabGeom.map((g) => g.segY))].join('、')}）`,
-   new Set(tabGeom.map((g) => g.segY)).size === 1)
-
-// 捲的是框、不是整張面板，所以分頁鍵留在原地。矮螢幕才會真的捲得起來：框高是
-// min(230px, 44vh)，390×420 上 44vh = 185px，比「空間」分頁那四列（230px）矮。
-// 這一條同時守著那個 44vh——沒有它，矮螢幕會改由整張 .sheet 捲，分頁鍵就跟著走了。
-await p.setViewportSize({ width: 390, height: 420 }); await p.waitForTimeout(300)
-await p.getByRole('button', { name: /^空間$/ }).click(); await p.waitForTimeout(250)
-const segBefore = Math.round((await p.locator('.sheet .segmented').boundingBox()).y)
-const scrolled = await p.locator('.manage-body').evaluate((el) => {
+// 面板長過螢幕時捲的是整張 .sheet（分頁那個固定高度的框 2026-09 一起拿掉了：
+// 項目搬走一半之後最長的一份選單只有五列，面板自己就裝得下）。矮螢幕上仍然要
+// 捲得動、而且捲得到最後一項——「結束這一輪」在最底下。
+await p.setViewportSize({ width: 390, height: 380 }); await p.waitForTimeout(400)
+const sheetScrolled = await p.locator('.sheet').evaluate((el) => {
   el.scrollTop = el.scrollHeight
   return el.scrollTop
 })
 await p.waitForTimeout(300)
-const segAfter = Math.round((await p.locator('.sheet .segmented').boundingBox()).y)
-ok(`矮螢幕上清單在框內捲得動（scrollTop=${scrolled}）`, scrolled > 0)
-ok(`捲到底之後分頁鍵還在原位（${segBefore} → ${segAfter}）`, segBefore === segAfter)
-// 分頁鍵住在標題列裡，本來就不在會捲的那個框內——這是它不會被捲走的結構理由。
-ok('分頁鍵不在捲動框裡',
-   await p.evaluate(() => !document.querySelector('.manage-body')?.contains(document.querySelector('.segmented'))))
+ok(`矮螢幕上面板自己捲得動（scrollTop=${sheetScrolled}）`, sheetScrolled > 0)
+ok('捲到底看得到最後一項', await p.getByRole('button', { name: /結束這一輪/ }).isVisible())
 await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
@@ -548,9 +555,9 @@ await p.waitForTimeout(300)
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
 
 // --- 確認對話框 ---
-await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
-// 「刪除空間」搬進「空間」分頁（2026-09 管理面板分組）。
-await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
+// 「刪除空間」2026-09 搬到首頁那個空間選單：它動的是空間這個容器，不是進行中的點名。
+await p.goto(URL); await p.waitForTimeout(900)
+await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
 ok('刪除空間跳出 alertdialog（不是 window.confirm）', await p.locator('[role=alertdialog]').isVisible())
 ok('對話框有標題與說明', (await p.locator('#dialog-title').textContent())==='刪除空間'
@@ -559,17 +566,17 @@ const focused = await p.evaluate(()=>document.activeElement?.textContent?.trim()
 ok(`初始焦點在「取消」而非破壞性按鈕（實際：${focused}）`, focused==='取消')
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('Esc 關閉對話框，空間仍在', (await p.locator('[role=alertdialog]').count())===0
-   && (await p.locator('.member').count())===3)
+ok('Esc 關閉對話框，什麼都沒刪掉', (await p.locator('[role=alertdialog]').count())===0
+   && (await p.locator('.recent-item').filter({ hasText: '確認對話框測試' }).count()) === 1)
+await p.keyboard.press('Escape'); await p.waitForTimeout(300)
+await p.locator('.recent-item').filter({ hasText: '確認對話框測試' }).click(); await p.waitForTimeout(1400)
+ok('空間仍在', (await p.locator('.member').count())===3)
 
 // --- #20 結束這一輪：把結果攤在確認鍵前面 ---
 // 以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、下載 CSV 在面板第一項、
 // 關閉空間在第九項），結果多數空間從未被關閉也從未被匯出，30 天後靜靜消失。
 await p.locator('.member-main').first().click(); await p.waitForTimeout(600)
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
-// 「結束這一輪」在「空間」分頁（2026-09 管理面板分組：常用分頁拿掉，
-// 它跟容器本身的其他動作歸在一起）。
-await p.getByRole('button',{name:/^空間$/}).click(); await p.waitForTimeout(300)
 ok('「關閉空間」改叫「結束這一輪」', (await p.getByRole('button',{name:/結束這一輪/}).count()) > 0)
 await p.getByRole('button',{name:/結束這一輪/}).click(); await p.waitForTimeout(600)
 const finishPreview = (await p.locator('.result-preview').textContent()) ?? ''
@@ -741,6 +748,8 @@ ok('而且等於分段控制的未到數', (await missing()) === gn[0])
 await ctx.grantPermissions(['clipboard-read','clipboard-write'])
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(300)
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+// 複製結果 2026-09 收進「匯出結果」子畫面：它跟 CSV、PDF 是同一件事的三種格式。
+await p.getByRole('button',{name:/^匯出結果$/}).click(); await p.waitForTimeout(400)
 await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(700)
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))

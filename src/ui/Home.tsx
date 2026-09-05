@@ -6,8 +6,9 @@ import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '
 import { canScanQr } from '../lib/config'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
-import { IconCamera, IconChevronDown, IconPlus, IconSettings, IconTrash } from './icons'
+import { IconCamera, IconChevronDown, IconMore, IconPlus, IconSettings } from './icons'
 import { ScanSheet } from './Scan'
+import { RoomActionsSheet } from './Sheets'
 import { useT } from './t'
 
 type RoomFilter = 'all' | 'mine' | 'others'
@@ -28,6 +29,13 @@ export function Home({ onSettings }: { onSettings: () => void }) {
   const [scanOpen, setScanOpen] = useState(false)
   const [filter, setFilter] = useState<RoomFilter>('all')
   const codeInputRef = useRef<HTMLInputElement>(null)
+  /*
+    正在開著誰的動作選單（2026-09）。邀請點名、重新命名、建立副本、刪除空間
+    都住在這裡：它們動的是「空間這個容器」，而首頁這份清單就是使用者心裡
+    「我有哪些空間」的地方——要複製一份、要改個名字、要刪掉，都是在看這份清單
+    的時候想到的，不必先進去那個空間再從裡面找。
+  */
+  const [target, setTarget] = useState<Target | null>(null)
 
   // 按「加入空間」展開輸入框時把焦點直接放進去：不必再點第二下。
   useEffect(() => {
@@ -207,15 +215,18 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                       {r.isOwner ? t('owner') : t('helper')}
                     </span>
                   </button>
-                  {r.removable && (
-                    <button
-                      class="icon-btn"
-                      onClick={() => { void forgetRecentRoom(r.code) }}
-                      aria-label={`${t('forget')}：${r.name}`}
-                    >
-                      <IconTrash />
-                    </button>
-                  )}
+                  {/*
+                    這裡原本是一顆垃圾桶（從清單移除），而且只長在移得掉的那幾列上。
+                    它現在是每一列都有的「更多」，從清單移除搬進選單裡跟刪除空間排在
+                    一起：兩顆看起來一樣的垃圾桶做的是兩件不同的事（一個只是不看了，
+                    一個是真的刪掉），圖示分不出來，寫成兩列文字才分得出來。
+                  */}
+                  <MoreButton
+                    name={r.name}
+                    onClick={() => setTarget({
+                      code: r.code, name: r.name, owner: r.isOwner, forgettable: r.removable,
+                    })}
+                  />
                 </div>
               ))}
             </div>
@@ -226,6 +237,46 @@ export function Home({ onSettings }: { onSettings: () => void }) {
           <p class="hint" style="padding-bottom:40px">{t('errNotConfigured')}</p>
         )}
       </div>
+
+      {target && (
+        <RoomActionsSheet
+          /* 換一個空間就換一張面板：key 換掉會重新掛載，子畫面與輸入框跟著歸零。 */
+          key={target.code}
+          code={target.code}
+          name={target.name}
+          owner={target.owner}
+          initialMode={target.mode}
+          onForget={target.forgettable
+            ? () => { void forgetRecentRoom(target.code); setTarget(null) }
+            : undefined}
+          /* 複製完直接跳到新空間的邀請頁：舊代碼還在五支手機上，不發新的出去
+             的話兩邊會各點各的。 */
+          onCopied={(code, name) => setTarget({ code, name, owner: true, mode: 'invite' })}
+          onClose={() => setTarget(null)}
+        />
+      )}
     </div>
+  )
+}
+
+interface Target {
+  code: string
+  name: string
+  owner: boolean
+  /** 「我的活動」那份清單是帳號那邊的，移除了也會再長回來，所以不給那一列。 */
+  forgettable?: boolean
+  mode?: 'invite'
+}
+
+/**
+ * 清單每一列右邊那顆「更多」。無障礙名稱要帶空間名字：一屏上有七顆一模一樣的
+ * 「更多」時，只唸得出「更多」的那一顆是哪一個空間的完全聽不出來。
+ */
+function MoreButton({ name, onClick }: { name: string; onClick: () => void }) {
+  const t = useT()
+  return (
+    <button class="icon-btn" onClick={onClick} aria-label={`${t('manage')}：${name}`}>
+      <IconMore />
+    </button>
   )
 }

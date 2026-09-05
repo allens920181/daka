@@ -152,6 +152,17 @@ export async function rememberRoom(entry: RecentRoom): Promise<RecentRoom[]> {
   return next
 }
 
+/**
+ * 只改名字，不動順序。首頁的空間選單可以直接重新命名，而 rememberRoom 會把
+ * 那個空間彈到清單最上面——改個名字不代表你剛用過它，清單重排會讓使用者
+ * 在原位再找一次。
+ */
+export async function renameRecentRoom(code: string, name: string): Promise<RecentRoom[]> {
+  const next = (await loadRecentRooms()).map((r) => (r.code === code ? { ...r, name } : r))
+  await safeSet(K_RECENT, next)
+  return next
+}
+
 export async function dropRecentRoom(code: string): Promise<RecentRoom[]> {
   const next = (await loadRecentRooms()).filter((r) => r.code !== code)
   await safeSet(K_RECENT, next)

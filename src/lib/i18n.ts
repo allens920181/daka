@@ -143,8 +143,11 @@ const zh = {
   confirmRemoveMemberBody: '這個人會從所有裝置的名單上消失，而且不能復原。只是今天不來的話，用「標記請假」比較好——請假的人還留在名單上，只是不算進今天該到的人。',
   add: '加入名單',
 
-  // 分享
-  share: '分享',
+  // 邀請點名（2026-09 從空間裡的「更多」搬到首頁每個空間的選單）
+  /* 不叫「分享」：那兩個字在手機上專指「叫出系統分享單」（shareLink 那顆按鈕
+     才是那件事），而這一列底下是代碼、連結、二維碼三種讓別人「進得來一起點」
+     的方式。動詞化說得出目的。 */
+  invite: '邀請點名',
   shareHint: '把代碼、連結或二維碼給他們，不用註冊、不用安裝。',
   whoIsHere: '現在在這個空間裡',
   onlyYouHere: '目前只有你。把代碼或 QR 給協助點名的人，他們進來後會出現在這裡。',
@@ -167,19 +170,16 @@ const zh = {
 
   // 更多（程式裡仍叫 manage：這是頂欄 ⋮ 那個面板，鍵名沒跟著文案改）
   manage: '更多',
-  // 管理面板分頁（2026-09）：13 個項目攤成一長串選單，掃過去要找的那一項
-  // 常常要滾好幾屏。依「這個動作在動什麼」分兩類：名單本身、空間這個容器。
-  manageTabs: '分類',
-  manageTabRoster: '名單',
-  manageTabSpace: '空間',
   /*
    * 不叫「複製這個空間」。「複製」在這個 app 的其他五個地方都指複製到剪貼簿
-   * （複製結果、複製代碼、複製連結、已複製、結果已複製），只有這裡指「開一個
-   * 新的」——而且按下「複製這個空間」的當下，底部動作列的「複製結果」就在同一個
-   * 畫面上。用「開」和首頁的「開啟空間」對齊：這個 app 裡「開」＝生出一個空間。
-   * 英文不必跟著改：Copy／Duplicate 本來就是兩個詞，英文沒有這個碰撞。
+   * （複製結果、複製代碼、複製連結、已複製、結果已複製），只有這裡指「生出一個
+   * 新的空間」。「副本」沒有這個碰撞：它只會是一份東西，不會是一個剪貼簿動作。
+   * 曾經叫「再開一個」——那是站在主揪心裡說話（回程再開一場），但這一列 2026-09
+   * 搬到首頁的空間選單之後，旁邊是重新命名與刪除空間，「再開一個」在那裡讀起來
+   * 像是「開一個新空間」而不是「照這個空間複製一份」。
+   * 英文不必跟著改：Copy／Duplicate 本來就是兩個詞。
    */
-  copyRoom: '再開一個',
+  copyRoom: '建立副本',
   copyRoomHint: '同一份名單、狀態全部歸零。回程點名用這個。',
   copyRoomHintHelper: '同一份名單、狀態全部歸零。你會是新空間的主揪。',
   copyRoomName: '新空間叫什麼？',
@@ -219,13 +219,13 @@ const zh = {
   csvCompanions: '攜伴',
   csvGroup: '分組',
   csvNote: '備註',
-  export: '匯出',
+  export: '匯出結果',
   exportCsv: '下載 CSV',
   exportPdf: '存成 PDF',
-  /* 三列各自給的是不一樣的東西，一句話講完差別，順便講 PDF 怎麼來——瀏覽器
+  /* 四列各自給的是不一樣的東西，一句話講完差別，順便講 PDF 怎麼來——瀏覽器
      沒有「下載 PDF」這個 API，PDF 是從列印畫面選「儲存為 PDF」存下來的。
      寫清楚比讓人按下去才發現跳出列印畫面誠實。 */
-  exportHint: '紙本印的是空白格子，給筆勾；PDF 印的是目前的點名結果，在列印畫面選「儲存為 PDF」。',
+  exportHint: '複製、CSV、PDF 帶走的是目前的點名結果，PDF 要在列印畫面選「儲存為 PDF」；紙本印的是空白格子，給筆勾。',
   copySummary: '複製結果',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
@@ -430,7 +430,7 @@ const en: Record<MessageKey, string> = {
   confirmRemoveMemberBody: "They disappear from every device's list and this can't be undone. If they're just not coming today, use Mark excused instead \u2014 excused people stay on the list and simply don't count toward today's total.",
   add: 'Add',
 
-  share: 'Share',
+  invite: 'Invite',
   shareHint: 'Give them the code, the link or the QR code. No sign-up, no install.',
   whoIsHere: 'In this room now',
   onlyYouHere: "Just you so far. Give helpers the code or QR — they'll show up here once they join.",
@@ -451,9 +451,6 @@ const en: Record<MessageKey, string> = {
   scanToJoin: 'Scan to join',
 
   manage: 'More',
-  manageTabs: 'Category',
-  manageTabRoster: 'Roster',
-  manageTabSpace: 'Space',
   copyRoom: 'Duplicate room',
   copyRoomHint: 'Same roster, statuses reset. For the return trip.',
   copyRoomHintHelper: "Same roster, statuses reset. You'll own the new room.",
@@ -485,10 +482,10 @@ const en: Record<MessageKey, string> = {
   csvCompanions: 'Companions',
   csvGroup: 'Group',
   csvNote: 'Note',
-  export: 'Export',
+  export: 'Export results',
   exportCsv: 'Download CSV',
   exportPdf: 'Save as PDF',
-  exportHint: 'The paper sheet prints blank boxes to tick by hand; the PDF prints the current result — choose “Save as PDF” in the print dialog.',
+  exportHint: 'Copy, CSV and PDF take the current result with you — for the PDF, choose “Save as PDF” in the print dialog. Printing gives you blank boxes to tick by hand.',
   copySummary: 'Copy result',
   summaryCopied: 'Result copied — paste it anywhere',
 
