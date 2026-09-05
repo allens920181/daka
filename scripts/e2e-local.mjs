@@ -157,6 +157,17 @@ ok('單機模式：不產 QR', (await p.locator('.qr-card img').count()) === 0)
 ok('單機模式：不給「複製連結」', (await p.getByRole('button', { name: /傳給別人|複製連結/ }).count()) === 0)
 ok('單機模式：講清楚別人會看到什麼',
    ((await p.locator('.note-warn').textContent()) || '').includes('找不到這個代碼'))
+// 但「匯出」照樣在：列印與 CSV 不經過任何伺服器，自己一個人點完照樣要交得出名單。
+ok('單機模式仍然匯得出去', (await p.getByRole('button', { name: /^匯出$/ }).count()) === 1)
+await p.getByRole('button', { name: /^匯出$/ }).click(); await p.waitForTimeout(400)
+const exportRows = await p.locator('.sheet .menu-item strong').allTextContents()
+ok(`匯出頁三列：${exportRows.join('、')}`,
+   JSON.stringify(exportRows) === JSON.stringify(['列印紙本名單', '下載 CSV', '存成 PDF']))
+ok('匯出頁講清楚 PDF 是從列印畫面存的',
+   ((await p.locator('.sheet .hint').first().textContent()) || '').includes('儲存為 PDF'))
+await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
+ok('返回之後回到分享分頁',
+   (await p.locator('.sheet .segment[aria-pressed=true]').textContent())?.trim() === '分享')
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
@@ -322,6 +333,9 @@ await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForT
 const firstItem = await p.locator('.menu .menu-item').first().textContent()
 ok(`管理面板第一項是編輯名單：「${(firstItem || '').trim().split('\n')[0]}」`,
    (firstItem || '').includes('編輯名單'))
+// 列印與 CSV 2026-09 合併成「匯出」搬進分享分頁：名單分頁只留會動到名單的動作。
+ok('名單分頁不再有列印與下載 CSV',
+   (await p.getByRole('button', { name: /列印紙本名單|下載 CSV/ }).count()) === 0)
 ok('複製結果緊接在編輯名單後面', (await p.getByRole('button', { name: /複製結果/ }).count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
@@ -409,8 +423,11 @@ ok(`三個分頁一樣高（${tabGeom.map((g) => `${g.label} ${g.h}`).join('、'
 ok(`分頁鍵位置也不動（y=${[...new Set(tabGeom.map((g) => g.segY))].join('、')}）`,
    new Set(tabGeom.map((g) => g.segY)).size === 1)
 
-// 「名單」比框長，捲的是框、不是整張面板：分頁鍵留在原地。
-await p.getByRole('button', { name: /^名單$/ }).click(); await p.waitForTimeout(250)
+// 捲的是框、不是整張面板，所以分頁鍵留在原地。矮螢幕才會真的捲得起來：框高是
+// min(230px, 44vh)，390×420 上 44vh = 185px，比「空間」分頁那四列（230px）矮。
+// 這一條同時守著那個 44vh——沒有它，矮螢幕會改由整張 .sheet 捲，分頁鍵就跟著走了。
+await p.setViewportSize({ width: 390, height: 420 }); await p.waitForTimeout(300)
+await p.getByRole('button', { name: /^空間$/ }).click(); await p.waitForTimeout(250)
 const segBefore = Math.round((await p.locator('.sheet .segmented').boundingBox()).y)
 const scrolled = await p.locator('.manage-body').evaluate((el) => {
   el.scrollTop = el.scrollHeight
@@ -418,8 +435,12 @@ const scrolled = await p.locator('.manage-body').evaluate((el) => {
 })
 await p.waitForTimeout(300)
 const segAfter = Math.round((await p.locator('.sheet .segmented').boundingBox()).y)
-ok(`清單在框內捲得動（scrollTop=${scrolled}）`, scrolled > 0)
+ok(`矮螢幕上清單在框內捲得動（scrollTop=${scrolled}）`, scrolled > 0)
 ok(`捲到底之後分頁鍵還在原位（${segBefore} → ${segAfter}）`, segBefore === segAfter)
+// 分頁鍵住在標題列裡，本來就不在會捲的那個框內——這是它不會被捲走的結構理由。
+ok('分頁鍵不在捲動框裡',
+   await p.evaluate(() => !document.querySelector('.manage-body')?.contains(document.querySelector('.segmented'))))
+await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('身分標籤搬到頂欄', (await p.locator('.topbar-sub .tag-owner').textContent())?.trim() === '主揪')
@@ -611,12 +632,20 @@ const printState = await p.evaluate(()=>{
   return { topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
     rows: document.querySelectorAll('.member').length,
     checkBg: check ? getComputedStyle(check).backgroundColor : null,
+    checkBorder: (() => {
+      const arrived = document.querySelector('.member.is-arrived .check')
+      return arrived ? getComputedStyle(arrived).borderColor : 'rgb(0, 0, 0)'
+    })(),
     title: txt('.print-title'), meta: txt('.print-meta'), blanks: txt('.print-blanks'),
     columns: getComputedStyle(document.querySelector('.list')).columnCount }
 })
 ok('列印時隱藏頂欄／篩選／搜尋', printState.topbar&&printState.seg&&printState.search)
 ok(`列印仍保留名單 ${printState.rows} 列`, printState.rows===3)
 ok('列印的勾選格是空白的（給筆勾）', printState.checkBg==='rgb(255, 255, 255)')
+// 連邊框都要是黑的：已到那一格在螢幕上是綠框，漏出來的話這張「空白表」上就有
+// 半套紀錄——已經勾過的人是綠圈、其他人是黑框。
+ok(`空白表上每一格的邊框都一樣（${printState.checkBorder}）`,
+   printState.checkBorder === 'rgb(0, 0, 0)')
 // 紙本備援是「手機沒電」時唯一剩下的東西。抬頭必須寫得出這是哪一場、代碼多少。
 // 以前這裡印的是借來的計分區文字（「還有 12 位沒到」）——一個離開印表機就過期
 // 的數字，而活動名稱與代碼反而被 display:none 掉了。
@@ -625,6 +654,26 @@ ok(`列印抬頭有代碼與人數：「${printState.meta}」`,
    /[2-9A-HJ-KM-NP-Z]{6}/.test(printState.meta || '') && (printState.meta || '').includes('共 3 人'))
 ok('列印抬頭有日期與點名者欄位', (printState.blanks || '').includes('日期') && (printState.blanks || '').includes('點名者'))
 ok(`列印排成兩欄（${printState.columns}）省紙`, printState.columns === '2')
+
+// 「存成 PDF」印的是另一份文件：同一份版面，格子照狀態填、簽名欄不印。
+// 記號由 printSheet('result') 下在 <html> 上（Sheets.tsx）。
+await p.evaluate(() => { document.documentElement.dataset.print = 'result' })
+await p.waitForTimeout(200)
+const resultState = await p.evaluate(() => {
+  const cs = (sel) => { const e = document.querySelector(sel); return e ? getComputedStyle(e) : null }
+  const blanks = document.querySelector('.print-blanks')
+  return {
+    arrivedCheck: cs('.member.is-arrived .check')?.backgroundColor ?? null,
+    pendingCheck: cs('.member:not(.is-arrived):not(.is-excused) .check')?.backgroundColor ?? null,
+    blanksHidden: !blanks || getComputedStyle(blanks).display === 'none',
+    rows: document.querySelectorAll('.member').length,
+  }
+})
+ok('PDF 版：已到的格子填黑（不是空白表）', resultState.arrivedCheck === 'rgb(0, 0, 0)')
+ok('PDF 版：未到的格子仍是空白', resultState.pendingCheck === 'rgb(255, 255, 255)')
+ok('PDF 版：不印簽名欄（紀錄裡已經有誰在什麼時候點的）', resultState.blanksHidden)
+ok(`PDF 版：名單一樣是 ${resultState.rows} 列`, resultState.rows === 3)
+await p.evaluate(() => { delete document.documentElement.dataset.print })
 
 await p.emulateMedia({media:'screen'})
 

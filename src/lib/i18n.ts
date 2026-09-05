@@ -221,6 +221,11 @@ const zh = {
   csvNote: '備註',
   export: '匯出',
   exportCsv: '下載 CSV',
+  exportPdf: '存成 PDF',
+  /* 三列各自給的是不一樣的東西，一句話講完差別，順便講 PDF 怎麼來——瀏覽器
+     沒有「下載 PDF」這個 API，PDF 是從列印畫面選「儲存為 PDF」存下來的。
+     寫清楚比讓人按下去才發現跳出列印畫面誠實。 */
+  exportHint: '紙本印的是空白格子，給筆勾；PDF 印的是目前的點名結果，在列印畫面選「儲存為 PDF」。',
   copySummary: '複製結果',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
@@ -482,6 +487,8 @@ const en: Record<MessageKey, string> = {
   csvNote: 'Note',
   export: 'Export',
   exportCsv: 'Download CSV',
+  exportPdf: 'Save as PDF',
+  exportHint: 'The paper sheet prints blank boxes to tick by hand; the PDF prints the current result — choose “Save as PDF” in the print dialog.',
   copySummary: 'Copy result',
   summaryCopied: 'Result copied — paste it anywhere',
 

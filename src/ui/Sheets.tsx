@@ -21,7 +21,8 @@ import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
   IconBookmark, IconCalendar, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash, IconLock,
-  IconChevronDown, IconGoogle, IconLink, IconMore, IconPhone, IconPlus, IconPrinter, IconQr, IconShare,
+  IconChevronDown, IconGoogle, IconLink, IconMore, IconPdf, IconPhone, IconPlus, IconPrinter, IconQr,
+  IconShare,
   IconTag, IconTrash, IconUndo,
 } from './icons'
 import { useT } from './t'
@@ -84,10 +85,32 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
   await copyText(url, t('copied'), t('copyFailed'))
 }
 
+/**
+ * 列印。`mode` 決定印出來的是哪一份文件：
+ * - 'blank'：空白格子的紙本，手機沒電時拿筆勾。
+ * - 'result'：目前的點名結果，交差用；在列印畫面選「儲存為 PDF」就是一個檔案。
+ *
+ * 記號下在 <html> 上讓 @media print 讀，列印畫面關掉之後一定要拿掉，不然下一次
+ * 列印會沿用上一次的樣子。afterprint 在某些瀏覽器不會來，所以再壓一個逾時保底。
+ */
+function printSheet(mode: 'blank' | 'result', onClose: () => void): void {
+  const root = document.documentElement
+  if (mode === 'result') root.dataset.print = 'result'
+  const done = () => {
+    delete root.dataset.print
+    window.removeEventListener('afterprint', done)
+  }
+  window.addEventListener('afterprint', done)
+  setTimeout(done, 60_000)
+  // 先關面板：遮罩在紙上是看不到的，但使用者按完要看得到自己的名單。
+  onClose()
+  setTimeout(() => window.print(), 60)
+}
+
 // ---------------------------------------------------------------------------
 
 type ManageMode = 'menu' | 'copy' | 'rename' | 'roster' | 'saveRoster' | 'walkin'
-  | 'shareCode' | 'shareLink' | 'shareQr'
+  | 'shareCode' | 'shareLink' | 'shareQr' | 'export'
 // 「更多」面板分頁（2026-09）。依「這個動作在動什麼」分類：'roster' 底下是
 // 名單本身——資料與跟這份名單有關的現場動作；'space' 底下是空間這個容器；
 // 'share' 底下是把這個空間交出去的三種方式。曾經想過一個「常用」分頁裝複製
@@ -306,6 +329,43 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
     )
   }
 
+  /*
+    三種帶得走的東西。紙本與 PDF 走的是同一個列印畫面，但印出來的是兩份不同的
+    文件：紙本印空白格子（手機沒電時用筆勾），PDF 印目前的點名結果（交差用）。
+    差別由 <html data-print> 決定，見 styles.css 的 @media print。
+
+    瀏覽器沒有「下載 PDF」這種 API，PDF 一律是從列印畫面選「儲存為 PDF」存下來
+    的——所以標籤寫「存成 PDF」而不是「下載 PDF」，上面那句 hint 也直說會跳出
+    列印畫面。要真的產出一個 .pdf 檔就得自己畫版面再嵌一份中文字型，那是好幾 MB
+    的字型檔，對一個要在 6:50 的停車場用爛網路開起來的工具划不來。
+  */
+  if (mode === 'export') {
+    return (
+      <Sheet title={t('export')} onClose={onClose} onBack={() => setMode('menu')}>
+        <p class="hint" style="margin-bottom:10px">{t('exportHint')}</p>
+        <div class="menu">
+          <button class="menu-item" onClick={() => printSheet('blank', onClose)}>
+            <IconPrinter />
+            <span><strong>{t('printRoster')}</strong></span>
+          </button>
+
+          <button
+            class="menu-item"
+            onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
+          >
+            <IconDownload />
+            <span><strong>{t('exportCsv')}</strong></span>
+          </button>
+
+          <button class="menu-item" onClick={() => printSheet('result', onClose)}>
+            <IconPdf />
+            <span><strong>{t('exportPdf')}</strong></span>
+          </button>
+        </div>
+      </Sheet>
+    )
+  }
+
   const expires = formatDate(current.expires_at, prefs.value.lang)
   // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。
   const localOnly = connection.value === 'local-only'
@@ -410,18 +470,6 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
               </button>
             )}
 
-            <button class="menu-item" onClick={() => { onClose(); setTimeout(() => window.print(), 60) }}>
-              <IconPrinter />
-              <span><strong>{t('printRoster')}</strong></span>
-            </button>
-
-            <button
-              class="menu-item"
-              onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
-            >
-              <IconDownload />
-              <span><strong>{t('exportCsv')}</strong></span>
-            </button>
           </div>
         )}
 
@@ -482,42 +530,60 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
           LINE 群的，二維碼要對方拿起手機對著你的螢幕——愈往下愈需要兩個人站在
           一起。
         */}
-        {tab === 'share' && (localOnly ? (
-          /*
-            單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。這個空間真的
-            只存在這支手機裡，代碼、連結、二維碼對任何人都沒有用——發出去只會讓
-            五個同工站在車門口看到「找不到這個代碼。請確認有沒有打錯」，然後以為
-            是自己打錯而重打三次。所以這一頁不列那三種方式，改成講清楚會發生什麼。
-          */
-          <div class="stack">
-            <p class="note note-warn">
-              <strong>{t('shareLocalTitle')}</strong><br />{t('shareLocalBody')}
-            </p>
-            <p class="hint">{t('shareLocalHow')}</p>
-          </div>
-        ) : (
+        {tab === 'share' && (
           <>
+            {/*
+              單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。這個空間真的
+              只存在這支手機裡，代碼、連結、二維碼對任何人都沒有用——發出去只會讓
+              五個同工站在車門口看到「找不到這個代碼。請確認有沒有打錯」，然後以為
+              是自己打錯而重打三次。所以那三列不列，改成講清楚會發生什麼。
+            */}
+            {localOnly && (
+              <div class="stack" style="margin-bottom:12px">
+                <p class="note note-warn">
+                  <strong>{t('shareLocalTitle')}</strong><br />{t('shareLocalBody')}
+                </p>
+                <p class="hint">{t('shareLocalHow')}</p>
+              </div>
+            )}
+
             <div class="menu">
-              <button class="menu-item" onClick={() => setMode('shareCode')}>
-                <IconHash />
-                <span>
-                  <strong>{t('roomCode')}</strong>
-                  <span class="sub mono">{current.code}</span>
-                </span>
-              </button>
+              {!localOnly && (
+                <>
+                  <button class="menu-item" onClick={() => setMode('shareCode')}>
+                    <IconHash />
+                    <span>
+                      <strong>{t('roomCode')}</strong>
+                      <span class="sub mono">{current.code}</span>
+                    </span>
+                  </button>
 
-              <button class="menu-item" onClick={() => setMode('shareLink')}>
-                <IconLink />
-                <span><strong>{t('roomLink')}</strong></span>
-              </button>
+                  <button class="menu-item" onClick={() => setMode('shareLink')}>
+                    <IconLink />
+                    <span><strong>{t('roomLink')}</strong></span>
+                  </button>
 
-              <button class="menu-item" onClick={() => setMode('shareQr')}>
-                <IconQr />
-                <span><strong>{t('roomQr')}</strong></span>
+                  <button class="menu-item" onClick={() => setMode('shareQr')}>
+                    <IconQr />
+                    <span><strong>{t('roomQr')}</strong></span>
+                  </button>
+                </>
+              )}
+
+              {/*
+                匯出跟上面三列是同一件事的另一半：代碼、連結、二維碼把「這個空間」
+                交出去，匯出把「這場點名的結果」交出去。以前列印與下載 CSV 分開躺在
+                「名單」分頁裡，但那個分頁放的是會動到名單的動作，這兩個誰都不動。
+                **單機模式下這一列仍然在**：列印與 CSV 不經過任何伺服器，自己一個人
+                點完照樣要交得出名單。
+              */}
+              <button class="menu-item" onClick={() => setMode('export')}>
+                <IconDownload />
+                <span><strong>{t('export')}</strong></span>
               </button>
             </div>
 
-            <p class="hint" style="margin-top:12px">{t('shareHint')}</p>
+            {!localOnly && <p class="hint" style="margin-top:12px">{t('shareHint')}</p>}
 
             {/*
               誰已經進來了。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到
@@ -537,7 +603,7 @@ export function ManageSheet({ owner, group, initialTab, onCopySummary, onClose }
               </div>
             )}
           </>
-        ))}
+        )}
       </div>
 
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}

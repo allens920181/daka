@@ -1143,8 +1143,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
   }
   .member.is-arrived, .member.is-excused { background: #fff !important; opacity: 1; }
   .member-main { min-height: 0; padding: 4pt 0; flex: 1; }
-  /* 紙本一律印空白格子讓人用筆勾 */
+  /*
+   * 紙本一律印空白格子讓人用筆勾。邊框色要壓成黑的：已到的那一格在螢幕上是綠框
+   * （--st-arrived，沒有被上面的列印 token 蓋掉），印出來會變成「已經勾過的人是
+   * 綠圈、其他人是黑框」——一份號稱空白的表上有半套紀錄，比全有或全無都糟。
+   */
   .check { width: 12pt; height: 12pt; border: 1pt solid #000; border-radius: 2pt;
+           border-color: #000 !important;
            background: #fff !important; color: transparent !important; opacity: 1; }
   .check svg { display: none; }
   .member-name { font-size: 11pt; color: #000; }
@@ -1171,5 +1176,23 @@ button, input, textarea, select { font: inherit; color: inherit; }
     display: inline; font-size: 9pt; color: #333; white-space: nowrap;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
+
+  /*
+   * 「存成 PDF」印的是另一份文件：目前的點名結果，不是空白表。同一份版面，
+   * 兩種用途——空白的那份是活動當下的備援（手機沒電），這一份是活動之後要交
+   * 出去的東西，所以格子照狀態填、簽名欄不印（已經有誰在什麼時候點的紀錄）。
+   * 記號由 Sheets.tsx 的 printSheet('result') 下在 <html> 上。
+   */
+  :root[data-print='result'] .check {
+    background: #000 !important; color: #fff !important; border-color: #000;
+  }
+  :root[data-print='result'] .check svg { display: block; }
+  :root[data-print='result'] .member:not(.is-arrived) .check {
+    background: #fff !important; color: transparent !important;
+  }
+  :root[data-print='result'] .member.is-excused .check {
+    background: #fff !important; border-style: dashed;
+  }
+  :root[data-print='result'] .print-blanks { display: none; }
 }
 
