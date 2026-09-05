@@ -124,11 +124,15 @@ export function Sheet({
  * 初始焦點放在「取消」：破壞性動作不該讓 Enter 直接送出。
  */
 export function ConfirmDialog({
-  title, body, confirmLabel, danger = false, onConfirm, onClose, children,
+  title, body, confirmLabel, cancelLabel, danger = false, onConfirm, onClose, children,
 }: {
   title: string
   body: string
   confirmLabel: string
+  /** 預設是「取消」。兩個選項都是有意義的決定（不是「做」或「算了」）時換成
+   *  具體的說法——例如開空間偵測到草稿，兩顆鍵是「繼續使用草稿」跟
+   *  「清掉重來」，沒有一顆單純是「取消」。 */
+  cancelLabel?: string
   danger?: boolean
   onConfirm: () => void
   onClose: () => void
@@ -156,7 +160,7 @@ export function ConfirmDialog({
         <p class="dialog-body" id="dialog-body">{body}</p>
         {children}
         <div class="dialog-actions">
-          <button class="btn btn-block" onClick={onClose}>{t('cancel')}</button>
+          <button class="btn btn-block" onClick={onClose}>{cancelLabel ?? t('cancel')}</button>
           <button
             class={danger ? 'btn btn-danger btn-block' : 'btn btn-primary btn-block'}
             onClick={() => { onConfirm(); onClose() }}

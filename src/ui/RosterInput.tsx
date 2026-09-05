@@ -1,43 +1,25 @@
 import { useMemo } from 'preact/hooks'
 import { parseRoster, removeParsedMember } from '../lib/parse'
 import type { ParseResult } from '../lib/parse'
-import type { DraftMember, SavedRoster } from '../lib/types'
-import { rosterToText } from '../lib/parse'
+import type { DraftMember } from '../lib/types'
 import { IconClose } from './icons'
 import { useT } from './t'
 
 /**
- * 名單輸入框：常用名單快捷鍵 + 貼上欄位。不含解析預覽——開空間流程把預覽挪去
- * 另一步（見 NewRoom），這裡只管「打字／貼上」這件事，好讓框本身可以長大。
+ * 名單輸入框：只有貼上欄位，不含解析預覽——開空間流程把預覽挪去另一步
+ * （見 NewRoom），這裡只管「打字／貼上」這件事，好讓框本身可以長大。常用
+ * 名單也不在這裡：那是「套用一份別人的名單」，跟「打字」是兩個不同的動作，
+ * 搬進開空間的「更多」面板（見 NewRoom 的 `MoreSheet`）。
  */
 export function RosterEditorField({
-  text, onText, rosters,
+  text, onText,
 }: {
   text: string
   onText: (v: string) => void
-  rosters?: readonly SavedRoster[]
 }) {
   const t = useT()
   return (
     <div class="stack roster-editor">
-      {rosters && rosters.length > 0 && (
-        <div class="field">
-          <span class="label">{t('savedRosters')}</span>
-          <div class="row" style="flex-wrap: wrap; gap: 8px">
-            {rosters.map((r) => (
-              <button
-                key={r.id}
-                class="btn btn-sm"
-                onClick={() => onText(rosterToText(r.members))}
-              >
-                {r.name}
-                <span class="mono" style="color: var(--ink-3)"> {r.members.length}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* 範例鍵不在這裡：它一次填活動名稱與名單兩格，所以住在表單那一層
           （`NewRoom`），而不是掛在其中一個欄位的標籤上。 */}
       <div class="field roster-editor-field">
@@ -125,16 +107,15 @@ export function RosterPreview({
  * `RosterEditorField` / `RosterPreview`，好讓輸入框跟預覽各自有整面螢幕可以用。
  */
 export function RosterInput({
-  text, onText, rosters,
+  text, onText,
 }: {
   text: string
   onText: (v: string) => void
-  rosters?: readonly SavedRoster[]
 }) {
   const result = useMemo(() => parseRoster(text), [text])
   return (
     <div class="stack">
-      <RosterEditorField text={text} onText={onText} rosters={rosters} />
+      <RosterEditorField text={text} onText={onText} />
       <RosterPreview text={text} onText={onText} result={result} />
     </div>
   )

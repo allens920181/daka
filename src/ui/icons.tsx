@@ -23,6 +23,9 @@ export const IconBack = ({ size = 24, ...r }: P) => (
 export const IconChevronDown = ({ size = 16, ...r }: P) => (
   <svg {...base(size)} {...r}><polyline points="6 9 12 15 18 9" /></svg>
 )
+export const IconChevronUp = ({ size = 16, ...r }: P) => (
+  <svg {...base(size)} {...r}><polyline points="6 15 12 9 18 15" /></svg>
+)
 export const IconShare = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />

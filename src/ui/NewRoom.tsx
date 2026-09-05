@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
-import { createRoom, savedRosters } from '../lib/store'
+import { createRoom } from '../lib/store'
 import { clearDraft, loadDraft, saveDraft } from '../lib/storage'
 import { isExampleName, isExampleRoster } from '../lib/i18n'
-import { parseRoster } from '../lib/parse'
+import { parseRoster, rosterToText } from '../lib/parse'
 import { AppError, isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { RosterEditorField, RosterPreview } from './RosterInput'
-import { IconBack, IconChevronDown } from './icons'
+import { ConfirmDialog } from './Sheet'
+import { SavedRostersSheet } from './Sheets'
+import { IconBack, IconBookmark, IconChevronDown, IconChevronUp } from './icons'
 import { useT } from './t'
 
 export function NewRoom() {
@@ -19,6 +21,7 @@ export function NewRoom() {
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [restored, setRestored] = useState(false)
+  const [savedRostersOpen, setSavedRostersOpen] = useState(false)
 
   const result = useMemo(() => parseRoster(text), [text])
   const drafts = result.members
@@ -62,6 +65,13 @@ export function NewRoom() {
     setText('')
   }
 
+  function discardDraft() {
+    setName('')
+    setText('')
+    setRestored(false)
+    void clearDraft()
+  }
+
   function reviewList() {
     if (drafts.length === 0) return
     // 收鍵盤再滑：清單畫面滑上來時鍵盤還開著，會把剛露出來的名單再擠掉一截。
@@ -100,6 +110,14 @@ export function NewRoom() {
               <IconBack />
             </button>
             <h1 class="topbar-name">{t('openRoom')}</h1>
+            {step === 'input' && isSupabaseConfigured && (
+              <>
+                <div class="spacer" />
+                <button class="icon-btn" onClick={() => setSavedRostersOpen(true)} aria-label={t('savedRosters')}>
+                  <IconBookmark />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -111,18 +129,6 @@ export function NewRoom() {
             aria-hidden={step !== 'input'}
             inert={step !== 'input'}
           >
-            {restored && (
-              <p class="banner banner-muted">
-                {t('draftRestored')}
-                <button
-                  class="btn btn-sm"
-                  onClick={() => { setName(''); setText(''); setRestored(false); void clearDraft() }}
-                >
-                  {t('draftDiscard')}
-                </button>
-              </p>
-            )}
-
             <div class="field">
               <div class="row">
                 <label class="label" for="room-name">{t('roomNameLabel')}</label>
@@ -145,11 +151,7 @@ export function NewRoom() {
               />
             </div>
 
-            <RosterEditorField
-              text={text}
-              onText={setText}
-              rosters={isSupabaseConfigured ? savedRosters.value : undefined}
-            />
+            <RosterEditorField text={text} onText={setText} />
           </div>
 
           {/* 步驟二：看解析結果。從螢幕下緣滑上來蓋住步驟一，「抬頭」跟著名單
@@ -177,16 +179,42 @@ export function NewRoom() {
               {t('generateList')} <IconChevronDown />
             </button>
           ) : (
-            <button
-              class="btn btn-primary btn-lg btn-block"
-              disabled={working || drafts.length === 0}
-              onClick={() => { void submit() }}
-            >
-              {working ? t('loading') : drafts.length ? `${t('confirmCreate')} ${drafts.length}` : t('confirmCreate')}
-            </button>
+            <>
+              <button class="btn btn-lg" disabled={working} onClick={() => setStep('input')}>
+                <IconChevronUp /> {t('adjustList')}
+              </button>
+              <button
+                class="btn btn-primary btn-lg btn-block"
+                disabled={working || drafts.length === 0}
+                onClick={() => { void submit() }}
+              >
+                {working ? t('loading') : drafts.length ? `${t('confirmCreate')} ${drafts.length}` : t('confirmCreate')}
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {/* 草稿一偵測到就當場問，不是放著等人自己找到「常用」旁邊的入口才決定。
+          取消鍵（安全、Esc／點背景都會落在這一邊）留給「繼續使用」；
+          「清掉重來」要按下那顆鍵才會發生，見 Sheet.tsx 的 `cancelLabel`。 */}
+      {restored && (
+        <ConfirmDialog
+          title={t('draftPromptTitle')}
+          body={t('draftPromptBody')}
+          confirmLabel={t('draftDiscard')}
+          cancelLabel={t('draftKeep')}
+          onClose={() => setRestored(false)}
+          onConfirm={discardDraft}
+        />
+      )}
+
+      {savedRostersOpen && (
+        <SavedRostersSheet
+          onApply={(r) => { setText(rosterToText(r.members)); setSavedRostersOpen(false) }}
+          onClose={() => setSavedRostersOpen(false)}
+        />
+      )}
     </>
   )
 }

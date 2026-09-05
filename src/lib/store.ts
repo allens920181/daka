@@ -881,6 +881,14 @@ export async function saveRosterAs(name: string, drafts: readonly DraftMember[])
   await refreshRosters()
 }
 
+/** 改名不換人：帶著同一個 id 存回去，`save_roster` 對既有 id 做的是更新
+ *  而不是另存一份（見 supabase/schema.sql）。 */
+export async function renameSavedRoster(roster: SavedRoster, name: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new AppError('not-configured')
+  await api.saveRoster(identity.value.ownerKey, name, roster.members, roster.id)
+  await refreshRosters()
+}
+
 export async function deleteSavedRoster(rosterId: string): Promise<void> {
   if (!isSupabaseConfigured) return
   await api.deleteRoster(identity.value.ownerKey, rosterId)

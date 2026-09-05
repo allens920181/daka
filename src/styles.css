@@ -807,7 +807,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .room-flow-panel {
   position: absolute; inset: 0; overflow-y: auto;
   max-width: 640px; margin: 0 auto;
-  padding: var(--sp-4) var(--sp-4) 120px;
+  /* 底部留白只要蓋過動作列本身（--sp-2 內距 × 2 ＋ 按鈕高）再加一口呼吸空間
+     就好——用固定的大留白（例如 120px）會在 textarea／解析結果都改用 flex
+     長滿之後留下一截填不到的空白，兩塊本來就會自己內捲，不需要額外的捲動
+     緩衝。 */
+  padding: var(--sp-4) var(--sp-4) calc(var(--sp-2) * 2 + var(--tap-lg) + var(--sp-3) + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: var(--sp-3);
   background: var(--paper);
 }
@@ -819,6 +823,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .roster-editor { flex: 1; min-height: 0; }
 .roster-editor-field { flex: 1; min-height: 0; }
 .roster-editor-textarea { flex: 1; min-height: 220px; }
+
+/* 清單面板的解析結果框跟輸入面板的 textarea 一樣長到貼齊底部按鈕——不直接改
+   `.preview`（「更多」面板改名單也在用，那裡要維持 260px 內捲動），只在這個
+   面板的路徑上覆寫。 */
+.room-flow-panel-list > .stack { flex: 1; min-height: 0; }
+.room-flow-panel-list .field { flex: 1; min-height: 0; }
+.room-flow-panel-list .preview { flex: 1; min-height: 160px; max-height: none; }
 
 /* === 面板 ================================================================ */
 
