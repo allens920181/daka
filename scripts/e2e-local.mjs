@@ -211,8 +211,10 @@ ok('列上那顆垃圾桶不見了（從清單移除搬進選單，跟刪除空�
 await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(1500)
 ok('首頁那顆「更多」把人帶進那個空間', (await p.locator('.topbar-name').textContent()) === '秋季旅遊 · 出發')
 ok('而且面板已經開著', (await p.locator('.sheet').count()) === 1)
-ok('面板標題就是那個空間的名字',
-   (await p.locator('.sheet-title').textContent()) === '秋季旅遊 · 出發')
+ok('面板沒有標題列（名字就在正上方的頂欄裡，同一屏不印兩次）',
+   (await p.locator('.sheet .sheet-head').count()) === 0)
+ok('但無障礙名稱還是那個空間',
+   (await p.locator('.sheet').getAttribute('aria-label')) === '秋季旅遊 · 出發')
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉空間選單', (await p.locator('.sheet').count()) === 0)
 
@@ -455,13 +457,13 @@ await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForT
 ok('「更多」面板沒有身分列了', (await p.locator('.sheet .role-line').count()) === 0)
 ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[aria-label="設定"]').count()) === 0)
 
-// 標題列印的是空間名字（2026-09）：它曾經是「更多」（那兩個字說不出任何一件這裡
-// 做得到的事）、接著是三顆分頁鍵，分頁拿掉之後名字是這一列唯一還說得出東西的東西。
-// 名字在上面的編輯模式測試裡改過了，這裡順便驗它一路傳到面板標題。
-ok('標題列印的是空間名字', (await p.locator('.sheet .sheet-title').textContent()) === '現場操作測試 · 改過')
-ok('無障礙名稱跟著標題', (await p.locator('.sheet').getAttribute('aria-label')) === '現場操作測試 · 改過')
-// 那一列仍然沒有叉叉。收起來的三條路：點面板外面、Esc、從頂端那一帶往下滑。
-ok('「更多」沒有關閉鍵了', (await p.locator('.sheet-head .icon-btn').count()) === 0)
+// 標題列整條拿掉（2026-09）：它一路瘦下來——「更多」兩個字說不出任何一件這裡做
+// 得到的事 → 換成三顆分頁鍵 → 分頁拿掉之後改印空間名字 → 而那個名字就在面板正
+// 上方的頂欄裡，同一個字在同一屏印兩次，第二次只是佔掉一列。
+ok('「更多」沒有標題列', (await p.locator('.sheet .sheet-head').count()) === 0)
+// 名字在上面的編輯模式測試裡改過了，這裡順便驗它一路傳到面板的無障礙名稱。
+ok('無障礙名稱仍然是這個空間', (await p.locator('.sheet').getAttribute('aria-label')) === '現場操作測試 · 改過')
+ok('「更多」也沒有關閉鍵', (await p.locator('.sheet .icon-btn').count()) === 0)
 
 /** 從 sel 的中心往下（或往旁邊）滑，模擬手勢。 */
 async function swipe(sel, dy, dx = 0) {
@@ -481,17 +483,23 @@ ok('往下滑一點點不會收起來（手指抖一下不該關掉面板）', (
 await swipe('.sheet-grip', 130)
 ok('從握把往下滑收得起來', (await p.locator('.sheet').count()) === 0)
 
-// 手勢區包含標題列，不是只有那條 24px 的握把——但按著標題往下拖時，Chromium 會
-// 把它當成拖曳選取的文字而送出 pointercancel，手勢會在第一公分就被吃掉。
-// 這一條就是在守 .sheet-head 的 user-select: none。
+// 握把是整條的，不只中間那 38px 的線——沒有標題列的面板靠它收起來，而 38px
+// 對一根手指來說太窄。從最左邊往下拖也要收得起來。
 await reopen()
-await swipe('.sheet-head', 130)
-ok('從標題那一列往下滑也收得起來', (await p.locator('.sheet').count()) === 0)
+const gripBox = await p.locator('.sheet-grip').boundingBox()
+ok(`握把整條都吃得到手勢（寬 ${Math.round(gripBox.width)}px）`, gripBox.width > 300)
+await p.mouse.move(gripBox.x + 24, gripBox.y + gripBox.height / 2); await p.mouse.down()
+for (let i = 1; i <= 6; i++) {
+  await p.mouse.move(gripBox.x + 24, gripBox.y + gripBox.height / 2 + (130 * i) / 6)
+  await p.waitForTimeout(20)
+}
+await p.mouse.up(); await p.waitForTimeout(500)
+ok('從握把最左邊往下滑也收得起來', (await p.locator('.sheet').count()) === 0)
 
 // 先動到橫向的就不是「把面板推回去」，手勢要把這一次讓出去。
 await reopen()
-await swipe('.sheet-head', 0, 120)
-ok('橫向滑標題列不會收起面板', (await p.locator('.sheet').count()) === 1)
+await swipe('.sheet-grip', 0, 120)
+ok('橫向滑握把不會收起面板', (await p.locator('.sheet').count()) === 1)
 
 // 另外兩條路也要在。
 await p.mouse.click(195, 120); await p.waitForTimeout(400)
@@ -505,13 +513,22 @@ await reopen()
 // 項目搬走一半之後最長的一份選單只有五列，面板自己就裝得下）。矮螢幕上仍然要
 // 捲得動、而且捲得到最後一項——「刪除空間」在最底下。
 await p.setViewportSize({ width: 390, height: 380 }); await p.waitForTimeout(400)
-const sheetScrolled = await p.locator('.sheet').evaluate((el) => {
+const sheetFit = await p.locator('.sheet').evaluate((el) => {
   el.scrollTop = el.scrollHeight
-  return el.scrollTop
+  return {
+    h: Math.round(el.getBoundingClientRect().height),
+    max: Math.round(innerHeight * 0.88),
+    // 裝得下就不必捲；裝不下就一定要捲得動。兩者只能成立一個。
+    scrollable: el.scrollHeight > el.clientHeight,
+    scrolled: el.scrollTop,
+  }
 })
 await p.waitForTimeout(300)
-ok(`矮螢幕上面板自己捲得動（scrollTop=${sheetScrolled}）`, sheetScrolled > 0)
-ok('捲到底看得到最後一項', await p.locator('.sheet').getByRole('button', { name: /刪除空間/ }).isVisible())
+ok(`矮螢幕上面板不超過 88vh（${sheetFit.h} ≤ ${sheetFit.max}）`, sheetFit.h <= sheetFit.max + 1)
+ok('裝不下的時候捲得動，裝得下就不必捲',
+   sheetFit.scrollable ? sheetFit.scrolled > 0 : sheetFit.scrolled === 0)
+ok('不管捲不捲，最後一項都看得到',
+   await p.locator('.sheet').getByRole('button', { name: /刪除空間/ }).isVisible())
 await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)

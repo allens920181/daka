@@ -913,14 +913,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 標題列裡住著可以橫向捲的分頁鍵，用 pan-x 把橫向留給它，垂直交給我們。
  */
 .sheet-grip {
-  height: 4px; border-radius: var(--r-full);
-  background: var(--rule-strong); margin: var(--sp-1) auto var(--sp-3);
-  /* 線本身仍然只有 38px 寬，但整條的高度都吃得到手勢——padding 撐出去的部分
-     用負的外距收回來，版面高度一格都沒有多長。 */
-  width: 38px; padding: var(--sp-2) var(--sp-5);
-  margin-top: calc(var(--sp-1) - var(--sp-2)); margin-bottom: calc(var(--sp-3) - var(--sp-2));
-  background-clip: content-box; box-sizing: content-box;
+  /*
+   * 整條都是手勢區，不只中間那條線：沒有標題列的面板（`head={false}`）靠它
+   * 收起來，38px 寬的目標對一根手指來說太窄。線本身仍然只有 38px，用
+   * ::after 畫；上下的內距撐出手指高度，再用負外距收回來，版面高度一格都沒有多長。
+   */
+  height: var(--sp-1); width: 100%; box-sizing: content-box;
+  padding: var(--sp-2) 0;
+  margin: calc(var(--sp-1) - var(--sp-2)) 0 calc(var(--sp-3) - var(--sp-2));
   touch-action: none; cursor: grab;
+}
+.sheet-grip::after {
+  content: ''; display: block; height: 100%; width: 38px; margin: 0 auto;
+  border-radius: var(--r-full); background: var(--rule-strong);
 }
 .sheet.is-dragging .sheet-grip { cursor: grabbing; }
 .sheet-head {

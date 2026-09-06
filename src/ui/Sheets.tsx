@@ -466,14 +466,13 @@ export function ManageSheet({ owner, initialMode, onCopySummary, onEdit, onClose
       title={current.name}
       onClose={onClose}
       /*
-        標題列印的是空間的名字。它曾經是「更多」（那兩個字說不出任何一件這裡做得到
-        的事，所以拿掉），接著是三顆分頁鍵（分頁 2026-09 也拿掉了）。名字是這一列
-        唯一還說得出東西的東西：這些動作要動的是哪一個空間。
-
-        用 `head` 傳而不是用 `title` 印，是為了不要那顆關閉鍵：收起來靠點面板外面、
-        Esc、或從這一列往下滑，三條路都在，都不佔位置。無障礙名稱一樣是這個名字。
+        整條標題列都不要（`head={false}`）。它一路瘦下來：「更多」兩個字說不出
+        任何一件這裡做得到的事 → 換成三顆分頁鍵 → 分頁拿掉之後改印空間名字 →
+        而那個名字就在面板正上方的頂欄裡，同一個字在同一屏印兩次，第二次只是
+        佔掉一列。收起來的三條路（點遮罩、Esc、從握把往下滑）一條都沒有少，
+        無障礙名稱也還是這個空間的名字。
       */
-      head={<h2 class="sheet-title">{current.name}</h2>}
+      head={false}
     >
       {/* 協助者看到的項目少一半，要有一句話說清楚少了什麼。 */}
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
