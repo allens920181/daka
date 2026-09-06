@@ -149,22 +149,25 @@ ok(`備註裡的號碼在列上就撥得出去 ${telHref}`, telHref === 'tel:091
 ok('撥號鍵貼在備註那一行裡', await p.evaluate(() =>
   Boolean(document.querySelector('.member-note > a.note-call[href^="tel:"]'))))
 
-// 匯出名單（單機模式）。列印與 CSV 不經過任何伺服器，自己一個人點完照樣要交得出
-// 名單，所以這一列在單機模式下也照樣在。
+// 匯出（單機模式）。複製、CSV、PDF 都不經過任何伺服器，自己一個人點完照樣要交
+// 得出名單——2026-09 起那三顆不在「更多」裡，而在「結束點名」的確認鍵前面。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(600)
 ok('頂欄沒有分享鍵了', (await p.locator('.topbar button[aria-label="分享"]').count()) === 0)
-ok('單機模式仍然匯得出去', (await p.getByRole('button', { name: /^匯出名單$/ }).count()) === 1)
-await p.getByRole('button', { name: /^匯出名單$/ }).click(); await p.waitForTimeout(400)
-// 複製結果 2026-09 收進匯出名單：它跟 CSV、PDF 是同一件事的三種格式。紙本排最後
-// ——另外三列帶走的是「今天點到哪裡」，只有它帶走的是一張還沒開始點的空白表。
-const exportRows = await p.locator('.sheet .menu-item strong').allTextContents()
-ok(`匯出名單四列：${exportRows.join('、')}`,
-   JSON.stringify(exportRows) === JSON.stringify(['複製結果', '下載 CSV', '存成 PDF', '列印紙本名單']))
-const exportHint = (await p.locator('.sheet .hint').first().textContent()) || ''
-ok('匯出頁講清楚 PDF 是從列印畫面存的', exportHint.includes('儲存為 PDF'))
-ok('也講清楚紙本印的是空白格子', exportHint.includes('空白格子'))
-await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
-ok('返回之後回到選單', (await p.getByRole('button', { name: /^匯出名單$/ }).count()) === 1)
+ok('選單上沒有「匯出名單」了（它併進了結束點名）',
+   (await p.locator('.sheet').getByRole('button', { name: /^匯出名單$/ }).count()) === 0)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+await p.locator('.dock').getByRole('button', { name: /^結束點名$/ }).click(); await p.waitForTimeout(500)
+const exportRows = (await p.locator('.result-actions .btn').allTextContents()).map((x) => x.trim())
+ok(`確認鍵前面就是三種格式：${exportRows.join('、')}`,
+   JSON.stringify(exportRows) === JSON.stringify(['複製結果', '下載 CSV', '存成 PDF']))
+ok('單機模式照樣匯得出去（這三顆一個都不需要連線）', exportRows.length === 3)
+const finishBody = (await p.locator('#dialog-body').textContent()) || ''
+ok('按下去之前就講清楚 PDF 是從列印畫面存的', finishBody.includes('儲存為 PDF'))
+ok('沒有「列印紙本名單」了（空白待勾那份文件連功能一起拿掉）',
+   (await p.getByRole('button', { name: /^列印紙本名單$/ }).count()) === 0)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關掉對話框，空間沒有被結束', (await p.locator('.banner-result').count()) === 0)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 // 邀請點名（頂欄）、臨時加人（編輯模式的「＋」）、結束點名（動作列）都不在選單裡。
 ok('選單上沒有邀請點名、臨時加人、結束點名',
    (await p.locator('.sheet').getByRole('button', { name: /^邀請點名$|^臨時加人$|^結束點名$/ }).count()) === 0)
@@ -432,10 +435,11 @@ const manageRows = await p.locator('.sheet .menu-item strong').allTextContents()
 // 只剩「一場活動大概碰一次」的那幾項。這一間是單機模式、自己開的，所以
 // 「存成常用」不列（要雲端），其餘全在。
 ok(`「更多」是一條平的選單：${manageRows.join('、')}`,
-   JSON.stringify(manageRows) === JSON.stringify(['編輯', '匯出名單', '建立副本', '刪除空間']))
-// 列印、CSV 與複製結果 2026-09 合併成「匯出名單」，都在子畫面裡。
-ok('選單上不直接列列印、CSV、複製結果',
-   (await p.getByRole('button', { name: /^列印紙本名單$|^下載 CSV$|^複製結果$/ }).count()) === 0)
+   JSON.stringify(manageRows) === JSON.stringify(['編輯', '建立副本', '刪除空間']))
+// 匯出 2026-09 整條併進「結束點名」：把結果交出去是收尾的一部分，不是一個要
+// 自己想起來去選單裡找的獨立功能。
+ok('選單上不列匯出、CSV、複製結果',
+   (await p.getByRole('button', { name: /^匯出名單$|^下載 CSV$|^存成 PDF$|^複製結果$/ }).count()) === 0)
 // 編輯名單與重新命名合併成「編輯」，選單上不再各佔一列。
 ok('選單上沒有「編輯名單」也沒有「重新命名」',
    (await p.getByRole('button', { name: /^編輯名單$|^重新命名$/ }).count()) === 0)
@@ -675,13 +679,32 @@ ok(`確認鍵前面就看得到結果：「${finishPreview.split('\n')[1]}」`,
    finishPreview.includes('確認對話框測試') && /已到 1 \/ 3 人/.test(finishPreview))
 ok('對話框裡就能複製結果', (await p.getByRole('button',{name:/複製結果/}).count()) > 0)
 ok('對話框裡就能下載 CSV', (await p.getByRole('button',{name:/下載 CSV/}).count()) > 0)
+// 「匯出名單」2026-09 整條併進這裡，所以存成 PDF 也在同一組裡。
+ok('對話框裡就能存成 PDF', (await p.getByRole('button',{name:/存成 PDF/}).count()) > 0)
+// 而那顆是**從這張對話框裡**按的：紙上不能印到遮罩，而且模態層把 body 鎖成
+// overflow:hidden（背景不准跟著捲）——那在紙上會把名單切到只剩第一頁。
+await p.emulateMedia({media:'print'}); await p.waitForTimeout(300)
+const printFromDialog = await p.evaluate(() => ({
+  overlay: getComputedStyle(document.querySelector('.overlay')).display,
+  bodyOverflow: getComputedStyle(document.body).overflow,
+  rows: [...document.querySelectorAll('.member')].filter((m) => getComputedStyle(m).display !== 'none').length,
+}))
+ok('對話框開著列印時紙上不印遮罩', printFromDialog.overlay === 'none')
+ok('對話框開著列印時 body 的捲動鎖解開了（不然只印得出第一頁）',
+   printFromDialog.bodyOverflow === 'visible')
+ok(`對話框開著列印時名單還是 ${printFromDialog.rows} 列`, printFromDialog.rows === 3)
+await p.emulateMedia({media:'screen'}); await p.waitForTimeout(200)
 await p.getByRole('button',{name:/^結束點名$/}).last().click(); await p.waitForTimeout(1200)
 await p.keyboard.press('Escape'); await p.waitForTimeout(500)
 // 結束之後要回答的問題已經不是「還能不能點」，而是「這一場最後是幾個人」。
 const closedBanner = (await p.locator('.banner-result-text').textContent()) ?? ''
 ok(`結束後橫幅印的是定格結果：「${closedBanner}」`,
    closedBanner.includes('已結束') && closedBanner.includes('1 / 3'))
-ok('結束後仍然複製得到結果', (await p.locator('.banner-result .btn').count()) === 1)
+// 結束之後那三顆要留著：真正需要那份 CSV 的人（教會辦公室、隔天的行政）是在
+// 事情結束之後才想起來的，而「匯出名單」那條路已經不在了。
+const bannerActions = (await p.locator('.banner-result .btn').allTextContents()).map((x) => x.trim())
+ok(`結束後三種格式都還在：${bannerActions.join('、')}`,
+   JSON.stringify(bannerActions) === JSON.stringify(['複製結果', '下載 CSV', '存成 PDF']))
 ok('結束後戳名字沒有作用', await p.locator('.member-main').first().isDisabled())
 ok('頂欄說得出已關閉', (await p.locator('.topbar-count.closed').count()) === 1)
 
@@ -726,52 +749,35 @@ await p.emulateMedia({media:'print'}); await p.waitForTimeout(500)
 const printState = await p.evaluate(()=>{
   const hidden = (sel)=>{const e=document.querySelector(sel); return !e || getComputedStyle(e).display==='none'}
   const txt = (sel)=>document.querySelector(sel)?.textContent?.trim() ?? null
-  const check = document.querySelector('.check')
+  const cs = (sel)=>{const e=document.querySelector(sel); return e ? getComputedStyle(e) : null}
   return { topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
     rows: document.querySelectorAll('.member').length,
-    checkBg: check ? getComputedStyle(check).backgroundColor : null,
-    checkBorder: (() => {
-      const arrived = document.querySelector('.member.is-arrived .check')
-      return arrived ? getComputedStyle(arrived).borderColor : 'rgb(0, 0, 0)'
-    })(),
-    title: txt('.print-title'), meta: txt('.print-meta'), blanks: txt('.print-blanks'),
+    arrivedCheck: cs('.member.is-arrived .check')?.backgroundColor ?? null,
+    pendingCheck: cs('.member:not(.is-arrived) .check')?.backgroundColor ?? null,
+    checkBorder: cs('.member.is-arrived .check')?.borderColor ?? null,
+    title: txt('.print-title'), meta: txt('.print-meta'),
+    blanks: document.querySelectorAll('.print-blanks').length,
     columns: getComputedStyle(document.querySelector('.list')).columnCount }
 })
 ok('列印時隱藏頂欄／篩選／搜尋', printState.topbar&&printState.seg&&printState.search)
 ok(`列印仍保留名單 ${printState.rows} 列`, printState.rows===3)
-ok('列印的勾選格是空白的（給筆勾）', printState.checkBg==='rgb(255, 255, 255)')
-// 連邊框都要是黑的：已到那一格在螢幕上是綠框，漏出來的話這張「空白表」上就有
-// 半套紀錄——已經勾過的人是綠圈、其他人是黑框。
-ok(`空白表上每一格的邊框都一樣（${printState.checkBorder}）`,
+// 紙上印的是目前的結果（2026-09 起唯一的一份文件）：已到填實、還沒到留白。
+ok('已到的格子填實', printState.arrivedCheck === 'rgb(0, 0, 0)')
+ok('還沒到的格子留白', printState.pendingCheck === 'rgb(255, 255, 255)')
+// 連邊框都要是黑的：已到那一格在螢幕上是綠框，漏出來的話紙上就有兩套記號在講
+// 同一件事，而黑白印表機只印得出其中一套。
+ok(`每一格的邊框都一樣（${printState.checkBorder}）`,
    printState.checkBorder === 'rgb(0, 0, 0)')
-// 紙本備援是「手機沒電」時唯一剩下的東西。抬頭必須寫得出這是哪一場、代碼多少。
-// 以前這裡印的是借來的計分區文字（「還有 12 位沒到」）——一個離開印表機就過期
-// 的數字，而活動名稱與代碼反而被 display:none 掉了。
+// 抬頭必須寫得出這是哪一場、代碼多少。以前這裡印的是借來的計分區文字（「還有
+// 12 位沒到」）——一個離開印表機就過期的數字，而活動名稱與代碼反而被
+// display:none 掉了。
 ok(`列印抬頭是活動名稱：「${printState.title}」`, printState.title === '確認對話框測試')
 ok(`列印抬頭有代碼與人數：「${printState.meta}」`,
    /[2-9A-HJ-KM-NP-Z]{6}/.test(printState.meta || '') && (printState.meta || '').includes('共 3 人'))
-ok('列印抬頭有日期與點名者欄位', (printState.blanks || '').includes('日期') && (printState.blanks || '').includes('點名者'))
+// 空白待勾的紙本 2026-09 連同它那顆按鍵一起拿掉了，手寫欄位跟著走：紙上不再有
+// 「日期／點名者／完成時間」那一行，因為這張紙印的是已經點完的結果。
+ok('紙上沒有手寫欄位了', printState.blanks === 0)
 ok(`列印排成兩欄（${printState.columns}）省紙`, printState.columns === '2')
-
-// 「存成 PDF」印的是另一份文件：同一份版面，格子照狀態填、簽名欄不印。
-// 記號由 printSheet('result') 下在 <html> 上（Sheets.tsx）。
-await p.evaluate(() => { document.documentElement.dataset.print = 'result' })
-await p.waitForTimeout(200)
-const resultState = await p.evaluate(() => {
-  const cs = (sel) => { const e = document.querySelector(sel); return e ? getComputedStyle(e) : null }
-  const blanks = document.querySelector('.print-blanks')
-  return {
-    arrivedCheck: cs('.member.is-arrived .check')?.backgroundColor ?? null,
-    pendingCheck: cs('.member:not(.is-arrived) .check')?.backgroundColor ?? null,
-    blanksHidden: !blanks || getComputedStyle(blanks).display === 'none',
-    rows: document.querySelectorAll('.member').length,
-  }
-})
-ok('PDF 版：已到的格子填黑（不是空白表）', resultState.arrivedCheck === 'rgb(0, 0, 0)')
-ok('PDF 版：未到的格子仍是空白', resultState.pendingCheck === 'rgb(255, 255, 255)')
-ok('PDF 版：不印簽名欄（紀錄裡已經有誰在什麼時候點的）', resultState.blanksHidden)
-ok(`PDF 版：名單一樣是 ${resultState.rows} 列`, resultState.rows === 3)
-await p.evaluate(() => { delete document.documentElement.dataset.print })
 
 await p.emulateMedia({media:'screen'})
 
@@ -831,12 +837,13 @@ ok('而且等於分段控制的未到數', (await missing()) === gn[0])
 // --- 複製結果應限定在選取的分組 ---
 await ctx.grantPermissions(['clipboard-read','clipboard-write'])
 await p.getByRole('button',{name:/第二車/}).click(); await p.waitForTimeout(300)
-await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
-// 複製結果 2026-09 收進「匯出名單」子畫面：它跟 CSV、PDF 是同一件事的三種格式。
-await p.getByRole('button',{name:/^匯出名單$/}).click(); await p.waitForTimeout(400)
+// 複製結果 2026-09 併進「結束點名」：三種格式都在確認鍵前面。這裡只借那顆鍵，
+// 不真的結束——按 Esc 走人，空間照樣開著。
+await p.locator('.dock').getByRole('button',{name:/^結束點名$/}).click(); await p.waitForTimeout(500)
 await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeout(700)
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 
 // ---- 80 人名單的首屏產出 ----

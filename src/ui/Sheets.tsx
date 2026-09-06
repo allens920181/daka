@@ -11,7 +11,6 @@ import {
 import { isSupabaseConfigured } from '../lib/supabase'
 import { copyToClipboard } from '../lib/clipboard'
 import { inAppBrowser, secureOrigin } from '../lib/config'
-import { csvFilename, downloadFile, toCsv } from '../lib/export'
 import { formatDate } from '../lib/format'
 import type { SavedRoster } from '../lib/types'
 import { currentRoute, joinUrl, navigate } from '../router'
@@ -19,8 +18,8 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconClose, IconCopy, IconDownload, IconDuplicate, IconEdit, IconHash,
-  IconChevronDown, IconGoogle, IconLink, IconMore, IconPdf, IconPrinter,
+  IconBookmark, IconClose, IconCopy, IconDuplicate, IconEdit, IconHash,
+  IconChevronDown, IconGoogle, IconLink, IconMore,
   IconQr, IconShare, IconTrash,
 } from './icons'
 import { useT } from './t'
@@ -83,31 +82,9 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
   await copyText(url, t('copied'), t('copyFailed'))
 }
 
-/**
- * 列印。`mode` 決定印出來的是哪一份文件：
- * - 'blank'：空白格子的紙本，手機沒電時拿筆勾。
- * - 'result'：目前的點名結果，交差用；在列印畫面選「儲存為 PDF」就是一個檔案。
- *
- * 記號下在 <html> 上讓 @media print 讀，列印畫面關掉之後一定要拿掉，不然下一次
- * 列印會沿用上一次的樣子。afterprint 在某些瀏覽器不會來，所以再壓一個逾時保底。
- */
-function printSheet(mode: 'blank' | 'result', onClose: () => void): void {
-  const root = document.documentElement
-  if (mode === 'result') root.dataset.print = 'result'
-  const done = () => {
-    delete root.dataset.print
-    window.removeEventListener('afterprint', done)
-  }
-  window.addEventListener('afterprint', done)
-  setTimeout(done, 60_000)
-  // 先關面板：遮罩在紙上是看不到的，但使用者按完要看得到自己的名單。
-  onClose()
-  setTimeout(() => window.print(), 60)
-}
-
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'saveRoster' | 'export' | 'copy' | 'remove'
+type ManageMode = 'menu' | 'saveRoster' | 'copy' | 'remove'
   | 'invite' | 'inviteCode' | 'inviteLink' | 'inviteQr'
 type Confirming = null | 'delete' | 'forget'
 
@@ -120,20 +97,20 @@ type Confirming = null | 'delete' | 'forget'
  * 現在首頁那顆「更多」直接把人帶進空間再打開這一份（`openMenuOnEnter`），
  * 兩邊看到的永遠一模一樣。
  *
- * 順帶：先進空間才打開，這份清單裡的每一項才都做得到——編輯、匯出名單動的都是
- * 這個空間的即時資料，在首頁那種「還沒載入」的狀態下只做得出一份能力比較弱的
- * 第二種選單，那正是要消滅的東西。
+ * 順帶：先進空間才打開，這份清單裡的每一項才都做得到——「編輯」動的是這個空間
+ * 的即時資料，在首頁那種「還沒載入」的狀態下只做得出一份能力比較弱的第二種
+ * 選單，那正是要消滅的東西。
  *
  * 邀請點名、臨時加人、結束點名 2026-09 從這裡搬到底部動作列（`Room.tsx` 的
  * `.dock`）：那三顆是一場活動的三個時刻，每次都要先開一層選單才按得到是不對的。
+ * 同月「匯出名單」也走了，搬進「結束點名」的確認對話框與結束後的橫幅：把結果
+ * 交出去是收尾的一部分，不是一個要自己想起來去選單裡找的獨立功能。
  * 這裡留下來的是「一場活動大概碰一次、而且不趕時間」的那幾項。
  */
-export function ManageSheet({ owner, initialMode, onCopySummary, onEdit, onClose }: {
+export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
   owner: boolean
   /** 剛建立完副本、或從底部動作列按「邀請點名」進來時，直接開在邀請頁。 */
   initialMode?: ManageMode
-  /** 複製結果由 Room 執行：它握著「目前這一車」的名單與 Toast，實作只留一份。 */
-  onCopySummary: () => void
   /** 「編輯」不是面板裡的一頁，是點名畫面自己的一個狀態，所以交回 Room 開。 */
   onEdit: () => void
   onClose: () => void
@@ -349,54 +326,6 @@ export function ManageSheet({ owner, initialMode, onCopySummary, onEdit, onClose
   }
 
   /*
-    把這一場的結果交出去的四種方式。複製結果 2026-09 從選單搬進來：它跟 CSV、
-    PDF 是同一件事的三種格式（貼進 LINE、進試算表、存成檔案），分開放在兩層
-    選單裡只會讓人以為它們是不同的東西。
-
-    紙本與 PDF 走的是同一個列印畫面，但印出來的是兩份不同的文件：紙本印空白
-    格子（手機沒電時用筆勾），PDF 印目前的點名結果（交差用）。差別由
-    <html data-print> 決定，見 styles.css 的 @media print。所以紙本排在最後：
-    另外三列帶走的都是「今天點到哪裡」，只有它帶走的是一張還沒開始點的表。
-
-    瀏覽器沒有「下載 PDF」這種 API，PDF 一律是從列印畫面選「儲存為 PDF」存下來
-    的——所以標籤寫「存成 PDF」而不是「下載 PDF」，上面那句 hint 也直說會跳出
-    列印畫面。要真的產出一個 .pdf 檔就得自己畫版面再嵌一份中文字型，那是好幾 MB
-    的字型檔，對一個要在 6:50 的停車場用爛網路開起來的工具划不來。
-  */
-  if (mode === 'export') {
-    return (
-      <Sheet title={t('export')} onClose={onClose} onBack={() => setMode('menu')}>
-        <p class="hint" style="margin-bottom:10px">{t('exportHint')}</p>
-        <div class="menu">
-          {/* 複製的範圍跟著目前選的分組，所以動作交回 Room 執行。 */}
-          <button class="menu-item" onClick={() => { onCopySummary(); onClose() }}>
-            <IconCopy />
-            <span><strong>{t('copySummary')}</strong></span>
-          </button>
-
-          <button
-            class="menu-item"
-            onClick={() => downloadFile(csvFilename(current), toCsv(members.value, prefs.value.lang))}
-          >
-            <IconDownload />
-            <span><strong>{t('exportCsv')}</strong></span>
-          </button>
-
-          <button class="menu-item" onClick={() => printSheet('result', onClose)}>
-            <IconPdf />
-            <span><strong>{t('exportPdf')}</strong></span>
-          </button>
-
-          <button class="menu-item" onClick={() => printSheet('blank', onClose)}>
-            <IconPrinter />
-            <span><strong>{t('printRoster')}</strong></span>
-          </button>
-        </div>
-      </Sheet>
-    )
-  }
-
-  /*
     不要了。兩個選項擺在同一頁，因為它們的差別要並排看才看得出來：「從清單移除」
     只影響這支手機（別人照樣進得去），「刪除空間」是所有人的紀錄一起沒。
 
@@ -478,9 +407,10 @@ export function ManageSheet({ owner, initialMode, onCopySummary, onEdit, onClose
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
 
       {/*
-        排列照一場活動的時間軸走：發代碼、把名單弄對（出發前）→ 臨時加人（現場）
-        → 匯出名單（車開了）→ 建立副本（回程）→ 刪除空間（不要了）。
-        破壞性的兩項排最後，而且中間隔著一整段距離。
+        排列照一場活動的時間軸走：把名單弄對、存成常用（出發前）→ 建立副本
+        （回程）→ 刪除空間（不要了）。車開了那一刻要做的事不在這裡——結果是
+        在「結束點名」的確認鍵前面交出去的。
+        破壞性的那一項排最後，而且中間隔著一整段距離。
       */}
       <div class="menu">
         {/*
@@ -502,12 +432,6 @@ export function ManageSheet({ owner, initialMode, onCopySummary, onEdit, onClose
             <span><strong>{t('saveAsRoster')}</strong></span>
           </button>
         )}
-
-        {/* 匯出不經過伺服器，單機模式下照樣在。 */}
-        <button class="menu-item" onClick={() => setMode('export')}>
-          <IconDownload />
-          <span><strong>{t('export')}</strong></span>
-        </button>
 
         {/*
           複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上

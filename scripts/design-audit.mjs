@@ -215,8 +215,13 @@ for (const scheme of ['light', 'dark']) {
 
   await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(500)
   await audit(page, scheme, '「更多」面板')
-  await page.getByRole('button', { name: /^匯出名單$|^Export the list$/ }).click(); await page.waitForTimeout(400)
-  await audit(page, scheme, '「更多」· 匯出名單')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300)
+
+  // 匯出 2026-09 從「更多」搬進「結束點名」的確認對話框：結果攤在確認鍵前面，
+  // 三顆帶得走的格式（複製、CSV、PDF）就排在它下面。按 Esc 走人，不真的結束。
+  await page.locator('.dock').getByRole('button', { name: /^結束點名$|^Finish roll call$/ }).click()
+  await page.waitForTimeout(400)
+  await audit(page, scheme, '結束點名 · 結果與三種格式')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   // 編輯模式（2026-09）：標題變輸入框、每一列右邊長出叉叉、動作列剩一顆「＋」。

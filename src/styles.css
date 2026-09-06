@@ -760,6 +760,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .banner-result-text { flex: 1; min-width: 0; font-weight: 700; }
 
+/*
+ * 收尾那三顆（複製結果、下載 CSV、存成 PDF）。結束對話框與結束後的橫幅用同一組。
+ * 一定要 wrap：三顆並排在 360px 的手機上放不下，硬排就是整個橫幅被撐出畫面。
+ */
+.result-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.result-actions .btn { flex: 1 1 auto; }
+.dialog .result-actions { margin-bottom: var(--sp-3); }
+
 /* 結束對話框裡的結果預覽：就是等一下要貼回 LINE 的那段文字，原樣呈現。 */
 .result-preview {
   margin: 0 0 var(--sp-3); padding: var(--sp-3);
@@ -1107,9 +1115,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 
 /* ===========================================================================
-   列印：手機沒電時的紙本備援。
-   印出來的是一份可以用筆勾的空白名單，不是螢幕的複製品——
-   已經點過的狀態不印，因為紙本的用途是「從頭重點一次」。
+   列印：把這一場的結果印到紙上，或在列印畫面選「儲存為 PDF」存成檔案。
+   只有這一份文件（2026-09）——空白待勾的紙本連同「列印紙本名單」那顆鍵一起
+   拿掉了，`<html data-print>` 那個兩份文件的切換也跟著沒了：按 Ctrl+P 跟按
+   「存成 PDF」印出來的是同一張紙。
    =========================================================================== */
 /* 螢幕上不存在的東西：只有紙本需要抬頭與電話。 */
 .print-head, .print-phone { display: none; }
@@ -1126,7 +1135,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
     --rule: #999; --rule-strong: #666; --check-line: #000;
     --st-arrived-soft: #fff; --st-arrived-line: #999;
   }
-  body { background: #fff; color: #000; font-size: 11pt; }
+  /*
+   * overflow 要解鎖。「存成 PDF」是從結束對話框裡按的，而模態層開著的時候
+   * useModal.ts 把 body 鎖成 overflow:hidden（背景不准跟著捲）——那在紙上會把
+   * 整份名單切到只剩第一頁。遮罩本身下面已經 display:none 了，這裡把捲動鎖也
+   * 一起解掉；要 !important 才蓋得過那個 inline style。
+   */
+  body { background: #fff; color: #000; font-size: 11pt; overflow: visible !important; }
 
   /* .segmented 與 .search-wrap 都住在 .topbar 裡了，但留著名字：它們是否被藏起來
      是 e2e 直接驗的事情，而選擇器多寫一個不會錯。 */
@@ -1144,7 +1159,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
     display: flex; gap: 12pt; flex-wrap: wrap;
     font-size: 10pt; color: #333; margin: 0 0 3pt;
   }
-  .print-blanks { font-size: 10pt; color: #000; margin: 0 0 6pt; }
 
   /* 分組在紙本上是小標題，每一組從新的區塊開始。 */
   .group-divider {
@@ -1170,14 +1184,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .member.is-arrived { background: #fff !important; opacity: 1; }
   .member-main { min-height: 0; padding: 4pt 0; flex: 1; }
   /*
-   * 紙本一律印空白格子讓人用筆勾。邊框色要壓成黑的：已到的那一格在螢幕上是綠框
-   * （--st-arrived，沒有被上面的列印 token 蓋掉），印出來會變成「已經勾過的人是
-   * 綠圈、其他人是黑框」——一份號稱空白的表上有半套紀錄，比全有或全無都糟。
+   * 勾選格照狀態填：已到的填實、還沒到的留白。這張紙是活動之後要交出去的東西，
+   * 所以印的是「今天點到哪裡」。
+   * 邊框色一律壓成黑的：已到那一格在螢幕上是綠框（--st-arrived，沒有被上面的
+   * 列印 token 蓋掉），漏出來的話紙上會變成「已到是綠圈、未到是黑框」——顏色與
+   * 填色兩套東西講同一件事，而黑白印表機只印得出其中一套。
    */
   .check { width: 12pt; height: 12pt; border: 1pt solid #000; border-radius: 2pt;
            border-color: #000 !important;
-           background: #fff !important; color: transparent !important; opacity: 1; }
-  .check svg { display: none; }
+           background: #000 !important; color: #fff !important; opacity: 1; }
+  .check svg { display: block; }
+  .member:not(.is-arrived) .check {
+    background: #fff !important; color: transparent !important;
+  }
   .member-name { font-size: 11pt; color: #000; }
   .member-meta { color: #555; font-size: 8.5pt; }
   .chip, .chip-count, .chip-note, .chip-tell, .chip-data {
@@ -1206,19 +1225,5 @@ button, input, textarea, select { font: inherit; color: inherit; }
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
 
-  /*
-   * 「存成 PDF」印的是另一份文件：目前的點名結果，不是空白表。同一份版面，
-   * 兩種用途——空白的那份是活動當下的備援（手機沒電），這一份是活動之後要交
-   * 出去的東西，所以格子照狀態填、簽名欄不印（已經有誰在什麼時候點的紀錄）。
-   * 記號由 Sheets.tsx 的 printSheet('result') 下在 <html> 上。
-   */
-  :root[data-print='result'] .check {
-    background: #000 !important; color: #fff !important; border-color: #000;
-  }
-  :root[data-print='result'] .check svg { display: block; }
-  :root[data-print='result'] .member:not(.is-arrived) .check {
-    background: #fff !important; color: transparent !important;
-  }
-  :root[data-print='result'] .print-blanks { display: none; }
 }
 

@@ -130,7 +130,6 @@ const zh = {
   signOutWhat: '登出後，這支手機自己開的空間照樣管得動；用帳號接過來的活動會暫時看不到，重新登入就會回來。',
   roomClosedShort: '已關閉',
   printTotal: '共 {people} 人（{heads} 人頭）',
-  printBlanks: '日期：＿＿＿＿＿＿　　點名者：＿＿＿＿＿＿　　完成時間：＿＿＿＿＿＿',
   phoneTail: '尾碼 {tail}',
   /** 成員面板裡備註原文那個欄位的標籤——備註本身已經搬離名單列，這裡是唯一還看得到它的地方。 */
   /** 編輯模式下那兩個輸入框的無障礙名稱。 */
@@ -206,7 +205,7 @@ const zh = {
      它 2026-09 搬到底部動作列，跟「邀請點名」並排，兩顆鍵講的要是同一件事的
      開頭與結尾（點名），而不是一顆講點名、一顆講輪次。 */
   finishRound: '結束點名',
-  finishRoundBody: '紀錄還在。先帶走結果：',
+  finishRoundBody: '紀錄還在。先帶走結果（存成 PDF 會跳出列印畫面，在那裡選「儲存為 PDF」）：',
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
   roomClosed: '這個空間已關閉',
@@ -237,18 +236,13 @@ const zh = {
   csvCompanions: '攜伴',
   csvGroup: '分組',
   csvNote: '備註',
-  /*
-   * 受詞是「名單」不是「結果」。這一頁有四列，其中三列帶走的是今天點到哪裡，
-   * 但「列印紙本名單」印的是**空白格子**——它不是結果。四列的共同點只到「把這份
-   * 名單變成帶得走的東西」為止，標籤就寫到那裡；細部差別交給底下那句 hint。
-   */
-  export: '匯出名單',
+  /* 同一件事的三種格式：貼進 LINE、進試算表、存成檔案。三顆都只出現在收尾那
+     一刻（結束對話框與結束後的橫幅）——「匯出名單」那一列連同它的子畫面 2026-09
+     一起拿掉了，所以也沒有 export 這個 key 了。
+     「存成 PDF」不寫「下載 PDF」：瀏覽器沒有那個 API，PDF 是從列印畫面選
+     「儲存為 PDF」存下來的，那一步寫在 finishRoundBody 裡先講。 */
   exportCsv: '下載 CSV',
   exportPdf: '存成 PDF',
-  /* 四列各自給的是不一樣的東西，一句話講完差別，順便講 PDF 怎麼來——瀏覽器
-     沒有「下載 PDF」這個 API，PDF 是從列印畫面選「儲存為 PDF」存下來的。
-     寫清楚比讓人按下去才發現跳出列印畫面誠實。 */
-  exportHint: '複製、CSV、PDF 帶走的是目前的點名結果，PDF 要在列印畫面選「儲存為 PDF」；紙本印的是空白格子，給筆勾。',
   copySummary: '複製結果',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
@@ -322,7 +316,6 @@ const zh = {
   /* 晶片上印的是未到數，aria-label 卻唸「已到 0 / 4」——看到的和聽到的不是同一個
      數字。晶片的數字不加文字標籤（見 roll-call.md），文字說明就得說明那個數字。 */
   groupCount: '{name}：{n} 位沒到',
-  printRoster: '列印紙本名單',
 
   // 通用
   cancel: '取消',
@@ -441,7 +434,6 @@ const en: Record<MessageKey, string> = {
   signOutWhat: "After signing out you keep control of rooms this phone opened; events you took over with the account disappear until you sign in again.",
   roomClosedShort: 'Closed',
   printTotal: '{people} people ({heads} heads)',
-  printBlanks: 'Date: ____________   Checked by: ____________   Finished: ____________',
   phoneTail: 'ends {tail}',
   nameLabel: 'Name',
   noteLabel: 'Note',
@@ -484,7 +476,7 @@ const en: Record<MessageKey, string> = {
   editName: 'Name',
   rename: 'Rename',
   finishRound: 'Finish roll call',
-  finishRoundBody: 'The record stays. Take the result with you first:',
+  finishRoundBody: 'The record stays. Take the result with you first (Save as PDF opens the print dialog — choose “Save as PDF” there):',
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
   roomClosed: 'This room is closed',
@@ -506,10 +498,8 @@ const en: Record<MessageKey, string> = {
   csvCompanions: 'Companions',
   csvGroup: 'Group',
   csvNote: 'Note',
-  export: 'Export the list',
   exportCsv: 'Download CSV',
   exportPdf: 'Save as PDF',
-  exportHint: 'Copy, CSV and PDF take the current result with you — for the PDF, choose “Save as PDF” in the print dialog. Printing gives you blank boxes to tick by hand.',
   copySummary: 'Copy result',
   summaryCopied: 'Result copied — paste it anywhere',
 
@@ -570,7 +560,6 @@ const en: Record<MessageKey, string> = {
   changeGroup: 'Change group',
   removeFromGroup: 'Remove from group',
   groupCount: '{name}: {n} missing',
-  printRoster: 'Print paper roster',
 
   cancel: 'Cancel',
   confirm: 'Confirm',

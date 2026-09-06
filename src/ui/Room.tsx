@@ -16,7 +16,8 @@ import { errorMessage } from './NewRoom'
 import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
 import {
-  IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPhone, IconPlus, IconShare,
+  IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPdf, IconPhone, IconPlus,
+  IconShare,
 } from './icons'
 import { useT } from './t'
 
@@ -30,6 +31,23 @@ type MenuMode = 'invite' | undefined
  * null 已經是「看全部」的意思了，兩者必須分得開。
  */
 const UNGROUPED = '\u0000ungrouped'
+
+/**
+ * 把這一場印出來。「存成 PDF」走的就是這裡——瀏覽器不給網頁直接產出 PDF 的
+ * API，PDF 一律是從列印畫面選「儲存為 PDF」存下來的，所以按鍵寫「存成 PDF」，
+ * 而結束對話框那句說明直接把「會跳出列印畫面」講在前面。自己排一份中文 PDF 要
+ * 內嵌好幾 MB 的字型檔，對一個要在 6:50 的停車場用爛網路開起來的工具划不來。
+ *
+ * 印出來永遠是同一份文件：目前的點名結果（2026-09）。空白待勾的紙本連同
+ * 「列印紙本名單」那顆鍵一起拿掉了，`<html data-print>` 那個兩份文件的切換
+ * 也跟著沒了——現在按 Ctrl+P 跟按「存成 PDF」印出來的是同一張紙。
+ *
+ * 不必先關掉對話框：`.overlay` 在 @media print 裡是 display:none，紙上看不到
+ * 遮罩。而且關掉的話使用者就按不到那顆「結束點名」了——他是為了結束才打開它的。
+ */
+function printResult(): void {
+  window.print()
+}
 
 export function Room({ code }: { code: string }) {
   const t = useT()
@@ -389,7 +407,6 @@ export function Room({ code }: { code: string }) {
             <span>{t('printTotal', { people: s.people, heads: s.expectedHeadcount })}</span>
             {group !== null && <span>{groupLabel}</span>}
           </p>
-          <p class="print-blanks">{t('printBlanks')}</p>
         </div>
 
         {/*
@@ -406,9 +423,11 @@ export function Room({ code }: { code: string }) {
                   : `${t('missingCount', { n: s.pendingHeadcount })} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`,
               })}
             </span>
-            <button class="btn btn-sm" onClick={() => { void copySummary() }}>
-              <IconCopy /> {t('copySummary')}
-            </button>
+            <ResultActions
+              small
+              onCopy={() => { void copySummary() }}
+              onCsv={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
+            />
           </div>
         )}
 
@@ -564,17 +583,10 @@ export function Room({ code }: { code: string }) {
           onConfirm={() => { void setClosed(true) }}
         >
           <pre class="result-preview">{toShareText(current, all, prefs.value.lang)}</pre>
-          <div class="row" style="margin-bottom:12px">
-            <button class="btn btn-block" onClick={() => { void copySummary() }}>
-              <IconCopy /> {t('copySummary')}
-            </button>
-            <button
-              class="btn btn-block"
-              onClick={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
-            >
-              <IconDownload /> {t('exportCsv')}
-            </button>
-          </div>
+          <ResultActions
+            onCopy={() => { void copySummary() }}
+            onCsv={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
+          />
         </ConfirmDialog>
       )}
 
@@ -582,7 +594,6 @@ export function Room({ code }: { code: string }) {
         <ManageSheet
           owner={isOwner.value}
           initialMode={menuMode}
-          onCopySummary={() => { void copySummary() }}
           onEdit={() => { startEditing(); setSheet(null) }}
           onClose={() => { setSheet(null); setMenuMode(undefined) }}
         />
@@ -604,6 +615,34 @@ export function Room({ code }: { code: string }) {
         />
       )}
     </>
+  )
+}
+
+/**
+ * 把這一場的結果交出去的三種格式：貼進 LINE、進試算表、存成檔案。
+ *
+ * 它們 2026-09 從「更多 › 匯出名單」那張子畫面搬到這裡，而且只出現在收尾的兩個
+ * 時刻——結束點名的確認鍵前面（決定之前）、結束之後的橫幅（決定之後）。以前
+ * 「匯出名單」是選單裡一列要自己想起來去按的東西，而多數空間從未被匯出，30 天
+ * 後靜靜消失；「車開了」是唯一一次所有人的注意力同時落在同一件事上，這三顆就
+ * 該待在那一刻的必經之路上。
+ *
+ * 兩個地方共用同一份實作，只差尺寸：對話框裡是一般的 `.btn`，橫幅裡是 `.btn-sm`。
+ * 排不下就自己換行（`.result-actions` 是 flex-wrap），不會把橫幅撐出畫面。
+ */
+function ResultActions({ small = false, onCopy, onCsv }: {
+  small?: boolean
+  onCopy: () => void
+  onCsv: () => void
+}) {
+  const t = useT()
+  const cls = small ? 'btn btn-sm' : 'btn'
+  return (
+    <div class="result-actions">
+      <button class={cls} onClick={onCopy}><IconCopy /> {t('copySummary')}</button>
+      <button class={cls} onClick={onCsv}><IconDownload /> {t('exportCsv')}</button>
+      <button class={cls} onClick={printResult}><IconPdf /> {t('exportPdf')}</button>
+    </div>
   )
 }
 
