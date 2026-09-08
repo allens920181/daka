@@ -17,7 +17,7 @@ import { RoleBadge } from './RoleBadge'
 import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
 import {
-  IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPdf, IconPhone, IconPlus,
+  IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPhone, IconPlus,
   IconSearch,
 } from './icons'
 import { useT } from './t'
@@ -32,23 +32,6 @@ type MenuMode = 'invite' | undefined
  * null 已經是「看全部」的意思了，兩者必須分得開。
  */
 const UNGROUPED = '\u0000ungrouped'
-
-/**
- * 把這一場印出來。「存成 PDF」走的就是這裡——瀏覽器不給網頁直接產出 PDF 的
- * API，PDF 一律是從列印畫面選「儲存為 PDF」存下來的，所以按鍵寫「存成 PDF」，
- * 而結束對話框那句說明直接把「會跳出列印畫面」講在前面。自己排一份中文 PDF 要
- * 內嵌好幾 MB 的字型檔，對一個要在 6:50 的停車場用爛網路開起來的工具划不來。
- *
- * 印出來永遠是同一份文件：目前的點名結果（2026-09）。空白待勾的紙本連同
- * 「列印紙本名單」那顆鍵一起拿掉了，`<html data-print>` 那個兩份文件的切換
- * 也跟著沒了——現在按 Ctrl+P 跟按「存成 PDF」印出來的是同一張紙。
- *
- * 不必先關掉對話框：`.overlay` 在 @media print 裡是 display:none，紙上看不到
- * 遮罩。而且關掉的話使用者就按不到那顆「結束點名」了——他是為了結束才打開它的。
- */
-function printResult(): void {
-  window.print()
-}
 
 export function Room({ code }: { code: string }) {
   const t = useT()
@@ -448,22 +431,6 @@ export function Room({ code }: { code: string }) {
 
       <div class="shell">
         {/*
-          紙本備援的抬頭。只在列印時出現。
-          以前列印是把螢幕的計分區借來當標題，於是紙上印的是「還有 12 位沒到」
-          ——一個離開印表機就過期的數字，而真正需要的活動名稱與代碼反而被
-          display:none 掉了。手機沒電時拿著這張紙的人要知道：這是哪一場、
-          代碼多少、誰在點、幾號。
-        */}
-        <div class="print-head" aria-hidden="true">
-          <h1 class="print-title">{current.name}</h1>
-          <p class="print-meta">
-            <span>{t('roomCode')}：{current.code}</span>
-            <span>{t('printTotal', { people: s.people, heads: s.expectedHeadcount })}</span>
-            {group !== null && <span>{groupLabel}</span>}
-          </p>
-        </div>
-
-        {/*
           結束之後橫幅印的是定格的結果，不是一句「這個空間已關閉」——那時候要
           回答的問題已經不是「還能不能點」，而是「這一場最後是幾個人」。
           再附一顆「複製結果」，因為結束之後才想到要貼回 LINE 是常態。
@@ -641,11 +608,6 @@ export function Room({ code }: { code: string }) {
             onCopy={() => { void copySummary() }}
             onCsv={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
           />
-          {/*
-            「按下去會發生什麼」的補充，不是決定要不要結束點名時該讀的東西——所以
-            它在按鈕底下，不在說明句裡（那句話因此從三行縮回一行）。
-          */}
-          <p class="hint result-hint">{t('pdfHint')}</p>
         </ConfirmDialog>
       )}
 
@@ -688,10 +650,14 @@ export function Room({ code }: { code: string }) {
  *
  * 兩個地方共用同一份實作，只差尺寸：對話框裡是一般的 `.btn`，橫幅裡是 `.btn-sm`。
  *
- * **畫面上印短的，無障礙名稱印完整的**（2026-09）。完整標籤（複製結果／下載
- * CSV／存成 PDF）三顆並排在 390px 上排不下，於是換行成兩列——加上確認鍵那一列，
- * 一個確認對話框裡就有三排按鈕。而在「先把結果帶走：」與一段結果預覽底下，
- * 「複製／CSV／PDF」讀得出來的意思一模一樣。短標籤是完整標籤的子字串，螢幕
+ * **只有兩顆**（2026-09）。曾經有第三顆「存成 PDF」，它其實不是檔案匯出，是叫出
+ * 瀏覽器的列印畫面讓使用者自己選「儲存為 PDF」——帶走的東西比 CSV 少（沒有時間、
+ * 沒有誰點的），卻要多一行字解釋自己，在手機上還要多繞兩三步。它連同整套列印
+ * 版面一起拿掉了。剩下的兩顆是兩件不一樣的事：**現在交出去**（貼進 LINE）與
+ * **留一份紀錄**（八欄的 CSV：時間、誰點的、電話、攜伴、分組、備註）。
+ *
+ * **畫面上印短的，無障礙名稱印完整的**：在「先把結果帶走：」與一段結果預覽底下，
+ * 「複製／CSV」讀得出來的意思跟完整標籤一模一樣。短標籤是完整標籤的子字串，螢幕
  * 閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。
  */
 function ResultActions({ small = false, onCopy, onCsv }: {
@@ -708,9 +674,6 @@ function ResultActions({ small = false, onCopy, onCsv }: {
       </button>
       <button class={cls} onClick={onCsv} aria-label={t('exportCsv')}>
         <IconDownload /> {t('exportCsvShort')}
-      </button>
-      <button class={cls} onClick={printResult} aria-label={t('exportPdf')}>
-        <IconPdf /> {t('exportPdfShort')}
       </button>
     </div>
   )
@@ -884,9 +847,6 @@ function MemberRow({
         </span>
       </button>
 
-      {/* 紙本上要看得到電話：收尾時「看到未到 → 打電話」是唯一的下一步，
-          而螢幕上電話是備註那行裡的一顆圖示鍵，列印時 .note-call 會被藏起來。 */}
-      {dialable && <span class="print-phone" aria-hidden="true">{dialable}</span>}
 
       {editing && (
         <div class="member-side">

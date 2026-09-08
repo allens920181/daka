@@ -129,7 +129,6 @@ const zh = {
   removeFromPreview: '把「{name}」從名單移除',
   signOutWhat: '登出後，這支手機自己開的空間照樣管得動；用帳號接過來的活動會暫時看不到，重新登入就會回來。',
   roomClosedShort: '已關閉',
-  printTotal: '共 {people} 人（{heads} 人頭）',
   phoneTail: '尾碼 {tail}',
   /** 成員面板裡備註原文那個欄位的標籤——備註本身已經搬離名單列，這裡是唯一還看得到它的地方。 */
   /** 編輯模式下那兩個輸入框的無障礙名稱。 */
@@ -166,7 +165,7 @@ const zh = {
   /* 單機模式下這三句取代整個分享面板：發出去的代碼對任何人都沒有用。 */
   shareLocalTitle: '這個空間只有你看得到',
   shareLocalBody: '這支手機沒連上雲端，名單只存在這裡。把代碼或連結給別人，他們會看到「找不到這個代碼」。',
-  shareLocalHow: '多人一起點，要先設定雲端連線（見專案 README）。你還是可以自己點完，用「複製結果」或列印交出名單。',
+  shareLocalHow: '多人一起點，要先設定雲端連線（見專案 README）。你還是可以自己點完，用「複製結果」或下載 CSV 交出名單。',
   roomCode: '代碼',
   roomLink: '連結',
   roomQr: '二維碼',
@@ -236,27 +235,20 @@ const zh = {
   csvCompanions: '攜伴',
   csvGroup: '分組',
   csvNote: '備註',
-  /* 同一件事的三種格式：貼進 LINE、進試算表、存成檔案。三顆都只出現在收尾那
-     一刻（結束對話框與結束後的橫幅）——「匯出名單」那一列連同它的子畫面 2026-09
-     一起拿掉了，所以也沒有 export 這個 key 了。
-     「存成 PDF」不寫「下載 PDF」：瀏覽器沒有那個 API，PDF 是從列印畫面選
-     「儲存為 PDF」存下來的。
+  /* 收尾要交出去的兩件事：**現在交出去**（貼進 LINE）與**留一份紀錄**（八欄的
+     CSV：時間、誰點的、電話、攜伴、分組、備註）。兩顆都只出現在收尾那一刻
+     （結束對話框與結束後的橫幅）——「匯出名單」那一列連同它的子畫面 2026-09
+     一起拿掉了，所以也沒有 export 這個 key 了。同月第三顆「存成 PDF」也走了：
+     它其實不是檔案匯出，是叫出列印畫面讓使用者自己選「儲存為 PDF」，帶走的
+     東西比 CSV 少，卻要多一行字解釋自己。
 
-     **完整的說法留給無障礙名稱，畫面上印短的**（2026-09）：三顆並排在一列裡，
-     完整標籤在 390px 上排不下（英文更擠），於是換行成兩列、再加上確認鍵那一列
-     ——一個確認對話框裡三排按鈕。而在「先把結果帶走：」與一段結果預覽底下，
-     「複製／CSV／PDF」讀得出來的意思一模一樣。短標籤是完整標籤的前綴或子字串，
-     螢幕閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。 */
+     **完整的說法留給無障礙名稱，畫面上印短的**（2026-09）：在「先把結果帶走：」
+     與一段結果預覽底下，「複製／CSV」讀得出來的意思跟完整標籤一模一樣。短標籤是
+     完整標籤的子字串，螢幕閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。 */
   exportCsv: '下載 CSV',
   exportCsvShort: 'CSV',
-  exportPdf: '存成 PDF',
-  exportPdfShort: 'PDF',
   copySummary: '複製結果',
   copySummaryShort: '複製',
-  /* PDF 那一步要先講——瀏覽器不給網頁直接產出 PDF，按下去跳出來的是列印畫面。
-     它 2026-09 從對話框的說明句（那句話因此長到三行）降級成按鈕底下的一行註腳：
-     那是「按下去會發生什麼」的補充，不是決定要不要結束點名時該讀的東西。 */
-  pdfHint: 'PDF 會跳出列印畫面，在那裡選「儲存為 PDF」',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
   // 同步
@@ -446,7 +438,6 @@ const en: Record<MessageKey, string> = {
   removeFromPreview: 'Remove “{name}” from the list',
   signOutWhat: "After signing out you keep control of rooms this phone opened; events you took over with the account disappear until you sign in again.",
   roomClosedShort: 'Closed',
-  printTotal: '{people} people ({heads} heads)',
   phoneTail: 'ends {tail}',
   nameLabel: 'Name',
   noteLabel: 'Note',
@@ -470,7 +461,7 @@ const en: Record<MessageKey, string> = {
   shareLinkText: 'Help me check names',
   shareLocalTitle: 'Only you can see this room',
   shareLocalBody: "This phone has no cloud set up, so the list lives only here. Anyone you give the code to will just see \u201cthat code doesn't match a room\u201d.",
-  shareLocalHow: 'Sharing one list across phones needs a cloud connection (see the README). You can still finish here and hand the result over with Copy or print.',
+  shareLocalHow: 'Sharing one list across phones needs a cloud connection (see the README). You can still finish here and hand the result over with Copy or CSV.',
   roomCode: 'Room code',
   roomLink: 'Link',
   roomQr: 'QR code',
@@ -513,11 +504,8 @@ const en: Record<MessageKey, string> = {
   csvNote: 'Note',
   exportCsv: 'Download CSV',
   exportCsvShort: 'CSV',
-  exportPdf: 'Save as PDF',
-  exportPdfShort: 'PDF',
   copySummary: 'Copy result',
   copySummaryShort: 'Copy',
-  pdfHint: 'PDF opens the print dialog — choose “Save as PDF” there.',
   summaryCopied: 'Result copied — paste it anywhere',
 
   syncOnline: 'Synced',
