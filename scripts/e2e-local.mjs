@@ -142,25 +142,34 @@ await p.locator('input[type=search]').fill('0912'); await p.waitForTimeout(300)
 // 電話已經不是解析出來的欄位（號碼原文躺在備註裡），搜尋要照樣找得到人。
 ok('可用電話搜尋（號碼現在在備註裡）', (await p.locator('.member').count()) === 1)
 
-// 收尾時單手打錯字：切「未到」再搜一個不存在的名字。這裡絕對不能回答
-// 「太好了，全部都到了」——那句話在車門口等於「可以關門了」。
-//
 // 展開的搜尋框蓋著分段控制，所以要先收起來才切得到篩選（這是併成一列的直接
 // 後果，順序是「先決定看哪一群，再搜」）。清空＋Esc＝收回成圖示。
 await p.locator('input[type=search]').fill(''); await p.waitForTimeout(200)
 await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(300)
 ok('搜尋收起來之後又切得到篩選了',
    await p.getByRole('button', { name: /^未到/ }).first().isVisible())
-await p.getByRole('button', { name: /^未到/ }).click(); await p.waitForTimeout(200)
+
+// 搜尋展開的那一刻把範圍拉回「全部」：問「這個人在不在名單上」的當下，沒有人
+// 記得自己畫面上還套著哪一層篩選，而假的「查無此人」在車門口等於把人丟下。
+await p.getByRole('button', { name: /^未到/ }).click(); await p.waitForTimeout(250)
+ok('先切到「未到」', (await p.getByRole('button', { name: /^未到/ }).getAttribute('aria-pressed')) === 'true')
 await openSearch()
+ok('展開搜尋就自己切回「全部」',
+   (await p.evaluate(() => document.querySelector('.segmented .segment')?.getAttribute('aria-pressed'))) === 'true')
+ok('已到的人也搜得到了（不再被「未到」擋住）', await (async () => {
+  await p.locator('input[type=search]').fill('陳怡君'); await p.waitForTimeout(300)
+  return (await p.locator('.member').count()) === 2
+})())
+
+// 收尾時單手打錯字：搜一個不存在的名字。這裡絕對不能回答「太好了，全部都到了」
+// ——那句話在車門口等於「可以關門了」。
 await p.locator('input[type=search]').fill('王大明'); await p.waitForTimeout(300)
 const typoEmpty = (await p.locator('.empty-big').textContent())?.trim()
 ok(`搜尋打錯字時說「沒找到」而不是「全部都到了」：${typoEmpty}`, typoEmpty === '這裡沒有人')
 ok('並附上「換個字再找找」的下一步', ((await p.locator('.empty .hint').textContent()) || '').includes('換個字'))
 await p.locator('input[type=search]').fill(''); await p.waitForTimeout(300)
 ok('清掉搜尋字之後高亮跟著消失', (await p.locator('.search-wrap .input.is-on').count()) === 0)
-ok('清掉搜尋後「未到」篩選才回到成功文案',
-   (await p.locator('.empty-big').count()) === 0 || (await p.locator('.empty-big').textContent())?.includes('全部都到了'))
+ok('清掉搜尋字之後名單整份回來（範圍是全部）', (await p.locator('.member').count()) === 9)
 // 空的時候滑走就收回成圖示，那一列人名還回去；而「收起來」永遠等於「沒有在過濾」。
 await p.locator('input[type=search]').evaluate((el) => el.blur()); await p.waitForTimeout(350)
 ok('空的時候失焦就收回成圖示',
@@ -891,6 +900,19 @@ await p.getByRole('button',{name:/複製結果/}).click(); await p.waitForTimeou
 const clip = await p.evaluate(()=>navigator.clipboard.readText())
 ok(`複製結果限定第二車：「${clip.split('\n')[0]}」`, clip.includes('第二車') && clip.includes('李四') && !clip.includes('王小明'))
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+// --- 搜尋要放掉選到的那一車 ---
+// 顧第一車的志工選著「第一車」，有人在車門口報上名字，搜下去卻是「這裡沒有人」
+// ——那個人明明在名單上，只是在第二車。這種假的查無此人最貴。
+ok('現在還選著第二車',
+   (await p.evaluate(() => document.querySelector('.groups .group-chip')?.getAttribute('aria-pressed'))) === 'false')
+await openSearch()
+ok('展開搜尋就放掉那一車，晶片回到「全部」',
+   (await p.evaluate(() => document.querySelector('.groups .group-chip')?.getAttribute('aria-pressed'))) === 'true')
+await p.locator('input[type=search]').fill('王小明'); await p.waitForTimeout(400)
+ok('所以搜得到別車的人（王小明在第一車）', (await p.locator('.member').count()) === 1)
+await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(250)
+await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(300)
 
 
 // ---- 80 人名單的首屏產出 ----

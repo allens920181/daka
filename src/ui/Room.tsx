@@ -64,6 +64,9 @@ export function Room({ code }: { code: string }) {
     **不變的是那條安全規則：收起來就代表名單沒有被過濾。** 所以有字的時候
     絕不自己收（失焦只在空字串時收），而收起來的那一刻一定把字清掉——名單上
     只剩兩個人卻沒有任何東西說「這是過濾過的」，在車門口會被讀成「都到齊了」。
+
+    **展開的那一刻把範圍拉回全部**（見 openSearch）：搜尋問的是「這個人在不在
+    名單上」，答案不該被畫面上還套著的篩選或分車偷偷縮小。
   */
   const [searching, setSearching] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -122,6 +125,24 @@ export function Room({ code }: { code: string }) {
     就被彈一臉。（搜尋框一直開著的那一版刻意不自動聚焦，理由正好相反。）
   */
   useEffect(() => { if (searching) searchRef.current?.focus() }, [searching])
+
+  /**
+   * 展開搜尋。**先把範圍拉回全部**：切到「全部」那一段，也放掉選到的那一車。
+   *
+   * 搜尋是在回答「這個人在不在名單上」，而問這句話的當下沒有人記得自己畫面上
+   * 還套著哪一層範圍——顧第一車的志工選著「第一車」，有人在車門口報上名字，
+   * 搜下去卻是「這裡沒有人」：那個人明明在名單上，只是在第二車。這種假的
+   * 「查無此人」在車門口的代價是直接把人丟下。
+   *
+   * 只在展開的那一刻做一次，不是每次打字都做：展開之後篩選被輸入框蓋著，本來
+   * 就改不動；而收起來時兩個控制項都回到畫面上、都停在「全部」，使用者看得到
+   * 範圍被拉開了，不是背著他偷偷改又偷偷改回去。
+   */
+  function openSearch() {
+    setFilter('all')
+    setGroup(null)
+    setSearching(true)
+  }
 
   /** 收起來＝不再過濾。兩件事必須一起發生，見 searching 那段。 */
   function closeSearch() {
@@ -419,7 +440,7 @@ export function Room({ code }: { code: string }) {
           ) : (
             <button
               class="icon-btn search-toggle"
-              onClick={() => setSearching(true)}
+              onClick={openSearch}
               aria-label={t('searchPlaceholder')}
             >
               <IconSearch />
