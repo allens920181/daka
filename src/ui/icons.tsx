@@ -78,13 +78,7 @@ export const IconQr = ({ size = 20, ...r }: P) => (
     <line x1="18" y1="18" x2="18" y2="21" /><line x1="21" y1="18" x2="21" y2="21" />
   </svg>
 )
-// 收尾那三顆各有自己的圖示：複製用兩張疊起來的紙、CSV 用下載、PDF 用一張文件。
-export const IconPdf = ({ size = 20, ...r }: P) => (
-  <svg {...base(size)} {...r}>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" /><line x1="8" y1="17" x2="16" y2="17" />
-  </svg>
-)
+// 收尾那兩顆各有自己的圖示：複製用兩張疊起來的紙、CSV 用下載。
 export const IconDownload = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" />
@@ -128,6 +122,14 @@ export const IconGoogle = ({ size = 20, ...r }: P) => (
   </svg>
 )
 
+// 身分：主揪用鑰匙（這支手機握著改動這個空間的權限），協助者用人。兩個形狀
+// 要一眼分得開——只靠顏色的話，色盲與最低亮度下的螢幕都分不出來。
+export const IconKey = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}>
+    <circle cx="7.5" cy="15.5" r="4" />
+    <path d="M10.5 12.5 20 3" /><path d="M17 6l2.5 2.5" /><path d="M14.5 8.5 17 11" />
+  </svg>
+)
 export const IconUser = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />

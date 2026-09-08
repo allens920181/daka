@@ -213,8 +213,8 @@ await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
 await B.p.goto(`${URL}#/r/${helperCode}`); await B.p.waitForTimeout(2200)
 ok('[同工] 進到自己開的回程空間', (await B.p.locator('.topbar-name').textContent())?.includes('同工開的'))
 ok('[同工] 名單一起複製過來', (await B.p.locator('.member').count()) === 5)
-// 複製的人是新空間的主揪：身分標籤（頂欄）與管理功能都要出現。
-ok('[同工] 在新空間裡是主揪', (await B.p.locator('.topbar-sub .tag-owner').count()) === 1)
+// 複製的人是新空間的主揪：身分圖示（頂欄）與管理功能都要出現。
+ok('[同工] 在新空間裡是主揪', (await B.p.locator('.topbar-heading .role-badge.is-owner').count()) === 1)
 await B.p.locator('.topbar button[aria-label="更多"]').click(); await B.p.waitForTimeout(700)
 ok('[同工] 新空間裡有擁有者才有的「編輯」', (await B.p.getByRole('button', { name: /^編輯$/ }).count()) > 0)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)

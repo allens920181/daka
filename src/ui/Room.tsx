@@ -13,10 +13,11 @@ import { copyToClipboard } from '../lib/clipboard'
 import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
+import { RoleBadge } from './RoleBadge'
 import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
 import {
-  IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPdf, IconPhone, IconPlus,
+  IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPhone, IconPlus,
   IconSearch,
 } from './icons'
 import { useT } from './t'
@@ -31,23 +32,6 @@ type MenuMode = 'invite' | undefined
  * null 已經是「看全部」的意思了，兩者必須分得開。
  */
 const UNGROUPED = '\u0000ungrouped'
-
-/**
- * 把這一場印出來。「存成 PDF」走的就是這裡——瀏覽器不給網頁直接產出 PDF 的
- * API，PDF 一律是從列印畫面選「儲存為 PDF」存下來的，所以按鍵寫「存成 PDF」，
- * 而結束對話框那句說明直接把「會跳出列印畫面」講在前面。自己排一份中文 PDF 要
- * 內嵌好幾 MB 的字型檔，對一個要在 6:50 的停車場用爛網路開起來的工具划不來。
- *
- * 印出來永遠是同一份文件：目前的點名結果（2026-09）。空白待勾的紙本連同
- * 「列印紙本名單」那顆鍵一起拿掉了，`<html data-print>` 那個兩份文件的切換
- * 也跟著沒了——現在按 Ctrl+P 跟按「存成 PDF」印出來的是同一張紙。
- *
- * 不必先關掉對話框：`.overlay` 在 @media print 裡是 display:none，紙上看不到
- * 遮罩。而且關掉的話使用者就按不到那顆「結束點名」了——他是為了結束才打開它的。
- */
-function printResult(): void {
-  window.print()
-}
 
 export function Room({ code }: { code: string }) {
   const t = useT()
@@ -326,19 +310,19 @@ export function Room({ code }: { code: string }) {
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               aria-label={t('backToTop')}
             >
-              <h1 class="topbar-name">{current.name}</h1>
+              {/*
+                身分（主揪／協助者）排在空間名前面。「我是主揪還是協助者」決定
+                這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），是進
+                空間第一眼就該知道的事——它講的是「我」，比後面那個名字更早被讀到。
+                它 2026-09 走過兩步：先從管理面板頂端那一列搬到頂欄的副標行（排在
+                代碼前面），再從一顆寫著字的藥丸換成圖示、往上挪到名字前面。
+              */}
+              <div class="topbar-heading">
+                {!editing && <RoleBadge owner={isOwner.value} />}
+                <h1 class="topbar-name">{current.name}</h1>
+              </div>
               {!editing && (
                 <div class="topbar-sub">
-                  {/*
-                    身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
-                    這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），
-                    是進空間第一眼就該知道的事，不該要先點開管理面板才看得到。
-                    排在代碼前面：代碼與同步狀態講的是「這是哪個空間、連上了沒」，
-                    身分講的是「我」，順序從人到空間再到連線。
-                  */}
-                  <span class={isOwner.value ? 'tag tag-owner' : 'tag'}>
-                    {isOwner.value ? t('owner') : t('helper')}
-                  </span>
                   {closed ? (
                     // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
                     // 戳名字沒反應，協助者完全不知道為什麼。
@@ -446,22 +430,6 @@ export function Room({ code }: { code: string }) {
       </div>
 
       <div class="shell">
-        {/*
-          紙本備援的抬頭。只在列印時出現。
-          以前列印是把螢幕的計分區借來當標題，於是紙上印的是「還有 12 位沒到」
-          ——一個離開印表機就過期的數字，而真正需要的活動名稱與代碼反而被
-          display:none 掉了。手機沒電時拿著這張紙的人要知道：這是哪一場、
-          代碼多少、誰在點、幾號。
-        */}
-        <div class="print-head" aria-hidden="true">
-          <h1 class="print-title">{current.name}</h1>
-          <p class="print-meta">
-            <span>{t('roomCode')}：{current.code}</span>
-            <span>{t('printTotal', { people: s.people, heads: s.expectedHeadcount })}</span>
-            {group !== null && <span>{groupLabel}</span>}
-          </p>
-        </div>
-
         {/*
           結束之後橫幅印的是定格的結果，不是一句「這個空間已關閉」——那時候要
           回答的問題已經不是「還能不能點」，而是「這一場最後是幾個人」。
@@ -681,7 +649,16 @@ export function Room({ code }: { code: string }) {
  * 該待在那一刻的必經之路上。
  *
  * 兩個地方共用同一份實作，只差尺寸：對話框裡是一般的 `.btn`，橫幅裡是 `.btn-sm`。
- * 排不下就自己換行（`.result-actions` 是 flex-wrap），不會把橫幅撐出畫面。
+ *
+ * **只有兩顆**（2026-09）。曾經有第三顆「存成 PDF」，它其實不是檔案匯出，是叫出
+ * 瀏覽器的列印畫面讓使用者自己選「儲存為 PDF」——帶走的東西比 CSV 少（沒有時間、
+ * 沒有誰點的），卻要多一行字解釋自己，在手機上還要多繞兩三步。它連同整套列印
+ * 版面一起拿掉了。剩下的兩顆是兩件不一樣的事：**現在交出去**（貼進 LINE）與
+ * **留一份紀錄**（八欄的 CSV：時間、誰點的、電話、攜伴、分組、備註）。
+ *
+ * **畫面上印短的，無障礙名稱印完整的**：在「先把結果帶走：」與一段結果預覽底下，
+ * 「複製／CSV」讀得出來的意思跟完整標籤一模一樣。短標籤是完整標籤的子字串，螢幕
+ * 閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。
  */
 function ResultActions({ small = false, onCopy, onCsv }: {
   small?: boolean
@@ -692,9 +669,12 @@ function ResultActions({ small = false, onCopy, onCsv }: {
   const cls = small ? 'btn btn-sm' : 'btn'
   return (
     <div class="result-actions">
-      <button class={cls} onClick={onCopy}><IconCopy /> {t('copySummary')}</button>
-      <button class={cls} onClick={onCsv}><IconDownload /> {t('exportCsv')}</button>
-      <button class={cls} onClick={printResult}><IconPdf /> {t('exportPdf')}</button>
+      <button class={cls} onClick={onCopy} aria-label={t('copySummary')}>
+        <IconCopy /> {t('copySummaryShort')}
+      </button>
+      <button class={cls} onClick={onCsv} aria-label={t('exportCsv')}>
+        <IconDownload /> {t('exportCsvShort')}
+      </button>
     </div>
   )
 }
@@ -867,9 +847,6 @@ function MemberRow({
         </span>
       </button>
 
-      {/* 紙本上要看得到電話：收尾時「看到未到 → 打電話」是唯一的下一步，
-          而螢幕上電話是備註那行裡的一顆圖示鍵，列印時 .note-call 會被藏起來。 */}
-      {dialable && <span class="print-phone" aria-hidden="true">{dialable}</span>}
 
       {editing && (
         <div class="member-side">

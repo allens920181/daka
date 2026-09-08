@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { IconCamera, IconChevronDown, IconMore, IconPlus, IconSettings } from './icons'
 import { ScanSheet } from './Scan'
+import { RoleBadge } from './RoleBadge'
 import { RoomActionsSheet } from './Sheets'
 import { useT } from './t'
 
@@ -200,13 +201,14 @@ export function Home({ onSettings }: { onSettings: () => void }) {
               {visibleRows.map((r) => (
                 <div class="recent-item" key={r.code}>
                   <button class="recent-main" onClick={() => navigate(`/r/${r.code}`)}>
+                    {/* 身分排在名字前面（2026-09 從那一列最右邊的文字標籤換過來）：
+                        它講的是「我」，比後面那個名字更早被讀到；而那一列最右邊
+                        現在是「更多」的位置。 */}
+                    <RoleBadge owner={r.isOwner} />
                     <div style="flex:1; min-width:0">
                       <div class="recent-name">{r.name}</div>
                       <div class="recent-meta">{r.meta}</div>
                     </div>
-                    <span class={r.isOwner ? 'tag tag-owner' : 'tag'}>
-                      {r.isOwner ? t('owner') : t('helper')}
-                    </span>
                   </button>
                   {/*
                     這裡原本是一顆垃圾桶（從清單移除），而且只長在移得掉的那幾列上。
