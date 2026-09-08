@@ -4,7 +4,7 @@ import type {
   ConnectionState, DraftMember, Identity, Member, MemberStatus,
   OwnedRoom, PendingOp, Room, SavedRoster,
 } from './types'
-import { AppError, api, isSupabaseConfigured, realtimeChannel, setPresenceKey } from './supabase'
+import { AppError, api, isSupabaseConfigured, realtimeChannel } from './supabase'
 import {
   AuthError, completeGoogleSignIn as authCompleteGoogle, currentSession, requestCode,
   restoreSession, signOut as authSignOut, startGoogleSignIn, takeOAuthCallback, takeOAuthReturn,
@@ -54,15 +54,6 @@ export const pendingUploads = computed(() =>
   room.value ? countForRoom(outbox.value, room.value.code) : 0,
 )
 /**
- * 目前在這個空間裡的裝置（含自己）。
- *
- * `presenceReady` 是「這份名單可信」的旗標，不是「有幾個人」的替代品：
- * REST 通了不代表 Realtime 也通了（自架、代理、公司防火牆擋 WebSocket 都會
- * 造成這種狀態）。沒有這個旗標的話，分享面板會在別人明明已經進來時說「目前
- * 只有你」——那正是這個產品最不能犯的那種錯。不知道就不要說。
- */
-export interface Peer { name: string | null; at: number }
-/**
  * 進到某個空間之後要自動打開「更多」，並停在它的某一頁。
  *
  * 只剩一個用途：**剛建立完副本**。副本是新代碼，而五支協助的手機還開著舊空間
@@ -73,9 +64,6 @@ export interface Peer { name: string | null; at: number }
  * 那份清單，現在它在首頁就地開自己那一份——見 Sheets.tsx 的 `RoomActionsSheet`。）
  */
 export const openMenuOnEnter = signal<{ code: string; mode?: 'invite' } | null>(null)
-
-export const peers = signal<Peer[]>([])
-export const presenceReady = signal(false)
 
 export const isOwner = computed(() => {
   const code = room.value?.code
@@ -146,8 +134,6 @@ function announceOverrides(before: readonly Member[], after: readonly Member[]):
 
 export async function boot(): Promise<void> {
   identity.value = await loadIdentity()
-  // presence 用裝置金鑰當 key：同一支手機重連時取代自己那一筆，不留幽靈。
-  setPresenceKey(identity.value.ownerKey)
   session.value = await restoreSession()
   prefs.value = await loadPrefs()
   recentRooms.value = await loadRecentRooms()
@@ -373,27 +359,16 @@ function refreshConnection(): void {
 // 空間工作階段
 // ---------------------------------------------------------------------------
 
+/*
+  這個頻道只做一件事：把改動廣播給其他裝置。
+
+  它 2026-09 之前還兼做 presence（誰在這個空間裡），因為邀請頁底下有一區印著
+  「目前只有你 / 陳姐、阿明…」。那一區連同 presence 一起拿掉了——入口跟功能一起
+  走，不留一條每次進空間都 track() 一次、卻沒有任何畫面在看的訂閱。
+*/
 function subscribe(code: string): void {
   channel = realtimeChannel(`room:${code}`)
-  if (!channel) { peers.value = []; presenceReady.value = false; return }
-
-  // 誰在這個空間裡。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到的
-  // 前提是五個人在同一個地方——他們散在兩台車的前後門。更常見的失敗是有人掃了
-  // QR 但停在瀏覽器的「要開啟嗎」對話框上，自己以為進來了。
-  channel.on('presence', { event: 'sync' }, () => {
-    const state = channel?.presenceState() ?? {}
-    const seen: Peer[] = []
-    for (const entries of Object.values(state)) {
-      const first = (entries as { name?: unknown; at?: unknown }[])[0]
-      if (!first) continue
-      seen.push({
-        name: typeof first.name === 'string' && first.name.trim() ? first.name.trim() : null,
-        at: typeof first.at === 'number' ? first.at : Date.now(),
-      })
-    }
-    seen.sort((a, b) => a.at - b.at)
-    peers.value = seen
-  })
+  if (!channel) return
 
   channel.on('broadcast', { event: 'member' }, ({ payload }) => {
     const incoming = payload as Member | undefined
@@ -406,11 +381,8 @@ function subscribe(code: string): void {
   // 名單被擁有者換掉、有人被刪除：這些改的是整份名單，直接重新拉快照。
   channel.on('broadcast', { event: 'roster' }, () => { void reconcile().catch(() => {}) })
   channel.subscribe((status) => {
-    if (status !== 'SUBSCRIBED') { presenceReady.value = false; return }
+    if (status !== 'SUBSCRIBED') return
     refreshConnection()
-    void channel?.track({ name: identity.value.checkerName || null, at: Date.now() })
-      .then(() => { presenceReady.value = true })
-      .catch(() => { /* presence 只是額外資訊，失敗不影響點名 */ })
   })
 }
 
@@ -434,8 +406,6 @@ function stopTimers(): void {
 }
 
 export function leaveRoom(): void {
-  peers.value = []
-  presenceReady.value = false
   recentlyChanged.clear()
   void persistNow()
   stopTimers()

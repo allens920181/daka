@@ -178,18 +178,22 @@ ok(`[同工] 被拒絕的點名有當面說：「${dropNotice}」`,
    dropNotice.includes('沒有存到') && (targetName ? dropNotice.includes(targetName) : true))
 ok('[同工] 訊息說得出原因（空間已關閉）', /關閉/.test(dropNotice))
 
-// --- presence：不知道就不要說（#5）-----------------------------------------
-// 這個假後端只有 REST，沒有 Realtime——正好模擬「公司防火牆擋 WebSocket」那種
-// 情況。REST 通了不代表 presence 也通了，所以面板不能在別人明明已經進來時
-// 說「目前只有你」。沒把握就整區不顯示。
-// 「現在在這個空間裡」留在空間裡的「更多」面板（2026-09）：邀請點名搬去首頁了，
-// 但 presence 只有正在這個空間裡的裝置數得到，首頁上根本沒有這個數字。
+// --- 邀請頁只剩三列（2026-09）------------------------------------------------
+// 「現在在這個空間裡」連同整套 presence 一起拿掉了：它要答對的是「代碼發出去
+// 之後有沒有人真的進來」，但這個假後端只有 REST、沒有 Realtime（正好模擬公司
+// 防火牆擋 WebSocket），那時它會在 B 明明就在空間裡的時候說「目前只有你」——
+// 答錯的代價比答對的收穫大。現在整區都不在了。
 await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(1500)
 ok('[主揪] 同步指示是已同步（REST 通）', /已同步/.test((await A.p.locator('.sync').textContent()) || ''))
-ok('[主揪] 但 presence 沒通，就不顯示「現在在這個空間裡」',
-   (await A.p.getByText('現在在這個空間裡').count()) === 0)
-ok('[主揪] 更不會說「目前只有你」（那時 B 明明就在這個空間裡）',
-   (await A.p.getByText('目前只有你').count()) === 0)
+await A.p.getByRole('button', { name: /^邀請點名$/ }).click(); await A.p.waitForTimeout(700)
+const inviteRows = (await A.p.locator('.sheet .menu-item strong').allTextContents()).map((x) => x.trim())
+ok(`[主揪] 邀請頁只剩三列：${inviteRows.join('、')}`,
+   JSON.stringify(inviteRows) === JSON.stringify(['代碼', '連結', '二維碼']))
+ok('[主揪] 沒有「現在在這個空間裡」，也不會說「目前只有你」',
+   (await A.p.getByText('現在在這個空間裡').count()) === 0
+   && (await A.p.getByText('目前只有你').count()) === 0)
+ok('[主揪] 代碼那一列右邊不印代碼本身',
+   (await A.p.locator('.sheet .menu-item .sub').count()) === 0)
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 
 // --- 主揪不在時，現場的人也開得出回程空間（#25）-------------------------------

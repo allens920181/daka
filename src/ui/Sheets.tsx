@@ -4,8 +4,8 @@ import {
   AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom,
   identity, members, myRooms, openMenuOnEnter, prefs, recentRooms, renameSavedRoster, requestCode,
   room, roomExpiry, saveRosterAs, savedRosters,
-  peers, presenceReady, session, setCheckerName, setPrefs,
-  showToast, type Peer,
+  session, setCheckerName, setPrefs,
+  showToast,
   signIn, signOut, startGoogleSignIn,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -53,15 +53,6 @@ function QrCard({ code, url }: { code: string; url: string }) {
       <img src={qr} alt={`${t('scanToJoin')} ${code}`} />
     </div>
   )
-}
-
-/** 「陳姐、阿明，另外 2 支沒寫名字」——沒寫名字的人不逐一列出，只算支數。 */
-function peerNames(list: readonly Peer[], t: ReturnType<typeof useT>): string {
-  const named = list.map((p) => p.name).filter((n): n is string => Boolean(n))
-  const anon = list.length - named.length
-  if (named.length === 0) return t('peersAllAnon', { n: anon })
-  if (anon === 0) return named.join('、')
-  return `${named.join('、')}${t('peersPlusAnon', { n: anon })}`
 }
 
 /**
@@ -241,46 +232,32 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             <p class="hint">{t('shareLocalHow')}</p>
           </div>
         ) : (
-          <>
-            <div class="menu">
-              <button class="menu-item" onClick={() => setMode('inviteCode')}>
-                <IconHash />
-                <span>
-                  <strong>{t('roomCode')}</strong>
-                  <span class="sub mono">{current.code}</span>
-                </span>
-              </button>
+          /*
+            三列，每一列一種方式，順序是**代碼 → 連結 → 二維碼**：代碼是隔著車門
+            喊得出去的，連結是貼進 LINE 群的，二維碼要對方拿起手機對著你的螢幕
+            ——愈往下愈需要兩個人站在一起。
 
-              <button class="menu-item" onClick={() => setMode('inviteLink')}>
-                <IconLink />
-                <span><strong>{t('roomLink')}</strong></span>
-              </button>
+            這一頁 2026-09 只剩這三列：底下那句「不用註冊、不用安裝」是在回答一個
+            沒有人在這一刻問的問題（要發代碼的人早就決定要發了），而「現在在這個
+            空間裡」那一區連同 presence 追蹤一起拿掉了。代碼那一列右邊也不再印代碼
+            本身——點進去那一頁整頁就是它，用得上的字級在這裡放不下。
+          */
+          <div class="menu">
+            <button class="menu-item" onClick={() => setMode('inviteCode')}>
+              <IconHash />
+              <span><strong>{t('roomCode')}</strong></span>
+            </button>
 
-              <button class="menu-item" onClick={() => setMode('inviteQr')}>
-                <IconQr />
-                <span><strong>{t('roomQr')}</strong></span>
-              </button>
-            </div>
-            <p class="hint" style="margin-top:12px">{t('shareHint')}</p>
+            <button class="menu-item" onClick={() => setMode('inviteLink')}>
+              <IconLink />
+              <span><strong>{t('roomLink')}</strong></span>
+            </button>
 
-            {/*
-              誰已經進來了。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到
-              的前提是五個人在同一個地方——他們散在兩台車的前後門。更常見的失敗是
-              有人掃了二維碼但停在瀏覽器的「要開啟嗎」對話框上，自己以為進來了；等到
-              07:12 發現有一車根本沒人在點，已經沒有第二次機會。
-              離線時不顯示（誠實原則：那時候這個數字只是舊的）。
-            */}
-            {connection.value === 'online' && presenceReady.value && (
-              <div class="field" style="margin-top:12px">
-                <span class="label">{t('whoIsHere')}</span>
-                <p class="note">
-                  {peers.value.length <= 1
-                    ? t('onlyYouHere')
-                    : t('peersHere', { n: peers.value.length, names: peerNames(peers.value, t) })}
-                </p>
-              </div>
-            )}
-          </>
+            <button class="menu-item" onClick={() => setMode('inviteQr')}>
+              <IconQr />
+              <span><strong>{t('roomQr')}</strong></span>
+            </button>
+          </div>
         )}
       </Sheet>
     )

@@ -259,6 +259,12 @@ ok('單機模式：不產 QR', (await p.locator('.qr-card img').count()) === 0)
 ok('單機模式：不給「複製連結」', (await p.getByRole('button', { name: /傳給別人|複製連結/ }).count()) === 0)
 ok('單機模式：講清楚別人會看到什麼',
    ((await p.locator('.note-warn').textContent()) || '').includes('找不到這個代碼'))
+// 邀請頁 2026-09 瘦到只剩三列：底下那句「不用註冊、不用安裝」與「現在在這個空間
+// 裡」整區都拿掉了（單機模式下本來就沒有那三列，這裡驗的是那兩塊真的不在）。
+ok('單機模式：沒有那句「不用註冊、不用安裝」',
+   (await p.getByText('不用註冊').count()) === 0)
+ok('單機模式：沒有「現在在這個空間裡」',
+   (await p.getByText('現在在這個空間裡').count()) === 0)
 await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
 ok('返回之後回到選單', (await p.getByRole('button', { name: /^編輯$/ }).count()) === 1)
 
