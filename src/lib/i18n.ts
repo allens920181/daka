@@ -205,7 +205,7 @@ const zh = {
      它 2026-09 搬到底部動作列，跟「邀請點名」並排，兩顆鍵講的要是同一件事的
      開頭與結尾（點名），而不是一顆講點名、一顆講輪次。 */
   finishRound: '結束點名',
-  finishRoundBody: '紀錄還在。先帶走結果（存成 PDF 會跳出列印畫面，在那裡選「儲存為 PDF」）：',
+  finishRoundBody: '紀錄還在，先把結果帶走：',
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
   roomClosed: '這個空間已關閉',
@@ -240,10 +240,23 @@ const zh = {
      一刻（結束對話框與結束後的橫幅）——「匯出名單」那一列連同它的子畫面 2026-09
      一起拿掉了，所以也沒有 export 這個 key 了。
      「存成 PDF」不寫「下載 PDF」：瀏覽器沒有那個 API，PDF 是從列印畫面選
-     「儲存為 PDF」存下來的，那一步寫在 finishRoundBody 裡先講。 */
+     「儲存為 PDF」存下來的。
+
+     **完整的說法留給無障礙名稱，畫面上印短的**（2026-09）：三顆並排在一列裡，
+     完整標籤在 390px 上排不下（英文更擠），於是換行成兩列、再加上確認鍵那一列
+     ——一個確認對話框裡三排按鈕。而在「先把結果帶走：」與一段結果預覽底下，
+     「複製／CSV／PDF」讀得出來的意思一模一樣。短標籤是完整標籤的前綴或子字串，
+     螢幕閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。 */
   exportCsv: '下載 CSV',
+  exportCsvShort: 'CSV',
   exportPdf: '存成 PDF',
+  exportPdfShort: 'PDF',
   copySummary: '複製結果',
+  copySummaryShort: '複製',
+  /* PDF 那一步要先講——瀏覽器不給網頁直接產出 PDF，按下去跳出來的是列印畫面。
+     它 2026-09 從對話框的說明句（那句話因此長到三行）降級成按鈕底下的一行註腳：
+     那是「按下去會發生什麼」的補充，不是決定要不要結束點名時該讀的東西。 */
+  pdfHint: 'PDF 會跳出列印畫面，在那裡選「儲存為 PDF」',
   summaryCopied: '結果已複製，可以直接貼到 LINE',
 
   // 同步
@@ -476,7 +489,7 @@ const en: Record<MessageKey, string> = {
   editName: 'Name',
   rename: 'Rename',
   finishRound: 'Finish roll call',
-  finishRoundBody: 'The record stays. Take the result with you first (Save as PDF opens the print dialog — choose “Save as PDF” there):',
+  finishRoundBody: 'The record stays. Take the result with you first:',
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
   roomClosed: 'This room is closed',
@@ -499,8 +512,12 @@ const en: Record<MessageKey, string> = {
   csvGroup: 'Group',
   csvNote: 'Note',
   exportCsv: 'Download CSV',
+  exportCsvShort: 'CSV',
   exportPdf: 'Save as PDF',
+  exportPdfShort: 'PDF',
   copySummary: 'Copy result',
+  copySummaryShort: 'Copy',
+  pdfHint: 'PDF opens the print dialog — choose “Save as PDF” there.',
   summaryCopied: 'Result copied — paste it anywhere',
 
   syncOnline: 'Synced',

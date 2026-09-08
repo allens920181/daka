@@ -641,6 +641,11 @@ export function Room({ code }: { code: string }) {
             onCopy={() => { void copySummary() }}
             onCsv={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
           />
+          {/*
+            「按下去會發生什麼」的補充，不是決定要不要結束點名時該讀的東西——所以
+            它在按鈕底下，不在說明句裡（那句話因此從三行縮回一行）。
+          */}
+          <p class="hint result-hint">{t('pdfHint')}</p>
         </ConfirmDialog>
       )}
 
@@ -682,7 +687,12 @@ export function Room({ code }: { code: string }) {
  * 該待在那一刻的必經之路上。
  *
  * 兩個地方共用同一份實作，只差尺寸：對話框裡是一般的 `.btn`，橫幅裡是 `.btn-sm`。
- * 排不下就自己換行（`.result-actions` 是 flex-wrap），不會把橫幅撐出畫面。
+ *
+ * **畫面上印短的，無障礙名稱印完整的**（2026-09）。完整標籤（複製結果／下載
+ * CSV／存成 PDF）三顆並排在 390px 上排不下，於是換行成兩列——加上確認鍵那一列，
+ * 一個確認對話框裡就有三排按鈕。而在「先把結果帶走：」與一段結果預覽底下，
+ * 「複製／CSV／PDF」讀得出來的意思一模一樣。短標籤是完整標籤的子字串，螢幕
+ * 閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。
  */
 function ResultActions({ small = false, onCopy, onCsv }: {
   small?: boolean
@@ -693,9 +703,15 @@ function ResultActions({ small = false, onCopy, onCsv }: {
   const cls = small ? 'btn btn-sm' : 'btn'
   return (
     <div class="result-actions">
-      <button class={cls} onClick={onCopy}><IconCopy /> {t('copySummary')}</button>
-      <button class={cls} onClick={onCsv}><IconDownload /> {t('exportCsv')}</button>
-      <button class={cls} onClick={printResult}><IconPdf /> {t('exportPdf')}</button>
+      <button class={cls} onClick={onCopy} aria-label={t('copySummary')}>
+        <IconCopy /> {t('copySummaryShort')}
+      </button>
+      <button class={cls} onClick={onCsv} aria-label={t('exportCsv')}>
+        <IconDownload /> {t('exportCsvShort')}
+      </button>
+      <button class={cls} onClick={printResult} aria-label={t('exportPdf')}>
+        <IconPdf /> {t('exportPdfShort')}
+      </button>
     </div>
   )
 }

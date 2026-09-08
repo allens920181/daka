@@ -212,12 +212,28 @@ ok('選單上沒有「匯出名單」了（它併進了結束點名）',
    (await p.locator('.sheet').getByRole('button', { name: /^匯出名單$/ }).count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 await p.locator('.dock').getByRole('button', { name: /^結束點名$/ }).click(); await p.waitForTimeout(500)
+// 畫面上印短的（三顆並排在一列裡才排得下），無障礙名稱印完整的。
 const exportRows = (await p.locator('.result-actions .btn').allTextContents()).map((x) => x.trim())
 ok(`確認鍵前面就是三種格式：${exportRows.join('、')}`,
-   JSON.stringify(exportRows) === JSON.stringify(['複製結果', '下載 CSV', '存成 PDF']))
+   JSON.stringify(exportRows) === JSON.stringify(['複製', 'CSV', 'PDF']))
 ok('單機模式照樣匯得出去（這三顆一個都不需要連線）', exportRows.length === 3)
+ok('唸出去的是完整的說法（短標籤是它的子字串）', await p.evaluate(() => {
+  const names = [...document.querySelectorAll('.result-actions .btn')]
+    .map((b) => [b.getAttribute('aria-label'), b.textContent.trim()])
+  return names.length === 3 && names.every(([full, short]) => full && full.includes(short))
+    && names[0][0] === '複製結果' && names[1][0] === '下載 CSV' && names[2][0] === '存成 PDF'
+}))
+// 三顆等寬：同一種東西的三個選項，寬度不齊會看起來有主次之分。
+ok('三顆並排在同一列，而且等寬', await p.evaluate(() => {
+  const r = [...document.querySelectorAll('.result-actions .btn')].map((b) => b.getBoundingClientRect())
+  return r.length === 3 && r.every((x) => Math.abs(x.top - r[0].top) <= 1)
+    && Math.max(...r.map((x) => x.width)) - Math.min(...r.map((x) => x.width)) <= 1
+}))
 const finishBody = (await p.locator('#dialog-body').textContent()) || ''
-ok('按下去之前就講清楚 PDF 是從列印畫面存的', finishBody.includes('儲存為 PDF'))
+ok(`說明只剩一句：「${finishBody}」`, finishBody.length <= 20 && !finishBody.includes('列印'))
+// 「按下去會發生什麼」降級成按鈕底下的註腳，不佔決定當下的閱讀路徑。
+ok('PDF 那一步改在按鈕底下講',
+   ((await p.locator('.result-hint').textContent()) || '').includes('儲存為 PDF'))
 ok('沒有「列印紙本名單」了（空白待勾那份文件連功能一起拿掉）',
    (await p.getByRole('button', { name: /^列印紙本名單$/ }).count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
@@ -809,7 +825,7 @@ ok(`結束後橫幅印的是定格結果：「${closedBanner}」`,
 // 事情結束之後才想起來的，而「匯出名單」那條路已經不在了。
 const bannerActions = (await p.locator('.banner-result .btn').allTextContents()).map((x) => x.trim())
 ok(`結束後三種格式都還在：${bannerActions.join('、')}`,
-   JSON.stringify(bannerActions) === JSON.stringify(['複製結果', '下載 CSV', '存成 PDF']))
+   JSON.stringify(bannerActions) === JSON.stringify(['複製', 'CSV', 'PDF']))
 ok('結束後戳名字沒有作用', await p.locator('.member-main').first().isDisabled())
 ok('頂欄說得出已關閉', (await p.locator('.topbar-count.closed').count()) === 1)
 

@@ -808,8 +808,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 一定要 wrap：三顆並排在 360px 的手機上放不下，硬排就是整個橫幅被撐出畫面。
  */
 .result-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.result-actions .btn { flex: 1 1 auto; }
-.dialog .result-actions { margin-bottom: var(--sp-3); }
+/* 等寬三等分：標籤長度不一樣（複製／CSV／PDF），但三顆是同一種東西的三個選項，
+   寬度不齊會讓它們看起來有主次之分。基準 0 才是真的等分（auto 會照內容長短分）。 */
+.result-actions .btn { flex: 1 1 0; min-width: 0; }
+.dialog .result-actions { margin-bottom: var(--sp-2); }
+/* 那一行註腳貼著按鈕，跟按鈕是同一組；跟底下確認鍵之間才是段落間距。 */
+.dialog .result-hint { margin-bottom: var(--sp-4); }
 
 /* 結束對話框裡的結果預覽：就是等一下要貼回 LINE 的那段文字，原樣呈現。 */
 .result-preview {
