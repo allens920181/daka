@@ -22,6 +22,12 @@ const generateList = async () => {
   await p.waitForTimeout(500)
 }
 const segCount = async (name) => ((await p.getByRole('button', { name }).first().textContent()) || '').replace(/\D/g, '')
+/** 搜尋 2026-09 收成篩選列右邊的一顆放大鏡，要先點開才有輸入框。 */
+const openSearch = async () => {
+  if ((await p.locator('input[type=search]').count()) > 0) return
+  await p.locator('.filterbar .search-toggle').click()
+  await p.waitForTimeout(350)
+}
 
 await p.goto(URL); await p.waitForTimeout(1200)
 ok('首頁載入', await p.locator('.home-title').isVisible())
@@ -74,10 +80,11 @@ ok('同名警告出現', await p.locator('.note-warn').first().isVisible())
 await p.getByRole('button', { name: /建立/ }).click()
 await p.waitForTimeout(1200)
 ok('進入空間', await p.locator('.topbar-name').isVisible())
-// 搜尋框一直開在頂欄裡，但一進房間不該自動搶走焦點跳出鍵盤——那不是使用者
-// 剛做出的明確動作。
-ok('搜尋框在，但沒有自動聚焦', (await p.locator('.topbar .search-wrap input[type=search]').count()) === 1
-   && await p.evaluate(() => document.activeElement?.getAttribute('type') !== 'search'))
+// 搜尋 2026-09 收成篩選列右邊的一顆放大鏡：一進房間畫面上沒有輸入框，也就
+// 不會有人被自己跳出來的鍵盤蓋掉半個畫面。
+ok('一進房間只有放大鏡，沒有輸入框',
+   (await p.locator('.topbar .filterbar .search-toggle').count()) === 1
+   && (await p.locator('input[type=search]').count()) === 0)
 const code = (await p.locator('.topbar-sub .mono').first().textContent())?.trim()
 ok(`取得 6 碼代碼: ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
 // 請假 2026-09 拿掉了：「（請假）」現在只是一則備註，陳大同照樣是未到。
@@ -111,22 +118,41 @@ await p.getByRole('button', { name: /^未到/ }).click(); await p.waitForTimeout
 ok('未到篩選顯示 7 人', (await p.locator('.member').count()) === 7)
 await p.getByRole('button', { name: /^全部/ }).click(); await p.waitForTimeout(300)
 
-// 搜尋。搜尋框住在頂欄（sticky），一直顯示，不必先點才展開。
+// 搜尋。點篩選列右邊那顆放大鏡，輸入框從那個位置往左長出來，蓋住三段篩選
+// ——一列裡塞不下三段篩選加一條堪用的輸入框。
+await p.locator('.filterbar .search-toggle').click(); await p.waitForTimeout(400)
+ok('展開就聚焦（跳鍵盤是剛按下那顆鍵的直接結果）',
+   await p.evaluate(() => document.activeElement?.getAttribute('type') === 'search'))
+ok('展開後蓋住分段控制', await p.evaluate(() => {
+  const seg = document.querySelector('.filterbar .segmented').getBoundingClientRect()
+  const box = document.querySelector('.search-wrap').getBoundingClientRect()
+  return box.left <= seg.left + 1 && box.right >= seg.right - 1
+}))
 ok('搜尋框空的時候沒有高亮', (await p.locator('.search-wrap .input.is-on').count()) === 0)
 await p.locator('input[type=search]').fill('陳怡君'); await p.waitForTimeout(300)
 ok('搜尋同名找到 2 人', (await p.locator('.member').count()) === 2)
 ok('搜尋框有字時高亮，讓人知道名單被過濾了', (await p.locator('.search-wrap .input.is-on').count()) === 1)
 // 焦點圈只在打字當下看得到；拿掉焦點（不點名單列，避免動到點名狀態）之後
 // 高亮要繼續留著——這才是「名單現在是過濾過的」唯一的持續提示。
-await p.locator('input[type=search]').evaluate((el) => el.blur()); await p.waitForTimeout(200)
+await p.locator('input[type=search]').evaluate((el) => el.blur()); await p.waitForTimeout(300)
 ok('拿掉焦點之後高亮還在', (await p.locator('.search-wrap .input.is-on').count()) === 1)
+// 有字的時候絕不自己收起來：收起來會把字清掉，而使用者只是把手指移開了。
+ok('有字時失焦也不收回成圖示', (await p.locator('input[type=search]').count()) === 1)
 await p.locator('input[type=search]').fill('0912'); await p.waitForTimeout(300)
 // 電話已經不是解析出來的欄位（號碼原文躺在備註裡），搜尋要照樣找得到人。
 ok('可用電話搜尋（號碼現在在備註裡）', (await p.locator('.member').count()) === 1)
 
 // 收尾時單手打錯字：切「未到」再搜一個不存在的名字。這裡絕對不能回答
 // 「太好了，全部都到了」——那句話在車門口等於「可以關門了」。
+//
+// 展開的搜尋框蓋著分段控制，所以要先收起來才切得到篩選（這是併成一列的直接
+// 後果，順序是「先決定看哪一群，再搜」）。清空＋Esc＝收回成圖示。
+await p.locator('input[type=search]').fill(''); await p.waitForTimeout(200)
+await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(300)
+ok('搜尋收起來之後又切得到篩選了',
+   await p.getByRole('button', { name: /^未到/ }).first().isVisible())
 await p.getByRole('button', { name: /^未到/ }).click(); await p.waitForTimeout(200)
+await openSearch()
 await p.locator('input[type=search]').fill('王大明'); await p.waitForTimeout(300)
 const typoEmpty = (await p.locator('.empty-big').textContent())?.trim()
 ok(`搜尋打錯字時說「沒找到」而不是「全部都到了」：${typoEmpty}`, typoEmpty === '這裡沒有人')
@@ -135,6 +161,11 @@ await p.locator('input[type=search]').fill(''); await p.waitForTimeout(300)
 ok('清掉搜尋字之後高亮跟著消失', (await p.locator('.search-wrap .input.is-on').count()) === 0)
 ok('清掉搜尋後「未到」篩選才回到成功文案',
    (await p.locator('.empty-big').count()) === 0 || (await p.locator('.empty-big').textContent())?.includes('全部都到了'))
+// 空的時候滑走就收回成圖示，那一列人名還回去；而「收起來」永遠等於「沒有在過濾」。
+await p.locator('input[type=search]').evaluate((el) => el.blur()); await p.waitForTimeout(350)
+ok('空的時候失焦就收回成圖示',
+   (await p.locator('input[type=search]').count()) === 0
+   && (await p.locator('.filterbar .search-toggle').count()) === 1)
 await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitForTimeout(300)
 
 // 撥號。解析器不再判斷任何一串數字是什麼——「匯款 700-1234567」曾經被抽成
@@ -404,27 +435,42 @@ ok('邀請點名在頂欄，就在「更多」左邊', await p.evaluate(() => {
 ok('動作列上沒有主要按鈕（這個畫面的主要動作是戳名字）',
    (await p.locator('.dock .btn-primary').count()) === 0)
 ok('也沒有浮動搜尋鍵', (await p.locator('.fab').count()) === 0)
-ok('搜尋框一直開在頂欄裡，不必點開',
-   (await p.locator('.topbar .search-wrap input[type=search]').count()) === 1)
+// 搜尋跟篩選同一列（2026-09）：一顆放大鏡排在「全部／未到／已到」右邊。
+// 頂欄剩兩列：名字那一列、篩選＋搜尋那一列。搜尋自己那一列（76px）沒了。
+ok('搜尋是篩選列右邊那一顆，不另外佔一列',
+   (await p.locator('.topbar .filterbar .search-toggle').count()) === 1
+   && (await p.locator('.topbar > .shell').count()) === 2)
 // 分享 2026-09 先收進「更多」，同月又搬回頂欄——但是以圖示鍵的身分，跟「更多」一組。
 ok('頂欄的動作鍵是分享與更多兩顆（加上返回鍵共三顆）',
    (await p.locator('.topbar-inner > button.icon-btn').count()) === 3
    && (await p.locator('.topbar button[aria-label="更多"]').count()) === 1)
-ok('頂欄不再有放大鏡（搜尋只有一個入口）',
-   (await p.locator('.topbar button[aria-label*="搜尋"]').count()) === 0)
+ok('搜尋在畫面上只有一個入口',
+   (await p.locator('button[aria-label*="搜尋"]').count()) === 1)
 
-// 高度與邊框要跟上下相鄰的控制項對齊——不是借來的通用 .input 樣式。
-const searchInputBox = await p.locator('.search-wrap input[type=search]').boundingBox()
+// 那顆鍵跟旁邊的分段控制、跟頂欄的圖示鍵都要對得起來（48px 的手指高度）。
+const toggleBox = await p.locator('.filterbar .search-toggle').boundingBox()
 const iconBtnBox = await p.locator('.topbar button[aria-label="更多"]').boundingBox()
-const segmentBox = await p.getByRole('button', { name: /^全部/ }).first().boundingBox()
-ok(`搜尋框高度（${Math.round(searchInputBox.height)}px）跟圖示鍵（${Math.round(iconBtnBox.height)}px）／分段控制（${Math.round(segmentBox.height)}px）一致`,
-   Math.abs(searchInputBox.height - iconBtnBox.height) <= 1 && Math.abs(searchInputBox.height - segmentBox.height) <= 1)
+ok(`放大鏡是 ${Math.round(toggleBox.width)}×${Math.round(toggleBox.height)}，跟頂欄圖示鍵同尺寸`,
+   Math.abs(toggleBox.height - iconBtnBox.height) <= 1 && toggleBox.width >= 48)
 
-// Esc 現在只清掉搜尋字、把鍵盤收起，不是「關掉」——搜尋框本來就不會被關掉。
+// 展開之後那條輸入框要正好蓋住分段控制——不是借來的通用 .input 樣式，高度是
+// 那一列（48px 的按鈕＋凹槽 4px 的內距）決定的。
+await openSearch()
+const searchInputBox = await p.locator('.search-wrap input[type=search]').boundingBox()
+const segmentedBox = await p.locator('.filterbar .segmented').boundingBox()
+ok(`搜尋框高度（${Math.round(searchInputBox.height)}px）跟分段控制那一列（${Math.round(segmentedBox.height)}px）一致`,
+   Math.abs(searchInputBox.height - segmentedBox.height) <= 1)
+
+// Esc 分兩段：先清字（名單立刻回來），再按一次才收回成圖示。一次做完兩件事
+// 的話，只是想取消過濾的人會連那顆鍵的位置一起失去。
 await p.locator('input[type=search]').fill('陳'); await p.waitForTimeout(200)
-await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(200)
-ok('Esc 清空搜尋字但搜尋框還在', await p.locator('input[type=search]').inputValue() === ''
+await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(250)
+ok('第一次 Esc 清空搜尋字，框還在', await p.locator('input[type=search]').inputValue() === ''
    && (await p.locator('input[type=search]').count()) === 1)
+await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(300)
+ok('第二次 Esc 才收回成圖示，分段控制回來',
+   (await p.locator('input[type=search]').count()) === 0
+   && await p.getByRole('button', { name: /^全部/ }).first().isVisible())
 
 // 「更多」不再分頁（2026-09）：空間那一組搬到首頁之後只剩幾列，一眼看得完，
 // 再切一層分類只是多一次點擊。排列照一場活動的時間軸：出發前 → 現場 → 車開了。
@@ -578,16 +624,16 @@ ok('點頂欄回到名單頂端', (await p.evaluate(() => window.scrollY)) < 10)
 // 搜尋框只留一顆清除鍵：原生那顆沒有 48px 觸控目標也沒有無障礙名稱。
 // Chrome 的 getComputedStyle 對這個 pseudo-element 會回傳宿主元素的值，驗不到，
 // 所以直接確認規則還在樣式表裡（防的是「有人把它刪掉」）。
+await openSearch()
 await p.locator('input[type=search]').fill('同工'); await p.waitForTimeout(300)
 ok('自訂清除鍵有 48px 觸控目標與無障礙名稱', await p.evaluate(() => {
   const b = document.querySelector('.search-clear')
   const r = b?.getBoundingClientRect()
   return Boolean(b?.getAttribute('aria-label')) && r && r.width >= 48 && r.height >= 48
 }))
-// 清除鍵的 top/right 量的是 .search-wrap 的 padding box，不是 .input 的邊緣
-// ——兩者曾經是同一件事，.search-wrap 拆出獨立的左右內距之後，清除鍵沒有
-// 跟著換算：垂直偏移了 4px（top: 50% 把 padding-bottom 也算進去），右側還
-// 超出 .input 邊界 12px（right 量到 .shell 內距外面的螢幕邊緣）。
+// 清除鍵量的是它自己跟 .input 的中心差。這顆鍵偏過兩次，兩次都是因為某個
+// 「剛好成立」的前提悄悄不成立了：先是 .search-wrap 拆出獨立的左右內距（right
+// 量到了螢幕邊緣），後來又是它搬進比自己高的篩選列（對齊頂端就偏上 4px）。
 const clearAlign = await p.evaluate(() => {
   const input = document.querySelector('.search-wrap .input')
   const clear = document.querySelector('.search-clear')
@@ -610,6 +656,7 @@ ok('原生清除鍵被關掉（只剩自訂的那顆）', await p.evaluate(() =>
   return false
 }))
 await p.locator('input[type=search]').fill(''); await p.waitForTimeout(200)
+await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(300)
 // <html lang> 要跟著 App 語言，否則螢幕閱讀器會用中文語音唸英文介面。
 ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
 // 設定只剩首頁那顆齒輪進得去（2026-09 管理面板拿掉設定入口）。
@@ -750,7 +797,7 @@ const printState = await p.evaluate(()=>{
   const hidden = (sel)=>{const e=document.querySelector(sel); return !e || getComputedStyle(e).display==='none'}
   const txt = (sel)=>document.querySelector(sel)?.textContent?.trim() ?? null
   const cs = (sel)=>{const e=document.querySelector(sel); return e ? getComputedStyle(e) : null}
-  return { topbar:hidden('.topbar'), seg:hidden('.segmented'), search:hidden('.search-wrap'),
+  return { topbar:hidden('.topbar'), seg:hidden('.segmented') && hidden('.filterbar'), search:hidden('.search-wrap'),
     rows: document.querySelectorAll('.member').length,
     arrivedCheck: cs('.member.is-arrived .check')?.backgroundColor ?? null,
     pendingCheck: cs('.member:not(.is-arrived) .check')?.backgroundColor ?? null,
@@ -849,8 +896,8 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 // ---- 80 人名單的首屏產出 ----
 // roll-call.md 寫著「首屏本來就有 45–50% 的高度被控制項吃掉——80 人的名單一屏
 // 只看得到 4 個人；省下的每一格都直接變成人名」。這一段把那句話變成可量的東西。
-// 搜尋框改成一直開著之後（不必先點才展開）首屏會少掉一列人名的高度，這是
-// 換掉「先點開才能用」那一步的代價，門檻跟著往下調一格，不是量錯了。
+// 搜尋 2026-09 併進篩選列（收成右邊一顆放大鏡）之後，那 76px 還回來了，首屏
+// 因此多看得到一個人名——代價是搜尋要先點一下。
 await p.goto(URL); await p.waitForTimeout(600)
 await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(400)
 await p.locator('#room-name').fill('員工旅遊 · 出發')
@@ -865,19 +912,27 @@ const fold = await p.evaluate(() => {
   return {
     firstNameTop: Math.round(rows[0].getBoundingClientRect().top),
     visible: rows.filter((e) => e.getBoundingClientRect().bottom <= innerHeight).length,
-    searchInFlow: !!document.querySelector('.shell .search-wrap'),
+    // 搜尋跟篩選在同一列：兩者的上緣要一樣高（差 1px 是次像素）。
+    searchRow: (() => {
+      const bar = document.querySelector('.filterbar')?.getBoundingClientRect()
+      const btn = document.querySelector('.filterbar .search-toggle')?.getBoundingClientRect()
+      const seg = document.querySelector('.filterbar .segmented')?.getBoundingClientRect()
+      return Boolean(bar && btn && seg) && Math.abs(btn.top - seg.top) <= 4 && btn.left > seg.right - 1
+    })(),
     hasDock: !!document.querySelector('.dock'),
     dockH: Math.round(document.querySelector('.dock')?.getBoundingClientRect().height ?? 0),
   }
 })
-ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 6)
+ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 7)
 // 動作列 2026-09 回來了，它吃掉的高度是有代價的——換到的是三個時刻不必先開選單。
 ok(`底部動作列只吃掉 ${fold.dockH}px`, fold.hasDock && fold.dockH <= 72)
-ok('搜尋框不在名單流裡（它佔的 76px 等於一列人名）', !fold.searchInFlow)
-// 捲到名單深處，搜尋框必須還按得到——它住在 sticky 頂欄裡，永遠在畫面上，
+ok('搜尋跟篩選同一列，右邊那一顆（省下的 76px 等於一列人名）', fold.searchRow)
+// 捲到名單深處，搜尋必須還按得到——那顆鍵住在 sticky 頂欄裡，永遠在畫面上，
 // 不必先捲回頂端。
 await p.mouse.wheel(0, 3000); await p.waitForTimeout(500)
-ok('捲過 3000px 之後搜尋框仍在畫面上（頂欄 sticky）', await p.locator('input[type=search]').isVisible())
+ok('捲過 3000px 之後放大鏡仍在畫面上（頂欄 sticky）',
+   await p.locator('.filterbar .search-toggle').isVisible())
+await openSearch()
 await p.locator('input[type=search]').fill('第二車學員37'); await p.waitForTimeout(500)
 ok('深處也搜得到人', (await p.locator('.member').count()) === 1)
 await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(400)
@@ -885,6 +940,7 @@ ok('Esc 清空搜尋字、還原名單，搜尋框還在原地',
    (await p.locator('input[type=search]').count()) === 1
    && (await p.locator('input[type=search]').inputValue()) === ''
    && (await p.locator('.member').count()) === 80)
+await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(300)
 
 // .list 的下方內距（見 styles.css）決定的是「捲到底之後最後一列還按得到嗎」，
 // 不是首屏能看到幾個人——這裡直接量會蓋住它的東西：點名後彈出的 Toast。

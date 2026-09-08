@@ -213,6 +213,14 @@ for (const scheme of ['light', 'dark']) {
   await page.locator('.member-main').nth(0).click(); await page.waitForTimeout(500)
   await audit(page, scheme, '空間（含 Toast）')
 
+  // 搜尋 2026-09 收成篩選列右邊的一顆放大鏡，點了才往左長出輸入框。展開的
+  // 狀態要單獨驗：那條輸入框蓋在分段控制上，對比與觸控尺寸都換了一組鄰居。
+  await page.locator('.filterbar .search-toggle').click(); await page.waitForTimeout(400)
+  await page.locator('input[type=search]').fill('王'); await page.waitForTimeout(400)
+  await audit(page, scheme, '空間 · 搜尋展開')
+  await page.locator('input[type=search]').press('Escape'); await page.waitForTimeout(200)
+  await page.locator('input[type=search]').press('Escape'); await page.waitForTimeout(300)
+
   await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(500)
   await audit(page, scheme, '「更多」面板')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)

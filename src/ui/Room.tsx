@@ -17,7 +17,7 @@ import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
 import {
   IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPdf, IconPhone, IconPlus,
-  IconShare,
+  IconSearch, IconShare,
 } from './icons'
 import { useT } from './t'
 
@@ -55,6 +55,18 @@ export function Room({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
+  /*
+    搜尋 2026-09 收成篩選列右邊的一顆圖示，點了才從那個位置往左長出輸入框
+    （見 styles.css 的 .filterbar / @keyframes search-open）。兩件事換來的：
+    篩選與搜尋合成一列，頂欄少 76px——正好一列人名，80 人的名單首屏因此
+    多看得到一個人。代價是要搜尋得先點一下。
+
+    **不變的是那條安全規則：收起來就代表名單沒有被過濾。** 所以有字的時候
+    絕不自己收（失焦只在空字串時收），而收起來的那一刻一定把字清掉——名單上
+    只剩兩個人卻沒有任何東西說「這是過濾過的」，在車門口會被讀成「都到齊了」。
+  */
+  const [searching, setSearching] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
   // 分車：選了某一車之後，計數與名單都只算那一車——
   // 顧第一車的人要看的是「我這台還有幾個沒上」。
   const [group, setGroup] = useState<string | null>(null)
@@ -105,6 +117,18 @@ export function Room({ code }: { code: string }) {
     setEditingId(null)
     setEditing(true)
   }
+  /*
+    展開就聚焦——跳出鍵盤是使用者剛剛按下那顆放大鏡的直接結果，不是一進房間
+    就被彈一臉。（搜尋框一直開著的那一版刻意不自動聚焦，理由正好相反。）
+  */
+  useEffect(() => { if (searching) searchRef.current?.focus() }, [searching])
+
+  /** 收起來＝不再過濾。兩件事必須一起發生，見 searching 那段。 */
+  function closeSearch() {
+    setQuery('')
+    setSearching(false)
+  }
+
   useEffect(() => {
     if (status !== 'ready') return
     const pending = openMenuOnEnter.value
@@ -338,57 +362,69 @@ export function Room({ code }: { code: string }) {
           )}
         </div>
         {/*
-          搜尋框長在頂欄裡，一直顯示，不是點了才展開。
-          三個理由，都是量出來的／試出來的：80 人的名單首屏只看得到 5 個人名，
-          而搜尋框連間距吃掉 76px（正好一列人名）；它原本會跟著名單捲走——真正
-          需要搜尋的時刻是你已經捲過 60 個人、有人報上名字，那時要用它得先捲回
-          17 個螢幕（roll-call.md 的「頂欄標題可點回到頂端」就是為了這件事）；
-          而且它整場反覆在用，多一次「先點開才能打字」是白白多出來的一步。
-          頂欄是 sticky，搬進來、一直開著，三個問題一起消失。
+          篩選與搜尋同一列（2026-09）：三段篩選佔左邊，右邊一顆放大鏡，點下去
+          從那顆鍵的位置往左長成整條輸入框（`@keyframes search-open`）。
 
-          不自動聚焦：一進房間就跳出虛擬鍵盤會蓋掉半個畫面，而這裡不像過去
-          「按一下才展開」那樣是使用者剛做出的明確動作。
+          兩者都住在 sticky 頂欄裡，理由是同一個：真正需要它們的時刻是你已經
+          捲過 60 個人、有人在車門口報上名字，那時候要用得先捲回 17 個螢幕。
+          而「未到 N」在計分區拿掉之後是畫面上唯一回答「還有幾個沒到」的東西，
+          更不能跟著名單捲走。
 
-          有字才亮（.is-on）：搜尋框一直開著，:focus 那圈只在打字的當下看得到，
-          點開別人的成員面板、或只是滑走去點名之後，框就退回跟平常一樣的灰底，
-          畫面上完全沒有東西說「名單現在是過濾過的」。名單本身也不會說——空
-          名單那句「這裡沒有人」跟「太好了全部都到了」長得不一樣，但沒清空
-          搜尋字之前只看得到過濾後的幾個人，很容易誤讀成「全部都到了」。
-          鍵的是 query.trim()，跟真正觸發過濾的判準（見 shown 那段 useMemo）
-          同一條，而不是原始的 query——只打了空白鍵不該亮。
+          合成一列省下 76px——正好一列人名，80 人的名單首屏因此從 7 個人變成
+          8 個。代價講清楚：搜尋從「一直開著」退回「要先點一下」，多一步；而
+          展開的時候三段篩選被蓋住（那三個數字跟搜尋無關，收起來就回來了）。
+          上一次為了省掉那一步才把它從浮動鍵改成常駐輸入框，這次換成用一整列
+          人名去買回那一步——同一個判準，秤的東西不一樣。
+
+          有字才亮（.is-on）：:focus 那圈只在打字的當下看得到，滑走去點名之後
+          框就退回一般灰底，畫面上會沒有東西說「名單現在是過濾過的」——而名單
+          自己也不會說：只剩兩個人的畫面很容易被讀成「都到齊了」。鍵的是
+          query.trim()，跟真正觸發過濾的判準（見 shown 那段 useMemo）同一條。
         */}
-        <div class="shell search-wrap">
-          <input
-            class={query.trim() ? 'input is-on' : 'input'}
-            type="search"
-            value={query}
-            placeholder={t('searchPlaceholder')}
-            aria-label={t('searchPlaceholder')}
-            onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') { setQuery(''); (e.currentTarget as HTMLInputElement).blur() }
-            }}
-          />
-          {query && (
-            <button class="search-clear" onClick={() => setQuery('')} aria-label={t('cancel')}>×</button>
-          )}
-        </div>
-
-        {/*
-          篩選留在頂欄裡，和搜尋框同一個理由：頂欄是 sticky。
-
-          計分區（44px 的大字＋「8 / 9 人」＋進度條）拿掉之後，「未到 N」就是
-          畫面上唯一回答「還有幾個沒到」的東西——它不能跟著名單捲走。以前那個
-          數字靠「計分區捲出畫面時頂欄接手」來續命，現在不需要那套機關了：它
-          本來就一直在畫面上。
-          省下的高度全部變成人名：首屏本來有 45–50% 被控制項吃掉。
-        */}
-        <div class="shell">
+        <div class="shell filterbar">
           <div class="segmented" role="group" aria-label={t('filter')}>
             <Segment active={filter === 'all'} onClick={() => setFilter('all')} label={t('all')} count={s.people} />
             <Segment active={filter === 'pending'} onClick={() => setFilter('pending')} label={t('missing')} count={s.pending} />
             <Segment active={filter === 'arrived'} onClick={() => setFilter('arrived')} label={t('arrived')} count={s.arrived} />
           </div>
+
+          {searching ? (
+            <div class="search-wrap">
+              <input
+                ref={searchRef}
+                class={query.trim() ? 'input is-on' : 'input'}
+                type="search"
+                value={query}
+                placeholder={t('searchPlaceholder')}
+                aria-label={t('searchPlaceholder')}
+                onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+                /* 空的時候滑走就收起來（那一列人名還回去）；有字的時候絕不自己
+                   收——收起來會清掉字，而使用者只是移開了手指。 */
+                onBlur={() => { if (!query) setSearching(false) }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Escape') return
+                  // 先清字（名單立刻回來），再按一次才收回成圖示。
+                  if (query) { setQuery(''); return }
+                  closeSearch()
+                }}
+              />
+              {query && (
+                <button
+                  class="search-clear"
+                  onClick={() => { setQuery(''); searchRef.current?.focus() }}
+                  aria-label={t('cancel')}
+                >×</button>
+              )}
+            </div>
+          ) : (
+            <button
+              class="icon-btn search-toggle"
+              onClick={() => setSearching(true)}
+              aria-label={t('searchPlaceholder')}
+            >
+              <IconSearch />
+            </button>
+          )}
         </div>
       </div>
 

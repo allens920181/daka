@@ -459,8 +459,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /*
  * 篩選長在頂欄裡（sticky），不在名單流裡。計分區拿掉之後，「未到 N」是畫面上
  * 唯一回答「還有幾個沒到」的東西——它不能跟著名單捲走。
+ *
+ * 2026-09 起它跟搜尋共用一列（`.filterbar`），下邊距因此掛在那一列上，不再
+ * 掛在分段控制自己身上。
  */
-.topbar .segmented { margin-bottom: var(--sp-2); }
+.topbar .filterbar { margin-bottom: var(--sp-2); }
 
 .sync { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-2); font-weight: 600; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
@@ -548,32 +551,48 @@ button, input, textarea, select { font: inherit; color: inherit; }
   content: ""; flex: 1; height: 1px; background: var(--rule);
 }
 
+/* --- 篩選＋搜尋那一列 --------------------------------------------------- */
+
 /*
- * 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。
- * 只設 padding-bottom，不用 padding 簡寫：`.search-wrap` 跟 `.shell` 掛在
- * 同一個元素上（`class="shell search-wrap"`），簡寫會把 `.shell` 的左右
- * 內距（--sp-4）整個蓋成 0——搜尋框曾經因此貼齊螢幕邊緣，跟下面分段控制、
- * 名單列的左右邊界對不齊。
+ * 三段篩選佔滿左邊，右邊一顆放大鏡。position: relative 是給展開後的搜尋框當
+ * 定位基準——它蓋在這一列上，不是插進來把分段控制擠小。
  */
-.search-wrap { position: relative; padding-bottom: var(--sp-2); }
+.filterbar { position: relative; display: flex; align-items: center; gap: var(--sp-2); }
+.filterbar .segmented { flex: 1; min-width: 0; margin-bottom: 0; }
+.filterbar .search-toggle { flex: none; }
+
 /*
- * 搜尋框跟它正上方的圖示鍵、正下方的分段控制共用同一套視覺語言，不是借來的
- * 通用 .input：48px 高（--tap-min，跟 .icon-btn／.segment 對齊），填色底＋
- * 透明邊框（跟 .segmented 的凹槽同一個 --surface-2），不是白底＋實邊——
- * 不然它會像插進控制群組裡的表單欄位，而不是控制群組本身的一部分。
- * 邊框寬度留著（只把顏色蓋成透明）：對焦時 .input:focus 換回 --accent，
- * 寬度不變才不會讓框線突然冒出來把旁邊的字擠一下。
+ * 展開的搜尋框。從那顆圖示鍵的位置往左長出來，蓋住分段控制——一列裡塞不下
+ * 三段篩選加一條堪用的輸入框（390px 上輸入框只剩 120px），而那三個數字跟
+ * 搜尋無關，收起來就回來了。
+ *
+ * left／right 要自己補上 `.shell` 的左右內距：絕對定位量的是 padding box 的
+ * 邊緣，`right: 0` 會貼到螢幕邊，跟底下名單列的邊界對不齊。
+ * 上下用 0 撐滿整列、輸入框跟著 height: 100%——這一列的高度是分段控制決定的
+ * （48px 的按鈕＋凹槽 4px 的內距），搜尋框要正好蓋住它，不能只有 48px。
+ *
+ * 視覺語言跟分段控制同一套：填色底（同一個 --surface-2 凹槽）＋透明邊框，
+ * 不是白底＋實邊——不然它會像插進控制群組裡的表單欄位，而不是控制群組本身。
+ * 邊框寬度留著（只把顏色蓋成透明）：對焦時 .input:focus 換回 --accent，寬度
+ * 不變才不會讓框線突然冒出來把旁邊的字擠一下。
  */
+.search-wrap { position: absolute; top: 0; bottom: 0; left: var(--sp-4); right: var(--sp-4); }
 .search-wrap .input {
-  height: var(--tap-min); padding: 0 var(--sp-3);
+  height: 100%; padding: 0 var(--sp-3);
   border-color: transparent; background: var(--surface-2);
 }
+
+/* 往左長：`left` 從那顆圖示鍵的左緣開始，`right` 固定不動——看起來就是從鍵的
+   位置往左展開，而不是整條從中間放大。偏好減少動態時由檔案最後那條全域規則
+   把時間壓成 0.01ms。 */
+@keyframes search-open { from { left: calc(100% - var(--sp-4) - var(--tap-min)); } }
+.search-wrap { animation: search-open var(--dur-2) var(--ease); }
+
 /*
- * 有字才亮。:focus 那圈只在打字的當下看得到——點開別人的成員面板、或只是
- * 滑走去點名之後，框就退回跟平常一樣的灰底，畫面上沒有東西說「名單現在是
- * 過濾過的」。跟 .btn.is-on 同一套顏色（--accent-soft 底、--accent 邊），
- * 但不改 color：打進去的字要維持一般墨色可讀，變色的是搜尋這個「動作」在
- * 生效，不是使用者打的內容本身出了什麼狀況。
+ * 有字才亮。:focus 那圈只在打字的當下看得到——滑走去點名之後框就退回跟平常
+ * 一樣的灰底，畫面上沒有東西說「名單現在是過濾過的」。跟 .btn.is-on 同一套
+ * 顏色（--accent-soft 底、--accent 邊），但不改 color：打進去的字要維持一般
+ * 墨色可讀，變色的是搜尋這個「動作」在生效，不是使用者打的內容出了什麼狀況。
  */
 .search-wrap .input.is-on { border-color: var(--accent); background: var(--accent-soft); }
 /* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
@@ -581,20 +600,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .search-wrap input[type='search']::-webkit-search-cancel-button,
 .search-wrap input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
 /*
- * 絕對定位的 top／right 是量到 .search-wrap 的 padding box，不是 .input
- * 的邊緣——兩者曾經是同一件事（.search-wrap 左右內距被簡寫蓋成 0 的時候），
- * 拆開之後這顆鍵的位置沒有跟著换算，於是往下偏了 4px（top: 50% 量的是連
- * padding-bottom 一起算的高度，不是 .input 自己的高度）、右邊也超出 .input
- * 的邊界 12px（right 量的是 .shell 內距之外的螢幕邊緣，不是 .input 內距
- * 之內的邊緣）。
- *
- * top: 0 是因為兩者剛好同高（都是 --tap-min）、.search-wrap 也沒有上內距，
- * 頂端對齊就等於置中，不必再算 50%。right 加回 .shell 的內距（--sp-4）
- * 才是量到 .input 的邊緣，剩下的 --sp-1 才是這顆鍵跟 .input 邊界之間真正
- * 的呼吸空間。
+ * 清除鍵。定位基準是 .search-wrap 自己（它是 absolute，所以也是包含塊），而
+ * 它沒有內距，right 留一點呼吸空間就好。
+ * 垂直用 50% + translate，不是 top: 0：這一列比這顆鍵高（分段控制的凹槽多出
+ * 8px），對齊頂端會讓它偏上 4px。這顆鍵曾經正是因為「兩者剛好同高」這個前提
+ * 悄悄不成立而偏掉過一次，改成量中心就不再依賴那個前提。
  */
 .search-clear {
-  position: absolute; right: calc(var(--sp-4) + var(--sp-1)); top: 0;
+  position: absolute; right: var(--sp-1); top: 50%; transform: translateY(-50%);
   width: var(--tap-min); height: var(--tap-min); border: none; background: transparent;
   color: var(--ink-3); font-size: var(--fs-5); cursor: pointer; border-radius: var(--r-1);
 }
@@ -1145,7 +1158,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
   /* .segmented 與 .search-wrap 都住在 .topbar 裡了，但留著名字：它們是否被藏起來
      是 e2e 直接驗的事情，而選擇器多寫一個不會錯。 */
-  .topbar, .dock, .toast-wrap, .overlay, .segmented, .search-wrap,
+  .topbar, .dock, .toast-wrap, .overlay, .segmented, .filterbar, .search-wrap,
   .member-side, .icon-btn, .btn, .groups, .banner { display: none !important; }
 
   /*
