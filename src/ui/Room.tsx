@@ -13,6 +13,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
+import { RoleBadge } from './RoleBadge'
 import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
 import {
@@ -326,19 +327,19 @@ export function Room({ code }: { code: string }) {
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               aria-label={t('backToTop')}
             >
-              <h1 class="topbar-name">{current.name}</h1>
+              {/*
+                身分（主揪／協助者）排在空間名前面。「我是主揪還是協助者」決定
+                這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），是進
+                空間第一眼就該知道的事——它講的是「我」，比後面那個名字更早被讀到。
+                它 2026-09 走過兩步：先從管理面板頂端那一列搬到頂欄的副標行（排在
+                代碼前面），再從一顆寫著字的藥丸換成圖示、往上挪到名字前面。
+              */}
+              <div class="topbar-heading">
+                {!editing && <RoleBadge owner={isOwner.value} />}
+                <h1 class="topbar-name">{current.name}</h1>
+              </div>
               {!editing && (
                 <div class="topbar-sub">
-                  {/*
-                    身分標籤本來在管理面板頂端那一列。「我是主揪還是協助者」決定
-                    這個畫面上哪些事做得動（編輯名單、結束點名都只有主揪能做），
-                    是進空間第一眼就該知道的事，不該要先點開管理面板才看得到。
-                    排在代碼前面：代碼與同步狀態講的是「這是哪個空間、連上了沒」，
-                    身分講的是「我」，順序從人到空間再到連線。
-                  */}
-                  <span class={isOwner.value ? 'tag tag-owner' : 'tag'}>
-                    {isOwner.value ? t('owner') : t('helper')}
-                  </span>
                   {closed ? (
                     // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
                     // 戳名字沒反應，協助者完全不知道為什麼。

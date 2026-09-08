@@ -128,6 +128,14 @@ export const IconGoogle = ({ size = 20, ...r }: P) => (
   </svg>
 )
 
+// 身分：主揪用鑰匙（這支手機握著改動這個空間的權限），協助者用人。兩個形狀
+// 要一眼分得開——只靠顏色的話，色盲與最低亮度下的螢幕都分不出來。
+export const IconKey = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}>
+    <circle cx="7.5" cy="15.5" r="4" />
+    <path d="M10.5 12.5 20 3" /><path d="M17 6l2.5 2.5" /><path d="M14.5 8.5 17 11" />
+  </svg>
+)
 export const IconUser = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />

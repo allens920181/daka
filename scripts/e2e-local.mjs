@@ -276,6 +276,16 @@ ok('那顆更多還是 48px 的觸控目標（內距掛在主按鈕上，不在�
   const r = document.querySelector('.recent-item > button.icon-btn')?.getBoundingClientRect()
   return Boolean(r) && r.width >= 48 && r.height >= 48
 }))
+// 身分 2026-09 從那一列最右邊的文字標籤換成名字前面的圖示：右邊要留給「更多」，
+// 而它講的是「我」，比後面那個名字更早被讀到。
+ok('身分是那一列名字前面的圖示', await p.evaluate(() => {
+  const main = document.querySelector('.recent-main')
+  const kids = [...(main?.children ?? [])]
+  const badge = kids.findIndex((e) => e.classList.contains('role-badge'))
+  return badge === 0 && kids.length === 2 && Boolean(main?.querySelector('.recent-name'))
+}))
+ok('圖示唸得出身分',
+   /^(主揪|協助者)$/.test((await p.locator('.recent-main .role-badge').first().getAttribute('aria-label')) ?? ''))
 await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(600)
 ok('就在首頁打開，不進空間', (await p.locator('.home-title').count()) === 1
    && (await p.locator('.topbar-name').count()) === 0)
@@ -385,7 +395,8 @@ ok('備註也存下來了，而且就印在名字底下',
 ok('進編輯模式時 Toast 收掉了（不留一顆浮著的「復原」）',
    (await p.locator('.toast').count()) === 0)
 // 身分、代碼、同步狀態回答的是點名當下的問題，編輯時畫面上只該剩名單。
-ok('編輯時不印身分、代碼、同步狀態', (await p.locator('.topbar-sub').count()) === 0)
+ok('編輯時不印身分、代碼、同步狀態', (await p.locator('.topbar-sub').count()) === 0
+   && (await p.locator('.role-badge').count()) === 0)
 // 那條界線是為了隔開「點名」與「打電話」；編輯時點名區是停用的，沒有東西要隔。
 ok('叉叉左邊沒有那條界線', await p.evaluate(() =>
   getComputedStyle(document.querySelector('.member.is-editing .member-side')).borderLeftStyle === 'none'))
@@ -618,12 +629,20 @@ ok('不管捲不捲，最後一項都看得到',
 await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('身分標籤搬到頂欄', (await p.locator('.topbar-sub .tag-owner').textContent())?.trim() === '主揪')
-// 排在代碼前面：身分（我能不能改）→ 空間（哪一間）→ 連線（存不存得進去）。
-ok('身分標籤排在代碼前面', await p.evaluate(() => {
-  const kids = [...document.querySelectorAll('.topbar-sub > *')]
-  return kids.findIndex((e) => e.classList.contains('tag')) < kids.findIndex((e) => e.classList.contains('mono'))
+// 身分 2026-09 從一顆寫著字的藥丸換成圖示，並且挪到空間名前面：它講的是「我」，
+// 比後面那個名字更早被讀到。字沒了，意思只剩 aria-label／title 說得出來。
+ok('身分是空間名前面那顆圖示',
+   (await p.locator('.topbar-heading .role-badge.is-owner').count()) === 1)
+ok('圖示唸得出「主揪」',
+   (await p.locator('.topbar-heading .role-badge').getAttribute('aria-label')) === '主揪'
+   && (await p.locator('.topbar-heading .role-badge').getAttribute('role')) === 'img')
+ok('排在名字前面', await p.evaluate(() => {
+  const kids = [...document.querySelectorAll('.topbar-heading > *')]
+  return kids.findIndex((e) => e.classList.contains('role-badge'))
+       < kids.findIndex((e) => e.classList.contains('topbar-name'))
 }))
+ok('副標行不再有身分那一格（只剩代碼與同步）',
+   (await p.locator('.topbar-sub .role-badge').count()) === 0)
 
 // 備註不是「純電話號碼」的話（號碼前後還有別的字），備註欄位跟撥號鍵要
 // 備註裡的號碼前後還有別的字時，撥出去的只能是那串數字。獨立開一間空間測，

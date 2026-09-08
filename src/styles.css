@@ -427,13 +427,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .recent-meta > span + span::before { content: "· "; }
 
-.tag {
-  display: inline-flex; align-items: center;
-  padding: 2px var(--sp-2); border-radius: var(--r-full);
-  font-size: var(--fs-2); font-weight: 600;
+/*
+ * 身分（主揪／協助者）。2026-09 從一顆寫著字的藥丸標籤換成圖示，並且從「那一列
+ * 的最右邊」「頂欄副標行的第一格」挪到**標題前面**——它講的是「我」，比它後面
+ * 那個名字更早被讀到，而原本那兩個位置分別要讓給「更多」與空間名字。
+ *
+ * 形狀分主揪與協助者（鑰匙／人），顏色只是加強：色盲與最低亮度下的螢幕分不出
+ * 顏色，但形狀還在。字沒了，意思靠 aria-label／title 補（見 RoleBadge.tsx）。
+ */
+.role-badge {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: var(--sp-5); height: var(--sp-5); border-radius: var(--r-full);
   background: var(--surface-2); color: var(--ink-2);
 }
-.tag-owner { background: var(--accent-soft); color: var(--accent); }
+.role-badge.is-owner { background: var(--accent-soft); color: var(--accent); }
 
 /* === 頂欄 ================================================================ */
 
@@ -452,7 +459,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
   min-height: var(--tap-min);
   display: flex; flex-direction: column; justify-content: center;
 }
+/* 身分圖示與空間名同一行。min-width: 0 要一路傳下去，名字才截得掉。 */
+.topbar-heading { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .topbar-name {
+  min-width: 0;
   font-size: var(--fs-4); font-weight: 700; margin: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
