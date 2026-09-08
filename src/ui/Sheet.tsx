@@ -45,10 +45,20 @@ export function Sheet({
   const from = useRef<{ id: number; x: number; y: number; on: boolean } | null>(null)
   const [dragY, setDragY] = useState(0)
 
-  const drag = {
+  /**
+   * @param grabAtOnce 一按下去就 setPointerCapture。
+   *
+   * 握把要，標題列不要。握把只有 20px 高，手指往下劃第一公分就已經離開它——
+   * 沒有 capture 的話後續的 pointermove 根本不會再送到它身上，手勢就這樣斷了
+   * （這件事被藏了很久：標題列上有同一組 handler，指標滑出握把之後正好落在
+   * 標題列上，是它把手勢接了下去。標題列 2026-09 拿掉之後才露出來）。
+   * 標題列不能這樣做：它裡面有返回鍵與關閉鍵，一按下去就 capture 會吃掉 click。
+   */
+  const dragProps = (grabAtOnce: boolean) => ({
     onPointerDown: (e: JSX.TargetedPointerEvent<HTMLElement>) => {
       if (e.button !== 0) return
       from.current = { id: e.pointerId, x: e.clientX, y: e.clientY, on: false }
+      if (grabAtOnce) e.currentTarget.setPointerCapture(e.pointerId)
     },
     onPointerMove: (e: JSX.TargetedPointerEvent<HTMLElement>) => {
       const d = from.current
@@ -56,7 +66,7 @@ export function Sheet({
       const dy = e.clientY - d.y
       const dx = e.clientX - d.x
       if (!d.on) {
-        // 橫向先動：這是在捲分頁鍵，不是要收面板。
+        // 橫向先動：這是在捲某個橫向可捲的東西，不是要收面板。
         if (Math.abs(dx) > ENGAGE_AT && Math.abs(dx) > Math.abs(dy)) { from.current = null; return }
         if (dy < ENGAGE_AT) return
         d.on = true
@@ -72,7 +82,7 @@ export function Sheet({
       if (e.clientY - d.y > CLOSE_AT) onClose()
     },
     onPointerCancel: () => { from.current = null; setDragY(0) },
-  }
+  })
 
   return (
     <div
@@ -87,8 +97,9 @@ export function Sheet({
         aria-modal="true"
         aria-label={title}
       >
-        <div class="sheet-grip" {...drag} />
-        <div class="sheet-head" {...drag}>
+        <div class="sheet-grip" {...dragProps(true)} />
+        {head !== false && (
+        <div class="sheet-head" {...dragProps(false)}>
           {onBack && (
             <button class="icon-btn" onClick={onBack} aria-label={t('back')}>
               <IconBack />
@@ -109,6 +120,7 @@ export function Sheet({
             </>
           )}
         </div>
+        )}
         {children}
       </div>
     </div>

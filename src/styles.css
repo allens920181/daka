@@ -459,8 +459,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /*
  * 篩選長在頂欄裡（sticky），不在名單流裡。計分區拿掉之後，「未到 N」是畫面上
  * 唯一回答「還有幾個沒到」的東西——它不能跟著名單捲走。
+ *
+ * 2026-09 起它跟搜尋共用一列（`.filterbar`），下邊距因此掛在那一列上，不再
+ * 掛在分段控制自己身上。
  */
-.topbar .segmented { margin-bottom: var(--sp-2); }
+.topbar .filterbar { margin-bottom: var(--sp-2); }
 
 .sync { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-2); font-weight: 600; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
@@ -548,32 +551,48 @@ button, input, textarea, select { font: inherit; color: inherit; }
   content: ""; flex: 1; height: 1px; background: var(--rule);
 }
 
+/* --- 篩選＋搜尋那一列 --------------------------------------------------- */
+
 /*
- * 搜尋列在頂欄裡（sticky），所以左右要跟頂欄的內距對齊、下緣自己留一點呼吸。
- * 只設 padding-bottom，不用 padding 簡寫：`.search-wrap` 跟 `.shell` 掛在
- * 同一個元素上（`class="shell search-wrap"`），簡寫會把 `.shell` 的左右
- * 內距（--sp-4）整個蓋成 0——搜尋框曾經因此貼齊螢幕邊緣，跟下面分段控制、
- * 名單列的左右邊界對不齊。
+ * 三段篩選佔滿左邊，右邊一顆放大鏡。position: relative 是給展開後的搜尋框當
+ * 定位基準——它蓋在這一列上，不是插進來把分段控制擠小。
  */
-.search-wrap { position: relative; padding-bottom: var(--sp-2); }
+.filterbar { position: relative; display: flex; align-items: center; gap: var(--sp-2); }
+.filterbar .segmented { flex: 1; min-width: 0; margin-bottom: 0; }
+.filterbar .search-toggle { flex: none; }
+
 /*
- * 搜尋框跟它正上方的圖示鍵、正下方的分段控制共用同一套視覺語言，不是借來的
- * 通用 .input：48px 高（--tap-min，跟 .icon-btn／.segment 對齊），填色底＋
- * 透明邊框（跟 .segmented 的凹槽同一個 --surface-2），不是白底＋實邊——
- * 不然它會像插進控制群組裡的表單欄位，而不是控制群組本身的一部分。
- * 邊框寬度留著（只把顏色蓋成透明）：對焦時 .input:focus 換回 --accent，
- * 寬度不變才不會讓框線突然冒出來把旁邊的字擠一下。
+ * 展開的搜尋框。從那顆圖示鍵的位置往左長出來，蓋住分段控制——一列裡塞不下
+ * 三段篩選加一條堪用的輸入框（390px 上輸入框只剩 120px），而那三個數字跟
+ * 搜尋無關，收起來就回來了。
+ *
+ * left／right 要自己補上 `.shell` 的左右內距：絕對定位量的是 padding box 的
+ * 邊緣，`right: 0` 會貼到螢幕邊，跟底下名單列的邊界對不齊。
+ * 上下用 0 撐滿整列、輸入框跟著 height: 100%——這一列的高度是分段控制決定的
+ * （48px 的按鈕＋凹槽 4px 的內距），搜尋框要正好蓋住它，不能只有 48px。
+ *
+ * 視覺語言跟分段控制同一套：填色底（同一個 --surface-2 凹槽）＋透明邊框，
+ * 不是白底＋實邊——不然它會像插進控制群組裡的表單欄位，而不是控制群組本身。
+ * 邊框寬度留著（只把顏色蓋成透明）：對焦時 .input:focus 換回 --accent，寬度
+ * 不變才不會讓框線突然冒出來把旁邊的字擠一下。
  */
+.search-wrap { position: absolute; top: 0; bottom: 0; left: var(--sp-4); right: var(--sp-4); }
 .search-wrap .input {
-  height: var(--tap-min); padding: 0 var(--sp-3);
+  height: 100%; padding: 0 var(--sp-3);
   border-color: transparent; background: var(--surface-2);
 }
+
+/* 往左長：`left` 從那顆圖示鍵的左緣開始，`right` 固定不動——看起來就是從鍵的
+   位置往左展開，而不是整條從中間放大。偏好減少動態時由檔案最後那條全域規則
+   把時間壓成 0.01ms。 */
+@keyframes search-open { from { left: calc(100% - var(--sp-4) - var(--tap-min)); } }
+.search-wrap { animation: search-open var(--dur-2) var(--ease); }
+
 /*
- * 有字才亮。:focus 那圈只在打字的當下看得到——點開別人的成員面板、或只是
- * 滑走去點名之後，框就退回跟平常一樣的灰底，畫面上沒有東西說「名單現在是
- * 過濾過的」。跟 .btn.is-on 同一套顏色（--accent-soft 底、--accent 邊），
- * 但不改 color：打進去的字要維持一般墨色可讀，變色的是搜尋這個「動作」在
- * 生效，不是使用者打的內容本身出了什麼狀況。
+ * 有字才亮。:focus 那圈只在打字的當下看得到——滑走去點名之後框就退回跟平常
+ * 一樣的灰底，畫面上沒有東西說「名單現在是過濾過的」。跟 .btn.is-on 同一套
+ * 顏色（--accent-soft 底、--accent 邊），但不改 color：打進去的字要維持一般
+ * 墨色可讀，變色的是搜尋這個「動作」在生效，不是使用者打的內容出了什麼狀況。
  */
 .search-wrap .input.is-on { border-color: var(--accent); background: var(--accent-soft); }
 /* input[type=search] 會自己長一顆原生清除鍵，和 .search-clear 疊在同一格裡。
@@ -581,20 +600,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .search-wrap input[type='search']::-webkit-search-cancel-button,
 .search-wrap input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
 /*
- * 絕對定位的 top／right 是量到 .search-wrap 的 padding box，不是 .input
- * 的邊緣——兩者曾經是同一件事（.search-wrap 左右內距被簡寫蓋成 0 的時候），
- * 拆開之後這顆鍵的位置沒有跟著换算，於是往下偏了 4px（top: 50% 量的是連
- * padding-bottom 一起算的高度，不是 .input 自己的高度）、右邊也超出 .input
- * 的邊界 12px（right 量的是 .shell 內距之外的螢幕邊緣，不是 .input 內距
- * 之內的邊緣）。
- *
- * top: 0 是因為兩者剛好同高（都是 --tap-min）、.search-wrap 也沒有上內距，
- * 頂端對齊就等於置中，不必再算 50%。right 加回 .shell 的內距（--sp-4）
- * 才是量到 .input 的邊緣，剩下的 --sp-1 才是這顆鍵跟 .input 邊界之間真正
- * 的呼吸空間。
+ * 清除鍵。定位基準是 .search-wrap 自己（它是 absolute，所以也是包含塊），而
+ * 它沒有內距，right 留一點呼吸空間就好。
+ * 垂直用 50% + translate，不是 top: 0：這一列比這顆鍵高（分段控制的凹槽多出
+ * 8px），對齊頂端會讓它偏上 4px。這顆鍵曾經正是因為「兩者剛好同高」這個前提
+ * 悄悄不成立而偏掉過一次，改成量中心就不再依賴那個前提。
  */
 .search-clear {
-  position: absolute; right: calc(var(--sp-4) + var(--sp-1)); top: 0;
+  position: absolute; right: var(--sp-1); top: 50%; transform: translateY(-50%);
   width: var(--tap-min); height: var(--tap-min); border: none; background: transparent;
   color: var(--ink-3); font-size: var(--fs-5); cursor: pointer; border-radius: var(--r-1);
 }
@@ -669,6 +682,40 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-5); font-weight: 600; line-height: 1.25;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/*
+ * 備註當副標題（2026-09）。它以前只印在紙上，理由是長度不受控會撐開行高——
+ * 那個代價還在（有備註的列高一行），換到的是「誰坐輪椅、誰只到中午」不必點
+ * 開任何東西就看得到，而那正是備註被寫下來的原因。兩行封頂：再長就截斷，
+ * 一列不該因為有人寫了一整段話而變成半個螢幕。
+ */
+.member-note {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--fs-3); color: var(--ink-2); line-height: 1.35; margin-top: 2px;
+}
+/* 撥號鍵貼在號碼後面。它疊在整片可點的名單列上，所以要自己撐出 44px 的
+   觸控高度——用內距撐、再用負外距收回來，那一行的視覺高度一格都沒有多長。 */
+.note-call {
+  display: inline-flex; align-items: center; vertical-align: -3px;
+  /* 16px 的圖示 ＋ 四邊 16px 內距 ＝ 48×48 的觸控目標；負外距把撐出去的部分
+     全部收回來，那一行的視覺高度與寬度一格都沒有多長。 */
+  margin: calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) calc(var(--sp-1) - var(--sp-4));
+  padding: var(--sp-4);
+  color: var(--accent);
+}
+
+/* 編輯模式下這一列變成兩個輸入框。長相沿用它們取代的那兩行字（名字大一階、
+   備註小一階），只多一條底線說「這裡可以打字」——跟頂欄的標題輸入框同一套。 */
+.member-edit { cursor: default; }
+.member-name-input, .member-note-input {
+  width: 100%; min-width: 0; padding: 0 0 2px; margin-bottom: 2px;
+  border: none; border-bottom: 2px solid var(--accent); border-radius: 0;
+  background: transparent; color: inherit;
+}
+.member-name-input { font-size: var(--fs-5); font-weight: 600; line-height: 1.25; }
+.member-note-input { font-size: var(--fs-3); color: var(--ink-2); line-height: 1.35; }
+.member-name-input:focus, .member-note-input:focus { outline: none; }
+
 .member-meta {
   display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap;
   font-size: var(--fs-2); color: var(--ink-3); margin-top: 1px;
@@ -715,14 +762,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border: 1px solid var(--accent); padding: 0 var(--sp-2);
 }
 .chip-note { background: var(--surface-2); color: var(--ink-2); }
-/*
- * 點名畫面的名單列不再顯示備註（2026-09，見 04-components/overlays.md
- * 「成員面板的規則 › 備註」）——備註搬進了成員面板。這條規則只關掉 .member
- * 底下的 .chip-note，不動 RosterInput 那份解析預覽（.preview-row 底下的
- * 同一個 class，貼上名單當下就是要看到備註，還沒有「更多」面板可以點）。
- * @media print 裡會把它換回來：手機沒電時拿著紙本的人沒有「更多」可點。
- */
-.member .chip-note { display: none; }
 .chip-data {
   background: var(--surface-2); color: var(--ink-2); font-weight: 500;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -733,6 +772,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
 }
 .banner-result-text { flex: 1; min-width: 0; font-weight: 700; }
+
+/*
+ * 收尾那三顆（複製結果、下載 CSV、存成 PDF）。結束對話框與結束後的橫幅用同一組。
+ * 一定要 wrap：三顆並排在 360px 的手機上放不下，硬排就是整個橫幅被撐出畫面。
+ */
+.result-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.result-actions .btn { flex: 1 1 auto; }
+.dialog .result-actions { margin-bottom: var(--sp-3); }
 
 /* 結束對話框裡的結果預覽：就是等一下要貼回 LINE 的那段文字，原樣呈現。 */
 .result-preview {
@@ -887,14 +934,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 標題列裡住著可以橫向捲的分頁鍵，用 pan-x 把橫向留給它，垂直交給我們。
  */
 .sheet-grip {
-  height: 4px; border-radius: var(--r-full);
-  background: var(--rule-strong); margin: var(--sp-1) auto var(--sp-3);
-  /* 線本身仍然只有 38px 寬，但整條的高度都吃得到手勢——padding 撐出去的部分
-     用負的外距收回來，版面高度一格都沒有多長。 */
-  width: 38px; padding: var(--sp-2) var(--sp-5);
-  margin-top: calc(var(--sp-1) - var(--sp-2)); margin-bottom: calc(var(--sp-3) - var(--sp-2));
-  background-clip: content-box; box-sizing: content-box;
+  /*
+   * 整條都是手勢區，不只中間那條線：沒有標題列的面板（`head={false}`）靠它
+   * 收起來，38px 寬的目標對一根手指來說太窄。線本身仍然只有 38px，用
+   * ::after 畫；上下的內距撐出手指高度，再用負外距收回來，版面高度一格都沒有多長。
+   */
+  height: var(--sp-1); width: 100%; box-sizing: content-box;
+  padding: var(--sp-2) 0;
+  margin: calc(var(--sp-1) - var(--sp-2)) 0 calc(var(--sp-3) - var(--sp-2));
   touch-action: none; cursor: grab;
+}
+.sheet-grip::after {
+  content: ''; display: block; height: 100%; width: 38px; margin: 0 auto;
+  border-radius: var(--r-full); background: var(--rule-strong);
 }
 .sheet.is-dragging .sheet-grip { cursor: grabbing; }
 .sheet-head {
@@ -1076,9 +1128,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 
 /* ===========================================================================
-   列印：手機沒電時的紙本備援。
-   印出來的是一份可以用筆勾的空白名單，不是螢幕的複製品——
-   已經點過的狀態不印，因為紙本的用途是「從頭重點一次」。
+   列印：把這一場的結果印到紙上，或在列印畫面選「儲存為 PDF」存成檔案。
+   只有這一份文件（2026-09）——空白待勾的紙本連同「列印紙本名單」那顆鍵一起
+   拿掉了，`<html data-print>` 那個兩份文件的切換也跟著沒了：按 Ctrl+P 跟按
+   「存成 PDF」印出來的是同一張紙。
    =========================================================================== */
 /* 螢幕上不存在的東西：只有紙本需要抬頭與電話。 */
 .print-head, .print-phone { display: none; }
@@ -1095,11 +1148,17 @@ button, input, textarea, select { font: inherit; color: inherit; }
     --rule: #999; --rule-strong: #666; --check-line: #000;
     --st-arrived-soft: #fff; --st-arrived-line: #999;
   }
-  body { background: #fff; color: #000; font-size: 11pt; }
+  /*
+   * overflow 要解鎖。「存成 PDF」是從結束對話框裡按的，而模態層開著的時候
+   * useModal.ts 把 body 鎖成 overflow:hidden（背景不准跟著捲）——那在紙上會把
+   * 整份名單切到只剩第一頁。遮罩本身下面已經 display:none 了，這裡把捲動鎖也
+   * 一起解掉；要 !important 才蓋得過那個 inline style。
+   */
+  body { background: #fff; color: #000; font-size: 11pt; overflow: visible !important; }
 
   /* .segmented 與 .search-wrap 都住在 .topbar 裡了，但留著名字：它們是否被藏起來
      是 e2e 直接驗的事情，而選擇器多寫一個不會錯。 */
-  .topbar, .dock, .toast-wrap, .overlay, .segmented, .search-wrap,
+  .topbar, .dock, .toast-wrap, .overlay, .segmented, .filterbar, .search-wrap,
   .member-side, .icon-btn, .btn, .groups, .banner { display: none !important; }
 
   /*
@@ -1113,7 +1172,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
     display: flex; gap: 12pt; flex-wrap: wrap;
     font-size: 10pt; color: #333; margin: 0 0 3pt;
   }
-  .print-blanks { font-size: 10pt; color: #000; margin: 0 0 6pt; }
 
   /* 分組在紙本上是小標題，每一組從新的區塊開始。 */
   .group-divider {
@@ -1139,14 +1197,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .member.is-arrived { background: #fff !important; opacity: 1; }
   .member-main { min-height: 0; padding: 4pt 0; flex: 1; }
   /*
-   * 紙本一律印空白格子讓人用筆勾。邊框色要壓成黑的：已到的那一格在螢幕上是綠框
-   * （--st-arrived，沒有被上面的列印 token 蓋掉），印出來會變成「已經勾過的人是
-   * 綠圈、其他人是黑框」——一份號稱空白的表上有半套紀錄，比全有或全無都糟。
+   * 勾選格照狀態填：已到的填實、還沒到的留白。這張紙是活動之後要交出去的東西，
+   * 所以印的是「今天點到哪裡」。
+   * 邊框色一律壓成黑的：已到那一格在螢幕上是綠框（--st-arrived，沒有被上面的
+   * 列印 token 蓋掉），漏出來的話紙上會變成「已到是綠圈、未到是黑框」——顏色與
+   * 填色兩套東西講同一件事，而黑白印表機只印得出其中一套。
    */
   .check { width: 12pt; height: 12pt; border: 1pt solid #000; border-radius: 2pt;
            border-color: #000 !important;
-           background: #fff !important; color: transparent !important; opacity: 1; }
-  .check svg { display: none; }
+           background: #000 !important; color: #fff !important; opacity: 1; }
+  .check svg { display: block; }
+  .member:not(.is-arrived) .check {
+    background: #fff !important; color: transparent !important;
+  }
   .member-name { font-size: 11pt; color: #000; }
   .member-meta { color: #555; font-size: 8.5pt; }
   .chip, .chip-count, .chip-note, .chip-tell, .chip-data {
@@ -1154,9 +1217,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
     color: #333 !important; font-weight: 400;
   }
   .chip::after { content: "　"; }
-  /* 螢幕上用 `.member .chip-note { display: none }` 關掉的備註，紙本要換回來：
-     手機沒電時拿著這張紙的人只有那張紙。 */
-  .member .chip-note { display: inline-flex; }
+  /* 備註 2026-09 起螢幕上就是名字底下那一行，紙本沿用同一個元素；只把它
+     壓成一般文字，並且不截行——紙上沒有「點開來看」這回事。 */
+  .member-note {
+    display: block; -webkit-line-clamp: none; overflow: visible;
+    font-size: 9pt; color: #333;
+  }
+  .note-call { display: none; }
 
   /*
    * 每一車從新的一欄開始。一欄一車，剛好可以撕開分給兩個顧車的人——這比
@@ -1171,19 +1238,5 @@ button, input, textarea, select { font: inherit; color: inherit; }
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
 
-  /*
-   * 「存成 PDF」印的是另一份文件：目前的點名結果，不是空白表。同一份版面，
-   * 兩種用途——空白的那份是活動當下的備援（手機沒電），這一份是活動之後要交
-   * 出去的東西，所以格子照狀態填、簽名欄不印（已經有誰在什麼時候點的紀錄）。
-   * 記號由 Sheets.tsx 的 printSheet('result') 下在 <html> 上。
-   */
-  :root[data-print='result'] .check {
-    background: #000 !important; color: #fff !important; border-color: #000;
-  }
-  :root[data-print='result'] .check svg { display: block; }
-  :root[data-print='result'] .member:not(.is-arrived) .check {
-    background: #fff !important; color: transparent !important;
-  }
-  :root[data-print='result'] .print-blanks { display: none; }
 }
 

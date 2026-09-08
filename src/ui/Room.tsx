@@ -1,7 +1,8 @@
 import { Fragment } from 'preact'
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import type { JSX } from 'preact'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
-  connection, dismissToast, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
+  connection, dismissToast, editMember, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
   openMenuOnEnter, prefs, removeMember, renameRoom, room, setRoomClosed, setStatusWithUndo, showToast,
 } from '../lib/store'
 import { summarize } from '../lib/merge'
@@ -14,7 +15,10 @@ import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
 import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
-import { IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPhone, IconPlus } from './icons'
+import {
+  IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPdf, IconPhone, IconPlus,
+  IconSearch, IconShare,
+} from './icons'
 import { useT } from './t'
 
 type Filter = 'all' | 'pending' | 'arrived'
@@ -28,12 +32,44 @@ type MenuMode = 'invite' | undefined
  */
 const UNGROUPED = '\u0000ungrouped'
 
+/**
+ * 把這一場印出來。「存成 PDF」走的就是這裡——瀏覽器不給網頁直接產出 PDF 的
+ * API，PDF 一律是從列印畫面選「儲存為 PDF」存下來的，所以按鍵寫「存成 PDF」，
+ * 而結束對話框那句說明直接把「會跳出列印畫面」講在前面。自己排一份中文 PDF 要
+ * 內嵌好幾 MB 的字型檔，對一個要在 6:50 的停車場用爛網路開起來的工具划不來。
+ *
+ * 印出來永遠是同一份文件：目前的點名結果（2026-09）。空白待勾的紙本連同
+ * 「列印紙本名單」那顆鍵一起拿掉了，`<html data-print>` 那個兩份文件的切換
+ * 也跟著沒了——現在按 Ctrl+P 跟按「存成 PDF」印出來的是同一張紙。
+ *
+ * 不必先關掉對話框：`.overlay` 在 @media print 裡是 display:none，紙上看不到
+ * 遮罩。而且關掉的話使用者就按不到那顆「結束點名」了——他是為了結束才打開它的。
+ */
+function printResult(): void {
+  window.print()
+}
+
 export function Room({ code }: { code: string }) {
   const t = useT()
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
+  /*
+    搜尋 2026-09 收成篩選列右邊的一顆圖示，點了才從那個位置往左長出輸入框
+    （見 styles.css 的 .filterbar / @keyframes search-open）。兩件事換來的：
+    篩選與搜尋合成一列，頂欄少 76px——正好一列人名，80 人的名單首屏因此
+    多看得到一個人。代價是要搜尋得先點一下。
+
+    **不變的是那條安全規則：收起來就代表名單沒有被過濾。** 所以有字的時候
+    絕不自己收（失焦只在空字串時收），而收起來的那一刻一定把字清掉——名單上
+    只剩兩個人卻沒有任何東西說「這是過濾過的」，在車門口會被讀成「都到齊了」。
+
+    **展開的那一刻把範圍拉回全部**（見 openSearch）：搜尋問的是「這個人在不在
+    名單上」，答案不該被畫面上還套著的篩選或分車偷偷縮小。
+  */
+  const [searching, setSearching] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
   // 分車：選了某一車之後，計數與名單都只算那一車——
   // 顧第一車的人要看的是「我這台還有幾個沒上」。
   const [group, setGroup] = useState<string | null>(null)
@@ -68,6 +104,9 @@ export function Room({ code }: { code: string }) {
   const [editing, setEditing] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [removing, setRemoving] = useState<Member | null>(null)
+  /** 編輯模式下正在改的是哪一列。一次只開一列：兩個名字同時是輸入框時，
+   *  沒有人看得出自己剛剛在改誰。 */
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   /**
    * 進編輯模式。Toast 要當場收掉——它上面那顆「復原」也是點名操作，而編輯模式
@@ -78,8 +117,39 @@ export function Room({ code }: { code: string }) {
     if (!current) return
     dismissToast()
     setNameDraft(current.name)
+    setEditingId(null)
     setEditing(true)
   }
+  /*
+    展開就聚焦——跳出鍵盤是使用者剛剛按下那顆放大鏡的直接結果，不是一進房間
+    就被彈一臉。（搜尋框一直開著的那一版刻意不自動聚焦，理由正好相反。）
+  */
+  useEffect(() => { if (searching) searchRef.current?.focus() }, [searching])
+
+  /**
+   * 展開搜尋。**先把範圍拉回全部**：切到「全部」那一段，也放掉選到的那一車。
+   *
+   * 搜尋是在回答「這個人在不在名單上」，而問這句話的當下沒有人記得自己畫面上
+   * 還套著哪一層範圍——顧第一車的志工選著「第一車」，有人在車門口報上名字，
+   * 搜下去卻是「這裡沒有人」：那個人明明在名單上，只是在第二車。這種假的
+   * 「查無此人」在車門口的代價是直接把人丟下。
+   *
+   * 只在展開的那一刻做一次，不是每次打字都做：展開之後篩選被輸入框蓋著，本來
+   * 就改不動；而收起來時兩個控制項都回到畫面上、都停在「全部」，使用者看得到
+   * 範圍被拉開了，不是背著他偷偷改又偷偷改回去。
+   */
+  function openSearch() {
+    setFilter('all')
+    setGroup(null)
+    setSearching(true)
+  }
+
+  /** 收起來＝不再過濾。兩件事必須一起發生，見 searching 那段。 */
+  function closeSearch() {
+    setQuery('')
+    setSearching(false)
+  }
+
   useEffect(() => {
     if (status !== 'ready') return
     const pending = openMenuOnEnter.value
@@ -153,6 +223,16 @@ export function Room({ code }: { code: string }) {
     if (!current || !next || next === current.name) return
     try {
       await renameRoom(current.code, next)
+    } catch (e) {
+      showToast(errorMessage(e, t))
+    }
+  }
+
+  async function saveMember(m: Member, name: string, note: string) {
+    setEditingId(null)
+    if (name.trim() === m.name && (note.trim() || null) === m.note) return
+    try {
+      await editMember(m.id, name, note)
     } catch (e) {
       showToast(errorMessage(e, t))
     }
@@ -277,6 +357,21 @@ export function Room({ code }: { code: string }) {
             用圖示而不是文字：這一格在點名模式下是圖示鍵，換成一顆文字鍵會讓
             整條頂欄在切換模式時跳一下寬度。無障礙名稱仍然是「完成」。
           */}
+          {/*
+            邀請點名（2026-09 從底部動作列搬上來）。它整場只按一次，但那一次是
+            開場：把代碼發出去。放在頂欄那顆「更多」左邊，兩顆圖示鍵一組——
+            底下那條動作列因此只剩收尾那一顆，不必為了一個開場動作永久佔著
+            一列人名的高度。編輯模式下不印：那時候畫面上只該剩名單。
+          */}
+          {!editing && (
+            <button
+              class="icon-btn"
+              onClick={() => { setMenuMode('invite'); setSheet('manage') }}
+              aria-label={t('invite')}
+            >
+              <IconShare />
+            </button>
+          )}
           {editing ? (
             <button class="icon-btn" onClick={() => setEditing(false)} aria-label={t('done')}>
               <IconCheck size={24} />
@@ -288,57 +383,69 @@ export function Room({ code }: { code: string }) {
           )}
         </div>
         {/*
-          搜尋框長在頂欄裡，一直顯示，不是點了才展開。
-          三個理由，都是量出來的／試出來的：80 人的名單首屏只看得到 5 個人名，
-          而搜尋框連間距吃掉 76px（正好一列人名）；它原本會跟著名單捲走——真正
-          需要搜尋的時刻是你已經捲過 60 個人、有人報上名字，那時要用它得先捲回
-          17 個螢幕（roll-call.md 的「頂欄標題可點回到頂端」就是為了這件事）；
-          而且它整場反覆在用，多一次「先點開才能打字」是白白多出來的一步。
-          頂欄是 sticky，搬進來、一直開著，三個問題一起消失。
+          篩選與搜尋同一列（2026-09）：三段篩選佔左邊，右邊一顆放大鏡，點下去
+          從那顆鍵的位置往左長成整條輸入框（`@keyframes search-open`）。
 
-          不自動聚焦：一進房間就跳出虛擬鍵盤會蓋掉半個畫面，而這裡不像過去
-          「按一下才展開」那樣是使用者剛做出的明確動作。
+          兩者都住在 sticky 頂欄裡，理由是同一個：真正需要它們的時刻是你已經
+          捲過 60 個人、有人在車門口報上名字，那時候要用得先捲回 17 個螢幕。
+          而「未到 N」在計分區拿掉之後是畫面上唯一回答「還有幾個沒到」的東西，
+          更不能跟著名單捲走。
 
-          有字才亮（.is-on）：搜尋框一直開著，:focus 那圈只在打字的當下看得到，
-          點開別人的成員面板、或只是滑走去點名之後，框就退回跟平常一樣的灰底，
-          畫面上完全沒有東西說「名單現在是過濾過的」。名單本身也不會說——空
-          名單那句「這裡沒有人」跟「太好了全部都到了」長得不一樣，但沒清空
-          搜尋字之前只看得到過濾後的幾個人，很容易誤讀成「全部都到了」。
-          鍵的是 query.trim()，跟真正觸發過濾的判準（見 shown 那段 useMemo）
-          同一條，而不是原始的 query——只打了空白鍵不該亮。
+          合成一列省下 76px——正好一列人名，80 人的名單首屏因此從 7 個人變成
+          8 個。代價講清楚：搜尋從「一直開著」退回「要先點一下」，多一步；而
+          展開的時候三段篩選被蓋住（那三個數字跟搜尋無關，收起來就回來了）。
+          上一次為了省掉那一步才把它從浮動鍵改成常駐輸入框，這次換成用一整列
+          人名去買回那一步——同一個判準，秤的東西不一樣。
+
+          有字才亮（.is-on）：:focus 那圈只在打字的當下看得到，滑走去點名之後
+          框就退回一般灰底，畫面上會沒有東西說「名單現在是過濾過的」——而名單
+          自己也不會說：只剩兩個人的畫面很容易被讀成「都到齊了」。鍵的是
+          query.trim()，跟真正觸發過濾的判準（見 shown 那段 useMemo）同一條。
         */}
-        <div class="shell search-wrap">
-          <input
-            class={query.trim() ? 'input is-on' : 'input'}
-            type="search"
-            value={query}
-            placeholder={t('searchPlaceholder')}
-            aria-label={t('searchPlaceholder')}
-            onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') { setQuery(''); (e.currentTarget as HTMLInputElement).blur() }
-            }}
-          />
-          {query && (
-            <button class="search-clear" onClick={() => setQuery('')} aria-label={t('cancel')}>×</button>
-          )}
-        </div>
-
-        {/*
-          篩選留在頂欄裡，和搜尋框同一個理由：頂欄是 sticky。
-
-          計分區（44px 的大字＋「8 / 9 人」＋進度條）拿掉之後，「未到 N」就是
-          畫面上唯一回答「還有幾個沒到」的東西——它不能跟著名單捲走。以前那個
-          數字靠「計分區捲出畫面時頂欄接手」來續命，現在不需要那套機關了：它
-          本來就一直在畫面上。
-          省下的高度全部變成人名：首屏本來有 45–50% 被控制項吃掉。
-        */}
-        <div class="shell">
+        <div class="shell filterbar">
           <div class="segmented" role="group" aria-label={t('filter')}>
             <Segment active={filter === 'all'} onClick={() => setFilter('all')} label={t('all')} count={s.people} />
             <Segment active={filter === 'pending'} onClick={() => setFilter('pending')} label={t('missing')} count={s.pending} />
             <Segment active={filter === 'arrived'} onClick={() => setFilter('arrived')} label={t('arrived')} count={s.arrived} />
           </div>
+
+          {searching ? (
+            <div class="search-wrap">
+              <input
+                ref={searchRef}
+                class={query.trim() ? 'input is-on' : 'input'}
+                type="search"
+                value={query}
+                placeholder={t('searchPlaceholder')}
+                aria-label={t('searchPlaceholder')}
+                onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+                /* 空的時候滑走就收起來（那一列人名還回去）；有字的時候絕不自己
+                   收——收起來會清掉字，而使用者只是移開了手指。 */
+                onBlur={() => { if (!query) setSearching(false) }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Escape') return
+                  // 先清字（名單立刻回來），再按一次才收回成圖示。
+                  if (query) { setQuery(''); return }
+                  closeSearch()
+                }}
+              />
+              {query && (
+                <button
+                  class="search-clear"
+                  onClick={() => { setQuery(''); searchRef.current?.focus() }}
+                  aria-label={t('cancel')}
+                >×</button>
+              )}
+            </div>
+          ) : (
+            <button
+              class="icon-btn search-toggle"
+              onClick={openSearch}
+              aria-label={t('searchPlaceholder')}
+            >
+              <IconSearch />
+            </button>
+          )}
         </div>
       </div>
 
@@ -357,7 +464,6 @@ export function Room({ code }: { code: string }) {
             <span>{t('printTotal', { people: s.people, heads: s.expectedHeadcount })}</span>
             {group !== null && <span>{groupLabel}</span>}
           </p>
-          <p class="print-blanks">{t('printBlanks')}</p>
         </div>
 
         {/*
@@ -374,9 +480,11 @@ export function Room({ code }: { code: string }) {
                   : `${t('missingCount', { n: s.pendingHeadcount })} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`,
               })}
             </span>
-            <button class="btn btn-sm" onClick={() => { void copySummary() }}>
-              <IconCopy /> {t('copySummary')}
-            </button>
+            <ResultActions
+              small
+              onCopy={() => { void copySummary() }}
+              onCsv={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
+            />
           </div>
         )}
 
@@ -465,7 +573,10 @@ export function Room({ code }: { code: string }) {
                     showGroup={duplicated.has(m.name)}
                     closed={closed}
                     editing={editing && isOwner.value}
+                    editingThis={editingId === m.id}
                     onToggle={() => { void toggle(m) }}
+                    onEdit={() => setEditingId(m.id)}
+                    onSave={(name, note) => { void saveMember(m, name, note) }}
                     onRemove={() => setRemoving(m)}
                   />
                 </Fragment>
@@ -487,6 +598,9 @@ export function Room({ code }: { code: string }) {
         主要按鈕一顆都不放：這個畫面的主要動作是戳名字，動作列上放一顆搶眼的鍵
         只會在收尾之前一直誘導誤觸。
       */}
+      {/* 協助者在點名模式下沒有動作列可放的東西（結束點名是主揪的事），那就
+          不要留一條空的橫條佔掉一列人名。 */}
+      {(editing || isOwner.value) && (
       <div class="dock dock-roll">
         <div class="dock-inner">
           {editing ? (
@@ -499,27 +613,17 @@ export function Room({ code }: { code: string }) {
               <IconPlus />
             </button>
           ) : (
-            <>
-              <button
-                class="btn btn-block"
-                onClick={() => { setMenuMode('invite'); setSheet('manage') }}
-              >
-                {t('invite')}
-              </button>
-
-              {isOwner.value && (
-                <button
-                  class="btn btn-block"
-                  // 重新開啟不是破壞性動作，直接做；結束才要走流程。
-                  onClick={() => { if (closed) { void setClosed(false) } else { setConfirmFinish(true) } }}
-                >
-                  {closed ? t('reopenRoom') : t('finishRound')}
-                </button>
-              )}
-            </>
+            <button
+              class="btn btn-block"
+              // 重新開啟不是破壞性動作，直接做；結束才要走流程。
+              onClick={() => { if (closed) { void setClosed(false) } else { setConfirmFinish(true) } }}
+            >
+              {closed ? t('reopenRoom') : t('finishRound')}
+            </button>
           )}
         </div>
       </div>
+      )}
 
       {/*
         「車開了」是唯一一次所有人的注意力同時落在同一件事上，也是唯一一次能把
@@ -536,17 +640,10 @@ export function Room({ code }: { code: string }) {
           onConfirm={() => { void setClosed(true) }}
         >
           <pre class="result-preview">{toShareText(current, all, prefs.value.lang)}</pre>
-          <div class="row" style="margin-bottom:12px">
-            <button class="btn btn-block" onClick={() => { void copySummary() }}>
-              <IconCopy /> {t('copySummary')}
-            </button>
-            <button
-              class="btn btn-block"
-              onClick={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
-            >
-              <IconDownload /> {t('exportCsv')}
-            </button>
-          </div>
+          <ResultActions
+            onCopy={() => { void copySummary() }}
+            onCsv={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
+          />
         </ConfirmDialog>
       )}
 
@@ -554,7 +651,6 @@ export function Room({ code }: { code: string }) {
         <ManageSheet
           owner={isOwner.value}
           initialMode={menuMode}
-          onCopySummary={() => { void copySummary() }}
           onEdit={() => { startEditing(); setSheet(null) }}
           onClose={() => { setSheet(null); setMenuMode(undefined) }}
         />
@@ -576,6 +672,34 @@ export function Room({ code }: { code: string }) {
         />
       )}
     </>
+  )
+}
+
+/**
+ * 把這一場的結果交出去的三種格式：貼進 LINE、進試算表、存成檔案。
+ *
+ * 它們 2026-09 從「更多 › 匯出名單」那張子畫面搬到這裡，而且只出現在收尾的兩個
+ * 時刻——結束點名的確認鍵前面（決定之前）、結束之後的橫幅（決定之後）。以前
+ * 「匯出名單」是選單裡一列要自己想起來去按的東西，而多數空間從未被匯出，30 天
+ * 後靜靜消失；「車開了」是唯一一次所有人的注意力同時落在同一件事上，這三顆就
+ * 該待在那一刻的必經之路上。
+ *
+ * 兩個地方共用同一份實作，只差尺寸：對話框裡是一般的 `.btn`，橫幅裡是 `.btn-sm`。
+ * 排不下就自己換行（`.result-actions` 是 flex-wrap），不會把橫幅撐出畫面。
+ */
+function ResultActions({ small = false, onCopy, onCsv }: {
+  small?: boolean
+  onCopy: () => void
+  onCsv: () => void
+}) {
+  const t = useT()
+  const cls = small ? 'btn btn-sm' : 'btn'
+  return (
+    <div class="result-actions">
+      <button class={cls} onClick={onCopy}><IconCopy /> {t('copySummary')}</button>
+      <button class={cls} onClick={onCsv}><IconDownload /> {t('exportCsv')}</button>
+      <button class={cls} onClick={printResult}><IconPdf /> {t('exportPdf')}</button>
+    </div>
   )
 }
 
@@ -601,16 +725,24 @@ function Segment({ active, onClick, label, count }: {
   )
 }
 
-function MemberRow({ member, closed, showGroup, editing, onToggle, onRemove }: {
+function MemberRow({
+  member, closed, showGroup, editing, editingThis, onToggle, onEdit, onSave, onRemove,
+}: {
   member: Member
   closed: boolean
   showGroup: boolean
-  /** 編輯模式：右邊那格換成叉叉，戳名字不再改狀態。 */
+  /** 編輯模式：右邊那格換成叉叉，戳名字改成編輯這一列。 */
   editing: boolean
+  /** 正在改的就是這一列：名字與備註換成輸入框。 */
+  editingThis: boolean
   onToggle: () => void
+  onEdit: () => void
+  onSave: (name: string, note: string) => void
   onRemove: () => void
 }) {
   const t = useT()
+  const nameRef = useRef<HTMLInputElement>(null)
+  const noteRef = useRef<HTMLInputElement>(null)
   const cls = `member${member.status === 'arrived' ? ' is-arrived' : ''}${editing ? ' is-editing' : ''}`
   const time = member.status_at ? formatTime(member.status_at) : null
 
@@ -626,36 +758,112 @@ function MemberRow({ member, closed, showGroup, editing, onToggle, onRemove }: {
     判斷改在這裡做，因為**顯示層猜錯是可逆、可見的**（多一顆鍵，備註原文一字
     未動），而存進資料庫的假號碼是看不見的。
 
-    它 2026-09 從成員面板搬回這一列：那張面板整個拿掉了，而「看到未到 → 打電話」
-    是收尾時唯一的下一步，不能跟著面板一起消失。
+    2026-09 之後這顆鍵長在備註那一行的號碼後面，不再是列右邊獨立的一格：
+    備註本來就印出來了，號碼就在那行字裡，撥號鍵貼著它才對得起來。
   */
   const dialable = member.phone ?? dialableFrom(member.note)[0] ?? null
+
+  /*
+    這一列正在被改：名字與備註各一個輸入框，離開就存。
+
+    兩個框都是**非受控**的（`defaultValue` ＋ ref 讀值），而不是把值放進 state
+    或閉包變數：這個畫面每 15 秒會對帳一次，只要那時候重新 render，受控的
+    `value` 就會把使用者正在打的字蓋回伺服器上的舊名字。
+  */
+  if (editingThis) {
+    /*
+      焦點從姓名跳到備註時**不能**收起來：那兩個框是同一件事的兩半，中間按一下
+      Tab 就結束編輯的話，備註永遠改不到。所以只有焦點真的離開這一列才存檔。
+    */
+    const commit = (e: JSX.TargetedFocusEvent<HTMLInputElement>) => {
+      const row = e.currentTarget.closest('.member')
+      const next = e.relatedTarget
+      if (row && next instanceof Node && row.contains(next)) return
+      onSave(nameRef.current?.value ?? member.name, noteRef.current?.value ?? '')
+    }
+    return (
+      <div class={cls} role="listitem">
+        <div class="member-main member-edit">
+          <span class="check" aria-hidden="true"><IconCheck /></span>
+          <span class="member-body">
+            <input
+              ref={nameRef}
+              class="member-name-input"
+              autofocus
+              defaultValue={member.name}
+              maxLength={60}
+              aria-label={t('nameLabel')}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur() }}
+              onBlur={commit}
+            />
+            <input
+              ref={noteRef}
+              class="member-note-input"
+              defaultValue={member.note ?? ''}
+              maxLength={200}
+              placeholder={t('noteLabel')}
+              aria-label={t('noteLabel')}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur() }}
+              onBlur={commit}
+            />
+          </span>
+        </div>
+
+        <div class="member-side">
+          <button class="icon-btn" onClick={onRemove} aria-label={`${t('removeMember')}：${member.name}`}>
+            <IconClose />
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div class={cls} role="listitem">
       <button
         class="member-main"
-        onClick={onToggle}
-        disabled={closed || editing}
-        aria-pressed={member.status === 'arrived'}
-        aria-label={`${member.name} · ${member.status === 'arrived' ? t('markMissing') : t('markArrived')}`}
+        onClick={editing ? onEdit : onToggle}
+        disabled={closed && !editing}
+        aria-pressed={editing ? undefined : member.status === 'arrived'}
+        aria-label={editing
+          ? `${t('edit')}：${member.name}`
+          : `${member.name} · ${member.status === 'arrived' ? t('markMissing') : t('markArrived')}`}
       >
         <span class="check"><IconCheck /></span>
         <span class="member-body">
           <span class="member-name">{member.name}</span>
+          {/*
+            備註當副標題印在名字底下（2026-09）。它曾經只在紙本上出現，理由是
+            長度不受控會撐開行高、吃掉「80 人一屏看得到幾個人」的預算——那個
+            代價還在（有備註的列高一行），換到的是「誰坐輪椅、誰只到中午」
+            不必點開任何東西就看得到，而那正是備註被寫下來的原因。
+          */}
+          {member.note && (
+            <span class="member-note">
+              {member.note}
+              {dialable && (
+                /*
+                  撥號鍵貼在號碼後面。列右邊那一格 2026-09 讓給編輯模式的叉叉，
+                  而「看到未到 → 打電話」是收尾唯一的下一步，不能沒有入口。
+                  stopPropagation：這顆鍵疊在整片可點的名單列上，不擋的話按下去
+                  會先把人標成已到再撥號。
+                */
+                <a
+                  class="note-call"
+                  href={telHref(dialable)}
+                  aria-label={t('callMember', { name: member.name })}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <IconPhone size={16} />
+                </a>
+              )}
+            </span>
+          )}
           <span class="member-meta">
             {tell && <span class="chip chip-tell">{tell}</span>}
             {member.companions > 0 && (
               <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
             )}
-            {/*
-              備註原文不顯示在螢幕上：這一列只留住「哪一個人」（辨識晶片）與
-              「現在什麼狀態」，備註本身長度不受控，印在這裡會把行高撐開，破壞
-              80 人名單一屏看幾個人的預算。.chip-note 用 CSS 在螢幕上關掉
-              （見 styles.css 的 `.member .chip-note`），但紙本上要留著：手機
-              沒電時拿著這張紙的人只有那張紙，理由跟 .print-phone 一樣。
-            */}
-            {member.note && <span class="chip chip-note">{member.note}</span>}
             {member.status === 'arrived' && time && (
               <span>{member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}</span>
             )}
@@ -664,26 +872,16 @@ function MemberRow({ member, closed, showGroup, editing, onToggle, onRemove }: {
       </button>
 
       {/* 紙本上要看得到電話：收尾時「看到未到 → 打電話」是唯一的下一步，
-          而螢幕上電話只做成 tel: 圖示按鈕，列印時整個 .member-side 會被藏起來。 */}
+          而螢幕上電話是備註那行裡的一顆圖示鍵，列印時 .note-call 會被藏起來。 */}
       {dialable && <span class="print-phone" aria-hidden="true">{dialable}</span>}
 
-      <div class="member-side">
-        {editing ? (
+      {editing && (
+        <div class="member-side">
           <button class="icon-btn" onClick={onRemove} aria-label={`${t('removeMember')}：${member.name}`}>
             <IconClose />
           </button>
-        ) : (
-          dialable && member.status === 'pending' && (
-            <a
-              class="icon-btn call-btn"
-              href={telHref(dialable)}
-              aria-label={t('callMember', { name: member.name })}
-            >
-              <IconPhone />
-            </a>
-          )
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

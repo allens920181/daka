@@ -213,10 +213,23 @@ for (const scheme of ['light', 'dark']) {
   await page.locator('.member-main').nth(0).click(); await page.waitForTimeout(500)
   await audit(page, scheme, '空間（含 Toast）')
 
+  // 搜尋 2026-09 收成篩選列右邊的一顆放大鏡，點了才往左長出輸入框。展開的
+  // 狀態要單獨驗：那條輸入框蓋在分段控制上，對比與觸控尺寸都換了一組鄰居。
+  await page.locator('.filterbar .search-toggle').click(); await page.waitForTimeout(400)
+  await page.locator('input[type=search]').fill('王'); await page.waitForTimeout(400)
+  await audit(page, scheme, '空間 · 搜尋展開')
+  await page.locator('input[type=search]').press('Escape'); await page.waitForTimeout(200)
+  await page.locator('input[type=search]').press('Escape'); await page.waitForTimeout(300)
+
   await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(500)
   await audit(page, scheme, '「更多」面板')
-  await page.getByRole('button', { name: /^匯出名單$|^Export the list$/ }).click(); await page.waitForTimeout(400)
-  await audit(page, scheme, '「更多」· 匯出名單')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300)
+
+  // 匯出 2026-09 從「更多」搬進「結束點名」的確認對話框：結果攤在確認鍵前面，
+  // 三顆帶得走的格式（複製、CSV、PDF）就排在它下面。按 Esc 走人，不真的結束。
+  await page.locator('.dock').getByRole('button', { name: /^結束點名$|^Finish roll call$/ }).click()
+  await page.waitForTimeout(400)
+  await audit(page, scheme, '結束點名 · 結果與三種格式')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
   // 編輯模式（2026-09）：標題變輸入框、每一列右邊長出叉叉、動作列剩一顆「＋」。
@@ -247,9 +260,9 @@ for (const scheme of ['light', 'dark']) {
   await audit(page, scheme, '首頁的「更多」帶進來的選單')
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
 
-  // 邀請點名在底部動作列上（2026-09）。單機模式（沒設定 Supabase 的建置，也就是
-  // 這支腳本跑的那個）邀請頁只有一塊說明，三種方式一個都不列。
-  await page.locator('.dock').getByRole('button', { name: /^邀請點名$|^Invite$/ }).click()
+  // 邀請點名在頂欄那顆分享圖示上（2026-09）。單機模式（沒設定 Supabase 的建置，
+  // 也就是這支腳本跑的那個）邀請頁只有一塊說明，三種方式一個都不列。
+  await page.locator('.topbar button[aria-label="邀請點名"], .topbar button[aria-label="Invite"]').click()
   await page.waitForTimeout(700)
   await audit(page, scheme, '邀請點名')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)

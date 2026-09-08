@@ -791,6 +791,24 @@ async function ownerAction(run: () => Promise<{ room: Room; members: Member[] }>
   }
 }
 
+/**
+ * 改一個人的名字或備註（編輯模式）。狀態、順序一律不碰——改錯字不該讓
+ * 已經點過的人歸零。
+ */
+export async function editMember(memberId: string, name: string, note: string | null): Promise<void> {
+  const r = room.value
+  if (!r) return
+  const clean = name.trim().slice(0, 60)
+  if (!clean) return
+  const nextNote = note?.trim().slice(0, 200) || null
+  if (!isSupabaseConfigured) {
+    members.value = members.value.map((m) => (m.id === memberId ? { ...m, name: clean, note: nextNote } : m))
+    await persistNow()
+    return
+  }
+  await ownerAction(() => api.editMember(r.code, identity.value.ownerKey, memberId, clean, nextNote))
+}
+
 export async function removeMember(memberId: string): Promise<void> {
   const r = room.value
   if (!r) return

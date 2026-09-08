@@ -43,6 +43,12 @@ export const IconPhone = ({ size = 20, ...r }: P) => (
     <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />
   </svg>
 )
+// 搜尋。點下去它會從篩選列右邊往左長成一條輸入框（見 Room.tsx 的 .filterbar）。
+export const IconSearch = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}>
+    <circle cx="11" cy="11" r="7" /><line x1="16.2" y1="16.2" x2="21" y2="21" />
+  </svg>
+)
 export const IconPlus = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
 )
@@ -72,7 +78,7 @@ export const IconQr = ({ size = 20, ...r }: P) => (
     <line x1="18" y1="18" x2="18" y2="21" /><line x1="21" y1="18" x2="21" y2="21" />
   </svg>
 )
-// 匯出那三列各有自己的圖示：紙本用印表機、CSV 用下載、PDF 用一張文件。
+// 收尾那三顆各有自己的圖示：複製用兩張疊起來的紙、CSV 用下載、PDF 用一張文件。
 export const IconPdf = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -105,13 +111,6 @@ export const IconTag = ({ size = 20, ...r }: P) => (
 )
 export const IconBookmark = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
-)
-export const IconPrinter = ({ size = 20, ...r }: P) => (
-  <svg {...base(size)} {...r}>
-    <polyline points="6 9 6 2 18 2 18 9" />
-    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-    <rect x="6" y="14" width="12" height="8" />
-  </svg>
 )
 
 /**
