@@ -175,6 +175,22 @@ await p.locator('input[type=search]').evaluate((el) => el.blur()); await p.waitF
 ok('空的時候失焦就收回成圖示',
    (await p.locator('input[type=search]').count()) === 0
    && (await p.locator('.filterbar .search-toggle').count()) === 1)
+
+// 取消鍵。**空的時候也要在**——沒有字時原本只剩「滑去別的地方」一條路可以收起來，
+// 而這個畫面上「別的地方」就是名單列，點下去會直接把人標成已到。
+await openSearch()
+ok('剛展開、還沒打字就看得到取消鍵', (await p.locator('.search-clear').count()) === 1)
+await p.locator('.search-clear').click(); await p.waitForTimeout(350)
+ok('按取消就收回成圖示', (await p.locator('input[type=search]').count()) === 0
+   && await p.getByRole('button', { name: /^全部/ }).first().isVisible())
+// 有字的時候按下去一樣是「收起來」：收起來本來就會清掉字（收起來＝沒有在過濾），
+// 兩種狀態下的結果一樣，不必分兩段。
+await openSearch()
+await p.locator('input[type=search]').fill('陳怡君'); await p.waitForTimeout(300)
+ok('有字時名單被過濾', (await p.locator('.member').count()) === 2)
+await p.locator('.search-clear').click(); await p.waitForTimeout(350)
+ok('有字時按取消：收起來，名單整份回來',
+   (await p.locator('input[type=search]').count()) === 0 && (await p.locator('.member').count()) === 9)
 await p.getByRole('button', { name: /^全部/ }).first().click(); await p.waitForTimeout(300)
 
 // 撥號。解析器不再判斷任何一串數字是什麼——「匯款 700-1234567」曾經被抽成
@@ -211,9 +227,6 @@ await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForT
 // 邀請點名（頂欄）、臨時加人（編輯模式的「＋」）、結束點名（動作列）都不在選單裡。
 ok('選單上沒有邀請點名、臨時加人、結束點名',
    (await p.locator('.sheet').getByRole('button', { name: /^邀請點名$|^臨時加人$|^結束點名$/ }).count()) === 0)
-// 自動刪除的日期印在「刪除空間」那一列右邊，不再是面板底下飄著的一句灰字。
-ok('刪除空間那一列右邊就是自動刪除的日期',
-   /自動刪除$/.test(((await p.locator('.sheet .menu-item.danger .sub').textContent()) ?? '').trim()))
 ok('面板底下不再另外印一句到期日',
    (await p.locator('.sheet > .hint').count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
@@ -242,8 +255,9 @@ ok('返回之後回到選單', (await p.getByRole('button', { name: /^編輯$/ }
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 
-// 首頁：每個空間右邊的「更多」（2026-09）。它進到那個空間再打開空間自己的那份
-// 選單——整個 app 只有那一份清單，首頁不另做一份能力比較弱的。
+// 首頁：每個空間右邊的「更多」——**空間本身的事**（2026-09 拆開）。建立副本與
+// 刪除空間動的都是空間這個容器，不必先進去、也不必等名單同步。名單的事在空間
+// 裡那顆「更多」。
 await p.goto(URL); await p.waitForTimeout(900)
 ok('首頁清單每一列右邊都有一顆「更多」',
    (await p.getByRole('button', { name: /^更多：/ }).count()) === (await p.locator('.recent-item').count()))
@@ -251,15 +265,20 @@ ok('無障礙名稱說得出是哪一個空間',
    (await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).count()) === 1)
 ok('列上那顆垃圾桶不見了（從清單移除搬進選單，跟刪除空間排在一起才分得出差別）',
    (await p.getByRole('button', { name: /^從清單移除：/ }).count()) === 0)
-await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(1500)
-ok('首頁那顆「更多」把人帶進那個空間', (await p.locator('.topbar-name').textContent()) === '秋季旅遊 · 出發')
-ok('而且面板已經開著', (await p.locator('.sheet').count()) === 1)
-ok('面板沒有標題列（名字就在正上方的頂欄裡，同一屏不印兩次）',
-   (await p.locator('.sheet .sheet-head').count()) === 0)
-ok('但無障礙名稱還是那個空間',
-   (await p.locator('.sheet').getAttribute('aria-label')) === '秋季旅遊 · 出發')
+await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(600)
+ok('就在首頁打開，不進空間', (await p.locator('.home-title').count()) === 1
+   && (await p.locator('.topbar-name').count()) === 0)
+const homeRows = await p.locator('.sheet .menu-item strong').allTextContents()
+ok(`首頁那份是空間本身的事：${homeRows.join('、')}`,
+   JSON.stringify(homeRows) === JSON.stringify(['建立副本', '刪除空間']))
+ok('名單的事不在這裡（編輯、存成常用都不列）',
+   (await p.locator('.sheet').getByRole('button', { name: /^編輯$|^存成常用$/ }).count()) === 0)
+// 這一份要有標題列：從一列七個長得差不多的空間裡點開，不印名字就沒有東西說得出
+// 「我剛剛按的是哪一間」。空間裡那一份相反（名字就在正上方的頂欄裡）。
+ok('面板印著是哪一個空間', (await p.locator('.sheet .sheet-title').textContent()) === '秋季旅遊 · 出發')
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('Esc 關閉空間選單', (await p.locator('.sheet').count()) === 0)
+ok('Esc 關閉空間選單，人還在首頁',
+   (await p.locator('.sheet').count()) === 0 && (await p.locator('.home-title').count()) === 1)
 
 // ---- 現場操作：同名辨識、未分組、臨時加人、刪除確認 ----
 await p.goto(URL); await p.waitForTimeout(900)
@@ -486,11 +505,13 @@ ok('第二次 Esc 才收回成圖示，分段控制回來',
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 ok('面板不再有分頁鍵', (await p.locator('.sheet .segmented').count()) === 0)
 const manageRows = await p.locator('.sheet .menu-item strong').allTextContents()
-// 空間裡跟首頁看到的是同一份清單（2026-09 合回來），三個時刻搬去底部動作列之後
-// 只剩「一場活動大概碰一次」的那幾項。這一間是單機模式、自己開的，所以
-// 「存成常用」不列（要雲端），其餘全在。
-ok(`「更多」是一條平的選單：${manageRows.join('、')}`,
-   JSON.stringify(manageRows) === JSON.stringify(['編輯', '建立副本', '刪除空間']))
+// 空間裡這一份只剩「這份名單」的事（2026-09 拆開）：編輯它、把它存成常用。
+// 空間本身的事（建立副本、刪除空間）在首頁那顆「更多」。這一間是單機模式，
+// 所以「存成常用」也不列（要雲端），只剩「編輯」。
+ok(`空間裡那份是名單的事：${manageRows.join('、')}`,
+   JSON.stringify(manageRows) === JSON.stringify(['編輯']))
+ok('空間本身的事不在這裡（建立副本、刪除空間都不列）',
+   (await p.locator('.sheet').getByRole('button', { name: /^建立副本$|^刪除空間$/ }).count()) === 0)
 // 匯出 2026-09 整條併進「結束點名」：把結果交出去是收尾的一部分，不是一個要
 // 自己想起來去選單裡找的獨立功能。
 ok('選單上不列匯出、CSV、複製結果',
@@ -569,8 +590,8 @@ ok('Esc 關得掉', (await p.locator('.sheet').count()) === 0)
 await reopen()
 
 // 面板長過螢幕時捲的是整張 .sheet（分頁那個固定高度的框 2026-09 一起拿掉了：
-// 項目搬走一半之後最長的一份選單只有五列，面板自己就裝得下）。矮螢幕上仍然要
-// 捲得動、而且捲得到最後一項——「刪除空間」在最底下。
+// 項目一批批搬走之後，這一份選單只剩名單的事，面板自己就裝得下）。矮螢幕上的
+// 契約沒有變：不超過 88vh、裝不下就捲得動、而且捲得到最後一項。
 await p.setViewportSize({ width: 390, height: 380 }); await p.waitForTimeout(400)
 const sheetFit = await p.locator('.sheet').evaluate((el) => {
   el.scrollTop = el.scrollHeight
@@ -587,7 +608,7 @@ ok(`矮螢幕上面板不超過 88vh（${sheetFit.h} ≤ ${sheetFit.max}）`, sh
 ok('裝不下的時候捲得動，裝得下就不必捲',
    sheetFit.scrollable ? sheetFit.scrolled > 0 : sheetFit.scrolled === 0)
 ok('不管捲不捲，最後一項都看得到',
-   await p.locator('.sheet').getByRole('button', { name: /刪除空間/ }).isVisible())
+   await p.locator('.sheet .menu-item').last().isVisible())
 await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
@@ -700,9 +721,9 @@ await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
 
 // --- 確認對話框 ---
-// 從首頁那顆「更多」進去：它帶人進空間並打開同一份選單，刪除空間就在最後一列。
+// 刪除空間 2026-09 只在首頁那顆「更多」裡（空間本身的事），就地打開，不進空間。
 await p.goto(URL); await p.waitForTimeout(900)
-await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(1500)
+await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
 // 「從清單移除」2026-09 收進「刪除空間」裡：同一件事的兩種程度，並排看才分得出。
 await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
 const removeRows = await p.locator('.sheet .menu-item strong').allTextContents()
@@ -719,8 +740,11 @@ ok(`初始焦點在「取消」而非破壞性按鈕（實際：${focused}）`, 
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉對話框，什麼都沒刪掉', (await p.locator('[role=alertdialog]').count())===0
-   && (await p.locator('.member').count())===3)
+   && (await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).count()) === 1)
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
+// 刪除的路在首頁，點名的路在空間裡——底下那一段要進去。
+await p.getByText('確認對話框測試').first().click(); await p.waitForTimeout(1400)
+ok('進得去那個空間', (await p.locator('.topbar-name').textContent()) === '確認對話框測試')
 
 // --- #20 結束點名：把結果攤在確認鍵前面 ---
 // 以前收尾被拆成三個彼此無關的按鈕（複製結果在計分區、下載 CSV 在面板第一項、

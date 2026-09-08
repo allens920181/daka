@@ -140,8 +140,8 @@
 `.menu-divider` 隔開它**：紅字加上排在最後已經夠分明，`.menu-divider` 是
 用來分隔語意不同的區塊（例如「查得到的資訊」與「會改動的動作」），不是每
 一個危險動作都要配一條——那樣反而把面板切成一截一截，見
-04-components/overlays.md「成員面板的規則」的教訓。`ManageSheet` 的
-「刪除空間」與 `MemberSheet` 的「從名單移除」都是這樣。
+04-components/overlays.md 的教訓。`RoomActionsSheet` 的「刪除空間」就是這樣
+（它 2026-09 從空間裡那份選單搬到首頁每一列的「更多」）。
 
 **狀態** — hover 換底色；最小高 56px。
 

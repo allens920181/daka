@@ -253,12 +253,16 @@ for (const scheme of ['light', 'dark']) {
   await page.getByRole('button', { name: /建立|Create/ }).click(); await page.waitForTimeout(1300)
   await audit(page, scheme, '空間（含分組）')
 
-  // 首頁每個空間右邊那顆「更多」（2026-09）：它進到那個空間再打開空間自己的
-  // 那份選單，首頁不另做一份。
+  // 首頁每個空間右邊那顆「更多」（2026-09 拆開）：**空間本身的事**（建立副本、
+  // 刪除空間），就在首頁打開，不進空間。這一份有標題列（印著是哪一間），跟空間
+  // 裡那一份相反，所以要單獨驗。
   await page.goto(URL); await page.waitForTimeout(900)
-  await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(1500)
-  await audit(page, scheme, '首頁的「更多」帶進來的選單')
+  await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(600)
+  await audit(page, scheme, '首頁 · 空間的「更多」')
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+
+  // 底下幾段是空間裡的東西，要先進去。
+  await page.locator('.recent-item').first().click(); await page.waitForTimeout(1400)
 
   // 邀請點名在頂欄那顆分享圖示上（2026-09）。單機模式（沒設定 Supabase 的建置，
   // 也就是這支腳本跑的那個）邀請頁只有一塊說明，三種方式一個都不列。

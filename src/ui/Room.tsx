@@ -429,13 +429,24 @@ export function Room({ code }: { code: string }) {
                   closeSearch()
                 }}
               />
-              {query && (
-                <button
-                  class="search-clear"
-                  onClick={() => { setQuery(''); searchRef.current?.focus() }}
-                  aria-label={t('cancel')}
-                >×</button>
-              )}
+              {/*
+                取消。**一直在**，不是有字才長出來——沒有字的時候原本只剩「滑去
+                別的地方」一條路可以收起來，而這個畫面上「別的地方」就是名單列，
+                點下去會直接把人標成已到。手上只有一根拇指的人等於沒有退路。
+
+                一下就收掉，不是先清字再收：收起來本來就會清掉字（收起來＝沒有在
+                過濾），所以這顆鍵在兩種狀態下的結果是一樣的，不必分兩段。鍵盤的
+                Esc 才留兩段——手指不必離開鍵盤，清掉重打是那裡的常見動作。
+
+                onMouseDown 擋掉預設行為，焦點才不會先離開輸入框：空字串時失焦
+                會收起搜尋，那一收會讓這顆鍵在 click 送達之前就消失。
+              */}
+              <button
+                class="search-clear"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={closeSearch}
+                aria-label={t('cancel')}
+              >×</button>
             </div>
           ) : (
             <button
