@@ -3,7 +3,7 @@ import { useEffect, useState } from 'preact/hooks'
 import {
   AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom,
   identity, members, myRooms, openMenuOnEnter, prefs, recentRooms, renameSavedRoster, requestCode,
-  room, saveRosterAs, savedRosters,
+  room, roomExpiry, saveRosterAs, savedRosters,
   peers, presenceReady, session, setCheckerName, setPrefs,
   showToast, type Peer,
   signIn, signOut, startGoogleSignIn,
@@ -84,28 +84,29 @@ async function shareLink(url: string, t: ReturnType<typeof useT>): Promise<void>
 
 // ---------------------------------------------------------------------------
 
-type ManageMode = 'menu' | 'saveRoster' | 'copy' | 'remove'
+type ManageMode = 'menu' | 'saveRoster'
   | 'invite' | 'inviteCode' | 'inviteLink' | 'inviteQr'
-type Confirming = null | 'delete' | 'forget'
 
 /**
- * 空間的「更多」。**整個 app 只有這一份清單**（2026-09）。
+ * 空間裡的「更多」：**這份名單的事**。
  *
- * 它一度被拆成兩份：空間裡一份（點名當下的動作）、首頁每個空間一份（空間這個
- * 容器的動作）。分法本身說得通，但使用者要記的是兩份不一樣的清單——同一顆
- * 「更多」在兩個地方打開不一樣的東西，就得先想「我剛剛是從哪裡按的」。
- * 現在首頁那顆「更多」直接把人帶進空間再打開這一份（`openMenuOnEnter`），
- * 兩邊看到的永遠一模一樣。
+ * 這條清單一路瘦下來——13 項 → 三個分頁 → 一條平的選單。2026-09 又走了三批：
+ * 邀請點名、臨時加人、結束點名搬到底部動作列與頂欄（一場活動的三個時刻，每次
+ * 都要先開一層才按得到是不對的）；「匯出名單」搬進結束點名（把結果交出去是收尾
+ * 的一部分）；**建立副本與刪除空間搬去首頁那顆「更多」**（見 `RoomActionsSheet`）。
  *
- * 順帶：先進空間才打開，這份清單裡的每一項才都做得到——「編輯」動的是這個空間
- * 的即時資料，在首頁那種「還沒載入」的狀態下只做得出一份能力比較弱的第二種
- * 選單，那正是要消滅的東西。
+ * 剩下的三項都是**這個空間裡面**的事：把代碼發出去、把名單弄對、把名單留下來。
+ * 這也是這一顆與首頁那一顆的分工：**進來以後做裡面的事，退出去做空間本身的事。**
  *
- * 邀請點名、臨時加人、結束點名 2026-09 從這裡搬到底部動作列（`Room.tsx` 的
- * `.dock`）：那三顆是一場活動的三個時刻，每次都要先開一層選單才按得到是不對的。
- * 同月「匯出名單」也走了，搬進「結束點名」的確認對話框與結束後的橫幅：把結果
- * 交出去是收尾的一部分，不是一個要自己想起來去選單裡找的獨立功能。
- * 這裡留下來的是「一場活動大概碰一次、而且不趕時間」的那幾項。
+ * 「邀請點名」2026-09 在選單 → 底部動作列 → 頂欄圖示鍵之後又收回這裡：一個
+ * 空間只該有一顆「更多」，分享單獨掛在頂欄時，同一張面板有兩個入口通往它的
+ * 不同頁，而使用者要記的變成「哪一件事在外面、哪一件事在裡面」。
+ *
+ * （這兩份清單 2026-09 稍早曾經合成一份，理由是「同一顆更多在兩個地方打開不一樣
+ * 的東西，使用者要記兩份」。合併沒有解決那件事，只是把它換了個位置：首頁那顆
+ * 「更多」變成先把人帶進空間、載入名單、再打開一份裡面大半用不到的清單——按一顆
+ * 「刪除空間」要先等整份名單同步完。分開之後兩邊各自都短，而且判準說得出口：
+ * 名單的事 vs 空間本身的事。）
  */
 export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
   owner: boolean
@@ -117,7 +118,6 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 }) {
   const t = useT()
   const [mode, setMode] = useState<ManageMode>(initialMode ?? 'menu')
-  const [confirming, setConfirming] = useState<Confirming>(null)
   const [value, setValue] = useState('')
   const [working, setWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -127,11 +127,6 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
   const url = joinUrl(current.code)
   // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。
   const localOnly = connection.value === 'local-only'
-  // 「從清單移除」只對本機那份「最近的空間」有意義：「我的活動」是帳號那邊的
-  // 清單，移掉了下一次同步又會長回來——那是一顆按了看起來沒反應的按鈕。
-  const inRecents = recentRooms.value.some((r) => r.code === current.code)
-  const inMyRooms = Boolean(session.value) && myRooms.value.some((r) => r.code === current.code)
-  const forgettable = inRecents && !inMyRooms
 
   async function run(fn: () => Promise<void>): Promise<void> {
     setWorking(true)
@@ -171,40 +166,6 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             }) }}
           >
             {working ? t('loading') : t('save')}
-          </button>
-        </div>
-      </Sheet>
-    )
-  }
-
-  if (mode === 'copy') {
-    return (
-      <Sheet title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
-        <div class="stack">
-          {/* 協助者要知道新空間會是他的——選單列的副標拿掉之後，只剩這裡說得出來。 */}
-          <p class="hint">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</p>
-          <div class="field">
-            <label class="label" for="copy-name">{t('copyRoomName')}</label>
-            <input
-              id="copy-name" class="input" value={value} maxLength={80}
-              onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
-            />
-          </div>
-          {error && <p class="note note-warn">{error}</p>}
-          <button
-            class="btn btn-primary btn-block"
-            disabled={working || !value.trim()}
-            onClick={() => { void run(async () => {
-              const code = await copyRoom(current.code, value)
-              onClose()
-              // 副本是新的代碼，而五支協助的手機還開著舊空間——他們的畫面完全沒有
-              // 變化，會繼續在舊空間打勾。複製完的下一個動作 100% 是把新代碼發
-              // 出去，所以直接導進新空間、面板停在邀請頁。
-              openMenuOnEnter.value = { code, mode: 'invite' }
-              navigate(`/r/${code}`)
-            }) }}
-          >
-            {working ? t('loading') : t('confirm')}
           </button>
         </div>
       </Sheet>
@@ -325,6 +286,170 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
     )
   }
 
+  return (
+    <Sheet
+      title={current.name}
+      onClose={onClose}
+      /*
+        整條標題列都不要（`head={false}`）。它一路瘦下來：「更多」兩個字說不出
+        任何一件這裡做得到的事 → 換成三顆分頁鍵 → 分頁拿掉之後改印空間名字 →
+        而那個名字就在面板正上方的頂欄裡，同一個字在同一屏印兩次，第二次只是
+        佔掉一列。收起來的三條路（點遮罩、Esc、從握把往下滑）一條都沒有少，
+        無障礙名稱也還是這個空間的名字。
+      */
+      head={false}
+    >
+      {/* 協助者看到的項目少一半，要有一句話說清楚少了什麼。 */}
+      {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
+
+      {/*
+        照一場活動的時間軸排：把代碼發出去（開場）→ 把名單弄對 → 把它留下來。
+        三列都是「這個空間裡面」的事；空間本身的事（建立副本、刪除空間）在首頁
+        那顆「更多」裡，車開了那一刻的事在「結束點名」的確認鍵前面。
+      */}
+      <div class="menu">
+        {/*
+          邀請點名。它 2026-09 在三個地方待過：選單 → 底部動作列 → 頂欄的分享
+          圖示 → 又回到選單。理由是**一個空間只該有一顆「更多」**：分享單獨掛在
+          頂欄時，這個畫面上同時有兩個入口通往同一張面板的不同頁，而使用者要記
+          的是「哪一件事在外面、哪一件事在裡面」。收回來之後頂欄只剩返回、標題、
+          更多，選單也不再是薄薄一兩列。
+          代價：發代碼要多開一層。那是一場活動按一次的動作，而且不趕時間——
+          真正趕的那一顆（結束點名）在底部動作列上，沒有跟著收進來。
+        */}
+        <button class="menu-item" onClick={() => setMode('invite')}>
+          <IconShare />
+          <span><strong>{t('invite')}</strong></span>
+        </button>
+
+        {/*
+          編輯不開子畫面，直接把點名畫面切進編輯模式（見 Room.tsx）：名字右邊
+          長出叉叉、底下變成一顆「＋」、標題變成可以改的輸入框。改的是眼前這份
+          名單，不是它的文字複本。協助者也進得去——他只是看不到叉叉與標題。
+        */}
+        <button class="menu-item" onClick={() => { onEdit(); }}>
+          <IconEdit />
+          <span><strong>{t('edit')}</strong></span>
+        </button>
+
+        {owner && isSupabaseConfigured && (
+          <button
+            class="menu-item"
+            onClick={() => { setValue(current.name); setMode('saveRoster') }}
+          >
+            <IconBookmark />
+            <span><strong>{t('saveAsRoster')}</strong></span>
+          </button>
+        )}
+
+      </div>
+
+      {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+
+    </Sheet>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+type ActionsMode = 'menu' | 'copy' | 'remove'
+type Confirming = null | 'delete' | 'forget'
+
+/**
+ * 首頁清單上每一列右邊那顆「更多」：**空間本身的事**。
+ *
+ * 兩列：建立副本（把這一間再開一次）、刪除空間（不要了，裡面收著「從清單移除」）。
+ * 它們動的都是空間這個容器，不是裡面那份名單——所以不必先進去、不必等名單同步，
+ * 在首頁按就是了。名單的事在空間裡那顆「更多」（`ManageSheet`）。
+ *
+ * 這兩份清單 2026-09 稍早曾經合成一份：首頁那顆「更多」先把人帶進空間再打開空間
+ * 自己的那一份。理由是「同一顆更多在兩個地方打開不一樣的東西，使用者要記兩份」。
+ * 合併沒有解決那件事，只是換了個位置——按一顆「刪除空間」要先進空間、等整份名單
+ * 載完、再從一份大半用不到的清單裡找到最後一列。分開之後兩邊各自都短，而且判準
+ * 講得出口：**在裡面做名單的事，在外面做空間的事。**
+ *
+ * 代價：人在空間裡想刪掉這一間，要先按返回回到首頁。刪除一場活動不是趕時間的
+ * 動作，多那一步換到的是兩份清單都短、而且各自只講一件事。
+ */
+export function RoomActionsSheet({ code, name, owner, onClose }: {
+  code: string
+  name: string
+  owner: boolean
+  onClose: () => void
+}) {
+  const t = useT()
+  const [mode, setMode] = useState<ActionsMode>('menu')
+  const [confirming, setConfirming] = useState<Confirming>(null)
+  const [value, setValue] = useState('')
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  /*
+    自動刪除的日期。首頁的兩份清單只有「我的活動」帶得到 expires_at，本機那份
+    要去快照裡拿（見 store.ts 的 roomExpiry），所以這裡是非同步的。拿不到就不印
+    ——那一列照樣按得下去，不要為了湊一句話去猜一個日期。
+  */
+  const [expires, setExpires] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    void roomExpiry(code).then((iso) => { if (alive && iso) setExpires(formatDate(iso, prefs.value.lang)) })
+    return () => { alive = false }
+  }, [code])
+
+  // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。
+  const localOnly = connection.value === 'local-only'
+  // 「從清單移除」只對本機那份「最近的空間」有意義：「我的活動」是帳號那邊的
+  // 清單，移掉了下一次同步又會長回來——那是一顆按了看起來沒反應的按鈕。
+  const inRecents = recentRooms.value.some((r) => r.code === code)
+  const inMyRooms = Boolean(session.value) && myRooms.value.some((r) => r.code === code)
+  const forgettable = inRecents && !inMyRooms
+
+  async function run(fn: () => Promise<void>): Promise<void> {
+    setWorking(true)
+    setError(null)
+    try {
+      await fn()
+    } catch (e) {
+      setError(errorMessage(e, t))
+      setWorking(false)
+      return
+    }
+    setWorking(false)
+  }
+
+  if (mode === 'copy') {
+    return (
+      <Sheet title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
+        <div class="stack">
+          {/* 協助者要知道新空間會是他的——選單列的副標拿掉之後，只剩這裡說得出來。 */}
+          <p class="hint">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</p>
+          <div class="field">
+            <label class="label" for="copy-name">{t('copyRoomName')}</label>
+            <input
+              id="copy-name" class="input" value={value} maxLength={80}
+              onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
+            />
+          </div>
+          {error && <p class="note note-warn">{error}</p>}
+          <button
+            class="btn btn-primary btn-block"
+            disabled={working || !value.trim()}
+            onClick={() => { void run(async () => {
+              const next = await copyRoom(code, value)
+              onClose()
+              // 副本是新的代碼，而五支協助的手機還開著舊空間——他們的畫面完全沒有
+              // 變化，會繼續在舊空間打勾。複製完的下一個動作 100% 是把新代碼發
+              // 出去，所以直接導進新空間、面板停在邀請頁。
+              openMenuOnEnter.value = { code: next, mode: 'invite' }
+              navigate(`/r/${next}`)
+            }) }}
+          >
+            {working ? t('loading') : t('confirm')}
+          </button>
+        </div>
+      </Sheet>
+    )
+  }
+
   /*
     不要了。兩個選項擺在同一頁，因為它們的差別要並排看才看得出來：「從清單移除」
     只影響這支手機（別人照樣進得去），「刪除空間」是所有人的紀錄一起沒。
@@ -366,11 +491,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             confirmLabel={t('forget')}
             danger={localOnly}
             onClose={() => setConfirming(null)}
-            onConfirm={() => { void run(async () => {
-              await forgetRecentRoom(current.code)
-              onClose()
-              navigate('/')
-            }) }}
+            onConfirm={() => { void run(async () => { await forgetRecentRoom(code); onClose() }) }}
           />
         )}
 
@@ -381,58 +502,21 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             confirmLabel={t('deleteRoom')}
             danger
             onClose={() => setConfirming(null)}
-            onConfirm={() => { void run(async () => { await deleteRoom(current.code); onClose(); navigate('/') }) }}
+            onConfirm={() => { void run(async () => { await deleteRoom(code); onClose() }) }}
           />
         )}
       </Sheet>
     )
   }
 
-  const expires = formatDate(current.expires_at, prefs.value.lang)
-
+  /*
+    這一份**要有標題列**，跟空間裡那一份相反。那一份的標題印的是空間名字，而那個
+    名字就在面板正上方的頂欄裡，同一屏印兩次；這一份是從一列七個長得差不多的空間
+    裡點開的，不印名字就沒有東西說得出「我剛剛按的是哪一間」。
+  */
   return (
-    <Sheet
-      title={current.name}
-      onClose={onClose}
-      /*
-        整條標題列都不要（`head={false}`）。它一路瘦下來：「更多」兩個字說不出
-        任何一件這裡做得到的事 → 換成三顆分頁鍵 → 分頁拿掉之後改印空間名字 →
-        而那個名字就在面板正上方的頂欄裡，同一個字在同一屏印兩次，第二次只是
-        佔掉一列。收起來的三條路（點遮罩、Esc、從握把往下滑）一條都沒有少，
-        無障礙名稱也還是這個空間的名字。
-      */
-      head={false}
-    >
-      {/* 協助者看到的項目少一半，要有一句話說清楚少了什麼。 */}
-      {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
-
-      {/*
-        排列照一場活動的時間軸走：把名單弄對、存成常用（出發前）→ 建立副本
-        （回程）→ 刪除空間（不要了）。車開了那一刻要做的事不在這裡——結果是
-        在「結束點名」的確認鍵前面交出去的。
-        破壞性的那一項排最後，而且中間隔著一整段距離。
-      */}
+    <Sheet title={name} onClose={onClose}>
       <div class="menu">
-        {/*
-          編輯不開子畫面，直接把點名畫面切進編輯模式（見 Room.tsx）：名字右邊
-          長出叉叉、底下變成一顆「＋」、標題變成可以改的輸入框。改的是眼前這份
-          名單，不是它的文字複本。協助者也進得去——他只是看不到叉叉與標題。
-        */}
-        <button class="menu-item" onClick={() => { onEdit(); }}>
-          <IconEdit />
-          <span><strong>{t('edit')}</strong></span>
-        </button>
-
-        {owner && isSupabaseConfigured && (
-          <button
-            class="menu-item"
-            onClick={() => { setValue(current.name); setMode('saveRoster') }}
-          >
-            <IconBookmark />
-            <span><strong>{t('saveAsRoster')}</strong></span>
-          </button>
-        )}
-
         {/*
           複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
           沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
@@ -443,7 +527,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
         <button
           class="menu-item"
           onClick={() => {
-            setValue(current.name.includes(t('returnTrip')) ? current.name : `${current.name} · ${t('returnTrip')}`)
+            setValue(name.includes(t('returnTrip')) ? name : `${name} · ${t('returnTrip')}`)
             setMode('copy')
           }}
         >
@@ -456,26 +540,23 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
           ——「我不要再看到這個」——差別在那句話是對誰說的：只有這支手機看不到，
           還是所有人的紀錄一起沒。選單上並排兩列等於要人在按之前就先分清楚，而那
           正好是點進去才講得完的事。
-        */}
-        {/*
-          自動刪除的日期印在這一列右邊（2026-09），不再是面板底下一句飄著的
-          灰字。那句話講的就是「這個空間什麼時候會不見」，跟這一列是同一件事的
-          兩種發生方式——你按，或是時間到。跟分享頁「代碼」那一列右邊印著代碼
-          本身同一種做法：**印的是值，不是說明**。
+
+          自動刪除的日期印在這一列右邊：那句話講的就是「這個空間什麼時候會不見」，
+          跟這一列是同一件事的兩種發生方式——你按，或是時間到。**印的是值，不是
+          說明**。
         */}
         {(owner || forgettable) && (
           <button class="menu-item danger" onClick={() => setMode('remove')}>
             <IconTrash />
             <span>
               <strong>{t('deleteRoom')}</strong>
-              <span class="sub">{t('expiresOn', { date: expires })}</span>
+              {expires && <span class="sub">{t('expiresOn', { date: expires })}</span>}
             </span>
           </button>
         )}
       </div>
 
       {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
-
     </Sheet>
   )
 }

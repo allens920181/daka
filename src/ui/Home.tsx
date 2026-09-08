@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { connection, myRooms, openMenuOnEnter, prefs, recentRooms, session } from '../lib/store'
+import { connection, myRooms, prefs, recentRooms, session } from '../lib/store'
 import { formatDate } from '../lib/format'
 import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '../lib/code'
 import { canScanQr } from '../lib/config'
@@ -8,6 +8,7 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { IconCamera, IconChevronDown, IconMore, IconPlus, IconSettings } from './icons'
 import { ScanSheet } from './Scan'
+import { RoomActionsSheet } from './Sheets'
 import { useT } from './t'
 
 type RoomFilter = 'all' | 'mine' | 'others'
@@ -197,8 +198,8 @@ export function Home({ onSettings }: { onSettings: () => void }) {
           ) : (
             <div class="stack" style="gap:8px">
               {visibleRows.map((r) => (
-                <div class="row" key={r.code} style="gap:6px">
-                  <button class="recent-item" onClick={() => navigate(`/r/${r.code}`)}>
+                <div class="recent-item" key={r.code}>
+                  <button class="recent-main" onClick={() => navigate(`/r/${r.code}`)}>
                     <div style="flex:1; min-width:0">
                       <div class="recent-name">{r.name}</div>
                       <div class="recent-meta">{r.meta}</div>
@@ -213,7 +214,7 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                     排在一起：兩顆看起來一樣的垃圾桶做的是兩件不同的事（一個只是不看
                     了，一個是真的刪掉），圖示分不出來，寫成兩列文字才分得出來。
                   */}
-                  <MoreButton name={r.name} code={r.code} />
+                  <MoreButton name={r.name} code={r.code} isOwner={r.isOwner} />
                 </div>
               ))}
             </div>
@@ -230,26 +231,31 @@ export function Home({ onSettings }: { onSettings: () => void }) {
 }
 
 /**
- * 清單每一列右邊那顆「更多」。
+ * 清單每一列右邊那顆「更多」：**空間本身的事**（建立副本、刪除空間）。
  *
- * 它進到那個空間再打開空間自己的「更多」（`openMenuOnEnter`），不是在首頁另外
- * 開一份選單：同一顆「更多」在兩個地方打開不一樣的東西，使用者就得先想「我剛剛
- * 是從哪裡按的」。而且那份清單裡的每一項（編輯、匯出名單）動的都是空間的即時
- * 資料，先進去才做得到——留在首頁只能做出一份能力比較弱的第二種選單，那正是
- * 要消滅的東西。
+ * 它就在首頁打開（`RoomActionsSheet`），不進空間。這兩件事動的都是空間這個容器，
+ * 不是裡面那份名單，所以不必先載入名單——它 2026-09 稍早曾經先把人帶進空間再打開
+ * 空間自己那份清單，結果是按一顆「刪除空間」要先等整份名單同步完，再從一份大半
+ * 用不到的清單裡找到最後一列。名單的事在空間裡那顆「更多」（`ManageSheet`）。
  *
  * 無障礙名稱要帶空間名字：一屏上有七顆一模一樣的「更多」時，只唸得出「更多」的
  * 那一顆是哪一個空間的完全聽不出來。
  */
-function MoreButton({ name, code }: { name: string; code: string }) {
+function MoreButton({ name, code, isOwner }: { name: string; code: string; isOwner: boolean }) {
   const t = useT()
+  const [open, setOpen] = useState(false)
   return (
-    <button
-      class="icon-btn"
-      aria-label={`${t('manage')}：${name}`}
-      onClick={() => { openMenuOnEnter.value = { code }; navigate(`/r/${code}`) }}
-    >
-      <IconMore />
-    </button>
+    <>
+      <button
+        class="icon-btn"
+        aria-label={`${t('manage')}：${name}`}
+        onClick={() => setOpen(true)}
+      >
+        <IconMore />
+      </button>
+      {open && (
+        <RoomActionsSheet code={code} name={name} owner={isOwner} onClose={() => setOpen(false)} />
+      )}
+    </>
   )
 }

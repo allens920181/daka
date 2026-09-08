@@ -63,14 +63,14 @@ export const pendingUploads = computed(() =>
  */
 export interface Peer { name: string | null; at: number }
 /**
- * 進到某個空間之後要自動打開「更多」——以及要停在它的哪一頁。
+ * 進到某個空間之後要自動打開「更多」，並停在它的某一頁。
  *
- * 兩個用途，都是「下一個動作幾乎確定是什麼」的時刻：
- * - 首頁每一列右邊那顆「更多」：那份清單只有一份（見 Sheets.tsx 的 ManageSheet），
- *   所以先進空間再打開它，而不是在首頁另做一份能力比較弱的。
- * - 剛建立完副本：副本是新代碼，而五支協助的手機還開著舊空間——他們的畫面完全
- *   沒有變化，會繼續在舊空間打勾。這是整條動線裡最貴的失敗，而且是靜默的，
- *   所以直接停在邀請頁。
+ * 只剩一個用途：**剛建立完副本**。副本是新代碼，而五支協助的手機還開著舊空間
+ * ——他們的畫面完全沒有變化，會繼續在舊空間打勾。這是整條動線裡最貴的失敗，
+ * 而且是靜默的，所以複製完直接把人送到新空間的邀請頁。
+ *
+ * （另一個用途 2026-09 沒了：首頁那顆「更多」曾經先把人帶進空間再打開空間自己
+ * 那份清單，現在它在首頁就地開自己那一份——見 Sheets.tsx 的 `RoomActionsSheet`。）
  */
 export const openMenuOnEnter = signal<{ code: string; mode?: 'invite' } | null>(null)
 
@@ -871,6 +871,20 @@ export async function deleteRoom(code: string): Promise<void> {
   if (currentCode === code) leaveRoom()
   await forgetRoom(code)
   recentRooms.value = await dropRecentRoom(code)
+}
+
+/**
+ * 這個空間什麼時候會自動刪除。
+ *
+ * 首頁那份選單要把這個日期印在「刪除空間」那一列右邊，但首頁的兩份清單只有
+ * 「我的活動」（`myRooms`）帶得到 expires_at；本機那份（單機模式自己開的、
+ * 或以協助者身分加入的）要去快照裡拿。拿不到就回 null——那一列照樣按得下去，
+ * 只是不印那個值，不要為了湊一句話去猜一個日期。
+ */
+export async function roomExpiry(code: string): Promise<string | null> {
+  const owned = myRooms.value.find((r) => r.code === code)
+  if (owned) return owned.expires_at
+  return (await loadRoom(code))?.room.expires_at ?? null
 }
 
 export async function forgetRecentRoom(code: string): Promise<void> {

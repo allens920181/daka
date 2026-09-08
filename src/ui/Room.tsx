@@ -17,7 +17,7 @@ import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
 import {
   IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPdf, IconPhone, IconPlus,
-  IconSearch, IconShare,
+  IconSearch,
 } from './icons'
 import { useT } from './t'
 
@@ -357,21 +357,6 @@ export function Room({ code }: { code: string }) {
             用圖示而不是文字：這一格在點名模式下是圖示鍵，換成一顆文字鍵會讓
             整條頂欄在切換模式時跳一下寬度。無障礙名稱仍然是「完成」。
           */}
-          {/*
-            邀請點名（2026-09 從底部動作列搬上來）。它整場只按一次，但那一次是
-            開場：把代碼發出去。放在頂欄那顆「更多」左邊，兩顆圖示鍵一組——
-            底下那條動作列因此只剩收尾那一顆，不必為了一個開場動作永久佔著
-            一列人名的高度。編輯模式下不印：那時候畫面上只該剩名單。
-          */}
-          {!editing && (
-            <button
-              class="icon-btn"
-              onClick={() => { setMenuMode('invite'); setSheet('manage') }}
-              aria-label={t('invite')}
-            >
-              <IconShare />
-            </button>
-          )}
           {editing ? (
             <button class="icon-btn" onClick={() => setEditing(false)} aria-label={t('done')}>
               <IconCheck size={24} />
@@ -429,13 +414,24 @@ export function Room({ code }: { code: string }) {
                   closeSearch()
                 }}
               />
-              {query && (
-                <button
-                  class="search-clear"
-                  onClick={() => { setQuery(''); searchRef.current?.focus() }}
-                  aria-label={t('cancel')}
-                >×</button>
-              )}
+              {/*
+                取消。**一直在**，不是有字才長出來——沒有字的時候原本只剩「滑去
+                別的地方」一條路可以收起來，而這個畫面上「別的地方」就是名單列，
+                點下去會直接把人標成已到。手上只有一根拇指的人等於沒有退路。
+
+                一下就收掉，不是先清字再收：收起來本來就會清掉字（收起來＝沒有在
+                過濾），所以這顆鍵在兩種狀態下的結果是一樣的，不必分兩段。鍵盤的
+                Esc 才留兩段——手指不必離開鍵盤，清掉重打是那裡的常見動作。
+
+                onMouseDown 擋掉預設行為，焦點才不會先離開輸入框：空字串時失焦
+                會收起搜尋，那一收會讓這顆鍵在 click 送達之前就消失。
+              */}
+              <button
+                class="search-clear"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={closeSearch}
+                aria-label={t('cancel')}
+              >×</button>
             </div>
           ) : (
             <button
