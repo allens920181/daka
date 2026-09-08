@@ -264,9 +264,11 @@ for (const scheme of ['light', 'dark']) {
   // 底下幾段是空間裡的東西，要先進去。
   await page.locator('.recent-item').first().click(); await page.waitForTimeout(1400)
 
-  // 邀請點名在頂欄那顆分享圖示上（2026-09）。單機模式（沒設定 Supabase 的建置，
-  // 也就是這支腳本跑的那個）邀請頁只有一塊說明，三種方式一個都不列。
-  await page.locator('.topbar button[aria-label="邀請點名"], .topbar button[aria-label="Invite"]').click()
+  // 邀請點名是「更多」的第一列（2026-09 從頂欄的分享圖示收回來）。單機模式
+  // （沒設定 Supabase 的建置，也就是這支腳本跑的那個）邀請頁只有一塊說明，
+  // 三種方式一個都不列。
+  await page.locator('.topbar button[aria-label="更多"]').click(); await page.waitForTimeout(400)
+  await page.getByRole('button', { name: /^邀請點名$|^Invite$/ }).click()
   await page.waitForTimeout(700)
   await audit(page, scheme, '邀請點名')
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)

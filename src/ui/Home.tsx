@@ -198,8 +198,8 @@ export function Home({ onSettings }: { onSettings: () => void }) {
           ) : (
             <div class="stack" style="gap:8px">
               {visibleRows.map((r) => (
-                <div class="row" key={r.code} style="gap:6px">
-                  <button class="recent-item" onClick={() => navigate(`/r/${r.code}`)}>
+                <div class="recent-item" key={r.code}>
+                  <button class="recent-main" onClick={() => navigate(`/r/${r.code}`)}>
                     <div style="flex:1; min-width:0">
                       <div class="recent-name">{r.name}</div>
                       <div class="recent-meta">{r.meta}</div>

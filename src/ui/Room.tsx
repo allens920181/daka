@@ -17,7 +17,7 @@ import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
 import {
   IconBack, IconCheck, IconClose, IconCopy, IconDownload, IconMore, IconPdf, IconPhone, IconPlus,
-  IconSearch, IconShare,
+  IconSearch,
 } from './icons'
 import { useT } from './t'
 
@@ -357,21 +357,6 @@ export function Room({ code }: { code: string }) {
             用圖示而不是文字：這一格在點名模式下是圖示鍵，換成一顆文字鍵會讓
             整條頂欄在切換模式時跳一下寬度。無障礙名稱仍然是「完成」。
           */}
-          {/*
-            邀請點名（2026-09 從底部動作列搬上來）。它整場只按一次，但那一次是
-            開場：把代碼發出去。放在頂欄那顆「更多」左邊，兩顆圖示鍵一組——
-            底下那條動作列因此只剩收尾那一顆，不必為了一個開場動作永久佔著
-            一列人名的高度。編輯模式下不印：那時候畫面上只該剩名單。
-          */}
-          {!editing && (
-            <button
-              class="icon-btn"
-              onClick={() => { setMenuMode('invite'); setSheet('manage') }}
-              aria-label={t('invite')}
-            >
-              <IconShare />
-            </button>
-          )}
           {editing ? (
             <button class="icon-btn" onClick={() => setEditing(false)} aria-label={t('done')}>
               <IconCheck size={24} />

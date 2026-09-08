@@ -208,7 +208,6 @@ ok('撥號鍵貼在備註那一行裡', await p.evaluate(() =>
 // 匯出（單機模式）。複製、CSV、PDF 都不經過任何伺服器，自己一個人點完照樣要交
 // 得出名單——2026-09 起那三顆不在「更多」裡，而在「結束點名」的確認鍵前面。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(600)
-ok('頂欄沒有分享鍵了', (await p.locator('.topbar button[aria-label="分享"]').count()) === 0)
 ok('選單上沒有「匯出名單」了（它併進了結束點名）',
    (await p.locator('.sheet').getByRole('button', { name: /^匯出名單$/ }).count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
@@ -224,19 +223,18 @@ ok('沒有「列印紙本名單」了（空白待勾那份文件連功能一起�
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關掉對話框，空間沒有被結束', (await p.locator('.banner-result').count()) === 0)
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
-// 邀請點名（頂欄）、臨時加人（編輯模式的「＋」）、結束點名（動作列）都不在選單裡。
-ok('選單上沒有邀請點名、臨時加人、結束點名',
-   (await p.locator('.sheet').getByRole('button', { name: /^邀請點名$|^臨時加人$|^結束點名$/ }).count()) === 0)
+// 臨時加人（編輯模式的「＋」）與結束點名（動作列）不在選單裡；邀請點名在，
+// 它 2026-09 從頂欄的分享圖示收回來——一個空間只該有一顆「更多」。
+ok('選單上沒有臨時加人、結束點名',
+   (await p.locator('.sheet').getByRole('button', { name: /^臨時加人$|^結束點名$/ }).count()) === 0)
 ok('面板底下不再另外印一句到期日',
    (await p.locator('.sheet > .hint').count()) === 0)
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 邀請點名（單機模式）——這裡是關鍵：這個建置沒有雲端，代碼、連結、二維碼對任何
 // 人都沒有用。發出去只會讓五個同工站在車門口看到「找不到這個代碼」，然後以為
 // 是自己打錯而重打三次。邀請頁必須當場說出來，不能照樣列出那三種方式。
-await p.keyboard.press('Escape'); await p.waitForTimeout(300)
-// 邀請點名 2026-09 搬到頂欄那顆分享圖示，就在「更多」左邊。
-await p.locator('.topbar button[aria-label="邀請點名"]').click(); await p.waitForTimeout(900)
+// 邀請點名是選單的第一列（2026-09 從頂欄收回來）。面板此刻還開著。
+await p.locator('.sheet').getByRole('button', { name: /^邀請點名$/ }).click(); await p.waitForTimeout(900)
 ok('單機模式：邀請頁說「這個空間只有你看得到」',
    ((await p.locator('.note-warn').textContent()) || '').includes('只有你看得到'))
 ok('單機模式：不列代碼', (await p.getByRole('button', { name: /^代碼/ }).count()) === 0)
@@ -265,6 +263,19 @@ ok('無障礙名稱說得出是哪一個空間',
    (await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).count()) === 1)
 ok('列上那顆垃圾桶不見了（從清單移除搬進選單，跟刪除空間排在一起才分得出差別）',
    (await p.getByRole('button', { name: /^從清單移除：/ }).count()) === 0)
+// 框圈住整列，「更多」在框裡面（2026-09）：它本來浮在框外面，七列並排時看不出
+// 它是上面那一列的還是下面那一列的。
+ok('「更多」在那一列的框裡面', await p.evaluate(() => {
+  const card = document.querySelector('.recent-item')
+  const more = card?.querySelector(':scope > button.icon-btn')
+  if (!card || !more) return false
+  const c = card.getBoundingClientRect(); const m = more.getBoundingClientRect()
+  return m.right <= c.right + 1 && m.left >= c.left - 1 && m.top >= c.top - 1 && m.bottom <= c.bottom + 1
+}))
+ok('那顆更多還是 48px 的觸控目標（內距掛在主按鈕上，不在外框）', await p.evaluate(() => {
+  const r = document.querySelector('.recent-item > button.icon-btn')?.getBoundingClientRect()
+  return Boolean(r) && r.width >= 48 && r.height >= 48
+}))
 await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(600)
 ok('就在首頁打開，不進空間', (await p.locator('.home-title').count()) === 1
    && (await p.locator('.topbar-name').count()) === 0)
@@ -448,18 +459,11 @@ ok(`面板關掉後 Toast 回到下緣（top=${toastBack}）`, toastBack > 400)
 await p.locator('.toast-action').click().catch(() => {}); await p.waitForTimeout(400)
 
 // #16 底部動作列 2026-09 回來了，但裝的東西換了兩次：先是一場活動的三個時刻，
-// 接著臨時加人併進編輯模式的「＋」、邀請點名搬上頂欄，於是只剩收尾那一顆。
+// 接著臨時加人併進編輯模式的「＋」、邀請點名搬走，於是只剩收尾那一顆。
 // 判準沒變（反覆要按、而且在別處按不到），變的是有幾顆通得過。
 const dockLabels = await p.locator('.dock .btn').allTextContents()
 ok(`底部動作列只剩一顆：${dockLabels.join('、')}`,
    JSON.stringify(dockLabels.map((x) => x.trim())) === JSON.stringify(['結束點名']))
-// 邀請整場只按一次，但那一次是開場。頂欄那兩顆圖示鍵一組，不佔一列人名的高度。
-ok('邀請點名在頂欄，就在「更多」左邊', await p.evaluate(() => {
-  const btns = [...document.querySelectorAll('.topbar-inner > button.icon-btn')]
-  const share = btns.findIndex((b) => b.getAttribute('aria-label') === '邀請點名')
-  const more = btns.findIndex((b) => b.getAttribute('aria-label') === '更多')
-  return share >= 0 && more === share + 1
-}))
 ok('動作列上沒有主要按鈕（這個畫面的主要動作是戳名字）',
    (await p.locator('.dock .btn-primary').count()) === 0)
 ok('也沒有浮動搜尋鍵', (await p.locator('.fab').count()) === 0)
@@ -468,10 +472,12 @@ ok('也沒有浮動搜尋鍵', (await p.locator('.fab').count()) === 0)
 ok('搜尋是篩選列右邊那一顆，不另外佔一列',
    (await p.locator('.topbar .filterbar .search-toggle').count()) === 1
    && (await p.locator('.topbar > .shell').count()) === 2)
-// 分享 2026-09 先收進「更多」，同月又搬回頂欄——但是以圖示鍵的身分，跟「更多」一組。
-ok('頂欄的動作鍵是分享與更多兩顆（加上返回鍵共三顆）',
-   (await p.locator('.topbar-inner > button.icon-btn').count()) === 3
-   && (await p.locator('.topbar button[aria-label="更多"]').count()) === 1)
+// 分享在頂欄待過一陣子，2026-09 收回「更多」：一個空間只該有一顆「更多」，
+// 不然同一張面板有兩個入口通往它的不同頁。頂欄因此只剩返回與更多。
+ok('頂欄只剩返回與更多兩顆',
+   (await p.locator('.topbar-inner > button.icon-btn').count()) === 2
+   && (await p.locator('.topbar button[aria-label="更多"]').count()) === 1
+   && (await p.locator('.topbar button[aria-label="邀請點名"]').count()) === 0)
 ok('搜尋在畫面上只有一個入口',
    (await p.locator('button[aria-label*="搜尋"]').count()) === 1)
 
@@ -508,8 +514,8 @@ const manageRows = await p.locator('.sheet .menu-item strong').allTextContents()
 // 空間裡這一份只剩「這份名單」的事（2026-09 拆開）：編輯它、把它存成常用。
 // 空間本身的事（建立副本、刪除空間）在首頁那顆「更多」。這一間是單機模式，
 // 所以「存成常用」也不列（要雲端），只剩「編輯」。
-ok(`空間裡那份是名單的事：${manageRows.join('、')}`,
-   JSON.stringify(manageRows) === JSON.stringify(['編輯']))
+ok(`空間裡那份是空間內部的事：${manageRows.join('、')}`,
+   JSON.stringify(manageRows) === JSON.stringify(['邀請點名', '編輯']))
 ok('空間本身的事不在這裡（建立副本、刪除空間都不列）',
    (await p.locator('.sheet').getByRole('button', { name: /^建立副本$|^刪除空間$/ }).count()) === 0)
 // 匯出 2026-09 整條併進「結束點名」：把結果交出去是收尾的一部分，不是一個要
