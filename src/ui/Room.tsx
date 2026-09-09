@@ -316,23 +316,31 @@ export function Room({ code }: { code: string }) {
                 空間第一眼就該知道的事——它講的是「我」，比後面那個名字更早被讀到。
                 它 2026-09 走過兩步：先從管理面板頂端那一列搬到頂欄的副標行（排在
                 代碼前面），再從一顆寫著字的藥丸換成圖示、往上挪到名字前面。
+
+                **副標那一行 2026-09 整條拿掉了**（代碼 ＋ 同步狀態），頂欄因此少
+                20px。兩樣東西各自的去處：
+                - **代碼**去「更多 › 邀請點名 › 代碼」——那一頁整頁就是它，字級大到
+                  隔著一支手臂唸得出來，而頂欄那一行只印得下 11px 的小字。首頁每一
+                  列也印著代碼，所以退出去就看得到。代價是在空間裡要唸代碼得多按
+                  兩下。
+                - **同步狀態**縮成名字後面一顆圓點：它整場都在那裡但整場都不該被讀
+                  ——真正要傳達的是「顏色變了」。完整的說法留在 aria-label／title，
+                  有東西還沒上傳時圓點旁邊才多一個數字。
               */}
               <div class="topbar-heading">
                 {!editing && <RoleBadge owner={isOwner.value} />}
                 <h1 class="topbar-name">{current.name}</h1>
+                {/*
+                  關閉是全域狀態，不能只靠一條會捲走的橫幅：捲到名單深處時戳名字
+                  沒反應，協助者完全不知道為什麼。它只在關閉時佔位置。
+                */}
+                {!editing && closed && <span class="topbar-count closed">{t('roomClosedShort')}</span>}
+                {/*
+                  同步狀態縮成名字後面一顆圓點（2026-09）。它原本跟代碼一起住在
+                  底下那一行副標，那一行整條拿掉了——見下面那段註解。
+                */}
+                {!editing && <SyncBadge />}
               </div>
-              {!editing && (
-                <div class="topbar-sub">
-                  {closed ? (
-                    // 關閉是全域狀態，不能只靠一條會捲走的橫幅。捲到名單深處時
-                    // 戳名字沒反應，協助者完全不知道為什麼。
-                    <span class="topbar-count closed">{t('roomClosedShort')}</span>
-                  ) : (
-                    <span class="mono">{current.code}</span>
-                  )}
-                  <SyncBadge />
-                </div>
-              )}
             </button>
           )}
           {/*
@@ -872,12 +880,19 @@ function SyncBadge() {
   } as const
 
   const [cls, label] = map[state]
-  // 頂欄接手顯示未到人數時空間會不夠，文字收起來只留圓點——但無障礙名稱要
-  // 留著，而且點名人數才是那一刻不能被擠掉的東西。
+  /*
+    畫面上只有一顆圓點（2026-09，副標那一行拿掉之後）。
+
+    這個指示整場都在，但它整場都不該被讀——真正要傳達的是「顏色變了」，而
+    「已同步」三個字在 99% 的時間裡只是重複一件沒有變化的事。完整的說法留在
+    aria-label／title：螢幕閱讀器唸得到，桌機 hover 得出來。
+    **例外是待上傳筆數**：那是一個會變的數字，而且它變大就代表有東西還沒送出
+    去——那時候圓點旁邊多一個數字，不然「還有幾筆沒上傳」就沒有地方說了。
+  */
   return (
     <span class={`sync ${cls}`} role="status" aria-label={label} title={label}>
       <span class="sync-dot" />
-      <span class="sync-text">{label}</span>
+      {pending > 0 && <span class="sync-n">{pending}</span>}
     </span>
   )
 }

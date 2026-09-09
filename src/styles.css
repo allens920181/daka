@@ -450,7 +450,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--rule);
   padding-top: env(safe-area-inset-top);
 }
-.topbar-inner { display: flex; align-items: center; gap: var(--sp-1); min-height: var(--tap-lg); }
+/*
+ * 這一列的高度 2026-09 從 --tap-lg（56）降到 --tap-min（48）：副標那一行拿掉
+ * 之後，這裡裝的是一行 24px 的標題與兩顆 48px 的圖示鍵，56 那 8px 是為了兩行
+ * 疊起來才留的。48 就是這一列真正需要的高度——它等於它最高的內容。
+ */
+.topbar-inner { display: flex; align-items: center; gap: var(--sp-1); min-height: var(--tap-min); }
 /* 頂欄標題是一顆按鈕（點了回到名單頂端），但要長得像標題。 */
 .topbar-title {
   min-width: 0; flex: 1;
@@ -459,24 +464,22 @@ button, input, textarea, select { font: inherit; color: inherit; }
   min-height: var(--tap-min);
   display: flex; flex-direction: column; justify-content: center;
 }
-/* 身分圖示與空間名同一行。min-width: 0 要一路傳下去，名字才截得掉。 */
+/*
+ * 頂欄的標題行：身分圖示 ＋ 空間名 ＋（關閉時）「已關閉」＋ 同步圓點。
+ *
+ * 副標那一行（代碼 ＋ 同步狀態）2026-09 整條拿掉，頂欄少 20px；剩下真的要一直
+ * 看得到的兩樣東西擠上這一行——它們都只佔得到一顆圓點或三個字的寬度。
+ * min-width: 0 要一路傳下去，名字才截得掉：它是這一行唯一該讓步的東西。
+ */
 .topbar-heading { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.topbar-heading > .role-badge,
+.topbar-heading > .topbar-count,
+.topbar-heading > .sync { flex: none; }
 .topbar-name {
   min-width: 0;
   font-size: var(--fs-4); font-weight: 700; margin: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.topbar-sub { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-2); color: var(--ink-3); }
-/*
- * 這一列現在有三格：身分標籤、代碼、同步狀態。390px 上「離線中 · 3 筆待上傳」
- * 一長就會把整列頂出去，所以先講清楚誰讓誰：標籤與代碼不縮（一個是「我能不能
- * 改」，一個是要唸給別人聽的東西，截一半都沒有用），空間不夠時收的是同步那段
- * 文字——圓點與顏色留著，完整說法還在 aria-label／title 裡。
- */
-.topbar-sub > * { flex: none; }
-.topbar-sub > .sync { flex: 0 1 auto; min-width: 0; }
-.topbar-sub .sync-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 /* 空間關閉時取代代碼的那一格。關閉是全域狀態，不能只靠一條會捲走的橫幅。 */
 .topbar-count {
   display: inline-flex; align-items: baseline; gap: var(--sp-1);
@@ -495,6 +498,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .topbar .filterbar { margin-bottom: var(--sp-2); }
 
 .sync { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-2); font-weight: 600; }
+/* 待上傳筆數：唯一還印在畫面上的同步文字，因為它是一個會變的數字。 */
+.sync-n { font-variant-numeric: tabular-nums; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
 .sync-online { color: var(--st-arrived); }
 /* 「未到」（--st-pending）與「離線」（--fb-warn）本來是同一個琥珀色，而它們
