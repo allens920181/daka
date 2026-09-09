@@ -205,6 +205,13 @@ for (const scheme of ['light', 'dark']) {
   await page.goto(URL); await page.waitForTimeout(900)
   await audit(page, scheme, '首頁')
 
+  // 「加入空間」2026-09 從就地展開改成一張底部面板：代碼框、「加入」、掃碼鍵
+  // 換了一組鄰居（面板底色 --surface，不是頁面底色），對比與觸控尺寸要重驗。
+  await page.getByRole('button', { name: /^加入空間$|^Join a room$/ }).first().click()
+  await page.waitForTimeout(500)
+  await audit(page, scheme, '首頁 · 加入空間')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+
   await page.getByRole('button', { name: /創建空間|Create a room/ }).first().click()
   await page.waitForTimeout(300)
   await page.locator('#room-name').fill('秋季旅遊 · 出發')

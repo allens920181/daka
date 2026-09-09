@@ -297,32 +297,48 @@ ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 // 刪除空間動的都是空間這個容器，不必先進去、也不必等名單同步。名單的事在空間
 // 裡那顆「更多」。
 await p.goto(URL); await p.waitForTimeout(900)
-// 首頁的「加入空間」展開之後沒有外框（2026-09）：上面那顆鍵已經在宣告這一組
-// 東西了，再畫一個框只是把同一件事說第二次，而框裡每個元件又各自有框。
-await p.getByRole('button', { name: /^加入空間/ }).click(); await p.waitForTimeout(400)
-ok('展開的內容沒有外框', await p.evaluate(() => {
-  const panel = document.querySelector('#join-panel')
-  if (!panel) return false
-  const cs = getComputedStyle(panel)
-  return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)'
-}))
+// 「加入空間」開的是一張從下緣長上來的面板（2026-09），不再是就地展開的一段內容
+// ——這個 app 只有一種「再給我一層」的形狀，其餘全部都是底部面板。
+await p.getByRole('button', { name: /^加入空間$/ }).click(); await p.waitForTimeout(500)
+ok('開的是一張面板，不是就地展開',
+   (await p.locator('.overlay-bottom .sheet').count()) === 1
+   && (await p.locator('#join-panel').count()) === 0)
+// 就地展開時底下那份清單仍然按得到、螢幕閱讀器也仍然讀得到。面板要掛在 .shell
+// 外面，useModal 才 inert 得到整頁（見 Home.tsx 的註解）。
+ok('背景整頁 inert 了', await p.evaluate(() =>
+  document.querySelector('.shell')?.hasAttribute('inert') === true))
+ok('面板有標題列，說得出這是在做什麼',
+   (await p.locator('.sheet .sheet-title').textContent())?.trim() === '加入空間')
+// 按下那顆鍵的下一個動作就是打那六碼，跳出鍵盤是它的直接結果。
+ok('開起來焦點就在代碼框',
+   await p.evaluate(() => document.activeElement?.classList.contains('code-input') === true))
 // 兩條路各一列：打代碼＋加入是同一件事的兩半（同一列），掃碼是另一條路（自己一列）。
 ok('代碼輸入與「加入」在同一列', await p.evaluate(() => {
-  const input = document.querySelector('#join-panel .code-input').getBoundingClientRect()
-  const join = document.querySelector('#join-panel .row .btn').getBoundingClientRect()
+  const input = document.querySelector('.sheet .code-input').getBoundingClientRect()
+  const join = document.querySelector('.sheet .row .btn').getBoundingClientRect()
   return Math.abs((input.top + input.height / 2) - (join.top + join.height / 2)) <= 2
     && join.left >= input.right - 1
 }))
+// 並排的元件要對齊：輸入框的高度不能是字級的副產品（2026-09 寫死 --tap-lg）。
+ok('代碼框與「加入」等高', await p.evaluate(() => {
+  const input = document.querySelector('.sheet .code-input').getBoundingClientRect()
+  const join = document.querySelector('.sheet .row .btn').getBoundingClientRect()
+  return Math.abs(input.height - join.height) <= 1
+}))
 ok('掃碼自己一列（在那一列底下）', await p.evaluate(() => {
-  const row = document.querySelector('#join-panel .row').getBoundingClientRect()
-  const scan = [...document.querySelectorAll('#join-panel > .btn')]
+  const row = document.querySelector('.sheet .row').getBoundingClientRect()
+  const scan = [...document.querySelectorAll('.sheet .stack > .btn')]
     .find((b) => /QR/.test(b.textContent || ''))
   return Boolean(scan) && scan.getBoundingClientRect().top >= row.bottom - 1
 }))
 // 320px 上輸入框仍要放得下六碼（它是這一列唯一該讓步的東西，但有下限）。
 ok('窄螢幕上輸入框沒有被擠爛', await p.evaluate(() =>
-  document.querySelector('#join-panel .code-input').getBoundingClientRect().width >= 200))
-await p.getByRole('button', { name: /^加入空間/ }).click(); await p.waitForTimeout(300)
+  document.querySelector('.sheet .code-input').getBoundingClientRect().width >= 200))
+// 收起來的路：Esc（點面板外面與從握把往下滑是同一套，Sheet 已經在別處驗過）。
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關得掉，背景也還回來了',
+   (await p.locator('.sheet').count()) === 0
+   && await p.evaluate(() => document.querySelector('.shell')?.hasAttribute('inert') === false))
 ok('首頁清單每一列右邊都有一顆「更多」',
    (await p.getByRole('button', { name: /^更多：/ }).count()) === (await p.locator('.recent-item').count()))
 ok('無障礙名稱說得出是哪一個空間',
