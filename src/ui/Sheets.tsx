@@ -18,8 +18,8 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconClose, IconCopy, IconDuplicate, IconEdit, IconHash,
-  IconChevronDown, IconGoogle, IconLink, IconMore,
+  IconBookmark, IconChevronDown, IconChevronRight, IconClose, IconCopy, IconDuplicate,
+  IconEdit, IconGoogle, IconHash, IconLink, IconMore,
   IconQr, IconShare, IconTrash,
 } from './icons'
 import { useT } from './t'
@@ -262,16 +262,19 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             <button class="menu-item" onClick={() => setMode('inviteCode')}>
               <IconHash />
               <span><strong>{t('roomCode')}</strong></span>
+              <IconChevronRight class="go" />
             </button>
 
             <button class="menu-item" onClick={() => setMode('inviteLink')}>
               <IconLink />
               <span><strong>{t('roomLink')}</strong></span>
+              <IconChevronRight class="go" />
             </button>
 
             <button class="menu-item" onClick={() => setMode('inviteQr')}>
               <IconQr />
               <span><strong>{t('roomQr')}</strong></span>
+              <IconChevronRight class="go" />
             </button>
           </div>
         )}
@@ -313,6 +316,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
         <button class="menu-item" onClick={() => setMode('invite')}>
           <IconShare />
           <span><strong>{t('invite')}</strong></span>
+          <IconChevronRight class="go" />
         </button>
 
         {/*
@@ -332,6 +336,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
           >
             <IconBookmark />
             <span><strong>{t('saveAsRoster')}</strong></span>
+            <IconChevronRight class="go" />
           </button>
         )}
 
@@ -526,6 +531,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
         >
           <IconDuplicate />
           <span><strong>{t('copyRoom')}</strong></span>
+          <IconChevronRight class="go" />
         </button>
 
         {/*
@@ -545,6 +551,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
               <strong>{t('deleteRoom')}</strong>
               {expires && <span class="sub">{t('expiresOn', { date: expires })}</span>}
             </span>
+            <IconChevronRight class="go" />
           </button>
         )}
       </div>
@@ -640,6 +647,7 @@ export function SavedRostersSheet({ onApply, onClose }: {
           <button class="menu-item" onClick={() => { setValue(active.name); setMode('rename') }}>
             <IconEdit />
             <span><strong>{t('rename')}</strong></span>
+            <IconChevronRight class="go" />
           </button>
           <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
             <IconTrash />
@@ -737,7 +745,7 @@ function SettingRow({ label, value, open, onToggle, children }: {
         <span class="label">{label}</span>
         <span class="select-row-value">
           <span class="select-row-text">{value}</span>
-          <IconChevronDown class={open ? 'select-row-chevron is-open' : 'select-row-chevron'} />
+          <IconChevronDown class={open ? 'chevron is-open' : 'chevron'} />
         </span>
       </button>
       {open && children}

@@ -382,7 +382,14 @@ export function Room({ code }: { code: string }) {
         <div class="shell filterbar">
           <div class="segmented" role="group" aria-label={t('filter')}>
             <Segment active={filter === 'all'} onClick={() => setFilter('all')} label={t('all')} count={s.people} />
-            <Segment active={filter === 'pending'} onClick={() => setFilter('pending')} label={t('missing')} count={s.pending} />
+            <Segment
+              active={filter === 'pending'}
+              onClick={() => setFilter('pending')}
+              label={t('missing')}
+              count={s.pending}
+              /* allHere 已經排除了空名單：沒有人不等於全部到齊，那時候不轉綠。 */
+              tone={allHere ? 'done' : 'pending'}
+            />
             <Segment active={filter === 'arrived'} onClick={() => setFilter('arrived')} label={t('arrived')} count={s.arrived} />
           </div>
 
@@ -453,7 +460,6 @@ export function Room({ code }: { code: string }) {
               })}
             </span>
             <ResultActions
-              small
               onCopy={() => { void copySummary() }}
               onCsv={() => downloadFile(csvFilename(current), toCsv(all, prefs.value.lang))}
             />
@@ -656,7 +662,10 @@ export function Room({ code }: { code: string }) {
  * 後靜靜消失；「車開了」是唯一一次所有人的注意力同時落在同一件事上，這三顆就
  * 該待在那一刻的必經之路上。
  *
- * 兩個地方共用同一份實作，只差尺寸：對話框裡是一般的 `.btn`，橫幅裡是 `.btn-sm`。
+ * 兩個地方共用同一份實作，而且是**同一個尺寸**（`.btn-sm`，2026-09）。它以前在
+ * 對話框裡是一般的 `.btn`，於是那張對話框上有四顆一模一樣重的按鈕排成兩列——
+ * 「複製／CSV」跟「取消／結束點名」看起來是同一組四選一。帶得走的兩種格式是
+ * 順手做的事，要做的決定只有底下那一個，所以它們讓一階。
  *
  * **只有兩顆**（2026-09）。曾經有第三顆「存成 PDF」，它其實不是檔案匯出，是叫出
  * 瀏覽器的列印畫面讓使用者自己選「儲存為 PDF」——帶走的東西比 CSV 少（沒有時間、
@@ -668,19 +677,17 @@ export function Room({ code }: { code: string }) {
  * 「複製／CSV」讀得出來的意思跟完整標籤一模一樣。短標籤是完整標籤的子字串，螢幕
  * 閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。
  */
-function ResultActions({ small = false, onCopy, onCsv }: {
-  small?: boolean
+function ResultActions({ onCopy, onCsv }: {
   onCopy: () => void
   onCsv: () => void
 }) {
   const t = useT()
-  const cls = small ? 'btn btn-sm' : 'btn'
   return (
     <div class="result-actions">
-      <button class={cls} onClick={onCopy} aria-label={t('copySummary')}>
+      <button class="btn btn-sm" onClick={onCopy} aria-label={t('copySummary')}>
         <IconCopy /> {t('copySummaryShort')}
       </button>
-      <button class={cls} onClick={onCsv} aria-label={t('exportCsv')}>
+      <button class="btn btn-sm" onClick={onCsv} aria-label={t('exportCsv')}>
         <IconDownload /> {t('exportCsvShort')}
       </button>
     </div>
@@ -699,12 +706,23 @@ function RoomSkeleton({ label }: { label: string }) {
   )
 }
 
-function Segment({ active, onClick, label, count }: {
+/**
+ * 篩選列的一段。**數字是這一段的主體**，標籤只是它的單位。
+ *
+ * `tone` 只給「未到」那一段用：它整場都帶顏色（琥珀），歸零的那一刻轉綠。原則一
+ * 說「畫面上最大的數字永遠是還有幾位沒到」，而計分區拿掉之後這裡就是那個數字
+ * 唯一的家——它不能長得跟旁邊兩個一樣。
+ */
+function Segment({ active, onClick, label, count, tone }: {
   active: boolean; onClick: () => void; label: string; count: number
+  tone?: 'pending' | 'done'
 }) {
+  const cls = tone === 'pending' ? 'count count-pending'
+    : tone === 'done' ? 'count count-done'
+    : 'count'
   return (
     <button class="segment" aria-pressed={active} onClick={onClick}>
-      {label} <span class="count mono">{count}</span>
+      {label} <span class={cls}>{count}</span>
     </button>
   )
 }

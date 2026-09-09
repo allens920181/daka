@@ -71,8 +71,16 @@ export function RosterPreview({
             {result.members.map((m, i) => (
               <div class="preview-row" key={`${m.name}-${i}`}>
                 <span class="preview-index mono">{i + 1}</span>
-                <span style="flex:1; min-width:0">{m.name}</span>
-                {m.note && <span class="chip chip-note">{m.note}</span>}
+                {/*
+                  備註跟在名字後面，不是被推到列的最右邊（2026-09）。靠右時每一列的
+                  晶片各自停在不同的位置（備註多長它就多寬），八列排下來右邊是一條
+                  鋸齒；而且中間那段空白會讓人以為名字跟那個晶片是兩欄不同的資料。
+                  它們是同一個人的兩件事，就該讀在一起。
+                */}
+                <span class="preview-name">
+                  {m.name}
+                  {m.note && <span class="chip chip-note">{m.note}</span>}
+                </span>
                 <button
                   class="icon-btn preview-remove"
                   aria-label={t('removeFromPreview', { name: m.name })}

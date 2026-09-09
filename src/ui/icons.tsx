@@ -26,6 +26,11 @@ export const IconChevronDown = ({ size = 16, ...r }: P) => (
 export const IconChevronUp = ({ size = 16, ...r }: P) => (
   <svg {...base(size)} {...r}><polyline points="6 15 12 9 18 15" /></svg>
 )
+// 選單列右邊那顆：「這一列會開一張子畫面」。沒有它，一份選單裡「開一頁」與
+// 「當場做一件事」長得一模一樣（見 .menu-item .go）。
+export const IconChevronRight = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}><polyline points="9 6 15 12 9 18" /></svg>
+)
 export const IconShare = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>
     <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />

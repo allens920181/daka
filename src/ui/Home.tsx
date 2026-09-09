@@ -4,7 +4,6 @@ import { connection, myRooms, prefs, recentRooms, session } from '../lib/store'
 import { formatDate } from '../lib/format'
 import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '../lib/code'
 import { canScanQr } from '../lib/config'
-import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { IconCamera, IconChevronDown, IconMore, IconPlus, IconSettings } from './icons'
 import { ScanSheet } from './Scan'
@@ -85,14 +84,21 @@ export function Home({ onSettings }: { onSettings: () => void }) {
       ),
     })),
   ]
-  const visibleRows = filter === 'all' ? rows : rows.filter((r) => (filter === 'mine' ? r.isOwner : !r.isOwner))
-  const emptyText = filter === 'mine' ? t('myRoomsEmpty') : filter === 'others' ? t('noOtherRooms') : t('noRecentRooms')
+  /*
+    篩選那一列只在有兩個以上的空間時才出現（見底下的註解），所以套用的一律是
+    `active`：清單被刪到剩一個時那一列會收起來，而使用者上一次選的「他人的」
+    不能就這樣留在畫面外面繼續生效——那會變成一個看不見的篩選在藏東西。
+  */
+  const filterVisible = rows.length > 1
+  const active: RoomFilter = filterVisible ? filter : 'all'
+  const visibleRows = active === 'all' ? rows : rows.filter((r) => (active === 'mine' ? r.isOwner : !r.isOwner))
+  const emptyText = active === 'mine' ? t('myRoomsEmpty') : active === 'others' ? t('noOtherRooms') : t('noRecentRooms')
 
   // 「創建空間」屬於「我的」——它生出來的空間就是主揪自己的；「加入空間」屬於
   // 「他人的」——會加進來的本來就是別人開的空間。「所有」是兩邊的聯集，兩顆
   // 都置頂。並排時各自 flex:1，單獨出現時滿版寬度跟底下的列對齊。
-  const showCreate = filter !== 'others'
-  const showJoin = filter !== 'mine'
+  const showCreate = active !== 'others'
+  const showJoin = active !== 'mine'
 
   const createButton = (block: boolean) => (
     <button
@@ -111,7 +117,7 @@ export function Home({ onSettings }: { onSettings: () => void }) {
       aria-controls="join-panel"
       onClick={() => setJoinOpen((v) => !v)}
     >
-      {t('joinRoom')} <IconChevronDown class={`select-row-chevron${joinOpen ? ' is-open' : ''}`} />
+      {t('joinRoom')} <IconChevronDown class={`chevron${joinOpen ? ' is-open' : ''}`} />
     </button>
   )
 
@@ -132,7 +138,20 @@ export function Home({ onSettings }: { onSettings: () => void }) {
       )}
 
       <div class="stack">
-        <div class="stack">
+        {/*
+          篩選只在真的有東西可以篩的時候才出現（2026-09）。
+
+          它本來永遠都在，於是**第一次打開這個 app 的人，看到的第一個東西是一組
+          三段的篩選器**——為一份空清單準備的。那條 56px 的控制項比它下面那顆
+          「創建空間」還早被讀到，而它在那個當下一件事都做不到。只有一個空間時
+          也一樣：三選一之後還是那一列。
+
+          門檻放在「兩個以上」，不是「一個以上」：一個空間不需要篩選，而
+          `rows.length` 是篩選前的總數，所以這一列不會因為自己篩掉了東西而消失。
+          它收起來的時候 filter 一定停在 all（沒有人改得動它），所以底下那兩顆
+          按鈕會同時在——這正是空手起步時該有的畫面。
+        */}
+        {filterVisible && (
           <div class="segmented" role="group" aria-label={t('filter')}>
             <button class="segment" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
               {t('roomFilterAll')}
@@ -144,113 +163,108 @@ export function Home({ onSettings }: { onSettings: () => void }) {
               {t('roomFilterOthers')}
             </button>
           </div>
+        )}
 
-          {showCreate && showJoin ? (
-            <div class="row" style="gap:8px">
-              {joinButton(false)}
-              {createButton(false)}
-            </div>
-          ) : showCreate ? createButton(true) : joinButton(true)}
+        {showCreate && showJoin ? (
+          <div class="row" style="gap:8px">
+            {joinButton(false)}
+            {createButton(false)}
+          </div>
+        ) : showCreate ? createButton(true) : joinButton(true)}
 
-          {/*
-            展開之後就是「打代碼」跟「掃碼」兩條路，沒有外框（2026-09）。
+        {/*
+          展開之後就是「打代碼」跟「掃碼」兩條路，沒有外框（2026-09）。
 
-            這裡本來是一張 `.card` 包著代碼輸入框與兩顆滿版按鈕——**框中框中框**：
-            上面那顆「加入空間」已經在宣告這一組東西了，再畫一個框只是把同一件事
-            說第二次，而框裡每個元件又各自有自己的框。現在展開的內容直接接在那顆
-            鍵底下，靠間距分組。
-          */}
-          {showJoin && joinOpen && (
-            <div class="stack" id="join-panel">
+          這裡本來是一張 `.card` 包著代碼輸入框與兩顆滿版按鈕——**框中框中框**：
+          上面那顆「加入空間」已經在宣告這一組東西了，再畫一個框只是把同一件事
+          說第二次，而框裡每個元件又各自有自己的框。現在展開的內容直接接在那顆
+          鍵底下，靠間距分組。
+        */}
+        {showJoin && joinOpen && (
+          <div class="stack" id="join-panel">
+            {/*
+              兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，擺在
+              同一列才看得出「打進去、按這裡」；**掃碼**是另一條路，自己一列。
+              原本是「輸入框一列、加入與掃碼並排一列」——那個排法把加入跟掃碼
+              綁成一組，但它們其實分屬兩條不同的路。
+            */}
+            <div class="row">
+              <input
+                ref={codeInputRef}
+                class="input code-input"
+                value={code}
+                // 沒有 maxLength：貼上的常常是整條連結，得讓 extractRoomCode 先從裡面
+                // 抓出代碼，原生的長度限制會在那之前就把後半段截斷。裁到固定長度
+                // 改成抓完代碼之後才做，抓出來的碼本來就只有 6 碼。
+                inputMode="text"
+                autocapitalize="characters"
+                autocomplete="off"
+                spellcheck={false}
+                aria-label={t('codePlaceholder')}
+                placeholder="——————"
+                onInput={(e) => {
+                  const raw = (e.currentTarget as HTMLInputElement).value
+                  setCode(extractRoomCode(raw).slice(0, CODE_LENGTH + 2))
+                  setError(null)
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') join() }}
+              />
               {/*
-                兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，擺在
-                同一列才看得出「打進去、按這裡」；**掃碼**是另一條路，自己一列。
-                原本是「輸入框一列、加入與掃碼並排一列」——那個排法把加入跟掃碼
-                綁成一組，但它們其實分屬兩條不同的路。
+                「加入」不縮：它是兩個字，縮到剩一個字就沒有意義了。讓步的是
+                輸入框——六碼在 320px 上仍有 200px 可用，那個字級照樣讀得出來。
               */}
-              <div class="row">
-                <input
-                  ref={codeInputRef}
-                  class="input code-input"
-                  value={code}
-                  // 沒有 maxLength：貼上的常常是整條連結，得讓 extractRoomCode 先從裡面
-                  // 抓出代碼，原生的長度限制會在那之前就把後半段截斷。裁到固定長度
-                  // 改成抓完代碼之後才做，抓出來的碼本來就只有 6 碼。
-                  inputMode="text"
-                  autocapitalize="characters"
-                  autocomplete="off"
-                  spellcheck={false}
-                  aria-label={t('codePlaceholder')}
-                  placeholder="——————"
-                  onInput={(e) => {
-                    const raw = (e.currentTarget as HTMLInputElement).value
-                    setCode(extractRoomCode(raw).slice(0, CODE_LENGTH + 2))
-                    setError(null)
-                  }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') join() }}
-                />
+              <button
+                class="btn btn-lg"
+                style="flex:none"
+                disabled={extractRoomCode(code).length < CODE_LENGTH}
+                onClick={join}
+              >
+                {t('join')}
+              </button>
+            </div>
+            {error && <p class="note note-warn">{error}</p>}
+            {canScanQr() && (
+              <button class="btn btn-block" onClick={() => setScanOpen(true)}>
+                <IconCamera /> {t('scanQr')}
+              </button>
+            )}
+          </div>
+        )}
+
+        {scanOpen && <ScanSheet onClose={() => setScanOpen(false)} />}
+
+        {/*
+          空狀態是一句話，不是一個灰框（2026-09）：它旁邊已經有三個框了
+          （分段控制、加入空間、展開的內容），再加一個只是讓這一頁更像一疊盒子。
+        */}
+        {visibleRows.length === 0 ? (
+          <p class="hint">{emptyText}</p>
+        ) : (
+          <div class="stack" style="gap:8px">
+            {visibleRows.map((r) => (
+              <div class="recent-item" key={r.code}>
+                <button class="recent-main" onClick={() => navigate(`/r/${r.code}`)}>
+                  {/* 身分排在名字前面（2026-09 從那一列最右邊的文字標籤換過來）：
+                      它講的是「我」，比後面那個名字更早被讀到；而那一列最右邊
+                      現在是「更多」的位置。 */}
+                  <RoleBadge owner={r.isOwner} />
+                  <div style="flex:1; min-width:0">
+                    <div class="recent-name">{r.name}</div>
+                    <div class="recent-meta">{r.meta}</div>
+                  </div>
+                </button>
                 {/*
-                  「加入」不縮：它是兩個字，縮到剩一個字就沒有意義了。讓步的是
-                  輸入框——六碼在 320px 上仍有 200px 可用，那個字級照樣讀得出來。
+                  這裡原本是一顆垃圾桶（從清單移除），而且只長在移得掉的那幾列上。
+                  它現在是每一列都有的「更多」，從清單移除搬進那份選單裡跟刪除空間
+                  排在一起：兩顆看起來一樣的垃圾桶做的是兩件不同的事（一個只是不看
+                  了，一個是真的刪掉），圖示分不出來，寫成兩列文字才分得出來。
                 */}
-                <button
-                  class="btn"
-                  style="flex:none"
-                  disabled={extractRoomCode(code).length < CODE_LENGTH}
-                  onClick={join}
-                >
-                  {t('join')}
-                </button>
+                <MoreButton name={r.name} code={r.code} isOwner={r.isOwner} />
               </div>
-              {error && <p class="note note-warn">{error}</p>}
-              {canScanQr() && (
-                <button class="btn btn-block" onClick={() => setScanOpen(true)}>
-                  <IconCamera /> {t('scanQr')}
-                </button>
-              )}
-            </div>
-          )}
-
-          {scanOpen && <ScanSheet onClose={() => setScanOpen(false)} />}
-
-          {/*
-            空狀態是一句話，不是一個灰框（2026-09）：它旁邊已經有三個框了
-            （分段控制、加入空間、展開的內容），再加一個只是讓這一頁更像一疊盒子。
-          */}
-          {visibleRows.length === 0 ? (
-            <p class="hint">{emptyText}</p>
-          ) : (
-            <div class="stack" style="gap:8px">
-              {visibleRows.map((r) => (
-                <div class="recent-item" key={r.code}>
-                  <button class="recent-main" onClick={() => navigate(`/r/${r.code}`)}>
-                    {/* 身分排在名字前面（2026-09 從那一列最右邊的文字標籤換過來）：
-                        它講的是「我」，比後面那個名字更早被讀到；而那一列最右邊
-                        現在是「更多」的位置。 */}
-                    <RoleBadge owner={r.isOwner} />
-                    <div style="flex:1; min-width:0">
-                      <div class="recent-name">{r.name}</div>
-                      <div class="recent-meta">{r.meta}</div>
-                    </div>
-                  </button>
-                  {/*
-                    這裡原本是一顆垃圾桶（從清單移除），而且只長在移得掉的那幾列上。
-                    它現在是每一列都有的「更多」，從清單移除搬進那份選單裡跟刪除空間
-                    排在一起：兩顆看起來一樣的垃圾桶做的是兩件不同的事（一個只是不看
-                    了，一個是真的刪掉），圖示分不出來，寫成兩列文字才分得出來。
-                  */}
-                  <MoreButton name={r.name} code={r.code} isOwner={r.isOwner} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {!isSupabaseConfigured && (
-          <p class="hint" style="padding-bottom:40px">{t('errNotConfigured')}</p>
+            ))}
+          </div>
         )}
       </div>
-
     </div>
   )
 }

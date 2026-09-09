@@ -17,8 +17,8 @@ const BROWSER = process.env.CHROMIUM_PATH
     ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
     : undefined)
 
-/** docs/design/03-tokens.md §4 的八階字級。 */
-const FONT_SCALE = [11, 13, 15, 17, 20, 26, 34, 44]
+/** docs/design/03-tokens.md §3.2 的七階字級（44px 那一階隨計分區一起拿掉了）。 */
+const FONT_SCALE = [11, 13, 15, 17, 20, 26, 34]
 /** §6：一般可互動元素 48px；Toast 動作是暫時性表面，放寬到 44px。 */
 const TAP_MIN = 48
 const TAP_EXCEPTIONS = { 'toast-action': 44 }
@@ -171,7 +171,7 @@ async function audit(page, scheme, screen) {
   }
   for (const f of r.font) {
     if (!FONT_SCALE.includes(Math.round(f.fs))) {
-      note(scheme, screen, '字級不在八階內', `${f.fs}px ${f.el} 「${f.text}」`)
+      note(scheme, screen, '字級不在七階內', `${f.fs}px ${f.el} 「${f.text}」`)
     }
   }
   for (const n of r.nonText) {

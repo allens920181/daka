@@ -16,6 +16,7 @@
 - [`docs/product-direction.md`](docs/product-direction.md) — 產品方向與架構決策
 - [`docs/design/`](docs/design/) — 設計規範：[基礎](docs/design/01-foundations.md)、[品牌](docs/design/02-brand.md)、[Token](docs/design/03-tokens.md)、[元件](docs/design/04-components/)、[模式](docs/design/05-patterns.md)、[內容](docs/design/06-content.md)、[品質](docs/design/07-quality.md)、[貢獻](docs/design/08-contributing.md)；另有[視覺對照頁](https://claude.ai/code/artifact/9df0f69b-dc39-4fc6-928f-e62be58ef97f)
 - [`docs/design-review-2026-08.md`](docs/design-review-2026-08.md) — 設計評估報告：找到的 63 條問題、修了哪些、還有 8 條在等你決定方向
+- [`docs/design-review-2026-09.md`](docs/design-review-2026-09.md) — 整體性評估：一個月三十幾次局部改動之後，把六個畫面並排看到的四類系統性問題（層級反了、每塊都是同一種盒子、一個顏色喊五次、規範與實作各說各話）
 
 ---
 
@@ -283,6 +284,7 @@ supabase/
 docs/
   product-direction.md      產品方向與架構決策
   design-review-2026-08.md  設計評估報告與待決事項
+  design-review-2026-09.md  整體性評估：層級、表面語言、顏色預算
 ```
 
 ### 設計規範是可執行的
