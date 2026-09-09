@@ -257,6 +257,7 @@ ok('單機模式：不列二維碼', (await p.getByRole('button', { name: /^二�
 ok('單機模式：不發代碼', (await p.locator('.code-display').count()) === 0)
 ok('單機模式：不產 QR', (await p.locator('.qr-card img').count()) === 0)
 ok('單機模式：不給「複製連結」', (await p.getByRole('button', { name: /傳給別人|複製連結/ }).count()) === 0)
+ok('單機模式：連那個框都沒有', (await p.locator('.copy-row').count()) === 0)
 ok('單機模式：講清楚別人會看到什麼',
    ((await p.locator('.note-warn').textContent()) || '').includes('找不到這個代碼'))
 // 邀請頁 2026-09 瘦到只剩三列：底下那句「不用註冊、不用安裝」與「現在在這個空間

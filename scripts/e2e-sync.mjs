@@ -194,6 +194,21 @@ ok('[主揪] 沒有「現在在這個空間裡」，也不會說「目前只有�
    && (await A.p.getByText('目前只有你').count()) === 0)
 ok('[主揪] 代碼那一列右邊不印代碼本身',
    (await A.p.locator('.sheet .menu-item .sub').count()) === 0)
+// 複製 2026-09 收成那串字右邊的一顆圖示鍵，不再是底下一整列滿版按鈕。
+await A.p.getByRole('button', { name: /^代碼$/ }).click(); await A.p.waitForTimeout(500)
+ok('[主揪] 代碼頁：複製是代碼右邊的圖示鍵',
+   (await A.p.locator('.copy-row .code-display').count()) === 1
+   && (await A.p.locator('.copy-row button[aria-label="複製代碼"]').count()) === 1
+   && (await A.p.getByRole('button', { name: /^複製代碼$/ }).count()) === 1)
+ok('[主揪] 代碼頁底下沒有那一整列按鈕', (await A.p.locator('.sheet .btn').count()) === 0)
+await A.p.locator('.sheet-head .icon-btn').first().click(); await A.p.waitForTimeout(400)
+await A.p.getByRole('button', { name: /^連結$/ }).click(); await A.p.waitForTimeout(500)
+ok('[主揪] 連結頁：複製是連結右邊的圖示鍵',
+   (await A.p.locator('.copy-row .link-display').count()) === 1
+   && (await A.p.locator('.copy-row button[aria-label="複製連結"]').count()) === 1)
+ok('[主揪] 連結頁底下只留「傳給別人」',
+   (await A.p.locator('.sheet .btn').count()) === 1
+   && /傳給別人/.test((await A.p.locator('.sheet .btn').textContent()) || ''))
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 
 // --- 主揪不在時，現場的人也開得出回程空間（#25）-------------------------------

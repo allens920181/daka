@@ -171,13 +171,21 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
   if (mode === 'inviteCode') {
     return (
       <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')}>
-        <div class="stack">
+        {/*
+          複製收成代碼右邊的一顆圖示（2026-09），不再是底下一顆滿版的按鈕。
+          這一頁的主角是那六個字——它是隔著一支手臂唸出去的東西，整頁的寬度都
+          該留給它；而複製是「順手也可以這樣做」，不值得用一整列去宣告。
+          左邊那個等寬的空白（`::before`）讓代碼落在整個框的正中間，而不是被
+          右邊那顆鍵擠得偏左。
+        */}
+        <div class="copy-row is-centered">
           <div class="code-display">{current.code}</div>
           <button
-            class="btn btn-primary btn-block"
+            class="icon-btn"
+            aria-label={t('copyCode')}
             onClick={() => { void copyText(current.code, t('copied'), t('copyFailed')) }}
           >
-            <IconCopy /> {t('copyCode')}
+            <IconCopy size={20} />
           </button>
         </div>
       </Sheet>
@@ -188,16 +196,24 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
     return (
       <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')}>
         <div class="stack">
-          {/* 連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。 */}
-          <p class="link-display">{url}</p>
+          {/*
+            連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。
+            複製收成它右邊的一顆圖示（2026-09）——同一件事（把這串字帶走）不該
+            在同一頁上出現兩次：一次是網址本身，一次是底下一整列寫著「複製連結」。
+            底下留下來的是「傳給別人」，那是另一件事（叫出系統分享單）。
+          */}
+          <div class="copy-row">
+            <p class="link-display">{url}</p>
+            <button
+              class="icon-btn"
+              aria-label={t('copyLink')}
+              onClick={() => { void copyText(url, t('copied'), t('copyFailed')) }}
+            >
+              <IconCopy size={20} />
+            </button>
+          </div>
           <button class="btn btn-primary btn-block" onClick={() => { void shareLink(url, t) }}>
             <IconShare /> {t('shareLink')}
-          </button>
-          <button
-            class="btn btn-block"
-            onClick={() => { void copyText(url, t('copied'), t('copyFailed')) }}
-          >
-            <IconCopy /> {t('copyLink')}
           </button>
         </div>
       </Sheet>

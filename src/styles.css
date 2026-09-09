@@ -1053,10 +1053,30 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* === 分享 ================================================================ */
 
+/*
+ * 要帶走的那串字（代碼、連結）＋右邊一顆複製鍵，同一個框裡。
+ *
+ * 複製 2026-09 從「底下一整列滿版按鈕」收成這顆圖示：同一件事（把這串字帶走）
+ * 不該在同一頁上出現兩次——一次是那串字本身，一次是一整列寫著「複製代碼」。
+ * 框畫在外層，字與鍵各自不再有自己的框。
+ */
+.copy-row {
+  display: flex; align-items: center;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-2);
+  padding-right: var(--sp-1);
+}
+/* 代碼那一頁左邊補一個跟那顆鍵等寬的空白，代碼才落在整個框的正中間，而不是被
+   擠得偏左。連結是靠左的長字串，不需要這個補償，所以是加在 class 上而不是靠
+   `:has()` 猜——一條看得懂的規則勝過一條聰明的。 */
+.copy-row.is-centered::before { content: ""; flex: none; width: var(--tap-min); }
+.copy-row > .code-display,
+.copy-row > .link-display { flex: 1; min-width: 0; border: none; background: none; }
+
 .code-display {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--fs-7); font-weight: 700; letter-spacing: .18em;
-  text-align: center; padding: var(--sp-4) var(--sp-2) var(--sp-4) var(--sp-5);
+  /* 字距在最後一個字後面也留一格，靠左邊多一點內距補回視覺中心。 */
+  text-align: center; padding: var(--sp-4) 0 var(--sp-4) var(--sp-2);
   background: var(--surface); border: 1px solid var(--rule);
   border-radius: var(--r-2); color: var(--ink);
 }
