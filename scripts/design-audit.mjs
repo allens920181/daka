@@ -270,8 +270,8 @@ for (const scheme of ['light', 'dark']) {
   await audit(page, scheme, '空間（含分組）')
 
   // 首頁每個空間右邊那顆「更多」（2026-09 拆開）：**空間本身的事**（建立副本、
-  // 刪除空間），就在首頁打開，不進空間。這一份有標題列（印著是哪一間），跟空間
-  // 裡那一份相反，所以要單獨驗。
+  // 刪除空間），就在首頁打開，不進空間。它跟空間裡那一份是兩份不同的清單，
+  // 所以要單獨驗。
   await page.goto(URL); await page.waitForTimeout(900)
   await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(600)
   await audit(page, scheme, '首頁 · 空間的「更多」')

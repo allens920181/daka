@@ -260,28 +260,14 @@ function JoinSheet({ onClose }: { onClose: () => void }) {
 
   if (mode === 'scan') {
     return (
-      <Sheet title={t('scanQr')} onClose={onClose} onBack={() => setMode('code')}>
+      <Sheet size="m" title={t('scanQr')} onClose={onClose} onBack={() => setMode('code')}>
         <ScanView />
       </Sheet>
     )
   }
 
   return (
-    <Sheet
-      title={t('joinRoom')}
-      onClose={onClose}
-      /*
-        整條標題列不畫。判準是「標題有沒有比它底下那些列多說一件事」
-        （見 04-components/overlays.md）——這一頁底下就是一個代碼框、框裡右邊一顆
-        「加入」、底下一顆「掃描 QR 碼」，「加入空間」四個字沒有多說任何一件事。
-        跟「更多」與「設定」那兩份面板同一個處置。
-
-        收起來的三條路（點面板外面、Esc、從握把往下滑）一條都沒有少，`aria-label`
-        也還是「加入空間」。代價跟另外兩份一樣：**沒有可聚焦的關閉鍵**，觸控式
-        螢幕閱讀器只剩 Esc。掃碼那一頁仍然有標題列——它需要那顆返回鍵。
-      */
-      head={false}
-    >
+    <Sheet size="m" title={t('joinRoom')} onClose={onClose}>
       <div class="stack">
         {/*
           兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，所以它們在

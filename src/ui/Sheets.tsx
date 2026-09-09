@@ -134,7 +134,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   if (mode === 'saveRoster') {
     return (
-      <Sheet title={t('saveAsRoster')} onClose={onClose} onBack={() => setMode('menu')}>
+      <Sheet size="m" title={t('saveAsRoster')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           <div class="field">
             <label class="label" for="roster-name">{t('saveRosterPrompt')}</label>
@@ -170,7 +170,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
   */
   if (mode === 'inviteCode') {
     return (
-      <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet size="m" title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')}>
         {/*
           複製收成代碼右邊的一顆圖示（2026-09），不再是底下一顆滿版的按鈕。
           這一頁的主角是那六個字——它是隔著一支手臂唸出去的東西，整頁的寬度都
@@ -194,7 +194,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   if (mode === 'inviteLink') {
     return (
-      <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet size="m" title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')}>
         <div class="stack">
           {/*
             連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。
@@ -222,7 +222,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   if (mode === 'inviteQr') {
     return (
-      <Sheet title={t('roomQr')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet size="m" title={t('roomQr')} onClose={onClose} onBack={() => setMode('invite')}>
         <div class="stack">
           <QrCard code={current.code} url={url} />
           <p class="hint">{t('scanToJoin')}</p>
@@ -233,7 +233,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   if (mode === 'invite') {
     return (
-      <Sheet title={t('invite')} onClose={onClose} onBack={() => setMode('menu')}>
+      <Sheet size="m" title={t('invite')} onClose={onClose} onBack={() => setMode('menu')}>
         {/*
           單機模式下這個空間真的只存在這支手機裡，代碼、連結、二維碼對任何人都
           沒有用——發出去只會讓五個同工站在車門口看到「找不到這個代碼。請確認有
@@ -284,16 +284,9 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   return (
     <Sheet
+      size="m"
       title={current.name}
       onClose={onClose}
-      /*
-        整條標題列都不要（`head={false}`）。它一路瘦下來：「更多」兩個字說不出
-        任何一件這裡做得到的事 → 換成三顆分頁鍵 → 分頁拿掉之後改印空間名字 →
-        而那個名字就在面板正上方的頂欄裡，同一個字在同一屏印兩次，第二次只是
-        佔掉一列。收起來的三條路（點遮罩、Esc、從握把往下滑）一條都沒有少，
-        無障礙名稱也還是這個空間的名字。
-      */
-      head={false}
     >
       {/* 協助者看到的項目少一半，要有一句話說清楚少了什麼。 */}
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
@@ -416,7 +409,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
 
   if (mode === 'copy') {
     return (
-      <Sheet title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
+      <Sheet size="m" title={t('copyRoom')} onClose={onClose} onBack={() => setMode('menu')}>
         <div class="stack">
           {/* 協助者要知道新空間會是他的——選單列的副標拿掉之後，只剩這裡說得出來。 */}
           <p class="hint">{owner ? t('copyRoomHint') : t('copyRoomHintHelper')}</p>
@@ -457,7 +450,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
   */
   if (mode === 'remove') {
     return (
-      <Sheet title={t('deleteRoom')} onClose={onClose} onBack={() => setMode('menu')}>
+      <Sheet size="m" title={t('deleteRoom')} onClose={onClose} onBack={() => setMode('menu')}>
         <p class="hint" style="margin-bottom:10px">{t('deleteHint')}</p>
         <div class="menu">
           {forgettable && (
@@ -513,7 +506,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
     裡點開的，不印名字就沒有東西說得出「我剛剛按的是哪一間」。
   */
   return (
-    <Sheet title={name} onClose={onClose}>
+    <Sheet size="m" title={name} onClose={onClose}>
       <div class="menu">
         {/*
           複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
@@ -589,8 +582,8 @@ export function AddWalkInSheet({ group, onClose, onBack }: {
   }
 
   return (
-    <Sheet title={t('addWalkIn')} onClose={onClose} onBack={onBack}>
-      <div class="stack">
+    <Sheet size="l" title={t('addWalkIn')} onClose={onClose} onBack={onBack}>
+      <div class="stack walkin">
         {group && <p class="note">{t('walkInIntoGroup', { group })}</p>}
         <RosterInput text={text} onText={setText} />
         <button
@@ -642,7 +635,7 @@ export function SavedRostersSheet({ onApply, onClose }: {
 
   if (mode === 'actions' && active) {
     return (
-      <Sheet title={active.name} onClose={onClose} onBack={() => setMode('list')}>
+      <Sheet size="m" title={active.name} onClose={onClose} onBack={() => setMode('list')}>
         <div class="menu">
           <button class="menu-item" onClick={() => { setValue(active.name); setMode('rename') }}>
             <IconEdit />
@@ -672,7 +665,7 @@ export function SavedRostersSheet({ onApply, onClose }: {
 
   if (mode === 'rename' && active) {
     return (
-      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('actions')}>
+      <Sheet size="m" title={t('rename')} onClose={onClose} onBack={() => setMode('actions')}>
         <div class="stack">
           <input
             class="input" value={value} maxLength={80} aria-label={t('rename')}
@@ -692,7 +685,7 @@ export function SavedRostersSheet({ onApply, onClose }: {
   }
 
   return (
-    <Sheet title={t('savedRosters')} onClose={onClose}>
+    <Sheet size="m" title={t('savedRosters')} onClose={onClose}>
       <div class="stack">
         {savedRosters.value.length === 0 ? (
           <p class="note">{t('noSavedRosters')}</p>
@@ -777,17 +770,14 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet
+      /*
+        高度鎖住的理由跟其他面板不太一樣：這一份不換頁，但**展開一列就會長高**
+        （實測收合 220 → 展開暱稱 300）。對使用者來說那是同一種困擾——面板在
+        腳下移動。鎖住之後展開與收合都在同一個位置發生。
+      */
+      size="m"
       title={t('settings')}
       onClose={onClose}
-      /*
-        標題列整條不要（2026-09），跟「更多」那份選單同一個理由：「設定」兩個字
-        說不出這裡做得到的任何一件事，而底下四列（暱稱、帳戶、主題、語言）自己
-        就說得完——它們一眼看得出是偏好，不是動作。那一列省下來的高度，在 380px
-        高的矮螢幕上正好是「四列裝不裝得下」的差別。
-        收起來的三條路（點面板外面、Esc、從握把往下滑）一條都沒有少，無障礙名稱
-        也還是「設定」。
-      */
-      head={false}
     >
       {/*
         四列長得一模一樣：暱稱、帳戶、主題、語言。它們是同一種東西——跟這台
@@ -959,7 +949,7 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
   }
 
   return (
-    <Sheet title={t('signIn')} onClose={onCancel}>
+    <Sheet size="m" title={t('signIn')} onClose={onCancel}>
       <div class="stack">
         <p class="hint">{t('signInWhy')}</p>
 

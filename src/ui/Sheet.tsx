@@ -1,6 +1,6 @@
 import type { ComponentChildren, JSX } from 'preact'
 import { useRef, useState } from 'preact/hooks'
-import { IconBack, IconClose } from './icons'
+import { IconBack } from './icons'
 import { useModal } from './useModal'
 import { useT } from './t'
 
@@ -12,9 +12,20 @@ const ENGAGE_AT = 8
 /**
  * 底部面板：用於選單與較長的表單。
  * 需要使用者做「是或否」的決定時用 ConfirmDialog，不要用面板。
+ *
+ * **沒有標題列**（2026-09）。它一路瘦下來：13 項擠成一長串 → 三顆分頁鍵 →
+ * 一條平的選單 → 部分面板傳 `head={false}` 整條不畫 → 現在所有面板都不畫。
+ * 判準始終是那一條「標題有沒有比它底下那些列多說一件事」，而逐一問過之後，
+ * 沒有一頁答得出是。
+ *
+ * 剩下的是 `.sheet-bar`：**每一頁都在、高度固定的那一條**。它裝著握把（永遠）
+ * 與返回鍵（子畫面才有）。這一列存在的理由不再是標題，而是
+ * **每一頁的內容都從同一條線開始**——面板不會因為進了子畫面就整個往下推 60px。
+ *
+ * `aria-label` 仍然是 `title`：眼睛看不到不代表螢幕閱讀器也可以聽不到。
  */
 export function Sheet({
-  title, onClose, onBack, head, children,
+  title, onClose, onBack, size, children,
 }: {
   title: string
   onClose: () => void
@@ -22,12 +33,11 @@ export function Sheet({
    *  onClose（離開整個面板）是兩個不同的動作。 */
   onBack?: () => void
   /**
-   * 標題那一列要放的東西，取代標題本身（「更多」面板放的是它的分頁鍵）。
-   * 用在標題只是複述底下內容、自己說不出任何一件事的面板：與其讓標題列
-   * 只剩一顆孤零零的關閉鍵佔掉一整列，不如把面板自己的控制項搬上去。
-   * **`aria-label` 仍然是 title**——螢幕閱讀器聽得到的不能跟著少。
+   * 這一張面板的高度級距。**同一張面板的每一頁都要傳同一個值**——這是
+   * 「切子頁時面板不動」唯一的實作方式（見 styles.css 的 .sheet-body）。
+   * 不傳＝貼合內容，只給不會換頁也不會長高的面板用。
    */
-  head?: ComponentChildren
+  size?: 'm' | 'l'
   children: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)
@@ -48,11 +58,11 @@ export function Sheet({
   /**
    * @param grabAtOnce 一按下去就 setPointerCapture。
    *
-   * 握把要，標題列不要。握把只有 20px 高，手指往下劃第一公分就已經離開它——
-   * 沒有 capture 的話後續的 pointermove 根本不會再送到它身上，手勢就這樣斷了
-   * （這件事被藏了很久：標題列上有同一組 handler，指標滑出握把之後正好落在
-   * 標題列上，是它把手勢接了下去。標題列 2026-09 拿掉之後才露出來）。
-   * 標題列不能這樣做：它裡面有返回鍵與關閉鍵，一按下去就 capture 會吃掉 click。
+   * **沒有返回鍵的那一列要，有的不要。** 那一列只有 48px 高，手指往下劃第一公分
+   * 就已經離開它——沒有 capture 的話後續的 pointermove 根本不會再送到它身上，
+   * 手勢就這樣斷了（這件事被藏了很久：以前標題列上有同一組 handler，指標滑出
+   * 握把之後正好落在標題列上，是它把手勢接了下去）。
+   * 但有返回鍵時不能一按下去就 capture——那會吃掉那顆鍵的 click。
    */
   const dragProps = (grabAtOnce: boolean) => ({
     onPointerDown: (e: JSX.TargetedPointerEvent<HTMLElement>) => {
@@ -90,38 +100,32 @@ export function Sheet({
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        class={dragY ? 'sheet is-dragging' : 'sheet'}
+        class={`sheet${size ? ` sheet-${size}` : ''}${dragY ? ' is-dragging' : ''}`}
         style={dragY ? `transform: translateY(${dragY}px)` : undefined}
         ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        <div class="sheet-grip" {...dragProps(true)} />
-        {head !== false && (
-        <div class="sheet-head" {...dragProps(false)}>
+        {/*
+          每一頁都在的那一條。握把畫在它的正中間（`::after`），返回鍵靠左——
+          所以**有沒有子畫面都不會改變這一列的高度**，內容永遠從同一條線開始。
+
+          它同時是「往下滑收起來」的手勢區，而且比舊的握把寬鬆得多：48px 對一根
+          手指來說才是夠的目標，舊的那條線只有 20px。
+        */}
+        <div class="sheet-bar" {...dragProps(!onBack)}>
           {onBack && (
             <button class="icon-btn" onClick={onBack} aria-label={t('back')}>
               <IconBack />
             </button>
           )}
-          {head ?? <h2 class="sheet-title">{title}</h2>}
-          {/*
-            有 head 的時候不再另外放關閉鍵：那一列已經被面板自己的控制項佔滿，
-            再擠一顆叉叉就是憑空多出來的東西。收起來靠點面板外面、Esc、或是
-            從這一帶往下滑——三條路都在，只是都不佔位置。
-          */}
-          {!head && (
-            <>
-              <div class="spacer" />
-              <button class="icon-btn" onClick={onClose} aria-label={t('close')}>
-                <IconClose />
-              </button>
-            </>
-          )}
         </div>
-        )}
-        {children}
+        {/*
+          內容自己一格，高度由 `size` 決定（見 styles.css 的 .sheet-body）。
+          同一張面板的每一頁傳同一個 size，切頁時面板就一格都不動。
+        */}
+        <div class="sheet-body">{children}</div>
       </div>
     </div>
   )

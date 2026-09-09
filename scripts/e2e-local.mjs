@@ -285,7 +285,7 @@ ok('單機模式：沒有那句「不用註冊、不用安裝」',
    (await p.getByText('不用註冊').count()) === 0)
 ok('單機模式：沒有「現在在這個空間裡」',
    (await p.getByText('現在在這個空間裡').count()) === 0)
-await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
+await p.locator('.sheet-bar .icon-btn').first().click(); await p.waitForTimeout(300)
 ok('返回之後回到選單', (await p.getByRole('button', { name: /^編輯$/ }).count()) === 1)
 
 // 編輯不是面板裡的一頁：按下去面板收掉，整個點名畫面切進編輯模式（2026-09）。
@@ -307,11 +307,15 @@ ok('開的是一張面板，不是就地展開',
 // 外面，useModal 才 inert 得到整頁（見 Home.tsx 的註解）。
 ok('背景整頁 inert 了', await p.evaluate(() =>
   document.querySelector('.shell')?.hasAttribute('inert') === true))
-// 標題列不畫（「加入空間」四個字沒有比底下那個代碼框與那兩顆按鈕多說一件事），
-// 但螢幕閱讀器聽得到的不能跟著少。
-ok('沒有標題列，但無障礙名稱還在',
-   (await p.locator('.sheet .sheet-head').count()) === 0
+// 面板沒有標題列（2026-09 起一張都沒有），但螢幕閱讀器聽得到的不能跟著少。
+ok('沒有標題文字，但無障礙名稱還在',
+   (await p.locator('.sheet-title').count()) === 0
    && (await p.locator('.sheet').getAttribute('aria-label')) === '加入空間')
+// 每一頁的內容都從同一條線開始，而且面板高度不隨頁面變——這是「切子頁時面板
+// 不會在腳下移動」的兩個前提。
+const sheetTop = async () => Math.round((await p.locator('.sheet').boundingBox()).y)
+const codeTop = await sheetTop()
+const codeBodyTop = Math.round((await p.locator('.sheet-body').boundingBox()).y)
 // 按下那顆鍵的下一個動作就是打那六碼，跳出鍵盤是它的直接結果。
 ok('開起來焦點就在代碼框',
    await p.evaluate(() => document.activeElement?.classList.contains('code-input') === true))
@@ -354,6 +358,18 @@ ok('掃碼自己一列（在那一列底下）', await p.evaluate(() => {
 // 320px 上輸入框仍要放得下六碼（它是這一列唯一該讓步的東西，但有下限）。
 ok('窄螢幕上輸入框沒有被擠爛', await p.evaluate(() =>
   document.querySelector('.sheet .code-input').getBoundingClientRect().width >= 200))
+// 切到掃碼那一頁：面板一格都不能動，內容也要從同一條線開始。實測改版前這一步
+// 面板上緣往上跳 359px（168 → 527），而要按的返回鍵就跟著移動同樣的距離。
+await p.getByRole('button', { name: /QR/ }).click(); await p.waitForTimeout(900)
+ok(`切到掃碼那一頁面板沒有動（top ${codeTop} → ${await sheetTop()}）`,
+   Math.abs(await sheetTop() - codeTop) <= 1)
+ok('內容也從同一條線開始',
+   Math.abs(Math.round((await p.locator('.sheet-body').boundingBox()).y) - codeBodyTop) <= 1)
+ok('子頁有返回鍵（第一頁沒有，但那一列的高度一樣）',
+   (await p.locator('.sheet-bar .icon-btn').count()) === 1)
+await p.locator('.sheet-bar .icon-btn').click(); await p.waitForTimeout(400)
+ok(`返回之後也沒有動（top ${await sheetTop()}）`, Math.abs(await sheetTop() - codeTop) <= 1)
+
 // 收起來的路：Esc（點面板外面與從握把往下滑是同一套，Sheet 已經在別處驗過）。
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關得掉，背景也還回來了',
@@ -396,9 +412,10 @@ ok(`首頁那份是空間本身的事：${homeRows.join('、')}`,
    JSON.stringify(homeRows) === JSON.stringify(['建立副本', '刪除空間']))
 ok('名單的事不在這裡（編輯、存成常用都不列）',
    (await p.locator('.sheet').getByRole('button', { name: /^編輯$|^存成常用$/ }).count()) === 0)
-// 這一份要有標題列：從一列七個長得差不多的空間裡點開，不印名字就沒有東西說得出
-// 「我剛剛按的是哪一間」。空間裡那一份相反（名字就在正上方的頂欄裡）。
-ok('面板印著是哪一個空間', (await p.locator('.sheet .sheet-title').textContent()) === '秋季旅遊 · 出發')
+// 這一份的名字只在無障礙名稱裡（2026-09 標題列整套拿掉）：從一列七個長得差不多
+// 的空間裡點開，聽得出「我剛剛按的是哪一間」。空間裡那一份相反（名字就在正上方的頂欄裡）。
+ok('面板的無障礙名稱說得出是哪一個空間',
+   (await p.locator('.sheet').getAttribute('aria-label')) === '秋季旅遊 · 出發')
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉空間選單，人還在首頁',
    (await p.locator('.sheet').count()) === 0 && (await p.locator('.home-title').count()) === 1)
@@ -653,7 +670,7 @@ ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[ar
 // 標題列整條拿掉（2026-09）：它一路瘦下來——「更多」兩個字說不出任何一件這裡做
 // 得到的事 → 換成三顆分頁鍵 → 分頁拿掉之後改印空間名字 → 而那個名字就在面板正
 // 上方的頂欄裡，同一個字在同一屏印兩次，第二次只是佔掉一列。
-ok('「更多」沒有標題列', (await p.locator('.sheet .sheet-head').count()) === 0)
+ok('「更多」沒有標題列', (await p.locator('.sheet-title').count()) === 0)
 // 名字在上面的編輯模式測試裡改過了，這裡順便驗它一路傳到面板的無障礙名稱。
 ok('無障礙名稱仍然是這個空間', (await p.locator('.sheet').getAttribute('aria-label')) === '現場操作測試 · 改過')
 ok('「更多」也沒有關閉鍵', (await p.locator('.sheet .icon-btn').count()) === 0)
@@ -671,16 +688,17 @@ const reopen = async () => {
   await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 }
 
-await swipe('.sheet-grip', 30)
+await swipe('.sheet-bar', 30)
 ok('往下滑一點點不會收起來（手指抖一下不該關掉面板）', (await p.locator('.sheet').count()) === 1)
-await swipe('.sheet-grip', 130)
+await swipe('.sheet-bar', 130)
 ok('從握把往下滑收得起來', (await p.locator('.sheet').count()) === 0)
 
-// 握把是整條的，不只中間那 38px 的線——沒有標題列的面板靠它收起來，而 38px
-// 對一根手指來說太窄。從最左邊往下拖也要收得起來。
+// 那一條是整列的手勢區，不只中間那 38px 的線——面板靠它收起來，而 38px 對一根
+// 手指來說太窄。從最左邊往下拖也要收得起來。
 await reopen()
-const gripBox = await p.locator('.sheet-grip').boundingBox()
-ok(`握把整條都吃得到手勢（寬 ${Math.round(gripBox.width)}px）`, gripBox.width > 300)
+const gripBox = await p.locator('.sheet-bar').boundingBox()
+ok(`那一列整條都吃得到手勢（寬 ${Math.round(gripBox.width)}px、高 ${Math.round(gripBox.height)}px）`,
+   gripBox.width > 300 && gripBox.height >= 48)
 await p.mouse.move(gripBox.x + 24, gripBox.y + gripBox.height / 2); await p.mouse.down()
 for (let i = 1; i <= 6; i++) {
   await p.mouse.move(gripBox.x + 24, gripBox.y + gripBox.height / 2 + (130 * i) / 6)
@@ -691,7 +709,7 @@ ok('從握把最左邊往下滑也收得起來', (await p.locator('.sheet').coun
 
 // 先動到橫向的就不是「把面板推回去」，手勢要把這一次讓出去。
 await reopen()
-await swipe('.sheet-grip', 0, 120)
+await swipe('.sheet-bar', 0, 120)
 ok('橫向滑握把不會收起面板', (await p.locator('.sheet').count()) === 1)
 
 // 另外兩條路也要在。
@@ -908,7 +926,7 @@ await p.goto(URL); await p.waitForTimeout(800)
 await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
 // 標題列整條不要（2026-09）：「設定」兩個字說不出這裡做得到的任何一件事，
 // 而底下四列自己就說得完。無障礙名稱還是「設定」。
-ok('設定面板沒有標題列', (await p.locator('.sheet .sheet-head').count()) === 0)
+ok('設定面板沒有標題列', (await p.locator('.sheet-title').count()) === 0)
 ok('但無障礙名稱還是「設定」', (await p.locator('.sheet').getAttribute('aria-label')) === '設定')
 ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count()) === 0)
 

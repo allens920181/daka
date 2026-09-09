@@ -92,7 +92,7 @@ export function ScanView() {
   }, [])
 
   return (
-    <div class="stack">
+    <div class="stack scan-view">
       <div class="scan-frame">
         <video ref={videoRef} class="scan-video" muted playsInline aria-hidden="true" />
         <canvas ref={canvasRef} hidden />

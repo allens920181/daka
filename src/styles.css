@@ -483,6 +483,23 @@ button, input, textarea, select { font: inherit; color: inherit; }
   position: relative; overflow: hidden; aspect-ratio: 1 / 1;
   background: var(--surface-2); border: 1px solid var(--rule); border-radius: var(--r-3);
 }
+/*
+ * 掃碼那一頁：**預覽框跟著面板剩下的高度縮，不由它去撐面板**（2026-09）。
+ *
+ * 它本來是滿版的正方形，於是那一頁量出來 527px，而同一張面板的第一頁只有
+ * 168px——點一下「掃描 QR 碼」，面板上緣往上跳 359px。一個正方形的取景框需要
+ * 多大是由「看得清楚嗎」決定的，不是由「這一列有多寬」決定的。
+ *
+ * 高度寫死、`aspect-ratio` 換算寬度、`align-self: center` 讓它不要被拉滿——
+ * 三行一起才成立，少了最後一行它會被 stretch 成滿版而 aspect-ratio 失效。
+ * 220 是從 `size="m"` 的內容高度倒推的，而且**要留給最壞的那一種說明文字**：
+ * 拿不到相機時那一格是兩行的 `.note-warn`（約 66px），不是一行的提示（約 20px）。
+ * 300 − 12 − 66 ＝ 222。照一行的提示去算會讓「沒有相機權限」那一頁比別頁高
+ * 17px——而那正好是最不該再出事的一頁。
+ */
+.scan-view > .scan-frame {
+  height: 220px; width: auto; max-width: 100%; align-self: center;
+}
 .scan-video { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /*
@@ -1087,6 +1104,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .room-flow.is-list .room-flow-panel-list { transform: translateY(0); }
 .room-flow-title { font-size: var(--fs-6); }
 
+/*
+ * 臨時加人那張面板：**內容填滿面板那一格，面板本身不動**（2026-09）。
+ *
+ * 它是單頁面板，但打字會讓它長高（實測空的 488 → 打兩個名字 551）——對使用者
+ * 來說那跟「切子頁面板會跳」是同一種困擾：東西在腳下移動。輸入框改成吃剩下的
+ * 高度，解析結果長出來時它自己縮，總高度不變。
+ */
+.walkin { flex: 1; min-height: 0; }
+.walkin > .stack { flex: 1; min-height: 0; }
+.walkin .roster-editor-textarea { min-height: 88px; }
+.walkin .preview { max-height: 160px; }
+
 /* 輸入框跟著面板一起長：拿掉即時預覽騰出來的高度都給它。
    `resize: none` 是因為它已經自己長滿了——留著那顆原生的拉桿，等於在框的右下角
    放一個在手機上拉不動、在桌機上只會把版面弄壞的三角形。 */
@@ -1166,44 +1195,58 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background-attachment: local, scroll;
 }
 /*
- * 握把與標題列是「往下滑收起來」的手勢區（Sheet.tsx 的 drag）。握把本來只是
- * 一條裝飾線，看起來可以拖卻拖不動；現在它跟標題列一起真的拖得動，而標題列
- * 讓手勢區從 24px 變成 72px——單手大拇指按得到的範圍。
+ * 面板的那一條（`.sheet-bar`）：**每一頁都在、高度固定**。
  *
- * touch-action 要放行它自己該做的事、擋掉其餘：握把底下沒有東西要捲，用 none；
- * 標題列裡住著可以橫向捲的分頁鍵，用 pan-x 把橫向留給它，垂直交給我們。
+ * 它取代了原本的「握把 ＋ 標題列」兩層（2026-09）。標題列一路瘦下來——13 項擠成
+ * 一長串 → 三顆分頁鍵 → 一條平的選單 → 部分面板整條不畫 → 現在所有面板都不畫，
+ * 判準始終是那一條「標題有沒有比它底下那些列多說一件事」。
+ *
+ * 留下這一列的理由不再是標題，是**每一頁的內容都從同一條線開始**：以前第一頁
+ * 沒有標題列、子畫面才有，於是點進「邀請點名」的瞬間整份內容往下掉 60px，而
+ * 那顆要按的返回鍵也在別的地方。現在有沒有返回鍵都不改變這一列的高度。
+ *
+ * 順帶把手勢區從 20px 放大到 48px：那條線只是視覺記號，真正要能被一根手指按到的
+ * 是整列。touch-action: none——這一列底下沒有任何東西要捲（分頁鍵是上一代的事）。
  */
-.sheet-grip {
-  /*
-   * 整條都是手勢區，不只中間那條線：沒有標題列的面板（`head={false}`）靠它
-   * 收起來，38px 寬的目標對一根手指來說太窄。線本身仍然只有 38px，用
-   * ::after 畫；上下的內距撐出手指高度，再用負外距收回來，版面高度一格都沒有多長。
-   */
-  height: var(--sp-1); width: 100%; box-sizing: content-box;
-  padding: var(--sp-2) 0;
-  margin: calc(var(--sp-1) - var(--sp-2)) 0 calc(var(--sp-3) - var(--sp-2));
+.sheet-bar {
+  position: relative;
+  display: flex; align-items: center;
+  min-height: var(--tap-min); margin-bottom: var(--sp-2);
   touch-action: none; cursor: grab;
 }
-.sheet-grip::after {
-  content: ''; display: block; height: 100%; width: 38px; margin: 0 auto;
+/* 握把畫在正中間，而且是絕對定位——它不能參與那一列的排版，不然有返回鍵時
+   它會被推到旁邊去。 */
+.sheet-bar::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 38px; height: var(--sp-1);
   border-radius: var(--r-full); background: var(--rule-strong);
 }
-.sheet.is-dragging .sheet-grip { cursor: grabbing; }
-.sheet-head {
-  display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3);
-  /* 這一列是「往下滑收起面板」的手勢區，所以它自己要有一根手指的高度。有返回鍵
-     或關閉鍵的子畫面本來就被 48px 的圖示鍵撐開，只印標題的那幾張不會——量到
-     26px，手指往下劃第一公分就已經滑出這一列，手勢連接管都來不及。 */
-  min-height: var(--tap-min);
-  touch-action: pan-x;
-}
+.sheet.is-dragging .sheet-bar { cursor: grabbing; }
+
+/*
+ * 內容那一格。**高度由面板自己宣告，不由當頁內容決定**（2026-09）。
+ *
+ * 實測切頁時面板上緣會移動 50–360px：「加入空間 168 → 掃碼 527」「更多 166 →
+ * 邀請點名 249」「建立副本 229 → 280」。面板是貼著下緣長的，所以高度一變，
+ * **要按的那顆返回鍵就跟著移動同樣的距離**——每一頁都在不同的地方。
+ *
+ * 修法是把高度從內容手上收回來：同一張面板的每一頁傳同一個 `size`，這一格就
+ * 固定在那個高度，切頁一格都不動。內容真的更長時仍然可以長（`min-height`，
+ * 不是 `height`）——那是放大字級之類的極端情況，寧可長也不要截斷。
+ *
+ * 級距只有兩階，而且是**每張面板挑一階、它的每一頁都用那一階**：多一階就多一個
+ * 「這張到底算 m 還是 l」的判斷，而這種判斷從來不會被記得。
+ */
+.sheet-body { display: flex; flex-direction: column; }
+.sheet-m .sheet-body { min-height: 300px; }
+.sheet-l .sheet-body { min-height: 400px; }
 /*
  * 手勢區裡不選字。按著分頁鍵往下拖時，Chromium 會把它當成「拖曳選取的文字」
  * 而開始一次原生拖放（dragstart），那會立刻送出 pointercancel——手勢在第一
  * 公分就被吃掉，面板紋風不動。這一行是那個手勢能不能用的前提，不是修飾。
  */
-.sheet-grip, .sheet-head { user-select: none; -webkit-user-select: none; }
-.sheet-title { font-size: var(--fs-5); }
+.sheet-bar { user-select: none; -webkit-user-select: none; }
 
 /*
  * 編輯模式的標題（2026-09）。它就長在標題原本的位置上，同一個字級、同一個
@@ -1312,8 +1355,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
   /* QR 一律白底黑碼：掃描器要的是對比，不是配色。 */
   background: #fff; padding: var(--sp-3); border-radius: var(--r-2);
   display: grid; place-items: center; border: 1px solid var(--rule);
+  /* 跟掃碼的取景框同一個道理：容得下就照 240px，容不下就縮，不去撐面板。 */
+  min-height: 0;
 }
-.qr-card img { display: block; width: 100%; max-width: 240px; height: auto; }
+/* 220 同樣是從 `size="m"` 倒推的（卡片內距 24 ＋ 說明 20 ＋ 間距 12 之後還有
+   餘裕）。220px 的 QR 在一支手臂的距離內照樣掃得到——需要多大是由「掃不掃得到」
+   決定的，不是由「這一列有多寬」決定的。 */
+.qr-card img { display: block; max-width: 220px; max-height: 100%; width: auto; height: auto; }
 
 /* === 名單解析預覽 ======================================================== */
 
