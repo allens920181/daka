@@ -18,8 +18,8 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconClose, IconCopy, IconDuplicate, IconEdit, IconHash,
-  IconChevronDown, IconGoogle, IconLink, IconMore,
+  IconBookmark, IconChevronDown, IconChevronRight, IconClose, IconCopy, IconDuplicate,
+  IconEdit, IconGoogle, IconHash, IconLink, IconMore,
   IconQr, IconShare, IconTrash,
 } from './icons'
 import { useT } from './t'
@@ -262,16 +262,19 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             <button class="menu-item" onClick={() => setMode('inviteCode')}>
               <IconHash />
               <span><strong>{t('roomCode')}</strong></span>
+              <IconChevronRight class="go" />
             </button>
 
             <button class="menu-item" onClick={() => setMode('inviteLink')}>
               <IconLink />
               <span><strong>{t('roomLink')}</strong></span>
+              <IconChevronRight class="go" />
             </button>
 
             <button class="menu-item" onClick={() => setMode('inviteQr')}>
               <IconQr />
               <span><strong>{t('roomQr')}</strong></span>
+              <IconChevronRight class="go" />
             </button>
           </div>
         )}
@@ -283,14 +286,6 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
     <Sheet
       title={current.name}
       onClose={onClose}
-      /*
-        整條標題列都不要（`head={false}`）。它一路瘦下來：「更多」兩個字說不出
-        任何一件這裡做得到的事 → 換成三顆分頁鍵 → 分頁拿掉之後改印空間名字 →
-        而那個名字就在面板正上方的頂欄裡，同一個字在同一屏印兩次，第二次只是
-        佔掉一列。收起來的三條路（點遮罩、Esc、從握把往下滑）一條都沒有少，
-        無障礙名稱也還是這個空間的名字。
-      */
-      head={false}
     >
       {/* 協助者看到的項目少一半，要有一句話說清楚少了什麼。 */}
       {!owner && <p class="hint" style="margin-bottom:10px">{t('helperLimits')}</p>}
@@ -313,6 +308,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
         <button class="menu-item" onClick={() => setMode('invite')}>
           <IconShare />
           <span><strong>{t('invite')}</strong></span>
+          <IconChevronRight class="go" />
         </button>
 
         {/*
@@ -332,6 +328,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
           >
             <IconBookmark />
             <span><strong>{t('saveAsRoster')}</strong></span>
+            <IconChevronRight class="go" />
           </button>
         )}
 
@@ -526,6 +523,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
         >
           <IconDuplicate />
           <span><strong>{t('copyRoom')}</strong></span>
+          <IconChevronRight class="go" />
         </button>
 
         {/*
@@ -545,6 +543,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
               <strong>{t('deleteRoom')}</strong>
               {expires && <span class="sub">{t('expiresOn', { date: expires })}</span>}
             </span>
+            <IconChevronRight class="go" />
           </button>
         )}
       </div>
@@ -583,7 +582,7 @@ export function AddWalkInSheet({ group, onClose, onBack }: {
 
   return (
     <Sheet title={t('addWalkIn')} onClose={onClose} onBack={onBack}>
-      <div class="stack">
+      <div class="stack walkin">
         {group && <p class="note">{t('walkInIntoGroup', { group })}</p>}
         <RosterInput text={text} onText={setText} />
         <button
@@ -640,6 +639,7 @@ export function SavedRostersSheet({ onApply, onClose }: {
           <button class="menu-item" onClick={() => { setValue(active.name); setMode('rename') }}>
             <IconEdit />
             <span><strong>{t('rename')}</strong></span>
+            <IconChevronRight class="go" />
           </button>
           <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
             <IconTrash />
@@ -737,7 +737,7 @@ function SettingRow({ label, value, open, onToggle, children }: {
         <span class="label">{label}</span>
         <span class="select-row-value">
           <span class="select-row-text">{value}</span>
-          <IconChevronDown class={open ? 'select-row-chevron is-open' : 'select-row-chevron'} />
+          <IconChevronDown class={open ? 'chevron is-open' : 'chevron'} />
         </span>
       </button>
       {open && children}
@@ -769,17 +769,13 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet
+      /*
+        高度鎖住的理由跟其他面板不太一樣：這一份不換頁，但**展開一列就會長高**
+        （實測收合 220 → 展開暱稱 300）。對使用者來說那是同一種困擾——面板在
+        腳下移動。鎖住之後展開與收合都在同一個位置發生。
+      */
       title={t('settings')}
       onClose={onClose}
-      /*
-        標題列整條不要（2026-09），跟「更多」那份選單同一個理由：「設定」兩個字
-        說不出這裡做得到的任何一件事，而底下四列（暱稱、帳戶、主題、語言）自己
-        就說得完——它們一眼看得出是偏好，不是動作。那一列省下來的高度，在 380px
-        高的矮螢幕上正好是「四列裝不裝得下」的差別。
-        收起來的三條路（點面板外面、Esc、從握把往下滑）一條都沒有少，無障礙名稱
-        也還是「設定」。
-      */
-      head={false}
     >
       {/*
         四列長得一模一樣：暱稱、帳戶、主題、語言。它們是同一種東西——跟這台

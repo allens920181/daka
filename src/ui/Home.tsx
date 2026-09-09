@@ -4,11 +4,11 @@ import { connection, myRooms, prefs, recentRooms, session } from '../lib/store'
 import { formatDate } from '../lib/format'
 import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '../lib/code'
 import { canScanQr } from '../lib/config'
-import { isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
-import { IconCamera, IconChevronDown, IconMore, IconPlus, IconSettings } from './icons'
-import { ScanSheet } from './Scan'
+import { IconCamera, IconMore, IconPlus, IconSettings } from './icons'
+import { ScanView } from './Scan'
 import { RoleBadge } from './RoleBadge'
+import { Sheet } from './Sheet'
 import { RoomActionsSheet } from './Sheets'
 import { useT } from './t'
 
@@ -24,32 +24,8 @@ interface RoomRow {
 
 export function Home({ onSettings }: { onSettings: () => void }) {
   const t = useT()
-  const [code, setCode] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [joinOpen, setJoinOpen] = useState(false)
-  const [scanOpen, setScanOpen] = useState(false)
   const [filter, setFilter] = useState<RoomFilter>('all')
-  const codeInputRef = useRef<HTMLInputElement>(null)
-
-  // 按「加入空間」展開輸入框時把焦點直接放進去：不必再點第二下。
-  useEffect(() => {
-    if (joinOpen) codeInputRef.current?.focus()
-  }, [joinOpen])
-
-  function join() {
-    const normalized = extractRoomCode(code)
-    const confusables = findConfusables(normalized)
-    if (confusables.length > 0) {
-      setError(t('errConfusable', { chars: confusables.join('、') }))
-      return
-    }
-    if (!isValidRoomCode(normalized)) {
-      setError(t('errBadCode'))
-      return
-    }
-    setError(null)
-    navigate(`/j/${normalized}`)
-  }
 
   const lang = prefs.value.lang
 
@@ -85,14 +61,21 @@ export function Home({ onSettings }: { onSettings: () => void }) {
       ),
     })),
   ]
-  const visibleRows = filter === 'all' ? rows : rows.filter((r) => (filter === 'mine' ? r.isOwner : !r.isOwner))
-  const emptyText = filter === 'mine' ? t('myRoomsEmpty') : filter === 'others' ? t('noOtherRooms') : t('noRecentRooms')
+  /*
+    篩選那一列只在有兩個以上的空間時才出現（見底下的註解），所以套用的一律是
+    `active`：清單被刪到剩一個時那一列會收起來，而使用者上一次選的「他人的」
+    不能就這樣留在畫面外面繼續生效——那會變成一個看不見的篩選在藏東西。
+  */
+  const filterVisible = rows.length > 1
+  const active: RoomFilter = filterVisible ? filter : 'all'
+  const visibleRows = active === 'all' ? rows : rows.filter((r) => (active === 'mine' ? r.isOwner : !r.isOwner))
+  const emptyText = active === 'mine' ? t('myRoomsEmpty') : active === 'others' ? t('noOtherRooms') : t('noRecentRooms')
 
   // 「創建空間」屬於「我的」——它生出來的空間就是主揪自己的；「加入空間」屬於
   // 「他人的」——會加進來的本來就是別人開的空間。「所有」是兩邊的聯集，兩顆
   // 都置頂。並排時各自 flex:1，單獨出現時滿版寬度跟底下的列對齊。
-  const showCreate = filter !== 'others'
-  const showJoin = filter !== 'mine'
+  const showCreate = active !== 'others'
+  const showJoin = active !== 'mine'
 
   const createButton = (block: boolean) => (
     <button
@@ -103,47 +86,79 @@ export function Home({ onSettings }: { onSettings: () => void }) {
       <IconPlus /> {t('openRoom')}
     </button>
   )
+  /*
+    「加入空間」開的是一張從下緣長上來的面板（2026-09），不再是就地展開的一段
+    內容。理由是**這個 app 只有一種「再給我一層」的形狀**：設定、更多、邀請、
+    掃碼、空間的事⋯⋯全部都是底部面板，只有這裡是自己一套就地展開。
+
+    連帶兩件事跟著對齊：
+    - **關掉的路變成三條**（點面板外面、Esc、從握把往下滑），而不是只有「再按
+      一次那顆鍵」。
+    - **背景真的變成 inert**：就地展開的時候，底下那份空間清單仍然按得到、
+      螢幕閱讀器也仍然讀得到。
+
+    它一度也長出了標題列，同月又拿掉——「加入空間」四個字沒有比底下那個代碼框
+    與那兩顆按鈕多說一件事（見 JoinSheet 那段註解）。
+
+    箭頭跟著拿掉：`⌄` 說的是「在這裡展開」，而它現在不在這裡展開。
+    `aria-haspopup="dialog"` 才是「按下去會開一層」的正確說法（面板是
+    `role="dialog" aria-modal`）。
+  */
   const joinButton = (block: boolean) => (
     <button
       class={block ? 'btn btn-lg btn-block' : 'btn btn-lg'}
       style={block ? undefined : 'flex:1'}
-      aria-expanded={joinOpen}
-      aria-controls="join-panel"
-      onClick={() => setJoinOpen((v) => !v)}
+      aria-haspopup="dialog"
+      onClick={() => setJoinOpen(true)}
     >
-      {t('joinRoom')} <IconChevronDown class={`select-row-chevron${joinOpen ? ' is-open' : ''}`} />
+      {t('joinRoom')}
     </button>
   )
 
   return (
-    <div class="shell">
-      <div class="home-head row">
-        <div style="flex:1; min-width:0">
-          <h1 class="home-title">{t('appName')}</h1>
-          <p class="home-tagline">{t('tagline')}</p>
-        </div>
-        <button class="icon-btn" onClick={onSettings} aria-label={t('settings')}>
-          <IconSettings />
-        </button>
-      </div>
-
-      {connection.value === 'local-only' && (
-        <p class="banner banner-muted">{t('localOnlyHint')}</p>
-      )}
-
-      <div class="stack">
-        <div class="stack">
-          <div class="segmented" role="group" aria-label={t('filter')}>
-            <button class="segment" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
-              {t('roomFilterAll')}
-            </button>
-            <button class="segment" aria-pressed={filter === 'mine'} onClick={() => setFilter('mine')}>
-              {t('roomFilterMine')}
-            </button>
-            <button class="segment" aria-pressed={filter === 'others'} onClick={() => setFilter('others')}>
-              {t('roomFilterOthers')}
-            </button>
+    <>
+      <div class="shell">
+        <div class="home-head row">
+          <div style="flex:1; min-width:0">
+            <h1 class="home-title">{t('appName')}</h1>
+            <p class="home-tagline">{t('tagline')}</p>
           </div>
+          <button class="icon-btn" onClick={onSettings} aria-label={t('settings')}>
+            <IconSettings />
+          </button>
+        </div>
+
+        {connection.value === 'local-only' && (
+          <p class="banner banner-muted">{t('localOnlyHint')}</p>
+        )}
+
+        <div class="stack">
+          {/*
+            篩選只在真的有東西可以篩的時候才出現（2026-09）。
+
+            它本來永遠都在，於是**第一次打開這個 app 的人，看到的第一個東西是一組
+            三段的篩選器**——為一份空清單準備的。那條 56px 的控制項比它下面那顆
+            「創建空間」還早被讀到，而它在那個當下一件事都做不到。只有一個空間時
+            也一樣：三選一之後還是那一列。
+
+            門檻放在「兩個以上」，不是「一個以上」：一個空間不需要篩選，而
+            `rows.length` 是篩選前的總數，所以這一列不會因為自己篩掉了東西而消失。
+            它收起來的時候 filter 一定停在 all（沒有人改得動它），所以底下那兩顆
+            按鈕會同時在——這正是空手起步時該有的畫面。
+          */}
+          {filterVisible && (
+            <div class="segmented" role="group" aria-label={t('filter')}>
+              <button class="segment" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
+                {t('roomFilterAll')}
+              </button>
+              <button class="segment" aria-pressed={filter === 'mine'} onClick={() => setFilter('mine')}>
+                {t('roomFilterMine')}
+              </button>
+              <button class="segment" aria-pressed={filter === 'others'} onClick={() => setFilter('others')}>
+                {t('roomFilterOthers')}
+              </button>
+            </div>
+          )}
 
           {showCreate && showJoin ? (
             <div class="row" style="gap:8px">
@@ -153,69 +168,8 @@ export function Home({ onSettings }: { onSettings: () => void }) {
           ) : showCreate ? createButton(true) : joinButton(true)}
 
           {/*
-            展開之後就是「打代碼」跟「掃碼」兩條路，沒有外框（2026-09）。
-
-            這裡本來是一張 `.card` 包著代碼輸入框與兩顆滿版按鈕——**框中框中框**：
-            上面那顆「加入空間」已經在宣告這一組東西了，再畫一個框只是把同一件事
-            說第二次，而框裡每個元件又各自有自己的框。現在展開的內容直接接在那顆
-            鍵底下，靠間距分組。
-          */}
-          {showJoin && joinOpen && (
-            <div class="stack" id="join-panel">
-              {/*
-                兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，擺在
-                同一列才看得出「打進去、按這裡」；**掃碼**是另一條路，自己一列。
-                原本是「輸入框一列、加入與掃碼並排一列」——那個排法把加入跟掃碼
-                綁成一組，但它們其實分屬兩條不同的路。
-              */}
-              <div class="row">
-                <input
-                  ref={codeInputRef}
-                  class="input code-input"
-                  value={code}
-                  // 沒有 maxLength：貼上的常常是整條連結，得讓 extractRoomCode 先從裡面
-                  // 抓出代碼，原生的長度限制會在那之前就把後半段截斷。裁到固定長度
-                  // 改成抓完代碼之後才做，抓出來的碼本來就只有 6 碼。
-                  inputMode="text"
-                  autocapitalize="characters"
-                  autocomplete="off"
-                  spellcheck={false}
-                  aria-label={t('codePlaceholder')}
-                  placeholder="——————"
-                  onInput={(e) => {
-                    const raw = (e.currentTarget as HTMLInputElement).value
-                    setCode(extractRoomCode(raw).slice(0, CODE_LENGTH + 2))
-                    setError(null)
-                  }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') join() }}
-                />
-                {/*
-                  「加入」不縮：它是兩個字，縮到剩一個字就沒有意義了。讓步的是
-                  輸入框——六碼在 320px 上仍有 200px 可用，那個字級照樣讀得出來。
-                */}
-                <button
-                  class="btn"
-                  style="flex:none"
-                  disabled={extractRoomCode(code).length < CODE_LENGTH}
-                  onClick={join}
-                >
-                  {t('join')}
-                </button>
-              </div>
-              {error && <p class="note note-warn">{error}</p>}
-              {canScanQr() && (
-                <button class="btn btn-block" onClick={() => setScanOpen(true)}>
-                  <IconCamera /> {t('scanQr')}
-                </button>
-              )}
-            </div>
-          )}
-
-          {scanOpen && <ScanSheet onClose={() => setScanOpen(false)} />}
-
-          {/*
-            空狀態是一句話，不是一個灰框（2026-09）：它旁邊已經有三個框了
-            （分段控制、加入空間、展開的內容），再加一個只是讓這一頁更像一疊盒子。
+            空狀態是一句話，不是一個灰框（2026-09）：它旁邊已經有兩個框了
+            （分段控制、加入空間），再加一個只是讓這一頁更像一疊盒子。
           */}
           {visibleRows.length === 0 ? (
             <p class="hint">{emptyText}</p>
@@ -245,13 +199,124 @@ export function Home({ onSettings }: { onSettings: () => void }) {
             </div>
           )}
         </div>
-
-        {!isSupabaseConfigured && (
-          <p class="hint" style="padding-bottom:40px">{t('errNotConfigured')}</p>
-        )}
       </div>
 
-    </div>
+      {/*
+        面板掛在 `.shell` 外面，不是裡面。`useModal` 是靠「遮罩層的祖父」去找該加
+        inert 的兄弟節點的（見 useModal.ts）——掛在 `.shell` 裡面的話它只 inert 得到
+        那一層裡的東西，標題列與清單仍然按得到、螢幕閱讀器也仍然讀得到。App 那一層
+        的 `SettingsSheet` 與空間畫面的每一張面板都是這樣掛的。
+      */}
+      {joinOpen && <JoinSheet onClose={() => setJoinOpen(false)} />}
+    </>
+  )
+}
+
+type JoinMode = 'code' | 'scan'
+
+/**
+ * 加入別人的空間：**打代碼**或**掃碼**，兩條路一張面板。
+ *
+ * 掃碼是這張面板的第二頁，不是疊上去的另一張面板（左上角一顆返回鍵，跟
+ * 「更多 › 邀請點名 › 二維碼」同一套）。面板疊面板是這個 app 沒有過的形狀，
+ * 兩層遮罩也重；而相機的開關綁在 `ScanView` 的生命週期上，返回就是卸載，
+ * 串流跟著關掉。
+ *
+ * **代碼在關掉面板時清空**（狀態住在這裡，不在 `Home`）。就地展開的那一版會把
+ * 打到一半的字留著，而面板的心智模型是「這件事我做完了／不做了」——留著一個看不見
+ * 的半成品，下次打開會看到自己不記得打過的四個字。六碼重打的成本很低。
+ */
+function JoinSheet({ onClose }: { onClose: () => void }) {
+  const t = useT()
+  const [mode, setMode] = useState<JoinMode>('code')
+  const [code, setCode] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const codeInputRef = useRef<HTMLInputElement>(null)
+
+  /*
+    開起來就聚焦到代碼框——按下「加入空間」的下一個動作就是打那六碼，跳出鍵盤是
+    那顆按鍵的直接結果（跟空間裡那顆放大鏡同一條理由）。
+
+    第一頁沒有標題列，所以 `useModal` 自己找到的第一個可聚焦元素就是這個框；
+    這個 effect 真正在做事的是**從掃碼頁按返回的時候**——那時候焦點會落在返回鍵
+    上，要把它送回代碼框。
+  */
+  useEffect(() => { if (mode === 'code') codeInputRef.current?.focus() }, [mode])
+
+  function join() {
+    const normalized = extractRoomCode(code)
+    const confusables = findConfusables(normalized)
+    if (confusables.length > 0) {
+      setError(t('errConfusable', { chars: confusables.join('、') }))
+      return
+    }
+    if (!isValidRoomCode(normalized)) {
+      setError(t('errBadCode'))
+      return
+    }
+    setError(null)
+    navigate(`/j/${normalized}`)
+  }
+
+  if (mode === 'scan') {
+    return (
+      <Sheet title={t('scanQr')} onClose={onClose} onBack={() => setMode('code')}>
+        <ScanView />
+      </Sheet>
+    )
+  }
+
+  return (
+    <Sheet title={t('joinRoom')} onClose={onClose}>
+      <div class="stack">
+        {/*
+          兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，所以它們在
+          **同一個框**裡（`.code-row`，2026-09 從「兩個框並排」合起來）；
+          **掃碼**是另一條路，自己一列、自己一個框。
+        */}
+        <div class="code-row">
+          <input
+            ref={codeInputRef}
+            class="input code-input"
+            value={code}
+            // 沒有 maxLength：貼上的常常是整條連結，得讓 extractRoomCode 先從裡面
+            // 抓出代碼，原生的長度限制會在那之前就把後半段截斷。裁到固定長度
+            // 改成抓完代碼之後才做，抓出來的碼本來就只有 6 碼。
+            inputMode="text"
+            autocapitalize="characters"
+            autocomplete="off"
+            spellcheck={false}
+            aria-label={t('codePlaceholder')}
+            placeholder="——————"
+            onInput={(e) => {
+              const raw = (e.currentTarget as HTMLInputElement).value
+              setCode(extractRoomCode(raw).slice(0, CODE_LENGTH + 2))
+              setError(null)
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') join() }}
+          />
+          {/*
+            「加入」不縮：它是兩個字，縮到剩一個字就沒有意義了。讓步的是輸入框
+            ——六碼在 320px 上仍有 200px 可用，那個字級照樣讀得出來。
+            （`flex: none` 與高度都在 `.code-row > .btn` 上，不寫在這裡：它現在是
+            那個框的一部分，不是一顆碰巧擺在旁邊的按鈕。）
+          */}
+          <button
+            class="btn"
+            disabled={extractRoomCode(code).length < CODE_LENGTH}
+            onClick={join}
+          >
+            {t('join')}
+          </button>
+        </div>
+        {error && <p class="note note-warn">{error}</p>}
+        {canScanQr() && (
+          <button class="btn btn-block" onClick={() => setMode('scan')}>
+            <IconCamera /> {t('scanQr')}
+          </button>
+        )}
+      </div>
+    </Sheet>
   )
 }
 

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { extractRoomCode, isValidRoomCode } from '../lib/code'
 import { canScanQr } from '../lib/config'
 import { navigate } from '../router'
-import { Sheet } from './Sheet'
 import { useT } from './t'
 
 type ScanStatus = 'loading' | 'scanning' | 'error'
@@ -13,8 +12,14 @@ type ScanStatus = 'loading' | 'scanning' | 'error'
  *
  * 相機與解碼函式庫（jsqr）都是動態載入：多數人首頁只是打代碼，不該讓
  * 每個人都背著這幾十 KB 的重量。
+ *
+ * **它只是一塊內容，不是一張面板**（2026-09）。它本來自己是一個 `Sheet`，而
+ * 開它的那顆「掃描 QR 碼」現在住在「加入空間」面板裡——面板疊面板是這個 app
+ * 沒有過的形狀，兩層遮罩也重。掃碼改成那張面板的第二頁（左上角一顆返回鍵，
+ * 跟「更多 › 邀請點名 › 二維碼」同一套），相機的開關仍然綁在這個元件的
+ * 生命週期上：切回第一頁它就被卸載，`useEffect` 的 cleanup 會關掉串流。
  */
-export function ScanSheet({ onClose }: { onClose: () => void }) {
+export function ScanView() {
   const t = useT()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -87,16 +92,14 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
   }, [])
 
   return (
-    <Sheet title={t('scanQr')} onClose={onClose}>
-      <div class="stack">
-        <div class="scan-frame">
-          <video ref={videoRef} class="scan-video" muted playsInline aria-hidden="true" />
-          <canvas ref={canvasRef} hidden />
-        </div>
-        {status === 'scanning' && <p class="hint">{t('scanQrHint')}</p>}
-        {status === 'loading' && <p class="hint">{t('loading')}</p>}
-        {status === 'error' && <p class="note note-warn">{errorText}</p>}
+    <div class="stack scan-view">
+      <div class="scan-frame">
+        <video ref={videoRef} class="scan-video" muted playsInline aria-hidden="true" />
+        <canvas ref={canvasRef} hidden />
       </div>
-    </Sheet>
+      {status === 'scanning' && <p class="hint">{t('scanQrHint')}</p>}
+      {status === 'loading' && <p class="hint">{t('loading')}</p>}
+      {status === 'error' && <p class="note note-warn">{errorText}</p>}
+    </div>
   )
 }

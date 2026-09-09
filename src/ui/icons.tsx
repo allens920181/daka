@@ -17,14 +17,31 @@ const base = (size: number) => ({
 export const IconCheck = ({ size = 16, ...r }: P) => (
   <svg {...base(size)} strokeWidth={3} {...r}><polyline points="20 6 9 17 4 12" /></svg>
 )
+/*
+ * 返回。**一顆 `<`，不是一支箭**（2026-09）。
+ *
+ * 它本來是「一條橫線 ＋ 箭頭」的實心箭（←）。整個 app 裡表示方向的其他記號
+ * 全部都是 chevron——設定列的 `⌄`、選單列右邊的 `›`、開空間那兩顆「產生名單 ⌄」
+ * 「調整清單 ⌃」——只有返回是另一種畫法，於是它在同一個畫面上讀起來像另一個
+ * 系統的東西。
+ *
+ * 它跟 `IconChevronRight` 是同一組座標的鏡像（`9 6 15 12 9 18` ↔
+ * `15 6 9 12 15 18`），所以「往回」與「往下一層」看起來就是同一件事的兩個方向。
+ * 名字留著 `IconBack`：這個 app 裡它只有一個用途，而那個用途是語意不是形狀。
+ */
 export const IconBack = ({ size = 24, ...r }: P) => (
-  <svg {...base(size)} {...r}><path d="M19 12H5" /><polyline points="12 19 5 12 12 5" /></svg>
+  <svg {...base(size)} {...r}><polyline points="15 6 9 12 15 18" /></svg>
 )
 export const IconChevronDown = ({ size = 16, ...r }: P) => (
   <svg {...base(size)} {...r}><polyline points="6 9 12 15 18 9" /></svg>
 )
 export const IconChevronUp = ({ size = 16, ...r }: P) => (
   <svg {...base(size)} {...r}><polyline points="6 15 12 9 18 15" /></svg>
+)
+// 選單列右邊那顆：「這一列會開一張子畫面」。沒有它，一份選單裡「開一頁」與
+// 「當場做一件事」長得一模一樣（見 .menu-item .go）。
+export const IconChevronRight = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}><polyline points="9 6 15 12 9 18" /></svg>
 )
 export const IconShare = ({ size = 20, ...r }: P) => (
   <svg {...base(size)} {...r}>

@@ -285,7 +285,7 @@ ok('單機模式：沒有那句「不用註冊、不用安裝」',
    (await p.getByText('不用註冊').count()) === 0)
 ok('單機模式：沒有「現在在這個空間裡」',
    (await p.getByText('現在在這個空間裡').count()) === 0)
-await p.locator('.sheet-head .icon-btn').first().click(); await p.waitForTimeout(300)
+await p.locator('.sheet-bar .icon-btn').first().click(); await p.waitForTimeout(300)
 ok('返回之後回到選單', (await p.getByRole('button', { name: /^編輯$/ }).count()) === 1)
 
 // 編輯不是面板裡的一頁：按下去面板收掉，整個點名畫面切進編輯模式（2026-09）。
@@ -297,32 +297,101 @@ ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 // 刪除空間動的都是空間這個容器，不必先進去、也不必等名單同步。名單的事在空間
 // 裡那顆「更多」。
 await p.goto(URL); await p.waitForTimeout(900)
-// 首頁的「加入空間」展開之後沒有外框（2026-09）：上面那顆鍵已經在宣告這一組
-// 東西了，再畫一個框只是把同一件事說第二次，而框裡每個元件又各自有框。
-await p.getByRole('button', { name: /^加入空間/ }).click(); await p.waitForTimeout(400)
-ok('展開的內容沒有外框', await p.evaluate(() => {
-  const panel = document.querySelector('#join-panel')
-  if (!panel) return false
-  const cs = getComputedStyle(panel)
-  return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)'
-}))
-// 兩條路各一列：打代碼＋加入是同一件事的兩半（同一列），掃碼是另一條路（自己一列）。
+// 「加入空間」開的是一張從下緣長上來的面板（2026-09），不再是就地展開的一段內容
+// ——這個 app 只有一種「再給我一層」的形狀，其餘全部都是底部面板。
+await p.getByRole('button', { name: /^加入空間$/ }).click(); await p.waitForTimeout(500)
+ok('開的是一張面板，不是就地展開',
+   (await p.locator('.overlay-bottom .sheet').count()) === 1
+   && (await p.locator('#join-panel').count()) === 0)
+// 就地展開時底下那份清單仍然按得到、螢幕閱讀器也仍然讀得到。面板要掛在 .shell
+// 外面，useModal 才 inert 得到整頁（見 Home.tsx 的註解）。
+ok('背景整頁 inert 了', await p.evaluate(() =>
+  document.querySelector('.shell')?.hasAttribute('inert') === true))
+// 面板沒有標題列（2026-09 起一張都沒有），但螢幕閱讀器聽得到的不能跟著少。
+ok('沒有標題文字，但無障礙名稱還在',
+   (await p.locator('.sheet-title').count()) === 0
+   && (await p.locator('.sheet').getAttribute('aria-label')) === '加入空間')
+// 面板貼合內容（不留空白），所以切頁時高度會變——但要變得夠小，而且**內容永遠
+// 從面板頂端同一條線開始**（`.sheet-bar` 是固定 48px 的）。
+const sheetH = async () => Math.round((await p.locator('.sheet').boundingBox()).height)
+const bodyOffset = async () => {
+  const s = await p.locator('.sheet').boundingBox()
+  const b = await p.locator('.sheet-body').boundingBox()
+  return Math.round(b.y - s.y)
+}
+const codeH = await sheetH()
+const codeOffset = await bodyOffset()
+// 按下那顆鍵的下一個動作就是打那六碼，跳出鍵盤是它的直接結果。
+ok('開起來焦點就在代碼框',
+   await p.evaluate(() => document.activeElement?.classList.contains('code-input') === true))
+// 打代碼＋加入是同一件事的兩半，所以是**同一個框**（2026-09 從兩個並排的框
+// 合起來）：框畫在外層，裡面的輸入框與按鈕都不再各自有框。
 ok('代碼輸入與「加入」在同一列', await p.evaluate(() => {
-  const input = document.querySelector('#join-panel .code-input').getBoundingClientRect()
-  const join = document.querySelector('#join-panel .row .btn').getBoundingClientRect()
+  const input = document.querySelector('.sheet .code-input').getBoundingClientRect()
+  const join = document.querySelector('.sheet .code-row .btn').getBoundingClientRect()
   return Math.abs((input.top + input.height / 2) - (join.top + join.height / 2)) <= 2
     && join.left >= input.right - 1
 }))
+ok('而且是同一個框：框在外層，裡面兩個都沒有自己的邊', await p.evaluate(() => {
+  const row = document.querySelector('.sheet .code-row')
+  const input = document.querySelector('.sheet .code-row .code-input')
+  const join = document.querySelector('.sheet .code-row .btn')
+  if (!row || !input || !join) return false
+  const w = (el) => parseFloat(getComputedStyle(el).borderTopWidth)
+  return w(row) >= 1 && w(input) === 0 && w(join) === 0
+}))
+// 並排的元件要對齊：輸入框的高度不能是字級的副產品（2026-09 寫死 --tap-lg）。
+ok('代碼框與「加入」等高，而且填滿那個框', await p.evaluate(() => {
+  const row = document.querySelector('.sheet .code-row').getBoundingClientRect()
+  const input = document.querySelector('.sheet .code-row .code-input').getBoundingClientRect()
+  const join = document.querySelector('.sheet .code-row .btn').getBoundingClientRect()
+  return Math.abs(input.height - join.height) <= 1 && row.height - input.height <= 3
+}))
+// 對焦圈搬到外框：裡面的輸入框沒有邊可以亮了。
+ok('對焦時亮的是整個框', await p.evaluate(() => {
+  document.querySelector('.sheet .code-row .code-input').focus()
+  const row = getComputedStyle(document.querySelector('.sheet .code-row'))
+  const input = getComputedStyle(document.querySelector('.sheet .code-row .code-input'))
+  return row.boxShadow !== 'none' && input.boxShadow === 'none'
+}))
 ok('掃碼自己一列（在那一列底下）', await p.evaluate(() => {
-  const row = document.querySelector('#join-panel .row').getBoundingClientRect()
-  const scan = [...document.querySelectorAll('#join-panel > .btn')]
+  const row = document.querySelector('.sheet .code-row').getBoundingClientRect()
+  const scan = [...document.querySelectorAll('.sheet .stack > .btn')]
     .find((b) => /QR/.test(b.textContent || ''))
   return Boolean(scan) && scan.getBoundingClientRect().top >= row.bottom - 1
 }))
 // 320px 上輸入框仍要放得下六碼（它是這一列唯一該讓步的東西，但有下限）。
 ok('窄螢幕上輸入框沒有被擠爛', await p.evaluate(() =>
-  document.querySelector('#join-panel .code-input').getBoundingClientRect().width >= 200))
-await p.getByRole('button', { name: /^加入空間/ }).click(); await p.waitForTimeout(300)
+  document.querySelector('.sheet .code-input').getBoundingClientRect().width >= 200))
+/*
+  切到掃碼那一頁。**這一頁刻意比較高**：取景器該有多大由「好不好瞄」決定，
+  「打一組代碼」與「拿相機對著一個東西」本來就不是同一種份量的事。所以這裡驗的
+  不是「高度一樣」，是那三件真正的不變量——內容從同一條線開始、返回鍵不移動、
+  而且再高也不會超過面板自己的 88vh 上限。
+*/
+await p.getByRole('button', { name: /QR/ }).click(); await p.waitForTimeout(900)
+const scanH = await sheetH()
+ok(`掃碼那一頁比較高，但沒有超過 88vh（${codeH} → ${scanH}）`,
+   scanH > codeH && scanH <= Math.round(844 * 0.88))
+ok('取景框是滿版寬的 4:3（裁掉的最少，看到的最接近真正被解碼的那一張）',
+   await p.evaluate(() => {
+     const f = document.querySelector('.scan-frame').getBoundingClientRect()
+     return Math.abs(f.width / f.height - 4 / 3) < 0.02 && f.width > 340
+   }))
+ok('內容仍然從面板頂端同一條線開始（.sheet-bar 是固定高的）',
+   (await bodyOffset()) === codeOffset)
+ok('子頁有返回鍵（第一頁沒有，但那一列的高度一樣）',
+   (await p.locator('.sheet-bar .icon-btn').count()) === 1)
+ok('返回鍵沒有把那一列撐高',
+   Math.round((await p.locator('.sheet-bar').boundingBox()).height) === 48)
+await p.locator('.sheet-bar .icon-btn').click(); await p.waitForTimeout(400)
+ok(`返回之後回到原來的高度（${await sheetH()}）`, Math.abs(await sheetH() - codeH) <= 1)
+
+// 收起來的路：Esc（點面板外面與從握把往下滑是同一套，Sheet 已經在別處驗過）。
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關得掉，背景也還回來了',
+   (await p.locator('.sheet').count()) === 0
+   && await p.evaluate(() => document.querySelector('.shell')?.hasAttribute('inert') === false))
 ok('首頁清單每一列右邊都有一顆「更多」',
    (await p.getByRole('button', { name: /^更多：/ }).count()) === (await p.locator('.recent-item').count()))
 ok('無障礙名稱說得出是哪一個空間',
@@ -360,9 +429,10 @@ ok(`首頁那份是空間本身的事：${homeRows.join('、')}`,
    JSON.stringify(homeRows) === JSON.stringify(['建立副本', '刪除空間']))
 ok('名單的事不在這裡（編輯、存成常用都不列）',
    (await p.locator('.sheet').getByRole('button', { name: /^編輯$|^存成常用$/ }).count()) === 0)
-// 這一份要有標題列：從一列七個長得差不多的空間裡點開，不印名字就沒有東西說得出
-// 「我剛剛按的是哪一間」。空間裡那一份相反（名字就在正上方的頂欄裡）。
-ok('面板印著是哪一個空間', (await p.locator('.sheet .sheet-title').textContent()) === '秋季旅遊 · 出發')
+// 這一份的名字只在無障礙名稱裡（2026-09 標題列整套拿掉）：從一列七個長得差不多
+// 的空間裡點開，聽得出「我剛剛按的是哪一間」。空間裡那一份相反（名字就在正上方的頂欄裡）。
+ok('面板的無障礙名稱說得出是哪一個空間',
+   (await p.locator('.sheet').getAttribute('aria-label')) === '秋季旅遊 · 出發')
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉空間選單，人還在首頁',
    (await p.locator('.sheet').count()) === 0 && (await p.locator('.home-title').count()) === 1)
@@ -617,7 +687,7 @@ ok('「更多」面板沒有設定入口了', (await p.locator('.sheet button[ar
 // 標題列整條拿掉（2026-09）：它一路瘦下來——「更多」兩個字說不出任何一件這裡做
 // 得到的事 → 換成三顆分頁鍵 → 分頁拿掉之後改印空間名字 → 而那個名字就在面板正
 // 上方的頂欄裡，同一個字在同一屏印兩次，第二次只是佔掉一列。
-ok('「更多」沒有標題列', (await p.locator('.sheet .sheet-head').count()) === 0)
+ok('「更多」沒有標題列', (await p.locator('.sheet-title').count()) === 0)
 // 名字在上面的編輯模式測試裡改過了，這裡順便驗它一路傳到面板的無障礙名稱。
 ok('無障礙名稱仍然是這個空間', (await p.locator('.sheet').getAttribute('aria-label')) === '現場操作測試 · 改過')
 ok('「更多」也沒有關閉鍵', (await p.locator('.sheet .icon-btn').count()) === 0)
@@ -635,16 +705,17 @@ const reopen = async () => {
   await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 }
 
-await swipe('.sheet-grip', 30)
+await swipe('.sheet-bar', 30)
 ok('往下滑一點點不會收起來（手指抖一下不該關掉面板）', (await p.locator('.sheet').count()) === 1)
-await swipe('.sheet-grip', 130)
+await swipe('.sheet-bar', 130)
 ok('從握把往下滑收得起來', (await p.locator('.sheet').count()) === 0)
 
-// 握把是整條的，不只中間那 38px 的線——沒有標題列的面板靠它收起來，而 38px
-// 對一根手指來說太窄。從最左邊往下拖也要收得起來。
+// 那一條是整列的手勢區，不只中間那 38px 的線——面板靠它收起來，而 38px 對一根
+// 手指來說太窄。從最左邊往下拖也要收得起來。
 await reopen()
-const gripBox = await p.locator('.sheet-grip').boundingBox()
-ok(`握把整條都吃得到手勢（寬 ${Math.round(gripBox.width)}px）`, gripBox.width > 300)
+const gripBox = await p.locator('.sheet-bar').boundingBox()
+ok(`那一列整條都吃得到手勢（寬 ${Math.round(gripBox.width)}px、高 ${Math.round(gripBox.height)}px）`,
+   gripBox.width > 300 && gripBox.height >= 48)
 await p.mouse.move(gripBox.x + 24, gripBox.y + gripBox.height / 2); await p.mouse.down()
 for (let i = 1; i <= 6; i++) {
   await p.mouse.move(gripBox.x + 24, gripBox.y + gripBox.height / 2 + (130 * i) / 6)
@@ -655,7 +726,7 @@ ok('從握把最左邊往下滑也收得起來', (await p.locator('.sheet').coun
 
 // 先動到橫向的就不是「把面板推回去」，手勢要把這一次讓出去。
 await reopen()
-await swipe('.sheet-grip', 0, 120)
+await swipe('.sheet-bar', 0, 120)
 ok('橫向滑握把不會收起面板', (await p.locator('.sheet').count()) === 1)
 
 // 另外兩條路也要在。
@@ -872,7 +943,7 @@ await p.goto(URL); await p.waitForTimeout(800)
 await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
 // 標題列整條不要（2026-09）：「設定」兩個字說不出這裡做得到的任何一件事，
 // 而底下四列自己就說得完。無障礙名稱還是「設定」。
-ok('設定面板沒有標題列', (await p.locator('.sheet .sheet-head').count()) === 0)
+ok('設定面板沒有標題列', (await p.locator('.sheet-title').count()) === 0)
 ok('但無障礙名稱還是「設定」', (await p.locator('.sheet').getAttribute('aria-label')) === '設定')
 ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count()) === 0)
 

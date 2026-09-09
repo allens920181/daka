@@ -7,42 +7,75 @@
    =========================================================================== */
 
 :root {
-  /* --- 表面與文字 ------------------------------------------------------ */
-  --paper: #f5f7f8;
-  --surface: #ffffff;
-  --surface-2: #eceff1;
-  --surface-3: #dfe4e6;
   /*
-   * 「浮在凹槽上」的那一階。分段控制是全站唯一靠高度（而不是顏色）表示選中的
-   * 元件：軌道用 --surface-2，選中的那一格要比軌道亮。
+   * --- 表面與文字 ------------------------------------------------------
+   *
+   * **灰階是冷中性，不是青灰**（2026-09 換過一次）。
+   *
+   * 它本來刻意往品牌色偏（`--ink-2` 色相 193°、`--rule` 197°、`--paper` 200°），
+   * 理由寫在 02-brand §2.6：「純中性灰讀起來像沒選過」。那個直覺沒錯，但執行
+   * 過頭了，而且偏的方向正好是品牌色自己所在的色相（teal 185°）——**背景已經
+   * 是那個色相，強調色就沒有東西可以推**。整個 app 因此泡在一層青灰裡：teal 不
+   * 像強調色，琥珀與綠看起來髒。
+   *
+   * 現在灰階移到 ~240°、彩度砍到 2–3%：還是「選過的灰」（不是死灰），但離 teal
+   * 有 55° 的距離。**而且冷灰是暖琥珀最好的背景**——「未到 N」是這個產品最該被
+   * 看見的一個顏色，整套灰階應該替它服務。
+   */
+  --paper: #f7f7f9;
+  --surface: #ffffff;
+  --surface-2: #eeeef2;
+  /*
+   * 「浮在凹槽上」的那一階。分段控制與名單列都靠高度（而不是顏色）表示狀態：
+   * 軌道／頁面用凹的那一階，浮起來的那一格要比它亮。
    *
    * 不能直接用 --surface：這套色階在明暗兩邊的方向是相反的。淺色是
-   * surface(白) > paper > surface-2 > surface-3；深色是
-   * surface-3 > surface-2 > surface > paper。用 --surface 的話，深色下選中的那格
-   * 會比軌道**暗**（實測 1.12:1，方向反了），加上 --el-1 是純黑陰影在深底上等於
-   * 不存在——「被選到的那一格」看起來反而像沒被選到。
+   * surface(白) > paper > surface-2；深色是 surface-2 > surface > paper。
+   * 用 --surface 的話，深色下選中的那格會比軌道**暗**（實測 1.12:1，方向反了），
+   * 加上 --el-1 是純黑陰影在深底上等於不存在——「被選到的那一格」看起來反而
+   * 像沒被選到。
    */
   --raised: #ffffff;
-  --ink: #10171a;
-  --ink-2: #4a5a5e;
-  --ink-3: #5f6f73;          /* 最淺的可用文字色 */
-  --rule: #d7dee0;
-  --rule-strong: #b5c0c3;
-  /* 「未到」的空心圈。--rule-strong 只有 1.86:1，逆光下等於不存在，而這個圈
-     是名單上唯一表示「這個人還沒上車」的形狀。非文字元件的門檻是 3:1。 */
-  --check-line: #7d8f93;
+  --ink: #17171c;
+  --ink-2: #55555f;
+  --ink-3: #676773;          /* 最淺的可用文字色 */
+  /*
+   * **兩條線，兩個工作**（2026-09 重新分工）。
+   *
+   * 它們本來是 1.28:1 與 1.86:1——兩條都遠低於 WCAG 對控制項邊界的 3:1，卻又
+   * 都深到看得見。那是最糟的區間：**不夠強到定義形狀，卻夠強到製造噪點**，
+   * 而全站幾乎每個元件都描了邊，疊起來就是一層灰糊。
+   *
+   * - `--rule` 只做**分隔與容器邊緣**，所以要更輕（1.24:1）：它的工作是節奏，
+   *   不是定義。卡片是靠 --surface ＋ --el-1 浮起來的，那條線只是收個邊。
+   * - `--rule-strong` 只做**可互動元件的邊界**（按鈕、輸入框、分組晶片、握把），
+   *   所以要真的達標（3.24:1）。1px 的 #8e8e9a 描在白底上是一顆正常的外框按鈕，
+   *   讀起來比原本更俐落，不是更重。
+   */
+  --rule: #e6e6ec;
+  --rule-strong: #8e8e9a;
+  /* 「未到」的空心圈。它是名單上唯一表示「這個人還沒上車」的形狀，非文字元件的
+     門檻是 3:1；比 --rule-strong 再淡一點，因為它旁邊沒有填色可以幫忙。 */
+  --check-line: #85858f;
 
   /* --- 品牌與互動 ------------------------------------------------------ */
-  --accent: #0e5e63;         /* 淡底上的強調文字也用這個 */
-  --accent-ink: #ffffff;
+  --accent: #0e5e63;         /* 強調**文字與邊框**。淡底上的強調文字也用這個 */
+  /*
+   * 主要按鈕的**填色**。淺色時它與 --accent 同值，深色時不是——見深色區塊：
+   * 深色底上的強調文字必須亮，強調色塊必須暗，那是兩個相反的要求，一個 token
+   * 扛不動。分成兩個之後，兩個主題的主要按鈕終於是同一個性格（深 teal ＋ 白字）。
+   */
+  --accent-fill: #0e5e63;
+  --accent-ink: #ffffff;     /* 疊在 --accent-fill 上的文字 */
   --accent-soft: #e2f0f0;
   --accent-strong: #0c8a93;  /* 焦點框、載入。不得用於一般文字 */
 
-  /* --- 點名狀態（只用於名單成員）--------------------------------------- */
+  /* --- 點名狀態（只用於名單成員）---------------------------------------
+     兩個顏色，不是兩套配色：狀態的主要載體是**高度**（未到浮起、已到沉回頁面），
+     顏色只負責那顆勾與那個數字。已到整列鋪淡綠的做法 2026-09 拿掉了——見
+     .member.is-arrived。 */
   --st-pending: #a84d06;
   --st-arrived: #1c7a44;
-  --st-arrived-soft: #e3f2e8;
-  --st-arrived-line: #a9d7bc;
 
   /* --- 系統回饋（只用於系統訊息）--------------------------------------- */
   --fb-warn: #a84d06;
@@ -50,13 +83,15 @@
   --fb-error: #a02b22;
   --fb-error-soft: #f9e6e4;
 
-  /* --- Toast：獨立表面，不參與明暗反轉 --------------------------------- */
-  --toast-bg: #10171a;
-  --toast-ink: #f5f7f8;
-  --toast-action: #5fd8df;
+  /* --- Toast：獨立表面，不參與明暗反轉 ---------------------------------
+     「復原」那顆用 --accent 家族的亮 teal（深底上的強調色本來就該亮），不再是
+     一個只出現在這裡的專屬霓虹色。 */
+  --toast-bg: #1b1b22;
+  --toast-ink: #f7f7f9;
+  --toast-action: #3fbfc7;
   /* Toast 是誤觸的安全網，必須看得出它是一塊獨立的東西。淺色時深底自己就
-     夠分明（18:1），深色時底色只比它蓋住的名單列亮 1.12:1，靠邊框定義。 */
-  --toast-line: #10171a;
+     夠分明（17:1），深色時底色只比它蓋住的名單列亮 1.12:1，靠邊框定義。 */
+  --toast-line: #1b1b22;
 
   /* --- Google 登入按鈕：第三方品牌規範，具名例外 -----------------------
      這四個值來自 Google 自己的 Sign-in with Google 按鈕規範，不是我們的色票，
@@ -68,7 +103,7 @@
   --google-line: #747775;
   --google-bg-active: #f2f2f2;
 
-  /* --- 字級（八階，不得新增）------------------------------------------- */
+  /* --- 字級（七階，不得新增）------------------------------------------- */
   --fs-1: 11px;   /* 等寬微標籤，唯一允許小於 13px 的用途 */
   --fs-2: 13px;
   --fs-3: 15px;
@@ -76,7 +111,10 @@
   --fs-5: 20px;
   --fs-6: 26px;
   --fs-7: 34px;
-  --fs-8: 44px;
+  /* 曾經有第八階（44px），它是為計分區的未到大字而存在的。計分區 2026-08 拿掉
+     之後那一階再也沒有人用，2026-09 一併移除；「畫面上最大的數字是未到人數」
+     現在由篩選列自己扛（見 .segment .count：--fs-5 ＋ --st-pending，
+     比任何一個人名都重）。 */
 
   /* --- 間距（4px 基準）------------------------------------------------- */
   --sp-1: 4px;
@@ -93,15 +131,16 @@
   --r-3: 18px;
   --r-full: 999px;
 
-  /* --- 陰影 ------------------------------------------------------------ */
-  --el-1: 0 1px 2px rgba(16, 23, 26, .06);
-  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(16, 23, 26, .06);
-  --el-3: 0 -8px 40px rgba(16, 23, 26, .18);
+  /* --- 陰影 ------------------------------------------------------------
+     --rule 變輕之後，卡片的形狀改由陰影負責，所以 --el-1 要跟著補回來一點
+     （.06 → .08）：一條 1.24:1 的線加一層幾乎看不見的陰影，等於什麼都沒有。 */
+  --el-1: 0 1px 2px rgba(23, 23, 28, .08);
+  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(23, 23, 28, .07);
+  --el-3: 0 -8px 40px rgba(23, 23, 28, .20);
 
   /* --- 不透明度與遮罩 --------------------------------------------------- */
   --op-disabled: .5;
-  --op-muted: .62;   /* 請假的列：在場但不需要行動 */
-  --scrim: rgba(9, 16, 18, .45);
+  --scrim: rgba(17, 17, 22, .45);
 
   /* --- 觸控 ------------------------------------------------------------ */
   --tap-min: 48px;
@@ -126,37 +165,37 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --paper: #0d1315;
-    --surface: #151e21;
-    --surface-2: #1d282b;
-    --surface-3: #263336;
-    --raised: #263336;
-    --ink: #e9eef0;
-    --ink-2: #a4b3b6;
-    --ink-3: #8b9b9f;
-    --rule: #29373a;
-    --rule-strong: #3b4b4f;
-    --check-line: #6b8085;
+    --paper: #0f0f13;
+    --surface: #1a1a21;
+    --surface-2: #25252e;
+    --raised: #303039;
+    --ink: #ececf0;
+    --ink-2: #a8a8b3;
+    --ink-3: #9494a0;
+    --rule: #2e2e37;
+    --rule-strong: #6a6a76;
+    --check-line: #7a7a88;
 
+    /* --accent 只當文字與邊框（深底上的強調色必須亮）；色塊走 --accent-fill。
+       #11757e ＋ 白字 ＝ 5.4:1，而且與淺色的主要按鈕是同一個性格。 */
     --accent: #3fbfc7;
-    --accent-ink: #06232a;
+    --accent-fill: #11757e;
+    --accent-ink: #ffffff;
     --accent-soft: #11292c;
     --accent-strong: #5fd8df;
 
     --st-pending: #e0913f;
     --st-arrived: #55bd7c;
-    --st-arrived-soft: #12291d;
-    --st-arrived-line: #2b5c3e;
 
     --fb-warn: #e0913f;
     --fb-warn-soft: #2a2013;
     --fb-error: #e5736a;
     --fb-error-soft: #2e1a18;
 
-    --toast-bg: #1d282b;
-    --toast-ink: #e9eef0;
-    --toast-action: #5fd8df;
-    --toast-line: #69868d;
+    --toast-bg: #25252e;
+    --toast-ink: #ececf0;
+    --toast-action: #3fbfc7;
+    --toast-line: #6f6f7d;
     --google-bg: #131314;
     --google-ink: #e3e3e3;
     --google-line: #8e918f;
@@ -173,37 +212,37 @@
 }
 
 :root[data-theme='dark'] {
-  --paper: #0d1315;
-  --surface: #151e21;
-  --surface-2: #1d282b;
-  --surface-3: #263336;
-  --raised: #263336;
-  --ink: #e9eef0;
-  --ink-2: #a4b3b6;
-  --ink-3: #8b9b9f;
-  --rule: #29373a;
-  --rule-strong: #3b4b4f;
-  --check-line: #6b8085;
+  --paper: #0f0f13;
+  --surface: #1a1a21;
+  --surface-2: #25252e;
+  --raised: #303039;
+  --ink: #ececf0;
+  --ink-2: #a8a8b3;
+  --ink-3: #9494a0;
+  --rule: #2e2e37;
+  --rule-strong: #6a6a76;
+  --check-line: #7a7a88;
 
+  /* --accent 只當文字與邊框（深底上的強調色必須亮）；色塊走 --accent-fill。
+     #11757e ＋ 白字 ＝ 5.4:1，而且與淺色的主要按鈕是同一個性格。 */
   --accent: #3fbfc7;
-  --accent-ink: #06232a;
+  --accent-fill: #11757e;
+  --accent-ink: #ffffff;
   --accent-soft: #11292c;
   --accent-strong: #5fd8df;
 
   --st-pending: #e0913f;
   --st-arrived: #55bd7c;
-  --st-arrived-soft: #12291d;
-  --st-arrived-line: #2b5c3e;
 
   --fb-warn: #e0913f;
   --fb-warn-soft: #2a2013;
   --fb-error: #e5736a;
   --fb-error-soft: #2e1a18;
 
-  --toast-bg: #1d282b;
-  --toast-ink: #e9eef0;
-  --toast-action: #5fd8df;
-  --toast-line: #69868d;
+  --toast-bg: #25252e;
+  --toast-ink: #ececf0;
+  --toast-action: #3fbfc7;
+  --toast-line: #6f6f7d;
   --google-bg: #131314;
   --google-ink: #e3e3e3;
   --google-line: #8e918f;
@@ -283,7 +322,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn:active { transform: scale(.98); }
 .btn:disabled { opacity: var(--op-disabled); cursor: not-allowed; transform: none; }
 
-.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/*
+ * 主要按鈕用 --accent-fill，不是 --accent（2026-09）。
+ *
+ * 深色模式下 --accent 是一個亮青色——那是**深底上的強調文字**該有的亮度，拿來當
+ * 一整顆按鈕的填色就變成一塊霓虹青，配深色文字，跟淺色那顆「深 teal ＋ 白字」
+ * 完全是兩個性格。深底上的強調色要亮、強調色塊要暗，那是兩個相反的要求；
+ * 一個 token 扛兩件事，總有一邊會壞。
+ */
+.btn-primary { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent-fill); }
 /*
  * Google 登入按鈕。照 Google 自己的按鈕規範走，不是這個系統的樣式。
  * 深色時底色只比面板亮 1.10:1，跟 Toast 一樣靠邊框定義形狀（邊框 5.8:1）。
@@ -344,8 +391,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* 值可能是一整串 Email。截斷的是值，標籤與箭頭不縮——一列裡最不重要的是
    「你的帳號叫什麼」的後半段，最重要的是這一列在講什麼。 */
 .select-row-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.select-row-chevron { flex: none; transition: transform var(--dur-1) var(--ease); }
-.select-row-chevron.is-open { transform: rotate(180deg); }
+
+/* 「按了會展開」的那顆箭頭。設定列與首頁的「加入空間」共用同一顆，所以名字
+   不跟著其中一個元件走（它以前叫 .select-row-chevron，卻掛在一顆按鈕上）。 */
+.chevron { flex: none; transition: transform var(--dur-1) var(--ease); }
+.chevron.is-open { transform: rotate(180deg); }
 
 .input, .textarea {
   width: 100%; padding: var(--sp-3) var(--sp-3);
@@ -360,17 +410,63 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .textarea { min-height: 200px; resize: vertical; line-height: 1.7; }
 
 /*
- * 代碼輸入。它跟「加入」並排在同一列（2026-09），所以要讓得動：`min-width: 0`
+ * 代碼輸入。它跟「加入」在同一個框裡（見 .code-row），所以要讓得動：`min-width: 0`
  * 讓 flex 收得下去，`flex: 1` 把剩下的寬度全拿走。六碼在 320px 的螢幕上仍有
  * 200px 可用，這個字級照樣讀得出來。
+ *
+ * **高度寫死成 --tap-lg**（2026-09）。它本來是靠內距撐出來的：26px 的字 ＋
+ * 1.55 行高 ＋ 上下 12px ＝ 66px，而旁邊那顆鍵是 56px，兩個東西並排在同一列卻
+ * 差了 10px——那一列因此永遠是歪的。並排的元件要對齊，就不能讓其中一個的高度是
+ * 另一件事（字級）的副產品。（合進同一個框之後這條仍然有用：登入面板的六碼
+ * 驗證碼也是這個 class，那裡它是單獨一個框。）
  */
 .code-input {
-  flex: 1; min-width: 0;
+  flex: 1; min-width: 0; height: var(--tap-lg);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--fs-6); font-weight: 700; letter-spacing: .34em;
   text-align: center; text-transform: uppercase;
-  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-5);
+  padding: 0 var(--sp-2) 0 var(--sp-5);
 }
+
+/*
+ * 代碼 ＋「加入」＝**一個框**（2026-09）。
+ *
+ * 它們本來是兩個各自描邊的元件並排、中間隔 8px——一列裡兩個框，而它們是同一件
+ * 事的兩半（打進去、按這裡）。框畫在外層之後，那一列只剩一個形狀，而「打完就
+ * 按旁邊那顆」這件事變成看得出來的，不必靠間距去猜。
+ *
+ * 跟邀請頁那條 `.copy-row` 是同一手法：**框在外面，裡面的東西不再各自有框**。
+ * 差別只在邊的強度——`.copy-row` 裝的是一段唸出去的字加一顆複製鍵（容器，
+ * 用 `--rule`），這裡整個框就是一個可互動元件的邊界（用 `--rule-strong`，3.24:1）。
+ *
+ * 對焦圈跟著搬到外框：裡面的輸入框沒有邊可以亮了，而該亮起來的本來就是整個
+ * 控制項。用 `:focus-within` 而不是 `:has(:focus)`——Tab 到「加入」時整個框也
+ * 該是亮的，那時候使用者確實正在這個控制項裡面。
+ */
+.code-row {
+  display: flex; align-items: center;
+  height: var(--tap-lg);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.code-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.code-row > .code-input { height: 100%; border: none; background: none; }
+/* 裡面那個框自己不再亮——不然對焦時會有兩層圈。 */
+.code-row > .code-input:focus { box-shadow: none; }
+/*
+ * 「加入」在框裡面：透明底、accent 字，靠顏色與 hover 底色說「這是可以按的」，
+ * 不再需要自己的邊框。**不畫分隔線**：兩邊一個是等寬大字、一個是彩色的兩個字，
+ * 已經分得開，而一條貫穿整個框高的線會把它切回兩個框（`.recent-item` 那條
+ * 2026-09 正是這樣拿掉的）。
+ * 停用時（還沒打滿六碼）它自己淡下去，打滿就亮起來——那是這一列唯一需要的回饋。
+ */
+.code-row > .btn {
+  height: 100%; flex: none;
+  border: none; background: none; border-radius: 0 var(--r-2) var(--r-2) 0;
+  color: var(--accent);
+}
+.code-row > .btn:hover:not(:disabled) { background: var(--surface-2); }
 
 /* === 首頁 ================================================================ */
 
@@ -387,6 +483,23 @@ button, input, textarea, select { font: inherit; color: inherit; }
   position: relative; overflow: hidden; aspect-ratio: 1 / 1;
   background: var(--surface-2); border: 1px solid var(--rule); border-radius: var(--r-3);
 }
+/*
+ * 掃碼那一頁的取景框：**滿版寬、4:3**（2026-09）。
+ *
+ * **關鍵是：這個框不是「掃描範圍」，只是取景器。** 解碼吃的是整張相機畫面
+ * （`Scan.tsx` 把 `video.videoWidth/Height` 整張畫進 canvas 再丟給 jsQR），
+ * 而這個框只是用 `object-fit: cover` 裁出來給人看的。原本「方框讓使用者知道要把
+ * QR 擺進哪個範圍」那個理由建立在一個錯的前提上——擺在框外面照樣掃得到。
+ *
+ * 既然它是取景器，那它該有多大就由「好不好瞄」決定。用 4:3 而不是正方形或
+ * 隨便一個高度：**手機後鏡頭的串流本來就是 4:3 或 16:9**，用 4:3 當框，
+ * `object-fit: cover` 裁掉的最少——看到的畫面最接近真正被解碼的那一張。
+ *
+ * 這一頁因此比同一張面板的第一頁高一截，那是刻意的：**「打一組代碼」與「拿相機
+ * 對著一個東西」本來就不是同一種份量的事**，硬把它壓成一樣高只是把取景器犧牲掉。
+ * 面板的地基（`.sheet-bar` 固定 48px、內容從同一條線開始、返回鍵不移動）沒有動。
+ */
+.scan-view > .scan-frame { aspect-ratio: 4 / 3; }
 .scan-video { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /*
@@ -402,7 +515,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .recent-item {
   display: flex; align-items: center;
   background: var(--surface); border: 1px solid var(--rule);
-  border-radius: var(--r-2);
+  border-radius: var(--r-2); box-shadow: var(--el-1);
 }
 .recent-item:hover { border-color: var(--rule-strong); }
 /* 內距掛在這裡而不是外框上：那顆「更多」要自己吃滿 48px 的高，內距會讓它縮水。 */
@@ -413,9 +526,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: none; border: none; border-radius: var(--r-2);
   cursor: pointer; text-align: left; color: inherit; font: inherit;
 }
-/* 兩顆並排在同一個框裡，中間要有一條看得出「這是兩個目標」的界線——但只是
-   一條 1px 的線，不是把框切成兩半。 */
-.recent-item > .icon-btn { flex: none; border-left: 1px solid var(--rule); border-radius: 0; }
+/*
+ * 那顆「更多」。**不畫界線**（2026-09）：一條貫穿整列高度的 1px 讓這一列讀起來
+ * 像一格表格，而首頁上七列並排時就是七條短豎線在那裡列隊。兩個目標之間本來就
+ * 有 8px 的內距與各自的 hover 底色說得出「這是兩個東西」，不需要再畫一條。
+ * 右邊圓角要跟著外框收，不然 hover 的底色會從框的圓角裡溢出來一個直角。
+ */
+.recent-item > .icon-btn {
+  flex: none; border-radius: 0 var(--r-2) var(--r-2) 0;
+}
 .recent-name { font-weight: 600; font-size: var(--fs-4); }
 /* 11px 只留給等寬微標籤；這一行有日期與統計要讀，用 13px。分隔點用 ::before
    產生，才不會在只有一段時多出一個孤兒點。 */
@@ -529,11 +648,40 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border: none; border-radius: var(--r-1); background: transparent;
   color: var(--ink-2); font-size: var(--fs-3); font-weight: 600;
   cursor: pointer; touch-action: manipulation; white-space: nowrap;
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
+  /*
+   * 標籤 15px 與數字 20px 靠**基線**對齊，不是各自置中——兩個字級置中對齊時
+   * 數字會看起來往下沉半格。`flex-wrap` ＋ `align-content` 是讓 baseline 那條
+   * 線自己回到 48px 高度正中間的標準寫法（單行，不會真的換行）。
+   */
+  display: inline-flex; flex-wrap: wrap;
+  align-items: baseline; align-content: center; justify-content: center;
+  gap: var(--sp-1);
 }
 .segment[aria-pressed='true'] { background: var(--raised); color: var(--ink); box-shadow: var(--el-1); }
-.segment .count { font-variant-numeric: tabular-nums; color: var(--ink-3); font-weight: 500; }
-.segment[aria-pressed='true'] .count { color: var(--accent); }
+
+/*
+ * **數字才是這一列的主體**（2026-09）。
+ *
+ * 原則一說「畫面上最大的數字永遠是還有幾位沒到」。計分區拿掉之後那句話一度
+ * 沒有實作：「未到 5」的 5 是 15px 的灰字，跟旁邊兩個一樣重，比任何一個人名
+ * （20px）都小——最重要的數字變成畫面上最不起眼的東西之一。
+ *
+ * 修法不是把計分區裝回來（那要再吃掉一列人名），是讓這一列**本來就在的那個
+ * 數字**長到該有的份量：--fs-5、700、tabular，和人名同一階但更重；而且只有
+ * 未到那一顆帶顏色。一個畫面上一個彩色數字，其餘保持中性——這樣它是被看見的
+ * 那一個，不是三個一起喊。
+ */
+.segment .count {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-5); font-weight: 700; color: var(--ink-2);
+}
+/* 選中不改數字的顏色。選中與否是「你現在在看哪一群」，跟「那一群有幾個人」
+   是兩件事；讓選中的那一格把數字加深，等於每按一次篩選就換一個數字最醒目。 */
+/* 未到的數字整場都是琥珀色，選不選中都一樣——它是答案，不是選項。
+   **全畫面只有這一個彩色數字**，其餘（含分組晶片）一律中性。 */
+.segment .count-pending { color: var(--st-pending); }
+/* 歸零就轉綠：這是整場點名唯一在等的那個瞬間，值得換一個顏色說。 */
+.segment .count-done { color: var(--st-arrived); }
 
 /* --- 分組（分車）------------------------------------------------------ */
 
@@ -566,12 +714,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .group-chip[aria-pressed='true'] {
   background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
 }
-/* 每一車還有幾個沒到——這是選車的人真正在看的數字。 */
-.group-n {
-  font-variant-numeric: tabular-nums; font-weight: 700;
-  color: var(--st-pending);
-}
-.group-n.done { color: var(--st-arrived); }
+/*
+ * 每一車還有幾個沒到——這是選車的人真正在看的數字。
+ *
+ * **它 2026-09 從琥珀改成中性。** 琥珀是「未到」的顏色，而畫面上同時有兩個地方
+ * 在講未到：篩選列的總數，與這一列的分車拆解。三台車就是四個琥珀數字加上面那一個
+ * ——一個顏色喊五次，等於沒喊。總數留給琥珀（它是答案），拆解用字重與深淺表達
+ * （標籤 --ink-2、數字 --ink 700）。
+ *
+ * **歸零仍然轉綠**：那是這一列唯一真的發生了什麼的時刻——這台車可以關門了。
+ */
+.group-n { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); }
+.group-chip[aria-pressed='true'] .group-n { color: var(--accent); }
+.group-n.done, .group-chip[aria-pressed='true'] .group-n.done { color: var(--st-arrived); }
 
 /* 看全部時標出分組交界，現場才知道哪裡是第二車的開頭。 */
 .group-divider {
@@ -682,10 +837,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
   .group-divider { grid-column: 1 / -1; }
 }
 
+/*
+ * 一列一個人。**狀態的主要載體是高度，不是顏色**（2026-09 換掉）。
+ *
+ * 未到的列是唯一還需要你動手的東西，所以它浮在頁面上（--surface ＋ --el-1）；
+ * 已到的列沉回頁面本身（見 .is-arrived）。這條規則在明暗兩邊自動成立，因為
+ * 它問的是「比頁面高還是跟頁面齊」，而不是「什麼顏色」。
+ */
 .member {
   display: flex; align-items: stretch;
   background: var(--surface); border: 1px solid var(--rule);
   border-radius: var(--r-2); overflow: hidden;
+  box-shadow: var(--el-1);
+  transition: background-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
 }
 .member-main {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-3);
@@ -695,8 +859,24 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .member-main:active { background: var(--surface-2); }
 
-/* 狀態同時用顏色與形狀表達：逆光下顏色會失真，色盲者看不出色相。 */
-.member.is-arrived { background: var(--st-arrived-soft); border-color: var(--st-arrived-line); }
+/*
+ * 已到＝**沉回頁面**（2026-09）。
+ *
+ * 它以前是整列鋪 --st-arrived-soft、鑲一圈 --st-arrived-line。那個做法把畫面上
+ * 最飽和的一塊顏色發給了**已經不需要任何行動的人**，而 80 人的名單點到一半就
+ * 變成白綠相間的斑馬紋——原則一講的「已到的人視覺上要退到背景」在實作上剛好
+ * 反過來。
+ *
+ * 現在它退掉自己的表面（背景透出 --paper）、收掉陰影、文字降一階，只留那顆
+ * 實心綠勾。**狀態仍然同時用顏色與形狀表達**（實心圓＋勾 vs 空心圓），逆光與
+ * 色盲都分得出來；而且「浮起／齊平」這件事在深色模式下同樣成立——這正是舊做法
+ * 兩邊各要調一組色票的原因。
+ */
+.member.is-arrived {
+  background: transparent; border-color: var(--rule); box-shadow: none;
+}
+.member.is-arrived .member-name { color: var(--ink-2); font-weight: 500; }
+.member.is-arrived .member-note { color: var(--ink-3); }
 .check {
   width: 30px; height: 30px; flex: none; border-radius: 50%;
   border: 2px solid var(--check-line);
@@ -772,21 +952,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 
 /*
- * 右側動作區。撥號鍵整場點名都在，而它就貼在「整列＝切換已到」的熱區旁邊：
- * 拇指往右偏一點就變成打電話給人家。相鄰的觸控目標之間至少要有 8px，而且
- * 切換區與動作區之間要有一條看得見的界線。
+ * 右側動作區。**只在編輯模式出現**，裝的是那顆叉叉——撥號鍵 2026-09 搬去備註
+ * 那一行的號碼後面（`.note-call`）。
+ *
+ * 它曾經有一條 `border-left`，理由是隔開「整列＝切換已到」與旁邊的撥號鍵；撥號
+ * 鍵搬走之後那條線只剩下一條線，而且緊接著就被 `.is-editing` 覆蓋成 none——
+ * 這一格自從只剩編輯模式會出現，那條線就再也沒有被畫出來過。連同它的兩條
+ * 覆寫規則一起拿掉。
  */
 .member-side {
   display: flex; align-items: center; gap: var(--sp-2);
   padding: 0 var(--sp-2) 0 var(--sp-1);
-  border-left: 1px solid var(--rule);
 }
-.member.is-arrived .member-side { border-left-color: var(--st-arrived-line); }
-/* 編輯模式沒有那條界線：它是為了隔開「點名」與「打電話」兩個相鄰的觸控目標，
-   而編輯時整列的點名區是停用的——沒有東西要跟叉叉隔開，剩下的只是一條線。 */
-.member.is-editing .member-side { border-left: none; padding-left: 0; }
-.call-btn { color: var(--accent); }
-/* 已經打過的號碼收斂成中性色：那一格的意思從「該打這個」變成「打過了」。 */
 
 /* 關閉之後整列不能點：說出來，不要只是沒反應。 */
 .member-main:disabled { cursor: default; }
@@ -799,17 +976,25 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-2); font-weight: 600;
   background: var(--surface-2); color: var(--ink-2);
 }
-/* 已到列的底色 --st-arrived-soft 和 --accent-soft 亮度差只有 1.01:1，
-   光靠底色的話這個 chip 在已到的列裡整個溶掉。用邊框定義形狀。 */
-.chip-count {
-  background: var(--accent-soft); color: var(--accent);
-  border: 1px solid var(--accent); padding: 0 var(--sp-2);
-}
+/*
+ * 攜伴人數。**中性**（2026-09）：它是這個人的一項補充資料，不是要你注意的事。
+ *
+ * 它本來跟 .chip-tell 一樣是 accent 底、accent 字、accent 邊——兩個語意不同的
+ * 晶片長得一模一樣，並排時分不出哪個是「帶了幾個人」、哪個是「他在第二車」。
+ * 現在的分工很簡單：**中性晶片＝資料，accent 晶片＝要你分辨的事**，所以
+ * .chip-count 與 .chip-note 共用一個長相是對的，它們都是資料。
+ *
+ * 邊框也拿掉了：填色已經定義了形狀，再描一條只是把同一件事說第二次。
+ * （已到的列不再鋪淡綠，所以當初「光靠底色會溶掉」那個理由也跟著消失了。）
+ */
+.chip-count { background: var(--surface-2); color: var(--ink-2); }
 /* 同名的人才會出現的辨識晶片（分車或電話尾碼）。要比備註更顯眼，
-   因為它存在的唯一理由就是「讓你分得出這兩個陳怡君」。 */
+   因為它存在的唯一理由就是「讓你分得出這兩個陳怡君」。
+   藥丸形：「這個人屬於哪一群」在這個 app 裡一律是藥丸（分組晶片、身分圖示
+   都是），方角留給資料。 */
 .chip-tell {
   background: var(--accent-soft); color: var(--accent); font-weight: 700;
-  border: 1px solid var(--accent); padding: 0 var(--sp-2);
+  padding: 0 var(--sp-2); border-radius: var(--r-full);
 }
 .chip-note { background: var(--surface-2); color: var(--ink-2); }
 .chip-data {
@@ -844,10 +1029,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* === 狀態畫面 ============================================================ */
 
+/*
+ * 空狀態是一段話，不是一個框（2026-09）。
+ *
+ * 它本來是「白底 ＋ 虛線框 ＋ 18px 圓角」——而虛線是全站唯一一處虛線，圓角也是
+ * 唯一一個用 --r-3 的非覆蓋層元件。一個「這裡什麼都沒有」的訊息，卻是名單畫面上
+ * 視覺最特殊的一塊。現在它就印在頁面上，靠留白自己成一段。
+ */
 .empty {
   text-align: center; padding: var(--sp-7) var(--sp-5); color: var(--ink-3);
-  background: var(--surface); border: 1px dashed var(--rule-strong);
-  border-radius: var(--r-3);
 }
 .empty-big { font-size: var(--fs-4); font-weight: 600; color: var(--ink-2); margin-bottom: var(--sp-1); }
 .center-note { text-align: center; padding: var(--sp-7) var(--sp-5); color: var(--ink-3); }
@@ -914,17 +1104,48 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .room-flow.is-list .room-flow-panel-list { transform: translateY(0); }
 .room-flow-title { font-size: var(--fs-6); }
 
-/* 輸入框跟著面板一起長：拿掉即時預覽騰出來的高度都給它。 */
+/*
+ * 臨時加人那張面板：**把打字造成的長高收斂到一頁的份量**（2026-09）。
+ *
+ * 它是單頁面板，但解析結果長出來會讓它長高（實測 280 → 419，差 139）。這裡不鎖
+ * 死高度——**打字讓它長高是內容自己在長，跟「按一顆鍵它就跳」不是同一件事**，
+ * 使用者的眼睛本來就跟著自己打的字走。要收的是幅度：
+ *
+ * - 輸入框比開空間那一版矮（96 vs 220）：這裡是補一兩個路上遇到的人，不是貼
+ *   200 人的名單。
+ * - **解析結果一長出來，輸入框再讓 32px 給它。** 那時候你要看的是「我打的字被認
+ *   成了什麼」，不是還有多少空白可以打。這一條是唯一真的在縮小落差的——其他兩條
+ *   只是把整張面板一起變矮，落差不變。
+ * - 解析結果封頂 96px（約一列半，看得出還有得捲），而且**不印那一行
+ *   「解析預覽 · n 人」**：底下那顆按鈕就寫著「加入 2」，同一個數字不必在 12px
+ *   外再說一次。這一張面板的解析結果是「確認我打的那兩個字被認成了一個人」，
+ *   不是校對整份名單。
+ */
+.walkin .roster-editor-textarea { min-height: 96px; }
+.walkin > .stack:has(.preview) .roster-editor-textarea { min-height: 64px; }
+.walkin .preview { max-height: 96px; }
+.walkin .preview-head { display: none; }
+
+/* 輸入框跟著面板一起長：拿掉即時預覽騰出來的高度都給它。
+   `resize: none` 是因為它已經自己長滿了——留著那顆原生的拉桿，等於在框的右下角
+   放一個在手機上拉不動、在桌機上只會把版面弄壞的三角形。 */
 .roster-editor { flex: 1; min-height: 0; }
 .roster-editor-field { flex: 1; min-height: 0; }
-.roster-editor-textarea { flex: 1; min-height: 220px; }
+.roster-editor-textarea { flex: 1; min-height: 220px; resize: none; }
 
-/* 清單面板的解析結果框跟輸入面板的 textarea 一樣長到貼齊底部按鈕——不直接改
-   `.preview`（「更多」面板改名單也在用，那裡要維持 260px 內捲動），只在這個
-   面板的路徑上覆寫。 */
+/*
+ * 清單面板的解析結果框**跟著內容長，不撐到底**（2026-09）。
+ *
+ * 它本來是 `flex: 1` 撐到貼齊底部按鈕，理由是「跟輸入面板的 textarea 一樣長」。
+ * 但那兩塊東西的性質不一樣：textarea 是**還要往裡面放東西**的，框大一點就是多
+ * 一點空間；解析結果是**已經有幾個人就是幾個人**的，撐開只會在名單底下留一大塊
+ * 空白的白方塊——八個人的名單看起來像壞掉的十六個人。
+ *
+ * 內容長過一屏時由面板自己捲（`.room-flow-panel` 本來就是 `overflow-y: auto`），
+ * 所以 `max-height: none` 留著：不要在一個會捲的面板裡再套一個會捲的框。
+ */
 .room-flow-panel-list > .stack { flex: 1; min-height: 0; }
-.room-flow-panel-list .field { flex: 1; min-height: 0; }
-.room-flow-panel-list .preview { flex: 1; min-height: 160px; max-height: none; }
+.room-flow-panel-list .preview { flex: 0 1 auto; max-height: none; }
 
 /* === 面板 ================================================================ */
 
@@ -967,10 +1188,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
    * 兩層漸層的老技巧：遮蓋層 background-attachment: local 跟著內容捲，陰影層
    * scroll 固定不動。捲到底時遮蓋層蓋住陰影，陰影自己消失——不需要 JS，也不會
    * 在捲到底之後還把最後一列壓得灰灰的。
+   *
+   * **底色是 --surface，不是 --paper**（2026-09）。面板與確認對話框是同一種東西
+   * （浮在遮罩上的一塊），卻一個用頁面色、一個用卡片色——同一個 app 的兩個覆蓋層
+   * 長在兩個表面上。統一到 --surface 之後，「浮起來的東西＝--surface ＋ 陰影」
+   * 這條規則全站沒有例外，而面板裡的凹槽（.note、.preview、.segmented）也才真的
+   * 凹得下去：它們用的 --surface-2 疊在 --paper 上，淺色時亮度差只有 1.06:1。
    */
-  background-color: var(--paper);
+  background-color: var(--surface);
   background-image:
-    linear-gradient(transparent, var(--paper)),
+    linear-gradient(transparent, var(--surface)),
     linear-gradient(transparent, var(--rule));
   background-repeat: no-repeat;
   background-size: 100% 24px, 100% 10px;
@@ -978,44 +1205,64 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background-attachment: local, scroll;
 }
 /*
- * 握把與標題列是「往下滑收起來」的手勢區（Sheet.tsx 的 drag）。握把本來只是
- * 一條裝飾線，看起來可以拖卻拖不動；現在它跟標題列一起真的拖得動，而標題列
- * 讓手勢區從 24px 變成 72px——單手大拇指按得到的範圍。
+ * 面板的那一條（`.sheet-bar`）：**每一頁都在、高度固定**。
  *
- * touch-action 要放行它自己該做的事、擋掉其餘：握把底下沒有東西要捲，用 none；
- * 標題列裡住著可以橫向捲的分頁鍵，用 pan-x 把橫向留給它，垂直交給我們。
+ * 它取代了原本的「握把 ＋ 標題列」兩層（2026-09）。標題列一路瘦下來——13 項擠成
+ * 一長串 → 三顆分頁鍵 → 一條平的選單 → 部分面板整條不畫 → 現在所有面板都不畫，
+ * 判準始終是那一條「標題有沒有比它底下那些列多說一件事」。
+ *
+ * 留下這一列的理由不再是標題，是**每一頁的內容都從同一條線開始**：以前第一頁
+ * 沒有標題列、子畫面才有，於是點進「邀請點名」的瞬間整份內容往下掉 60px，而
+ * 那顆要按的返回鍵也在別的地方。現在有沒有返回鍵都不改變這一列的高度。
+ *
+ * 順帶把手勢區從 20px 放大到 48px：那條線只是視覺記號，真正要能被一根手指按到的
+ * 是整列。touch-action: none——這一列底下沒有任何東西要捲（分頁鍵是上一代的事）。
  */
-.sheet-grip {
-  /*
-   * 整條都是手勢區，不只中間那條線：沒有標題列的面板（`head={false}`）靠它
-   * 收起來，38px 寬的目標對一根手指來說太窄。線本身仍然只有 38px，用
-   * ::after 畫；上下的內距撐出手指高度，再用負外距收回來，版面高度一格都沒有多長。
-   */
-  height: var(--sp-1); width: 100%; box-sizing: content-box;
-  padding: var(--sp-2) 0;
-  margin: calc(var(--sp-1) - var(--sp-2)) 0 calc(var(--sp-3) - var(--sp-2));
+.sheet-bar {
+  position: relative;
+  display: flex; align-items: center;
+  min-height: var(--tap-min); margin-bottom: var(--sp-2);
   touch-action: none; cursor: grab;
 }
-.sheet-grip::after {
-  content: ''; display: block; height: 100%; width: 38px; margin: 0 auto;
+/* 握把畫在正中間，而且是絕對定位——它不能參與那一列的排版，不然有返回鍵時
+   它會被推到旁邊去。 */
+.sheet-bar::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 38px; height: var(--sp-1);
   border-radius: var(--r-full); background: var(--rule-strong);
 }
-.sheet.is-dragging .sheet-grip { cursor: grabbing; }
-.sheet-head {
-  display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3);
-  /* 這一列是「往下滑收起面板」的手勢區，所以它自己要有一根手指的高度。有返回鍵
-     或關閉鍵的子畫面本來就被 48px 的圖示鍵撐開，只印標題的那幾張不會——量到
-     26px，手指往下劃第一公分就已經滑出這一列，手勢連接管都來不及。 */
-  min-height: var(--tap-min);
-  touch-action: pan-x;
-}
+.sheet.is-dragging .sheet-bar { cursor: grabbing; }
+
+/*
+ * 內容那一格。**高度貼合內容，而每一頁的落差要小到不像在跳**（2026-09）。
+ *
+ * 這兩件事聽起來衝突，實際上是同一個量的兩端：
+ * **一張面板的空白 ＝ 它最高那一頁與這一頁的差**。所以「不留空白」與「高度不變」
+ * 不可能同時成立——鎖成一樣高，短的那頁就空一塊；貼合內容，切頁就會動。
+ * 唯一能同時改善兩邊的做法只有一個：**把落差本身變小**。
+ *
+ * 這一輪就是這樣做的。實測（390×844，內容自然高度）：
+ *
+ *   更多        202 → 225   落差 23
+ *   空間的更多  205 → 256   落差 51
+ *   設定        256 → 336   落差 80（展開一列）
+ *   加入空間    204 → 365   落差 161  ← 相機取景框
+ *   臨時加人    280 → 419   落差 139  ← 解析結果長出來
+ *
+ * 前兩個是拿掉標題列就好了的（那一列本身就佔 60px，而且只長在子頁上）。
+ * 後兩個各自處理，見 .scan-frame 與 .walkin。
+ *
+ * **`.sheet-bar` 維持固定 48px 不動**，那是這件事的地基：不管高度怎麼變，
+ * 每一頁的內容都從同一條線開始，返回鍵也永遠在同一個位置。
+ */
+.sheet-body { display: flex; flex-direction: column; }
 /*
  * 手勢區裡不選字。按著分頁鍵往下拖時，Chromium 會把它當成「拖曳選取的文字」
  * 而開始一次原生拖放（dragstart），那會立刻送出 pointercancel——手勢在第一
  * 公分就被吃掉，面板紋風不動。這一行是那個手勢能不能用的前提，不是修飾。
  */
-.sheet-grip, .sheet-head { user-select: none; -webkit-user-select: none; }
-.sheet-title { font-size: var(--fs-5); }
+.sheet-bar { user-select: none; -webkit-user-select: none; }
 
 /*
  * 編輯模式的標題（2026-09）。它就長在標題原本的位置上，同一個字級、同一個
@@ -1057,6 +1304,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .menu-item > span { flex: 1; min-width: 0; }
 .menu-item:hover { background: var(--surface-2); }
 .menu-item strong { font-weight: 600; font-size: var(--fs-3); }
+/*
+ * 右邊那顆箭頭：**這一列會開一張子畫面**（2026-09）。
+ *
+ * 「更多」那份選單上，「邀請點名」會再開一頁、「編輯」是當場切換模式、「存成常用
+ * 名單」是開一張表單——三件事在畫面上長得一模一樣，都是一顆圖示加一行字，右邊
+ * 一片空白。按下去會發生什麼，只能靠按下去才知道。箭頭補的就是這件事，而且順便
+ * 讓那一列有右邊界：一張面板上兩三列靠左的短字加一大片空白，是它看起來像沒做完
+ * 的主要原因。
+ */
+.menu-item .go { flex: none; margin-top: 2px; color: var(--ink-3); }
 .menu-item .sub { display: block; font-size: var(--fs-2); color: var(--ink-3); font-weight: 400; }
 .menu-item.danger { color: var(--fb-error); }
 .menu-divider { height: 1px; background: var(--rule); margin: var(--sp-2) 0; }
@@ -1114,8 +1371,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
   /* QR 一律白底黑碼：掃描器要的是對比，不是配色。 */
   background: #fff; padding: var(--sp-3); border-radius: var(--r-2);
   display: grid; place-items: center; border: 1px solid var(--rule);
+  /* 跟掃碼的取景框同一個道理：容得下就照 240px，容不下就縮，不去撐面板。 */
+  min-height: 0;
 }
-.qr-card img { display: block; width: 100%; max-width: 240px; height: auto; }
+/* 220 而不是滿版：220px 的 QR 在一支手臂的距離內照樣掃得到，而滿版會讓這一頁
+   比同一張面板的其他頁高出一大截——**需要多大是由「掃不掃得到」決定的，不是由
+   「這一列有多寬」決定的**。 */
+.qr-card img { display: block; max-width: 220px; max-height: 100%; width: auto; height: auto; }
 
 /* === 名單解析預覽 ======================================================== */
 
@@ -1136,6 +1398,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .preview-remove { color: var(--ink-3); flex: none; }
 .preview-remove:active { background: var(--surface-2); }
 .preview-index { font-size: var(--fs-1); color: var(--ink-3); min-width: 22px; font-variant-numeric: tabular-nums; }
+/* 名字與備註晶片讀在一起。要縮的是晶片（備註長度不受控），名字不縮——
+   這是整份預覽存在的理由：確認解析器把誰認成了一個人。 */
+.preview-name {
+  flex: 1; min-width: 0; display: flex; align-items: baseline; gap: var(--sp-2);
+}
+.preview-name > .chip-note {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: inline-block;
+}
 
 /* === 提示框 ============================================================== */
 
@@ -1153,7 +1424,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-2); line-height: 1.6; margin-bottom: var(--sp-3);
 }
 .banner-warn { background: var(--fb-warn-soft); color: var(--fb-warn); }
-.banner-muted { background: var(--surface-2); color: var(--ink-2); }
+/*
+ * 中性的那一種**不畫框**（2026-09）。
+ *
+ * `--surface-2` 疊在 `--paper` 上只差 1.08:1——那個填色沒有把任何東西框起來，
+ * 它只是在首頁最上面放了一塊三行高的灰色大方塊，比它底下的「創建空間」還早被
+ * 讀到。有色底的提示（warn／error）是在說「這裡不一樣」，而這一種是在補一句
+ * 背景說明，那就讓它長得像一句話。
+ */
+.banner-muted { background: transparent; color: var(--ink-2); padding: 0; }
 
 /* === Toast =============================================================== */
 

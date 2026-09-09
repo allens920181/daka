@@ -17,8 +17,8 @@ const BROWSER = process.env.CHROMIUM_PATH
     ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
     : undefined)
 
-/** docs/design/03-tokens.md §4 的八階字級。 */
-const FONT_SCALE = [11, 13, 15, 17, 20, 26, 34, 44]
+/** docs/design/03-tokens.md §3.2 的七階字級（44px 那一階隨計分區一起拿掉了）。 */
+const FONT_SCALE = [11, 13, 15, 17, 20, 26, 34]
 /** §6：一般可互動元素 48px；Toast 動作是暫時性表面，放寬到 44px。 */
 const TAP_MIN = 48
 const TAP_EXCEPTIONS = { 'toast-action': 44 }
@@ -119,7 +119,16 @@ function collect() {
      * 而它沒有自己的文字節點，所以上面那段以文字為單位的檢查看不到它。
      * 這裡明確點名幾個「形狀就是資訊」的元素。
      */
-    const NON_TEXT = ['check', 'sync-dot', 'chip-count', 'chip-tell']
+    /*
+     * 這裡只列「形狀本身就是資訊」的元素。
+     *
+     * chip-count 與 chip-tell 2026-09 移出這份清單：它們的意思**寫在裡面的字上**
+     * （「＋2」「第二車」），走的是文字對比規則（4.5:1），底色與邊框是裝飾。
+     * WCAG 1.4.11 管的是沒有文字可以依靠的圖形——那顆空心圈與那顆同步圓點。
+     * 把有字的元件也塞進來，只會逼出「為了通過檢查而描的邊」，而那正是 2026-09
+     * 這一輪要拆掉的東西。
+     */
+    const NON_TEXT = ['check', 'sync-dot']
     if ([...(el.classList ?? [])].some((c) => NON_TEXT.includes(c))) {
       const bg = bgOf(el.parentElement ?? el)
       const a = effOpacity(el)
@@ -171,7 +180,7 @@ async function audit(page, scheme, screen) {
   }
   for (const f of r.font) {
     if (!FONT_SCALE.includes(Math.round(f.fs))) {
-      note(scheme, screen, '字級不在八階內', `${f.fs}px ${f.el} 「${f.text}」`)
+      note(scheme, screen, '字級不在七階內', `${f.fs}px ${f.el} 「${f.text}」`)
     }
   }
   for (const n of r.nonText) {
@@ -195,6 +204,13 @@ for (const scheme of ['light', 'dark']) {
 
   await page.goto(URL); await page.waitForTimeout(900)
   await audit(page, scheme, '首頁')
+
+  // 「加入空間」2026-09 從就地展開改成一張底部面板：代碼框、「加入」、掃碼鍵
+  // 換了一組鄰居（面板底色 --surface，不是頁面底色），對比與觸控尺寸要重驗。
+  await page.getByRole('button', { name: /^加入空間$|^Join a room$/ }).first().click()
+  await page.waitForTimeout(500)
+  await audit(page, scheme, '首頁 · 加入空間')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400)
 
   await page.getByRole('button', { name: /創建空間|Create a room/ }).first().click()
   await page.waitForTimeout(300)
@@ -254,8 +270,8 @@ for (const scheme of ['light', 'dark']) {
   await audit(page, scheme, '空間（含分組）')
 
   // 首頁每個空間右邊那顆「更多」（2026-09 拆開）：**空間本身的事**（建立副本、
-  // 刪除空間），就在首頁打開，不進空間。這一份有標題列（印著是哪一間），跟空間
-  // 裡那一份相反，所以要單獨驗。
+  // 刪除空間），就在首頁打開，不進空間。它跟空間裡那一份是兩份不同的清單，
+  // 所以要單獨驗。
   await page.goto(URL); await page.waitForTimeout(900)
   await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(600)
   await audit(page, scheme, '首頁 · 空間的「更多」')
