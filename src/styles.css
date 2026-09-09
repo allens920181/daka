@@ -7,10 +7,24 @@
    =========================================================================== */
 
 :root {
-  /* --- 表面與文字 ------------------------------------------------------ */
-  --paper: #f5f7f8;
+  /*
+   * --- 表面與文字 ------------------------------------------------------
+   *
+   * **灰階是冷中性，不是青灰**（2026-09 換過一次）。
+   *
+   * 它本來刻意往品牌色偏（`--ink-2` 色相 193°、`--rule` 197°、`--paper` 200°），
+   * 理由寫在 02-brand §2.6：「純中性灰讀起來像沒選過」。那個直覺沒錯，但執行
+   * 過頭了，而且偏的方向正好是品牌色自己所在的色相（teal 185°）——**背景已經
+   * 是那個色相，強調色就沒有東西可以推**。整個 app 因此泡在一層青灰裡：teal 不
+   * 像強調色，琥珀與綠看起來髒。
+   *
+   * 現在灰階移到 ~240°、彩度砍到 2–3%：還是「選過的灰」（不是死灰），但離 teal
+   * 有 55° 的距離。**而且冷灰是暖琥珀最好的背景**——「未到 N」是這個產品最該被
+   * 看見的一個顏色，整套灰階應該替它服務。
+   */
+  --paper: #f7f7f9;
   --surface: #ffffff;
-  --surface-2: #eceff1;
+  --surface-2: #eeeef2;
   /*
    * 「浮在凹槽上」的那一階。分段控制與名單列都靠高度（而不是顏色）表示狀態：
    * 軌道／頁面用凹的那一階，浮起來的那一格要比它亮。
@@ -22,18 +36,37 @@
    * 像沒被選到。
    */
   --raised: #ffffff;
-  --ink: #10171a;
-  --ink-2: #4a5a5e;
-  --ink-3: #5f6f73;          /* 最淺的可用文字色 */
-  --rule: #d7dee0;
-  --rule-strong: #b5c0c3;
-  /* 「未到」的空心圈。--rule-strong 只有 1.86:1，逆光下等於不存在，而這個圈
-     是名單上唯一表示「這個人還沒上車」的形狀。非文字元件的門檻是 3:1。 */
-  --check-line: #7d8f93;
+  --ink: #17171c;
+  --ink-2: #55555f;
+  --ink-3: #676773;          /* 最淺的可用文字色 */
+  /*
+   * **兩條線，兩個工作**（2026-09 重新分工）。
+   *
+   * 它們本來是 1.28:1 與 1.86:1——兩條都遠低於 WCAG 對控制項邊界的 3:1，卻又
+   * 都深到看得見。那是最糟的區間：**不夠強到定義形狀，卻夠強到製造噪點**，
+   * 而全站幾乎每個元件都描了邊，疊起來就是一層灰糊。
+   *
+   * - `--rule` 只做**分隔與容器邊緣**，所以要更輕（1.24:1）：它的工作是節奏，
+   *   不是定義。卡片是靠 --surface ＋ --el-1 浮起來的，那條線只是收個邊。
+   * - `--rule-strong` 只做**可互動元件的邊界**（按鈕、輸入框、分組晶片、握把），
+   *   所以要真的達標（3.24:1）。1px 的 #8e8e9a 描在白底上是一顆正常的外框按鈕，
+   *   讀起來比原本更俐落，不是更重。
+   */
+  --rule: #e6e6ec;
+  --rule-strong: #8e8e9a;
+  /* 「未到」的空心圈。它是名單上唯一表示「這個人還沒上車」的形狀，非文字元件的
+     門檻是 3:1；比 --rule-strong 再淡一點，因為它旁邊沒有填色可以幫忙。 */
+  --check-line: #85858f;
 
   /* --- 品牌與互動 ------------------------------------------------------ */
-  --accent: #0e5e63;         /* 淡底上的強調文字也用這個 */
-  --accent-ink: #ffffff;
+  --accent: #0e5e63;         /* 強調**文字與邊框**。淡底上的強調文字也用這個 */
+  /*
+   * 主要按鈕的**填色**。淺色時它與 --accent 同值，深色時不是——見深色區塊：
+   * 深色底上的強調文字必須亮，強調色塊必須暗，那是兩個相反的要求，一個 token
+   * 扛不動。分成兩個之後，兩個主題的主要按鈕終於是同一個性格（深 teal ＋ 白字）。
+   */
+  --accent-fill: #0e5e63;
+  --accent-ink: #ffffff;     /* 疊在 --accent-fill 上的文字 */
   --accent-soft: #e2f0f0;
   --accent-strong: #0c8a93;  /* 焦點框、載入。不得用於一般文字 */
 
@@ -50,13 +83,15 @@
   --fb-error: #a02b22;
   --fb-error-soft: #f9e6e4;
 
-  /* --- Toast：獨立表面，不參與明暗反轉 --------------------------------- */
-  --toast-bg: #10171a;
-  --toast-ink: #f5f7f8;
-  --toast-action: #5fd8df;
+  /* --- Toast：獨立表面，不參與明暗反轉 ---------------------------------
+     「復原」那顆用 --accent 家族的亮 teal（深底上的強調色本來就該亮），不再是
+     一個只出現在這裡的專屬霓虹色。 */
+  --toast-bg: #1b1b22;
+  --toast-ink: #f7f7f9;
+  --toast-action: #3fbfc7;
   /* Toast 是誤觸的安全網，必須看得出它是一塊獨立的東西。淺色時深底自己就
-     夠分明（18:1），深色時底色只比它蓋住的名單列亮 1.12:1，靠邊框定義。 */
-  --toast-line: #10171a;
+     夠分明（17:1），深色時底色只比它蓋住的名單列亮 1.12:1，靠邊框定義。 */
+  --toast-line: #1b1b22;
 
   /* --- Google 登入按鈕：第三方品牌規範，具名例外 -----------------------
      這四個值來自 Google 自己的 Sign-in with Google 按鈕規範，不是我們的色票，
@@ -96,14 +131,16 @@
   --r-3: 18px;
   --r-full: 999px;
 
-  /* --- 陰影 ------------------------------------------------------------ */
-  --el-1: 0 1px 2px rgba(16, 23, 26, .06);
-  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(16, 23, 26, .06);
-  --el-3: 0 -8px 40px rgba(16, 23, 26, .18);
+  /* --- 陰影 ------------------------------------------------------------
+     --rule 變輕之後，卡片的形狀改由陰影負責，所以 --el-1 要跟著補回來一點
+     （.06 → .08）：一條 1.24:1 的線加一層幾乎看不見的陰影，等於什麼都沒有。 */
+  --el-1: 0 1px 2px rgba(23, 23, 28, .08);
+  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(23, 23, 28, .07);
+  --el-3: 0 -8px 40px rgba(23, 23, 28, .20);
 
   /* --- 不透明度與遮罩 --------------------------------------------------- */
   --op-disabled: .5;
-  --scrim: rgba(9, 16, 18, .45);
+  --scrim: rgba(17, 17, 22, .45);
 
   /* --- 觸控 ------------------------------------------------------------ */
   --tap-min: 48px;
@@ -128,19 +165,22 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --paper: #0d1315;
-    --surface: #151e21;
-    --surface-2: #1d282b;
-    --raised: #263336;
-    --ink: #e9eef0;
-    --ink-2: #a4b3b6;
-    --ink-3: #8b9b9f;
-    --rule: #29373a;
-    --rule-strong: #3b4b4f;
-    --check-line: #6b8085;
+    --paper: #0f0f13;
+    --surface: #1a1a21;
+    --surface-2: #25252e;
+    --raised: #303039;
+    --ink: #ececf0;
+    --ink-2: #a8a8b3;
+    --ink-3: #9494a0;
+    --rule: #2e2e37;
+    --rule-strong: #6a6a76;
+    --check-line: #7a7a88;
 
+    /* --accent 只當文字與邊框（深底上的強調色必須亮）；色塊走 --accent-fill。
+       #11757e ＋ 白字 ＝ 5.4:1，而且與淺色的主要按鈕是同一個性格。 */
     --accent: #3fbfc7;
-    --accent-ink: #06232a;
+    --accent-fill: #11757e;
+    --accent-ink: #ffffff;
     --accent-soft: #11292c;
     --accent-strong: #5fd8df;
 
@@ -152,10 +192,10 @@
     --fb-error: #e5736a;
     --fb-error-soft: #2e1a18;
 
-    --toast-bg: #1d282b;
-    --toast-ink: #e9eef0;
-    --toast-action: #5fd8df;
-    --toast-line: #69868d;
+    --toast-bg: #25252e;
+    --toast-ink: #ececf0;
+    --toast-action: #3fbfc7;
+    --toast-line: #6f6f7d;
     --google-bg: #131314;
     --google-ink: #e3e3e3;
     --google-line: #8e918f;
@@ -172,19 +212,22 @@
 }
 
 :root[data-theme='dark'] {
-  --paper: #0d1315;
-  --surface: #151e21;
-  --surface-2: #1d282b;
-  --raised: #263336;
-  --ink: #e9eef0;
-  --ink-2: #a4b3b6;
-  --ink-3: #8b9b9f;
-  --rule: #29373a;
-  --rule-strong: #3b4b4f;
-  --check-line: #6b8085;
+  --paper: #0f0f13;
+  --surface: #1a1a21;
+  --surface-2: #25252e;
+  --raised: #303039;
+  --ink: #ececf0;
+  --ink-2: #a8a8b3;
+  --ink-3: #9494a0;
+  --rule: #2e2e37;
+  --rule-strong: #6a6a76;
+  --check-line: #7a7a88;
 
+  /* --accent 只當文字與邊框（深底上的強調色必須亮）；色塊走 --accent-fill。
+     #11757e ＋ 白字 ＝ 5.4:1，而且與淺色的主要按鈕是同一個性格。 */
   --accent: #3fbfc7;
-  --accent-ink: #06232a;
+  --accent-fill: #11757e;
+  --accent-ink: #ffffff;
   --accent-soft: #11292c;
   --accent-strong: #5fd8df;
 
@@ -196,10 +239,10 @@
   --fb-error: #e5736a;
   --fb-error-soft: #2e1a18;
 
-  --toast-bg: #1d282b;
-  --toast-ink: #e9eef0;
-  --toast-action: #5fd8df;
-  --toast-line: #69868d;
+  --toast-bg: #25252e;
+  --toast-ink: #ececf0;
+  --toast-action: #3fbfc7;
+  --toast-line: #6f6f7d;
   --google-bg: #131314;
   --google-ink: #e3e3e3;
   --google-line: #8e918f;
@@ -279,7 +322,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn:active { transform: scale(.98); }
 .btn:disabled { opacity: var(--op-disabled); cursor: not-allowed; transform: none; }
 
-.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/*
+ * 主要按鈕用 --accent-fill，不是 --accent（2026-09）。
+ *
+ * 深色模式下 --accent 是一個亮青色——那是**深底上的強調文字**該有的亮度，拿來當
+ * 一整顆按鈕的填色就變成一塊霓虹青，配深色文字，跟淺色那顆「深 teal ＋ 白字」
+ * 完全是兩個性格。深底上的強調色要亮、強調色塊要暗，那是兩個相反的要求；
+ * 一個 token 扛兩件事，總有一邊會壞。
+ */
+.btn-primary { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent-fill); }
 /*
  * Google 登入按鈕。照 Google 自己的按鈕規範走，不是這個系統的樣式。
  * 深色時底色只比面板亮 1.10:1，跟 Toast 一樣靠邊框定義形狀（邊框 5.8:1）。
@@ -867,21 +918,25 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-2); font-weight: 600;
   background: var(--surface-2); color: var(--ink-2);
 }
-/* 已到列的底色 --st-arrived-soft 和 --accent-soft 亮度差只有 1.01:1，
-   光靠底色的話這個 chip 在已到的列裡整個溶掉。用邊框定義形狀。 */
-.chip-count {
-  background: var(--accent-soft); color: var(--accent);
-  border: 1px solid var(--accent); padding: 0 var(--sp-2);
-}
+/*
+ * 攜伴人數。**中性**（2026-09）：它是這個人的一項補充資料，不是要你注意的事。
+ *
+ * 它本來跟 .chip-tell 一樣是 accent 底、accent 字、accent 邊——兩個語意不同的
+ * 晶片長得一模一樣，並排時分不出哪個是「帶了幾個人」、哪個是「他在第二車」。
+ * 現在的分工很簡單：**中性晶片＝資料，accent 晶片＝要你分辨的事**，所以
+ * .chip-count 與 .chip-note 共用一個長相是對的，它們都是資料。
+ *
+ * 邊框也拿掉了：填色已經定義了形狀，再描一條只是把同一件事說第二次。
+ * （已到的列不再鋪淡綠，所以當初「光靠底色會溶掉」那個理由也跟著消失了。）
+ */
+.chip-count { background: var(--surface-2); color: var(--ink-2); }
 /* 同名的人才會出現的辨識晶片（分車或電話尾碼）。要比備註更顯眼，
    因為它存在的唯一理由就是「讓你分得出這兩個陳怡君」。
-   **形狀跟 .chip-count 不一樣**（藥丸 vs 方角）：兩者用同一組顏色，而顏色一樣
-   的兩個晶片並排時分不出「這是攜伴人數」還是「這是哪一台車」。分組晶片也是
-   藥丸——「這個人屬於哪一群」在這個 app 裡一律是藥丸。 */
+   藥丸形：「這個人屬於哪一群」在這個 app 裡一律是藥丸（分組晶片、身分圖示
+   都是），方角留給資料。 */
 .chip-tell {
   background: var(--accent-soft); color: var(--accent); font-weight: 700;
-  border: 1px solid var(--accent); padding: 0 var(--sp-2);
-  border-radius: var(--r-full);
+  padding: 0 var(--sp-2); border-radius: var(--r-full);
 }
 .chip-note { background: var(--surface-2); color: var(--ink-2); }
 .chip-data {

@@ -119,7 +119,16 @@ function collect() {
      * 而它沒有自己的文字節點，所以上面那段以文字為單位的檢查看不到它。
      * 這裡明確點名幾個「形狀就是資訊」的元素。
      */
-    const NON_TEXT = ['check', 'sync-dot', 'chip-count', 'chip-tell']
+    /*
+     * 這裡只列「形狀本身就是資訊」的元素。
+     *
+     * chip-count 與 chip-tell 2026-09 移出這份清單：它們的意思**寫在裡面的字上**
+     * （「＋2」「第二車」），走的是文字對比規則（4.5:1），底色與邊框是裝飾。
+     * WCAG 1.4.11 管的是沒有文字可以依靠的圖形——那顆空心圈與那顆同步圓點。
+     * 把有字的元件也塞進來，只會逼出「為了通過檢查而描的邊」，而那正是 2026-09
+     * 這一輪要拆掉的東西。
+     */
+    const NON_TEXT = ['check', 'sync-dot']
     if ([...(el.classList ?? [])].some((c) => NON_TEXT.includes(c))) {
       const bg = bgOf(el.parentElement ?? el)
       const a = effOpacity(el)
