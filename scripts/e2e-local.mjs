@@ -844,7 +844,10 @@ ok('頂欄說得出已關閉', (await p.locator('.topbar-count.closed').count())
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 await p.goto(URL); await p.waitForTimeout(800)
 await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
-ok('設定面板標題是「設定」不是「主題」', (await p.locator('.sheet-title').textContent())==='設定')
+// 標題列整條不要（2026-09）：「設定」兩個字說不出這裡做得到的任何一件事，
+// 而底下四列自己就說得完。無障礙名稱還是「設定」。
+ok('設定面板沒有標題列', (await p.locator('.sheet .sheet-head').count()) === 0)
+ok('但無障礙名稱還是「設定」', (await p.locator('.sheet').getAttribute('aria-label')) === '設定')
 ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count()) === 0)
 
 // 設定頁是四列長得一樣的摺疊列：暱稱、帳戶、主題、語言（2026-09）。單機模式

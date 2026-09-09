@@ -768,7 +768,19 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     : p.theme === 'light' ? t('themeLight') : t('themeDark')
 
   return (
-    <Sheet title={t('settings')} onClose={onClose}>
+    <Sheet
+      title={t('settings')}
+      onClose={onClose}
+      /*
+        標題列整條不要（2026-09），跟「更多」那份選單同一個理由：「設定」兩個字
+        說不出這裡做得到的任何一件事，而底下四列（暱稱、帳戶、主題、語言）自己
+        就說得完——它們一眼看得出是偏好，不是動作。那一列省下來的高度，在 380px
+        高的矮螢幕上正好是「四列裝不裝得下」的差別。
+        收起來的三條路（點面板外面、Esc、從握把往下滑）一條都沒有少，無障礙名稱
+        也還是「設定」。
+      */
+      head={false}
+    >
       {/*
         四列長得一模一樣：暱稱、帳戶、主題、語言。它們是同一種東西——跟這台
         裝置／這個人有關的偏好，跟任何一個空間無關（所以這個面板只從首頁進得
