@@ -312,21 +312,38 @@ ok('面板有標題列，說得出這是在做什麼',
 // 按下那顆鍵的下一個動作就是打那六碼，跳出鍵盤是它的直接結果。
 ok('開起來焦點就在代碼框',
    await p.evaluate(() => document.activeElement?.classList.contains('code-input') === true))
-// 兩條路各一列：打代碼＋加入是同一件事的兩半（同一列），掃碼是另一條路（自己一列）。
+// 打代碼＋加入是同一件事的兩半，所以是**同一個框**（2026-09 從兩個並排的框
+// 合起來）：框畫在外層，裡面的輸入框與按鈕都不再各自有框。
 ok('代碼輸入與「加入」在同一列', await p.evaluate(() => {
   const input = document.querySelector('.sheet .code-input').getBoundingClientRect()
-  const join = document.querySelector('.sheet .row .btn').getBoundingClientRect()
+  const join = document.querySelector('.sheet .code-row .btn').getBoundingClientRect()
   return Math.abs((input.top + input.height / 2) - (join.top + join.height / 2)) <= 2
     && join.left >= input.right - 1
 }))
+ok('而且是同一個框：框在外層，裡面兩個都沒有自己的邊', await p.evaluate(() => {
+  const row = document.querySelector('.sheet .code-row')
+  const input = document.querySelector('.sheet .code-row .code-input')
+  const join = document.querySelector('.sheet .code-row .btn')
+  if (!row || !input || !join) return false
+  const w = (el) => parseFloat(getComputedStyle(el).borderTopWidth)
+  return w(row) >= 1 && w(input) === 0 && w(join) === 0
+}))
 // 並排的元件要對齊：輸入框的高度不能是字級的副產品（2026-09 寫死 --tap-lg）。
-ok('代碼框與「加入」等高', await p.evaluate(() => {
-  const input = document.querySelector('.sheet .code-input').getBoundingClientRect()
-  const join = document.querySelector('.sheet .row .btn').getBoundingClientRect()
-  return Math.abs(input.height - join.height) <= 1
+ok('代碼框與「加入」等高，而且填滿那個框', await p.evaluate(() => {
+  const row = document.querySelector('.sheet .code-row').getBoundingClientRect()
+  const input = document.querySelector('.sheet .code-row .code-input').getBoundingClientRect()
+  const join = document.querySelector('.sheet .code-row .btn').getBoundingClientRect()
+  return Math.abs(input.height - join.height) <= 1 && row.height - input.height <= 3
+}))
+// 對焦圈搬到外框：裡面的輸入框沒有邊可以亮了。
+ok('對焦時亮的是整個框', await p.evaluate(() => {
+  document.querySelector('.sheet .code-row .code-input').focus()
+  const row = getComputedStyle(document.querySelector('.sheet .code-row'))
+  const input = getComputedStyle(document.querySelector('.sheet .code-row .code-input'))
+  return row.boxShadow !== 'none' && input.boxShadow === 'none'
 }))
 ok('掃碼自己一列（在那一列底下）', await p.evaluate(() => {
-  const row = document.querySelector('.sheet .row').getBoundingClientRect()
+  const row = document.querySelector('.sheet .code-row').getBoundingClientRect()
   const scan = [...document.querySelectorAll('.sheet .stack > .btn')]
     .find((b) => /QR/.test(b.textContent || ''))
   return Boolean(scan) && scan.getBoundingClientRect().top >= row.bottom - 1

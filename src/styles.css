@@ -410,14 +410,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .textarea { min-height: 200px; resize: vertical; line-height: 1.7; }
 
 /*
- * 代碼輸入。它跟「加入」並排在同一列（2026-09），所以要讓得動：`min-width: 0`
+ * 代碼輸入。它跟「加入」在同一個框裡（見 .code-row），所以要讓得動：`min-width: 0`
  * 讓 flex 收得下去，`flex: 1` 把剩下的寬度全拿走。六碼在 320px 的螢幕上仍有
  * 200px 可用，這個字級照樣讀得出來。
  *
- * **高度寫死成 --tap-lg，跟旁邊那顆「加入」一樣**（2026-09）。它本來是靠內距
- * 撐出來的：26px 的字 ＋ 1.55 行高 ＋ 上下 12px ＝ 66px，而旁邊那顆鍵是 56px，
- * 兩個東西並排在同一列卻差了 10px——那一列因此永遠是歪的。並排的元件要對齊，
- * 就不能讓其中一個的高度是另一件事（字級）的副產品。
+ * **高度寫死成 --tap-lg**（2026-09）。它本來是靠內距撐出來的：26px 的字 ＋
+ * 1.55 行高 ＋ 上下 12px ＝ 66px，而旁邊那顆鍵是 56px，兩個東西並排在同一列卻
+ * 差了 10px——那一列因此永遠是歪的。並排的元件要對齊，就不能讓其中一個的高度是
+ * 另一件事（字級）的副產品。（合進同一個框之後這條仍然有用：登入面板的六碼
+ * 驗證碼也是這個 class，那裡它是單獨一個框。）
  */
 .code-input {
   flex: 1; min-width: 0; height: var(--tap-lg);
@@ -426,6 +427,46 @@ button, input, textarea, select { font: inherit; color: inherit; }
   text-align: center; text-transform: uppercase;
   padding: 0 var(--sp-2) 0 var(--sp-5);
 }
+
+/*
+ * 代碼 ＋「加入」＝**一個框**（2026-09）。
+ *
+ * 它們本來是兩個各自描邊的元件並排、中間隔 8px——一列裡兩個框，而它們是同一件
+ * 事的兩半（打進去、按這裡）。框畫在外層之後，那一列只剩一個形狀，而「打完就
+ * 按旁邊那顆」這件事變成看得出來的，不必靠間距去猜。
+ *
+ * 跟邀請頁那條 `.copy-row` 是同一手法：**框在外面，裡面的東西不再各自有框**。
+ * 差別只在邊的強度——`.copy-row` 裝的是一段唸出去的字加一顆複製鍵（容器，
+ * 用 `--rule`），這裡整個框就是一個可互動元件的邊界（用 `--rule-strong`，3.24:1）。
+ *
+ * 對焦圈跟著搬到外框：裡面的輸入框沒有邊可以亮了，而該亮起來的本來就是整個
+ * 控制項。用 `:focus-within` 而不是 `:has(:focus)`——Tab 到「加入」時整個框也
+ * 該是亮的，那時候使用者確實正在這個控制項裡面。
+ */
+.code-row {
+  display: flex; align-items: center;
+  height: var(--tap-lg);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.code-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.code-row > .code-input { height: 100%; border: none; background: none; }
+/* 裡面那個框自己不再亮——不然對焦時會有兩層圈。 */
+.code-row > .code-input:focus { box-shadow: none; }
+/*
+ * 「加入」在框裡面：透明底、accent 字，靠顏色與 hover 底色說「這是可以按的」，
+ * 不再需要自己的邊框。**不畫分隔線**：兩邊一個是等寬大字、一個是彩色的兩個字，
+ * 已經分得開，而一條貫穿整個框高的線會把它切回兩個框（`.recent-item` 那條
+ * 2026-09 正是這樣拿掉的）。
+ * 停用時（還沒打滿六碼）它自己淡下去，打滿就亮起來——那是這一列唯一需要的回饋。
+ */
+.code-row > .btn {
+  height: 100%; flex: none;
+  border: none; background: none; border-radius: 0 var(--r-2) var(--r-2) 0;
+  color: var(--accent);
+}
+.code-row > .btn:hover:not(:disabled) { background: var(--surface-2); }
 
 /* === 首頁 ================================================================ */
 

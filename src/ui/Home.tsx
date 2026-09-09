@@ -269,10 +269,11 @@ function JoinSheet({ onClose }: { onClose: () => void }) {
     <Sheet title={t('joinRoom')} onClose={onClose}>
       <div class="stack">
         {/*
-          兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，擺在同一列
-          才看得出「打進去、按這裡」；**掃碼**是另一條路，自己一列。
+          兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，所以它們在
+          **同一個框**裡（`.code-row`，2026-09 從「兩個框並排」合起來）；
+          **掃碼**是另一條路，自己一列、自己一個框。
         */}
-        <div class="row">
+        <div class="code-row">
           <input
             ref={codeInputRef}
             class="input code-input"
@@ -296,10 +297,11 @@ function JoinSheet({ onClose }: { onClose: () => void }) {
           {/*
             「加入」不縮：它是兩個字，縮到剩一個字就沒有意義了。讓步的是輸入框
             ——六碼在 320px 上仍有 200px 可用，那個字級照樣讀得出來。
+            （`flex: none` 與高度都在 `.code-row > .btn` 上，不寫在這裡：它現在是
+            那個框的一部分，不是一顆碰巧擺在旁邊的按鈕。）
           */}
           <button
-            class="btn btn-lg"
-            style="flex:none"
+            class="btn"
             disabled={extractRoomCode(code).length < CODE_LENGTH}
             onClick={join}
           >
