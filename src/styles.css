@@ -359,7 +359,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .textarea { min-height: 200px; resize: vertical; line-height: 1.7; }
 
+/*
+ * 代碼輸入。它跟「加入」並排在同一列（2026-09），所以要讓得動：`min-width: 0`
+ * 讓 flex 收得下去，`flex: 1` 把剩下的寬度全拿走。六碼在 320px 的螢幕上仍有
+ * 200px 可用，這個字級照樣讀得出來。
+ */
 .code-input {
+  flex: 1; min-width: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--fs-6); font-weight: 700; letter-spacing: .34em;
   text-align: center; text-transform: uppercase;

@@ -306,14 +306,22 @@ ok('展開的內容沒有外框', await p.evaluate(() => {
   const cs = getComputedStyle(panel)
   return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)'
 }))
-// 打代碼跟掃碼是同一件事的兩種做法，不是主要與次要：並排、等寬。
-ok('「加入」與「掃描 QR 碼」並排且等寬', await p.evaluate(() => {
-  const b = [...document.querySelectorAll('#join-panel .row .btn')]
-  if (b.length !== 2) return false
-  const r = b.map((x) => x.getBoundingClientRect())
-  return Math.abs(r[0].top - r[1].top) <= 1
-    && Math.abs(r[0].width - r[1].width) <= 1
+// 兩條路各一列：打代碼＋加入是同一件事的兩半（同一列），掃碼是另一條路（自己一列）。
+ok('代碼輸入與「加入」在同一列', await p.evaluate(() => {
+  const input = document.querySelector('#join-panel .code-input').getBoundingClientRect()
+  const join = document.querySelector('#join-panel .row .btn').getBoundingClientRect()
+  return Math.abs((input.top + input.height / 2) - (join.top + join.height / 2)) <= 2
+    && join.left >= input.right - 1
 }))
+ok('掃碼自己一列（在那一列底下）', await p.evaluate(() => {
+  const row = document.querySelector('#join-panel .row').getBoundingClientRect()
+  const scan = [...document.querySelectorAll('#join-panel > .btn')]
+    .find((b) => /QR/.test(b.textContent || ''))
+  return Boolean(scan) && scan.getBoundingClientRect().top >= row.bottom - 1
+}))
+// 320px 上輸入框仍要放得下六碼（它是這一列唯一該讓步的東西，但有下限）。
+ok('窄螢幕上輸入框沒有被擠爛', await p.evaluate(() =>
+  document.querySelector('#join-panel .code-input').getBoundingClientRect().width >= 200))
 await p.getByRole('button', { name: /^加入空間/ }).click(); await p.waitForTimeout(300)
 ok('首頁清單每一列右邊都有一顆「更多」',
    (await p.getByRole('button', { name: /^更多：/ }).count()) === (await p.locator('.recent-item').count()))

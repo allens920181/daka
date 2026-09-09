@@ -162,6 +162,13 @@ export function Home({ onSettings }: { onSettings: () => void }) {
           */}
           {showJoin && joinOpen && (
             <div class="stack" id="join-panel">
+              {/*
+                兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，擺在
+                同一列才看得出「打進去、按這裡」；**掃碼**是另一條路，自己一列。
+                原本是「輸入框一列、加入與掃碼並排一列」——那個排法把加入跟掃碼
+                綁成一組，但它們其實分屬兩條不同的路。
+              */}
+              <div class="row">
                 <input
                   ref={codeInputRef}
                   class="input code-input"
@@ -182,26 +189,25 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                   }}
                   onKeyDown={(e) => { if (e.key === 'Enter') join() }}
                 />
-                {error && <p class="note note-warn">{error}</p>}
                 {/*
-                  兩條路並排，等寬：打代碼跟掃碼是同一件事的兩種做法，不是主要與
-                  次要。它們本來各佔一列（而且掃碼那顆是 .btn-ghost，看起來像次要
-                  的），合成一列省下一整列的高度。
+                  「加入」不縮：它是兩個字，縮到剩一個字就沒有意義了。讓步的是
+                  輸入框——六碼在 320px 上仍有 200px 可用，那個字級照樣讀得出來。
                 */}
-                <div class="row">
-                  <button
-                    class="btn btn-block"
-                    disabled={extractRoomCode(code).length < CODE_LENGTH}
-                    onClick={join}
-                  >
-                    {t('join')}
-                  </button>
-                  {canScanQr() && (
-                    <button class="btn btn-block" onClick={() => setScanOpen(true)}>
-                      <IconCamera /> {t('scanQr')}
-                    </button>
-                  )}
-                </div>
+                <button
+                  class="btn"
+                  style="flex:none"
+                  disabled={extractRoomCode(code).length < CODE_LENGTH}
+                  onClick={join}
+                >
+                  {t('join')}
+                </button>
+              </div>
+              {error && <p class="note note-warn">{error}</p>}
+              {canScanQr() && (
+                <button class="btn btn-block" onClick={() => setScanOpen(true)}>
+                  <IconCamera /> {t('scanQr')}
+                </button>
+              )}
             </div>
           )}
 
