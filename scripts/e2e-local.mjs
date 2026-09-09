@@ -307,8 +307,11 @@ ok('開的是一張面板，不是就地展開',
 // 外面，useModal 才 inert 得到整頁（見 Home.tsx 的註解）。
 ok('背景整頁 inert 了', await p.evaluate(() =>
   document.querySelector('.shell')?.hasAttribute('inert') === true))
-ok('面板有標題列，說得出這是在做什麼',
-   (await p.locator('.sheet .sheet-title').textContent())?.trim() === '加入空間')
+// 標題列不畫（「加入空間」四個字沒有比底下那個代碼框與那兩顆按鈕多說一件事），
+// 但螢幕閱讀器聽得到的不能跟著少。
+ok('沒有標題列，但無障礙名稱還在',
+   (await p.locator('.sheet .sheet-head').count()) === 0
+   && (await p.locator('.sheet').getAttribute('aria-label')) === '加入空間')
 // 按下那顆鍵的下一個動作就是打那六碼，跳出鍵盤是它的直接結果。
 ok('開起來焦點就在代碼框',
    await p.evaluate(() => document.activeElement?.classList.contains('code-input') === true))
