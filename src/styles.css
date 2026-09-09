@@ -300,8 +300,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--accent-soft); border-color: var(--accent);
   color: var(--accent); font-weight: 700;
 }
-.btn-ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
-.btn-ghost:hover { background: var(--surface-2); }
 .btn-danger { color: var(--fb-error); border-color: var(--rule); }
 .btn-danger:hover { background: var(--fb-error-soft); }
 .btn-block { width: 100%; }
@@ -373,12 +371,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .home-head { padding: var(--sp-6) 0 var(--sp-5); }
 .home-title { font-size: var(--fs-6); letter-spacing: -.01em; }
 .home-tagline { color: var(--ink-2); font-size: var(--fs-3); margin-top: var(--sp-1); }
-
-.card {
-  background: var(--surface); border: 1px solid var(--rule);
-  border-radius: var(--r-3); padding: var(--sp-4); box-shadow: var(--el-1);
-}
-.card-title { font-size: var(--fs-4); font-weight: 700; margin-bottom: var(--sp-3); }
 
 /*
  * 掃描加入的鏡頭預覽。方框而非全寬：QR 碼本身是方的，方框讓使用者一眼知道

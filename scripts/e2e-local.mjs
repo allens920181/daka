@@ -297,6 +297,24 @@ ok('Esc 關閉面板', (await p.locator('.sheet').count()) === 0)
 // 刪除空間動的都是空間這個容器，不必先進去、也不必等名單同步。名單的事在空間
 // 裡那顆「更多」。
 await p.goto(URL); await p.waitForTimeout(900)
+// 首頁的「加入空間」展開之後沒有外框（2026-09）：上面那顆鍵已經在宣告這一組
+// 東西了，再畫一個框只是把同一件事說第二次，而框裡每個元件又各自有框。
+await p.getByRole('button', { name: /^加入空間/ }).click(); await p.waitForTimeout(400)
+ok('展開的內容沒有外框', await p.evaluate(() => {
+  const panel = document.querySelector('#join-panel')
+  if (!panel) return false
+  const cs = getComputedStyle(panel)
+  return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)'
+}))
+// 打代碼跟掃碼是同一件事的兩種做法，不是主要與次要：並排、等寬。
+ok('「加入」與「掃描 QR 碼」並排且等寬', await p.evaluate(() => {
+  const b = [...document.querySelectorAll('#join-panel .row .btn')]
+  if (b.length !== 2) return false
+  const r = b.map((x) => x.getBoundingClientRect())
+  return Math.abs(r[0].top - r[1].top) <= 1
+    && Math.abs(r[0].width - r[1].width) <= 1
+}))
+await p.getByRole('button', { name: /^加入空間/ }).click(); await p.waitForTimeout(300)
 ok('首頁清單每一列右邊都有一顆「更多」',
    (await p.getByRole('button', { name: /^更多：/ }).count()) === (await p.locator('.recent-item').count()))
 ok('無障礙名稱說得出是哪一個空間',
