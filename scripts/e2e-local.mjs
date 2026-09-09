@@ -363,12 +363,21 @@ ok('掃碼自己一列（在那一列底下）', await p.evaluate(() => {
 // 320px 上輸入框仍要放得下六碼（它是這一列唯一該讓步的東西，但有下限）。
 ok('窄螢幕上輸入框沒有被擠爛', await p.evaluate(() =>
   document.querySelector('.sheet .code-input').getBoundingClientRect().width >= 200))
-// 切到掃碼那一頁。實測改版前這一步面板上緣往上跳 359px（168 → 527），而要按的
-// 返回鍵就跟著移動同樣的距離。現在整個 app 每一張面板的落差都在 85px 以內。
+/*
+  切到掃碼那一頁。**這一頁刻意比較高**：取景器該有多大由「好不好瞄」決定，
+  「打一組代碼」與「拿相機對著一個東西」本來就不是同一種份量的事。所以這裡驗的
+  不是「高度一樣」，是那三件真正的不變量——內容從同一條線開始、返回鍵不移動、
+  而且再高也不會超過面板自己的 88vh 上限。
+*/
 await p.getByRole('button', { name: /QR/ }).click(); await p.waitForTimeout(900)
 const scanH = await sheetH()
-ok(`切到掃碼那一頁的落差夠小（${codeH} → ${scanH}，Δ${Math.abs(scanH - codeH)}）`,
-   Math.abs(scanH - codeH) <= 110)
+ok(`掃碼那一頁比較高，但沒有超過 88vh（${codeH} → ${scanH}）`,
+   scanH > codeH && scanH <= Math.round(844 * 0.88))
+ok('取景框是滿版寬的 4:3（裁掉的最少，看到的最接近真正被解碼的那一張）',
+   await p.evaluate(() => {
+     const f = document.querySelector('.scan-frame').getBoundingClientRect()
+     return Math.abs(f.width / f.height - 4 / 3) < 0.02 && f.width > 340
+   }))
 ok('內容仍然從面板頂端同一條線開始（.sheet-bar 是固定高的）',
    (await bodyOffset()) === codeOffset)
 ok('子頁有返回鍵（第一頁沒有，但那一列的高度一樣）',
