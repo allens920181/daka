@@ -83,7 +83,8 @@ await A.page.waitForTimeout(300)
 // 開空間 2026-09 拆成兩步：貼名單 →「產生名單」→ 看解析結果 →「建立」。
 await A.page.getByRole('button', { name: /產生名單/ }).click(); await A.page.waitForTimeout(500)
 await A.page.getByRole('button', { name: /建立/ }).click(); await A.page.waitForTimeout(1400)
-const code = (await A.page.locator('.topbar-sub .mono').first().textContent())?.trim()
+// 代碼從路由讀：頂欄的副標那一行（代碼＋同步狀態）2026-09 整條拿掉了。
+const code = (A.page.url().match(/#\/r\/([2-9A-HJ-KM-NP-Z]{6})/) || [])[1]
 ok(`[舊手機] 未登入就開好空間 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code ?? ''))
 await A.page.locator('.member-main').nth(0).click(); await A.page.waitForTimeout(1200)
 

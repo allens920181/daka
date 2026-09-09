@@ -23,7 +23,9 @@ const zh = {
   /* 首頁的空間清單原本拆成「我的活動」「最近的空間」兩個各自獨立的區塊，合併
      成一份清單之後改用這三顆分段鍵切換看哪個子集合——跟點名畫面篩選「全部／
      未到／已到」是同一個手勢，不必再學一種新切法。 */
-  roomFilterAll: '所有',
+  /* 「全部」而不是「所有」：點名畫面的分段控制第一段也是「全部」，同一個概念
+     在兩個地方要用同一個字——使用者不該去想那兩個詞是不是指同一件事。 */
+  roomFilterAll: '全部',
   roomFilterMine: '我的',
   roomFilterOthers: '他人的',
   noOtherRooms: '還沒有加入別人的空間。用代碼加入，它就會出現在這裡。',
@@ -154,12 +156,6 @@ const zh = {
      才是那件事），而這一列底下是代碼、連結、二維碼三種讓別人「進得來一起點」
      的方式。動詞化說得出目的。 */
   invite: '邀請點名',
-  shareHint: '把代碼、連結或二維碼給他們，不用註冊、不用安裝。',
-  whoIsHere: '現在在這個空間裡',
-  onlyYouHere: '目前只有你。把代碼或 QR 給協助點名的人，他們進來後會出現在這裡。',
-  peersHere: '{n} 支手機：{names}',
-  peersAllAnon: '都還沒寫名字',
-  peersPlusAnon: '，另外 {n} 支沒寫名字',
   shareLink: '傳給別人',
   shareLinkText: '一起點名',
   /* 單機模式下這三句取代整個分享面板：發出去的代碼對任何人都沒有用。 */
@@ -451,12 +447,6 @@ const en: Record<MessageKey, string> = {
   add: 'Add',
 
   invite: 'Invite',
-  shareHint: 'Give them the code, the link or the QR code. No sign-up, no install.',
-  whoIsHere: 'In this room now',
-  onlyYouHere: "Just you so far. Give helpers the code or QR — they'll show up here once they join.",
-  peersHere: '{n} phones: {names}',
-  peersAllAnon: "nobody has set a name yet",
-  peersPlusAnon: ', plus {n} without a name',
   shareLink: 'Send it',
   shareLinkText: 'Help me check names',
   shareLocalTitle: 'Only you can see this room',

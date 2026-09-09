@@ -13,6 +13,11 @@ const ok = (l, c) => { console.log((c ? '  PASS  ' : '  FAIL  ') + l); if (!c) p
 // 頂欄的分段控制裡（見 04-components/roll-call.md 的「分段控制」）。
 const missing = async (page) =>
   ((await page.getByRole('button', { name: /^未到/ }).textContent()) || '').replace(/\D/g, '')
+/* 目前這個空間的代碼。頂欄的副標那一行（代碼＋同步狀態）2026-09 整條拿掉了，
+   而路由本身就帶著代碼（#/r/<CODE>）——那比任何畫面都可靠。 */
+const roomCode = (page) => (page.url().match(/#\/r\/([2-9A-HJ-KM-NP-Z]{6})/) || [])[1]
+/* 同步狀態畫面上只剩一顆圓點，完整的說法在 aria-label 裡。 */
+const syncLabel = async (page) => (await page.locator('.sync').getAttribute('aria-label')) || ''
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
 
 // 兩個獨立的瀏覽器 context = 兩台不同的手機（各自的 IndexedDB）
@@ -41,7 +46,7 @@ await A.p.waitForTimeout(300)
 // 開空間 2026-09 拆成兩步：貼名單 →「產生名單」→ 看解析結果 →「建立」。
 await A.p.getByRole('button', { name: /產生名單/ }).click(); await A.p.waitForTimeout(500)
 await A.p.getByRole('button', { name: /建立/ }).click(); await A.p.waitForTimeout(1600)
-const code = (await A.p.locator('.topbar-sub .mono').first().textContent())?.trim()
+const code = roomCode(A.p)
 ok(`[主揪] 空間建立於伺服器，代碼 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test(code || ''))
 // 5 列都還沒到（請假 2026-09 拿掉了，「（請假）」只是一則備註）。
 // 攜伴不再解析，所以李美花的「+1」也只是備註。
@@ -82,8 +87,10 @@ await B.p.waitForTimeout(500)
 await B.p.locator('.member-main').nth(1).click(); await B.p.waitForTimeout(800)
 // 全部到齊 = 未到那一段歸零。
 ok('[同工] 離線仍可點名，本地立刻更新', (await missing(B.p)) === '0')
-const badge = await B.p.locator('.sync').textContent()
-ok(`[同工] 顯示離線與待上傳筆數：「${badge?.trim()}」`, /離線|待上傳/.test(badge || ''))
+const badge = await syncLabel(B.p)
+ok(`[同工] 顯示離線與待上傳筆數：「${badge}」`, /離線|待上傳/.test(badge))
+ok('[同工] 待上傳筆數印在圓點旁邊（那是會變的數字）',
+   /\d/.test((await B.p.locator('.sync .sync-n').textContent().catch(() => '')) || ''))
 await reconcile(A)
 // B 離線點掉的是李美花，A 這邊還停在 1。
 ok('[主揪] 此時還看不到（同工尚未上傳）', (await missing(A.p)) === '1')
@@ -93,7 +100,7 @@ await B.p.evaluate(() => window.dispatchEvent(new Event('online')))
 await B.p.waitForTimeout(2000)
 await reconcile(A)
 ok('[主揪] 恢復連線後自動補上，未到歸零', (await missing(A.p)) === '0')
-ok('[同工] 同步狀態回到已同步', /已同步/.test((await B.p.locator('.sync').textContent()) || ''))
+ok('[同工] 同步狀態回到已同步', /已同步/.test(await syncLabel(B.p)))
 
 // --- 建立副本（回程）---
 // 2026-09 從空間裡的「更多」搬到首頁每個空間右邊那顆「更多」：它動的是空間這個
@@ -110,8 +117,8 @@ await A.p.getByRole('button', { name: '確定' }).click(); await A.p.waitForTime
 // 所以面板自己停在新空間的邀請頁。
 ok('[主揪] 複製完直接停在新空間的邀請頁',
    (await A.p.locator('.sheet').getAttribute('aria-label')) === '邀請點名')
-const newCode = (await A.p.locator('.menu-item .sub.mono').first().textContent())?.trim()
-ok(`[主揪] 邀請頁上就是新代碼 ${newCode}`, Boolean(newCode) && newCode !== code)
+const newCode = roomCode(A.p)
+ok(`[主揪] 已經在新空間裡，代碼是 ${newCode}`, Boolean(newCode) && newCode !== code)
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(400)
 
 await A.p.goto(`${URL}#/r/${newCode}`); await A.p.waitForTimeout(2200)
@@ -162,7 +169,7 @@ const target = B.p.locator('.member:not(.is-arrived)').first()
 const targetName = (await target.locator('.member-name').textContent())?.trim()
 await target.locator('.member-main').click(); await B.p.waitForTimeout(700)
 ok(`[同工] 離線先點了「${targetName}」，本地已入列`,
-   /待上傳/.test((await B.p.locator('.sync').textContent()) || ''))
+   /待上傳/.test(await syncLabel(B.p)))
 
 // 主揪關閉空間。結束點名 2026-09 在底部動作列上，不必先開「更多」。
 await A.p.locator('.dock').getByRole('button', { name: /^結束點名$/ }).click(); await A.p.waitForTimeout(700)
@@ -178,18 +185,37 @@ ok(`[同工] 被拒絕的點名有當面說：「${dropNotice}」`,
    dropNotice.includes('沒有存到') && (targetName ? dropNotice.includes(targetName) : true))
 ok('[同工] 訊息說得出原因（空間已關閉）', /關閉/.test(dropNotice))
 
-// --- presence：不知道就不要說（#5）-----------------------------------------
-// 這個假後端只有 REST，沒有 Realtime——正好模擬「公司防火牆擋 WebSocket」那種
-// 情況。REST 通了不代表 presence 也通了，所以面板不能在別人明明已經進來時
-// 說「目前只有你」。沒把握就整區不顯示。
-// 「現在在這個空間裡」留在空間裡的「更多」面板（2026-09）：邀請點名搬去首頁了，
-// 但 presence 只有正在這個空間裡的裝置數得到，首頁上根本沒有這個數字。
+// --- 邀請頁只剩三列（2026-09）------------------------------------------------
+// 「現在在這個空間裡」連同整套 presence 一起拿掉了：它要答對的是「代碼發出去
+// 之後有沒有人真的進來」，但這個假後端只有 REST、沒有 Realtime（正好模擬公司
+// 防火牆擋 WebSocket），那時它會在 B 明明就在空間裡的時候說「目前只有你」——
+// 答錯的代價比答對的收穫大。現在整區都不在了。
 await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(1500)
-ok('[主揪] 同步指示是已同步（REST 通）', /已同步/.test((await A.p.locator('.sync').textContent()) || ''))
-ok('[主揪] 但 presence 沒通，就不顯示「現在在這個空間裡」',
-   (await A.p.getByText('現在在這個空間裡').count()) === 0)
-ok('[主揪] 更不會說「目前只有你」（那時 B 明明就在這個空間裡）',
-   (await A.p.getByText('目前只有你').count()) === 0)
+ok('[主揪] 同步指示是已同步（REST 通）', /已同步/.test(await syncLabel(A.p)))
+await A.p.getByRole('button', { name: /^邀請點名$/ }).click(); await A.p.waitForTimeout(700)
+const inviteRows = (await A.p.locator('.sheet .menu-item strong').allTextContents()).map((x) => x.trim())
+ok(`[主揪] 邀請頁只剩三列：${inviteRows.join('、')}`,
+   JSON.stringify(inviteRows) === JSON.stringify(['代碼', '連結', '二維碼']))
+ok('[主揪] 沒有「現在在這個空間裡」，也不會說「目前只有你」',
+   (await A.p.getByText('現在在這個空間裡').count()) === 0
+   && (await A.p.getByText('目前只有你').count()) === 0)
+ok('[主揪] 代碼那一列右邊不印代碼本身',
+   (await A.p.locator('.sheet .menu-item .sub').count()) === 0)
+// 複製 2026-09 收成那串字右邊的一顆圖示鍵，不再是底下一整列滿版按鈕。
+await A.p.getByRole('button', { name: /^代碼$/ }).click(); await A.p.waitForTimeout(500)
+ok('[主揪] 代碼頁：複製是代碼右邊的圖示鍵',
+   (await A.p.locator('.copy-row .code-display').count()) === 1
+   && (await A.p.locator('.copy-row button[aria-label="複製代碼"]').count()) === 1
+   && (await A.p.getByRole('button', { name: /^複製代碼$/ }).count()) === 1)
+ok('[主揪] 代碼頁底下沒有那一整列按鈕', (await A.p.locator('.sheet .btn').count()) === 0)
+await A.p.locator('.sheet-head .icon-btn').first().click(); await A.p.waitForTimeout(400)
+await A.p.getByRole('button', { name: /^連結$/ }).click(); await A.p.waitForTimeout(500)
+ok('[主揪] 連結頁：複製是連結右邊的圖示鍵',
+   (await A.p.locator('.copy-row .link-display').count()) === 1
+   && (await A.p.locator('.copy-row button[aria-label="複製連結"]').count()) === 1)
+ok('[主揪] 連結頁底下只留「傳給別人」',
+   (await A.p.locator('.sheet .btn').count()) === 1
+   && /傳給別人/.test((await A.p.locator('.sheet .btn').textContent()) || ''))
 await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 
 // --- 主揪不在時，現場的人也開得出回程空間（#25）-------------------------------
@@ -208,7 +234,7 @@ ok('[同工] 子畫面說清楚新空間是誰的',
    ((await B.p.locator('.sheet .hint').first().textContent()) || '').includes('你會是新空間的主揪'))
 await B.p.locator('#copy-name').fill('回程（同工開的）')
 await B.p.getByRole('button', { name: '確定' }).click(); await B.p.waitForTimeout(2500)
-const helperCode = (await B.p.locator('.menu-item .sub.mono').first().textContent())?.trim()
+const helperCode = roomCode(B.p)
 await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
 await B.p.goto(`${URL}#/r/${helperCode}`); await B.p.waitForTimeout(2200)
 ok('[同工] 進到自己開的回程空間', (await B.p.locator('.topbar-name').textContent())?.includes('同工開的'))

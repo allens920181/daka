@@ -152,9 +152,23 @@ export function Home({ onSettings }: { onSettings: () => void }) {
             </div>
           ) : showCreate ? createButton(true) : joinButton(true)}
 
+          {/*
+            展開之後就是「打代碼」跟「掃碼」兩條路，沒有外框（2026-09）。
+
+            這裡本來是一張 `.card` 包著代碼輸入框與兩顆滿版按鈕——**框中框中框**：
+            上面那顆「加入空間」已經在宣告這一組東西了，再畫一個框只是把同一件事
+            說第二次，而框裡每個元件又各自有自己的框。現在展開的內容直接接在那顆
+            鍵底下，靠間距分組。
+          */}
           {showJoin && joinOpen && (
-            <div class="card" id="join-panel">
-              <div class="stack">
+            <div class="stack" id="join-panel">
+              {/*
+                兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，擺在
+                同一列才看得出「打進去、按這裡」；**掃碼**是另一條路，自己一列。
+                原本是「輸入框一列、加入與掃碼並排一列」——那個排法把加入跟掃碼
+                綁成一組，但它們其實分屬兩條不同的路。
+              */}
+              <div class="row">
                 <input
                   ref={codeInputRef}
                   class="input code-input"
@@ -175,27 +189,36 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                   }}
                   onKeyDown={(e) => { if (e.key === 'Enter') join() }}
                 />
-                {error && <p class="note note-warn">{error}</p>}
+                {/*
+                  「加入」不縮：它是兩個字，縮到剩一個字就沒有意義了。讓步的是
+                  輸入框——六碼在 320px 上仍有 200px 可用，那個字級照樣讀得出來。
+                */}
                 <button
-                  class="btn btn-block"
+                  class="btn"
+                  style="flex:none"
                   disabled={extractRoomCode(code).length < CODE_LENGTH}
                   onClick={join}
                 >
                   {t('join')}
                 </button>
-                {canScanQr() && (
-                  <button class="btn btn-ghost btn-block" onClick={() => setScanOpen(true)}>
-                    <IconCamera /> {t('scanQr')}
-                  </button>
-                )}
               </div>
+              {error && <p class="note note-warn">{error}</p>}
+              {canScanQr() && (
+                <button class="btn btn-block" onClick={() => setScanOpen(true)}>
+                  <IconCamera /> {t('scanQr')}
+                </button>
+              )}
             </div>
           )}
 
           {scanOpen && <ScanSheet onClose={() => setScanOpen(false)} />}
 
+          {/*
+            空狀態是一句話，不是一個灰框（2026-09）：它旁邊已經有三個框了
+            （分段控制、加入空間、展開的內容），再加一個只是讓這一頁更像一疊盒子。
+          */}
           {visibleRows.length === 0 ? (
-            <p class="note">{emptyText}</p>
+            <p class="hint">{emptyText}</p>
           ) : (
             <div class="stack" style="gap:8px">
               {visibleRows.map((r) => (

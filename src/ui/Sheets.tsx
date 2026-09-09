@@ -4,8 +4,8 @@ import {
   AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom,
   identity, members, myRooms, openMenuOnEnter, prefs, recentRooms, renameSavedRoster, requestCode,
   room, roomExpiry, saveRosterAs, savedRosters,
-  peers, presenceReady, session, setCheckerName, setPrefs,
-  showToast, type Peer,
+  session, setCheckerName, setPrefs,
+  showToast,
   signIn, signOut, startGoogleSignIn,
 } from '../lib/store'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -53,15 +53,6 @@ function QrCard({ code, url }: { code: string; url: string }) {
       <img src={qr} alt={`${t('scanToJoin')} ${code}`} />
     </div>
   )
-}
-
-/** 「陳姐、阿明，另外 2 支沒寫名字」——沒寫名字的人不逐一列出，只算支數。 */
-function peerNames(list: readonly Peer[], t: ReturnType<typeof useT>): string {
-  const named = list.map((p) => p.name).filter((n): n is string => Boolean(n))
-  const anon = list.length - named.length
-  if (named.length === 0) return t('peersAllAnon', { n: anon })
-  if (anon === 0) return named.join('、')
-  return `${named.join('、')}${t('peersPlusAnon', { n: anon })}`
 }
 
 /**
@@ -180,13 +171,21 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
   if (mode === 'inviteCode') {
     return (
       <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')}>
-        <div class="stack">
+        {/*
+          複製收成代碼右邊的一顆圖示（2026-09），不再是底下一顆滿版的按鈕。
+          這一頁的主角是那六個字——它是隔著一支手臂唸出去的東西，整頁的寬度都
+          該留給它；而複製是「順手也可以這樣做」，不值得用一整列去宣告。
+          左邊那個等寬的空白（`::before`）讓代碼落在整個框的正中間，而不是被
+          右邊那顆鍵擠得偏左。
+        */}
+        <div class="copy-row is-centered">
           <div class="code-display">{current.code}</div>
           <button
-            class="btn btn-primary btn-block"
+            class="icon-btn"
+            aria-label={t('copyCode')}
             onClick={() => { void copyText(current.code, t('copied'), t('copyFailed')) }}
           >
-            <IconCopy /> {t('copyCode')}
+            <IconCopy size={20} />
           </button>
         </div>
       </Sheet>
@@ -197,16 +196,24 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
     return (
       <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')}>
         <div class="stack">
-          {/* 連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。 */}
-          <p class="link-display">{url}</p>
+          {/*
+            連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。
+            複製收成它右邊的一顆圖示（2026-09）——同一件事（把這串字帶走）不該
+            在同一頁上出現兩次：一次是網址本身，一次是底下一整列寫著「複製連結」。
+            底下留下來的是「傳給別人」，那是另一件事（叫出系統分享單）。
+          */}
+          <div class="copy-row">
+            <p class="link-display">{url}</p>
+            <button
+              class="icon-btn"
+              aria-label={t('copyLink')}
+              onClick={() => { void copyText(url, t('copied'), t('copyFailed')) }}
+            >
+              <IconCopy size={20} />
+            </button>
+          </div>
           <button class="btn btn-primary btn-block" onClick={() => { void shareLink(url, t) }}>
             <IconShare /> {t('shareLink')}
-          </button>
-          <button
-            class="btn btn-block"
-            onClick={() => { void copyText(url, t('copied'), t('copyFailed')) }}
-          >
-            <IconCopy /> {t('copyLink')}
           </button>
         </div>
       </Sheet>
@@ -241,46 +248,32 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             <p class="hint">{t('shareLocalHow')}</p>
           </div>
         ) : (
-          <>
-            <div class="menu">
-              <button class="menu-item" onClick={() => setMode('inviteCode')}>
-                <IconHash />
-                <span>
-                  <strong>{t('roomCode')}</strong>
-                  <span class="sub mono">{current.code}</span>
-                </span>
-              </button>
+          /*
+            三列，每一列一種方式，順序是**代碼 → 連結 → 二維碼**：代碼是隔著車門
+            喊得出去的，連結是貼進 LINE 群的，二維碼要對方拿起手機對著你的螢幕
+            ——愈往下愈需要兩個人站在一起。
 
-              <button class="menu-item" onClick={() => setMode('inviteLink')}>
-                <IconLink />
-                <span><strong>{t('roomLink')}</strong></span>
-              </button>
+            這一頁 2026-09 只剩這三列：底下那句「不用註冊、不用安裝」是在回答一個
+            沒有人在這一刻問的問題（要發代碼的人早就決定要發了），而「現在在這個
+            空間裡」那一區連同 presence 追蹤一起拿掉了。代碼那一列右邊也不再印代碼
+            本身——點進去那一頁整頁就是它，用得上的字級在這裡放不下。
+          */
+          <div class="menu">
+            <button class="menu-item" onClick={() => setMode('inviteCode')}>
+              <IconHash />
+              <span><strong>{t('roomCode')}</strong></span>
+            </button>
 
-              <button class="menu-item" onClick={() => setMode('inviteQr')}>
-                <IconQr />
-                <span><strong>{t('roomQr')}</strong></span>
-              </button>
-            </div>
-            <p class="hint" style="margin-top:12px">{t('shareHint')}</p>
+            <button class="menu-item" onClick={() => setMode('inviteLink')}>
+              <IconLink />
+              <span><strong>{t('roomLink')}</strong></span>
+            </button>
 
-            {/*
-              誰已經進來了。06:50 車門口「大家都進來了嗎」現在只能用喊的，而喊得到
-              的前提是五個人在同一個地方——他們散在兩台車的前後門。更常見的失敗是
-              有人掃了二維碼但停在瀏覽器的「要開啟嗎」對話框上，自己以為進來了；等到
-              07:12 發現有一車根本沒人在點，已經沒有第二次機會。
-              離線時不顯示（誠實原則：那時候這個數字只是舊的）。
-            */}
-            {connection.value === 'online' && presenceReady.value && (
-              <div class="field" style="margin-top:12px">
-                <span class="label">{t('whoIsHere')}</span>
-                <p class="note">
-                  {peers.value.length <= 1
-                    ? t('onlyYouHere')
-                    : t('peersHere', { n: peers.value.length, names: peerNames(peers.value, t) })}
-                </p>
-              </div>
-            )}
-          </>
+            <button class="menu-item" onClick={() => setMode('inviteQr')}>
+              <IconQr />
+              <span><strong>{t('roomQr')}</strong></span>
+            </button>
+          </div>
         )}
       </Sheet>
     )
@@ -775,7 +768,19 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     : p.theme === 'light' ? t('themeLight') : t('themeDark')
 
   return (
-    <Sheet title={t('settings')} onClose={onClose}>
+    <Sheet
+      title={t('settings')}
+      onClose={onClose}
+      /*
+        標題列整條不要（2026-09），跟「更多」那份選單同一個理由：「設定」兩個字
+        說不出這裡做得到的任何一件事，而底下四列（暱稱、帳戶、主題、語言）自己
+        就說得完——它們一眼看得出是偏好，不是動作。那一列省下來的高度，在 380px
+        高的矮螢幕上正好是「四列裝不裝得下」的差別。
+        收起來的三條路（點面板外面、Esc、從握把往下滑）一條都沒有少，無障礙名稱
+        也還是「設定」。
+      */
+      head={false}
+    >
       {/*
         四列長得一模一樣：暱稱、帳戶、主題、語言。它們是同一種東西——跟這台
         裝置／這個人有關的偏好，跟任何一個空間無關（所以這個面板只從首頁進得
