@@ -108,6 +108,17 @@ ok('分段的數字加得起來', Number(await missing()) + Number(await segCoun
 await p.locator('.member-main').nth(1).click()
 await p.waitForTimeout(500)
 ok('點名後未到 = 8', (await missing()) === '8')
+// 「誰在幾點標記的」印在列的右邊，不是名字底下多一行——點一個人不該讓那一列
+// 長高一行（有備註的列實測 67px → 87px，整份名單會被自己推長）。
+ok('已到的時間印在列的右邊', await p.evaluate(() => {
+  const row = document.querySelector('.member.is-arrived')
+  const when = row?.querySelector('.member-when')
+  if (!when) return false
+  const body = row.querySelector('.member-body').getBoundingClientRect()
+  const w = when.getBoundingClientRect()
+  return /\d{1,2}:\d{2}/.test(when.textContent || '') && w.left >= body.right - 1
+}))
+ok('未到的列上沒有那一格', (await p.locator('.member:not(.is-arrived) .member-when').count()) === 0)
 ok('該列變成已到', (await p.locator('.member').nth(1).getAttribute('class'))?.includes('is-arrived'))
 ok('出現復原提示', await p.locator('.toast').isVisible())
 

@@ -757,6 +757,23 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 
 /*
+ * 「誰在幾點標記的」，靠右（2026-09）。
+ *
+ * 它以前跟在分車、攜伴後面當名字底下的第三行，於是**點一個人就會讓那一列長高
+ * 一行**——80 人的名單點到一半，整份名單被自己推長，捲動位置也跟著跑。右邊這一
+ * 格在點名模式下本來就是空的（編輯模式才長出叉叉），而「幾點」右對齊讀起來最
+ * 自然。
+ *
+ * flex: none 是為了不跟名字搶：暱稱最長 40 字，所以再壓一個 max-width，超出的
+ * 用刪節號收掉——名字永遠比「誰點的」重要。
+ */
+.member-when {
+  flex: none; max-width: 45%;
+  font-size: var(--fs-2); color: var(--ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/*
  * 右側動作區。撥號鍵整場點名都在，而它就貼在「整列＝切換已到」的熱區旁邊：
  * 拇指往右偏一點就變成打電話給人家。相鄰的觸控目標之間至少要有 8px，而且
  * 切換區與動作區之間要有一條看得見的界線。

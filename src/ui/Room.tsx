@@ -843,16 +843,36 @@ function MemberRow({
               )}
             </span>
           )}
-          <span class="member-meta">
-            {tell && <span class="chip chip-tell">{tell}</span>}
-            {member.companions > 0 && (
-              <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
-            )}
-            {member.status === 'arrived' && time && (
-              <span>{member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}</span>
-            )}
-          </span>
+          {/*
+            分車／電話尾碼（只在名單裡有同名的人時）與攜伴。這兩樣是**這個人的
+            屬性**，不隨點名改變——所以它們留在名字底下，而「誰在幾點標記的」
+            搬到列的右邊（見下面 .member-when）。都沒有的時候整個元素不渲染，
+            不留一個會撐出行高的空 span。
+          */}
+          {(tell || member.companions > 0) && (
+            <span class="member-meta">
+              {tell && <span class="chip chip-tell">{tell}</span>}
+              {member.companions > 0 && (
+                <span class="chip chip-count">{t('withCompanions', { n: member.companions })}</span>
+              )}
+            </span>
+          )}
         </span>
+        {/*
+          「誰在幾點標記的」印在列的右邊，不是名字底下多一行（2026-09）。
+
+          它以前跟在屬性後面當第三行，於是**點一個人就會讓那一列長高一行**——
+          80 人的名單點到一半，整份名單被自己推長，捲動位置也跟著跑。右邊那一格
+          在點名模式下本來就是空的（編輯模式才長出叉叉），而「幾點」是一個右對齊
+          讀起來最自然的東西。
+
+          它只在已到時出現，所以未到的列一格都沒有多長。
+        */}
+        {member.status === 'arrived' && time && (
+          <span class="member-when">
+            {member.status_by ? t('checkedBy', { name: member.status_by, time }) : t('at', { time })}
+          </span>
+        )}
       </button>
 
 
