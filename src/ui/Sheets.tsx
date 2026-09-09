@@ -258,22 +258,22 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             空間裡」那一區連同 presence 追蹤一起拿掉了。代碼那一列右邊也不再印代碼
             本身——點進去那一頁整頁就是它，用得上的字級在這裡放不下。
           */
-          <div class="menu">
-            <button class="menu-item" onClick={() => setMode('inviteCode')}>
+          <div class="sheet-items">
+            <button class="sheet-item" onClick={() => setMode('inviteCode')}>
               <IconHash />
-              <span><strong>{t('roomCode')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('roomCode')}</strong></span>
               <IconChevronRight class="go" />
             </button>
 
-            <button class="menu-item" onClick={() => setMode('inviteLink')}>
+            <button class="sheet-item" onClick={() => setMode('inviteLink')}>
               <IconLink />
-              <span><strong>{t('roomLink')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('roomLink')}</strong></span>
               <IconChevronRight class="go" />
             </button>
 
-            <button class="menu-item" onClick={() => setMode('inviteQr')}>
+            <button class="sheet-item" onClick={() => setMode('inviteQr')}>
               <IconQr />
-              <span><strong>{t('roomQr')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('roomQr')}</strong></span>
               <IconChevronRight class="go" />
             </button>
           </div>
@@ -295,7 +295,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
         三列都是「這個空間裡面」的事；空間本身的事（建立副本、刪除空間）在首頁
         那顆「更多」裡，車開了那一刻的事在「結束點名」的確認鍵前面。
       */}
-      <div class="menu">
+      <div class="sheet-items">
         {/*
           邀請點名。它 2026-09 在三個地方待過：選單 → 底部動作列 → 頂欄的分享
           圖示 → 又回到選單。理由是**一個空間只該有一顆「更多」**：分享單獨掛在
@@ -305,9 +305,9 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
           代價：發代碼要多開一層。那是一場活動按一次的動作，而且不趕時間——
           真正趕的那一顆（結束點名）在底部動作列上，沒有跟著收進來。
         */}
-        <button class="menu-item" onClick={() => setMode('invite')}>
+        <button class="sheet-item" onClick={() => setMode('invite')}>
           <IconShare />
-          <span><strong>{t('invite')}</strong></span>
+          <span class="sheet-item-main"><strong>{t('invite')}</strong></span>
           <IconChevronRight class="go" />
         </button>
 
@@ -316,18 +316,18 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
           長出叉叉、底下變成一顆「＋」、標題變成可以改的輸入框。改的是眼前這份
           名單，不是它的文字複本。協助者也進得去——他只是看不到叉叉與標題。
         */}
-        <button class="menu-item" onClick={() => { onEdit(); }}>
+        <button class="sheet-item" onClick={() => { onEdit(); }}>
           <IconEdit />
-          <span><strong>{t('edit')}</strong></span>
+          <span class="sheet-item-main"><strong>{t('edit')}</strong></span>
         </button>
 
         {owner && isSupabaseConfigured && (
           <button
-            class="menu-item"
+            class="sheet-item"
             onClick={() => { setValue(current.name); setMode('saveRoster') }}
           >
             <IconBookmark />
-            <span><strong>{t('saveAsRoster')}</strong></span>
+            <span class="sheet-item-main"><strong>{t('saveAsRoster')}</strong></span>
             <IconChevronRight class="go" />
           </button>
         )}
@@ -451,18 +451,18 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
     return (
       <Sheet title={t('deleteRoom')} onClose={onClose} onBack={() => setMode('menu')}>
         <p class="hint" style="margin-bottom:10px">{t('deleteHint')}</p>
-        <div class="menu">
+        <div class="sheet-items">
           {forgettable && (
-            <button class="menu-item" onClick={() => setConfirming('forget')}>
+            <button class="sheet-item" onClick={() => setConfirming('forget')}>
               <IconClose size={20} />
-              <span><strong>{t('forget')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('forget')}</strong></span>
             </button>
           )}
 
           {owner && (
-            <button class="menu-item danger" onClick={() => setConfirming('delete')}>
+            <button class="sheet-item danger" onClick={() => setConfirming('delete')}>
               <IconTrash />
-              <span><strong>{t('deleteRoom')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('deleteRoom')}</strong></span>
             </button>
           )}
         </div>
@@ -506,7 +506,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
   */
   return (
     <Sheet title={name} onClose={onClose}>
-      <div class="menu">
+      <div class="sheet-items">
         {/*
           複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
           沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
@@ -515,14 +515,14 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
           的人可見，所以把它鎖在擁有權後面沒有保護到任何東西。
         */}
         <button
-          class="menu-item"
+          class="sheet-item"
           onClick={() => {
             setValue(name.includes(t('returnTrip')) ? name : `${name} · ${t('returnTrip')}`)
             setMode('copy')
           }}
         >
           <IconDuplicate />
-          <span><strong>{t('copyRoom')}</strong></span>
+          <span class="sheet-item-main"><strong>{t('copyRoom')}</strong></span>
           <IconChevronRight class="go" />
         </button>
 
@@ -537,9 +537,9 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
           說明**。
         */}
         {(owner || forgettable) && (
-          <button class="menu-item danger" onClick={() => setMode('remove')}>
+          <button class="sheet-item danger" onClick={() => setMode('remove')}>
             <IconTrash />
-            <span>
+            <span class="sheet-item-main">
               <strong>{t('deleteRoom')}</strong>
               {expires && <span class="sub">{t('expiresOn', { date: expires })}</span>}
             </span>
@@ -635,15 +635,15 @@ export function SavedRostersSheet({ onApply, onClose }: {
   if (mode === 'actions' && active) {
     return (
       <Sheet title={active.name} onClose={onClose} onBack={() => setMode('list')}>
-        <div class="menu">
-          <button class="menu-item" onClick={() => { setValue(active.name); setMode('rename') }}>
+        <div class="sheet-items">
+          <button class="sheet-item" onClick={() => { setValue(active.name); setMode('rename') }}>
             <IconEdit />
-            <span><strong>{t('rename')}</strong></span>
+            <span class="sheet-item-main"><strong>{t('rename')}</strong></span>
             <IconChevronRight class="go" />
           </button>
-          <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
+          <button class="sheet-item danger" onClick={() => setConfirmingDelete(true)}>
             <IconTrash />
-            <span><strong>{t('deleteRoster')}</strong></span>
+            <span class="sheet-item-main"><strong>{t('deleteRoster')}</strong></span>
           </button>
         </div>
         {error && <p class="note note-error">{error}</p>}
@@ -689,12 +689,12 @@ export function SavedRostersSheet({ onApply, onClose }: {
         {savedRosters.value.length === 0 ? (
           <p class="note">{t('noSavedRosters')}</p>
         ) : (
-          <div class="menu">
+          <div class="sheet-items">
             {savedRosters.value.map((r) => (
               <div class="row" key={r.id}>
-                <button class="menu-item" style="flex:1; min-width:0" onClick={() => onApply(r)}>
+                <button class="sheet-item" style="flex:1; min-width:0" onClick={() => onApply(r)}>
                   <IconBookmark />
-                  <span>
+                  <span class="sheet-item-main">
                     <strong>{r.name}</strong>
                     <span class="sub">{t('parsedCount', { n: r.members.length })}</span>
                   </span>
@@ -718,7 +718,16 @@ export function SavedRostersSheet({ onApply, onClose }: {
 // ---------------------------------------------------------------------------
 
 /**
- * 設定頁的一列：標籤、目前的值、一顆箭頭；點了才展開自己的內容。
+ * 設定頁的一列：標題、目前的值、一顆箭頭；點了才展開自己的內容。
+ *
+ * **它就是 `.sheet-item`**（2026-09 合併）。這一列以前是自己一個元件
+ * （`.select-row`），跟「更多」面板的列（`.menu-item`）分開長——而那兩個是同一種
+ * 東西的兩個版本：同一個 [前導][主體][尾端] 的骨架，只是設定列不放圖示、放的是
+ * 一個值。分開的代價是幾何各自漂移（對齊方式、負外距、標題字級都不一樣）。
+ * 現在差別只剩「填了哪幾個槽」，而那正是槽位該有的樣子。
+ *
+ * 尾端的箭頭朝下且會轉（`.chevron`），不是朝右（`.go`）：這一列**就地展開**，
+ * 不會離開這一頁。
  *
  * 定義在元件外面不是風格問題——寫在 SettingsSheet 裡面的話每次 render 都是
  * 一個新的元件型別，Preact 會把整棵子樹拆掉重建，暱稱打到一半就會掉焦點。
@@ -733,12 +742,16 @@ function SettingRow({ label, value, open, onToggle, children }: {
 }) {
   return (
     <div class="field">
-      <button class="select-row" aria-expanded={open} onClick={onToggle}>
-        <span class="label">{label}</span>
-        <span class="select-row-value">
-          <span class="select-row-text">{value}</span>
-          <IconChevronDown class={open ? 'chevron is-open' : 'chevron'} />
-        </span>
+      <button class="sheet-item" aria-expanded={open} onClick={onToggle}>
+        <span class="sheet-item-main"><strong>{label}</strong></span>
+        <span class="sheet-item-value">{value}</span>
+        {/*
+          尾端的箭頭跟 `.go` 一樣是 20——**尺寸跟著槽走，不跟著圖示走**。
+          IconChevronDown 的預設值 16 是為了「內嵌於文字」那個用途（開空間那顆
+          「產生名單 ⌄」），而這裡它是一列的尾端記號，跟隔壁面板的 `›` 是同一個
+          位置的同一件事。兩張面板切過去只差 4px 的話，那 4px 就是噪點。
+        */}
+        <IconChevronDown size={20} class={open ? 'chevron is-open' : 'chevron'} />
       </button>
       {open && children}
     </div>
@@ -781,7 +794,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         四列長得一模一樣：暱稱、帳戶、主題、語言。它們是同一種東西——跟這台
         裝置／這個人有關的偏好，跟任何一個空間無關（所以這個面板只從首頁進得
         去，見 04-components/overlays.md）。以前暱稱是一直攤開的輸入框、帳戶
-        是一顆 .menu-item，主題與語言才是摺疊列，三種長相排在一起，讀起來像
+        是一顆 .sheet-item，主題與語言才是摺疊列，三種長相排在一起，讀起來像
         三件不相干的事。收合時右邊直接印出目前的值，不展開也看得到自己設了什麼。
       */}
       <div class="stack">

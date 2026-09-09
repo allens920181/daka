@@ -193,14 +193,14 @@ ok('[同工] 訊息說得出原因（空間已關閉）', /關閉/.test(dropNoti
 await A.p.locator('.topbar button[aria-label="更多"]').click(); await A.p.waitForTimeout(1500)
 ok('[主揪] 同步指示是已同步（REST 通）', /已同步/.test(await syncLabel(A.p)))
 await A.p.getByRole('button', { name: /^邀請點名$/ }).click(); await A.p.waitForTimeout(700)
-const inviteRows = (await A.p.locator('.sheet .menu-item strong').allTextContents()).map((x) => x.trim())
+const inviteRows = (await A.p.locator('.sheet .sheet-item strong').allTextContents()).map((x) => x.trim())
 ok(`[主揪] 邀請頁只剩三列：${inviteRows.join('、')}`,
    JSON.stringify(inviteRows) === JSON.stringify(['代碼', '連結', '二維碼']))
 ok('[主揪] 沒有「現在在這個空間裡」，也不會說「目前只有你」',
    (await A.p.getByText('現在在這個空間裡').count()) === 0
    && (await A.p.getByText('目前只有你').count()) === 0)
 ok('[主揪] 代碼那一列右邊不印代碼本身',
-   (await A.p.locator('.sheet .menu-item .sub').count()) === 0)
+   (await A.p.locator('.sheet .sheet-item .sub').count()) === 0)
 // 複製 2026-09 收成那串字右邊的一顆圖示鍵，不再是底下一整列滿版按鈕。
 await A.p.getByRole('button', { name: /^代碼$/ }).click(); await A.p.waitForTimeout(500)
 ok('[主揪] 代碼頁：複製是代碼右邊的圖示鍵',

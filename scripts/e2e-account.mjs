@@ -37,7 +37,7 @@ async function phone(name) {
 async function signInWithGoogle(d) {
   await d.page.goto(URL); await d.page.waitForTimeout(900)
   await d.page.locator('button[aria-label="設定"]').click(); await d.page.waitForTimeout(500)
-  // 登入鍵搬進設定頁的 .menu-item（2026-09），連著一句說明一起算進無障礙名稱，
+  // 登入鍵搬進設定頁的 .sheet-item（2026-09），連著一句說明一起算進無障礙名稱，
   // 所以只認開頭，不整串精確比對。
   await d.page.getByRole('button', { name: /^登入/ }).click(); await d.page.waitForTimeout(400)
   await d.page.getByRole('button', { name: /用 Google 登入/ }).click()

@@ -62,7 +62,7 @@
 | **靜態內容塊**——只能讀 | `--surface` ＋ `--rule`，**平的** | `.preview` `.copy-row` `.qr-card` `.result-card` `.skeleton-row` |
 | **凹槽**——裝別的東西 | `--surface-2`，**不描邊、不浮** | `.segmented` `.note` `.result-preview` `.scan-frame` `.search-wrap .input` |
 | **覆蓋層**——浮在遮罩上 | `--surface` ＋ `--el-3` | `.sheet` `.dialog` `.toast` |
-| **嵌在上面某一塊裡的觸控區** | **透明**，只有 hover／active 才有底 | `.icon-btn` `.menu-item` `.select-row` `.member-main` `.recent-main` `.segment` |
+| **嵌在上面某一塊裡的觸控區** | **透明**，只有 hover／active 才有底 | `.icon-btn` `.sheet-item` `.member-main` `.recent-main` `.segment` |
 
 **一句話記法：陰影的意思是「這一整塊可以按」。**
 

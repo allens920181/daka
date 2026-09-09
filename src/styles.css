@@ -504,36 +504,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .label { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
 .hint { font-size: var(--fs-2); color: var(--ink-3); line-height: 1.5; }
 
-/*
- * 摺疊選單的觸發列：收合時只佔一列高度顯示目前的值，點了才展開下面的
- * .segmented。.label 借同一個 class，但這裡要跟值一起排在同一行，
- * 靠 flex:1 把值推到右邊——跟 .row/.spacer 同一套手法，不用
- * justify-content: space-between（全站沒有第二個地方這樣寫）。
- */
-.select-row {
-  display: flex; align-items: center; gap: var(--sp-2); width: 100%;
-  /* 面板裡的一列一律 --tap-lg，跟 .menu-item 同高（2026-09 形狀重整）。
-     它本來是 --tap-min：設定面板的列 48、「更多」面板的列 56，而兩者都是
-     「面板裡的一列，點了會怎樣」——同一種東西的兩個高度。 */
-  min-height: var(--tap-lg); padding: 0 var(--sp-2); margin: 0 calc(var(--sp-2) * -1);
-  border: none; border-radius: var(--r-2); background: transparent;
-  color: inherit; font: inherit; text-align: left; cursor: pointer;
-}
-.select-row:hover { background: var(--surface-2); }
-.select-row .label { flex: 1; }
-.select-row-value {
-  display: inline-flex; align-items: center; gap: var(--sp-1); min-width: 0;
-  font-size: var(--fs-3); color: var(--ink-2);
-}
-/* 值可能是一整串 Email。截斷的是值，標籤與箭頭不縮——一列裡最不重要的是
-   「你的帳號叫什麼」的後半段，最重要的是這一列在講什麼。 */
-.select-row-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* 「按了會展開」的那顆箭頭。設定列與首頁的「加入空間」共用同一顆，所以名字
-   不跟著其中一個元件走（它以前叫 .select-row-chevron，卻掛在一顆按鈕上）。 */
-.chevron { flex: none; transition: transform var(--dur-1) var(--ease); }
-.chevron.is-open { transform: rotate(180deg); }
-
 .input, .textarea {
   width: 100%; padding: var(--sp-3) var(--sp-3);
   border: 1px solid var(--rule-strong); border-radius: var(--r-2);
@@ -1510,24 +1480,71 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 陰影說得出「底下還有」。
  */
 
-.menu { display: flex; flex-direction: column; gap: 2px; }
+/* === 面板裡的一列 ======================================================== */
+
 /*
- * 圖示對齊標題那一行，不是整列的中線：有副說明的項目會長成兩三行，用
- * align-items: center 的話圖示會浮到中間，整條圖示欄上下跳動，就失去
- * 「一眼掃過去分辨」的功能。svg 高 20px、標題行高約 24px，補 2px 置中。
+ * `.sheet-item` 是**面板裡的一列**：一個前導圖示（可選）、一段主體、一個尾端
+ * （值或箭頭，都可選）。點下去會做一件事——開子畫面、就地展開、或當場執行。
+ *
+ * **它 2026-09 由兩個元件合併而成**（`.menu-item` ＋ `.select-row`）。
+ * 那兩個是同一種東西的兩個版本：「更多」面板的列是「圖示 ＋ 標題 ＋ 箭頭」，
+ * 設定面板的列是「標籤 ＋ 值 ＋ 箭頭」——**同一個 [前導][主體][尾端] 的骨架，
+ * 只是填的槽不同**。分成兩個元件的代價不只是兩份 CSS，而是兩份會各自漂移的
+ * 幾何：實測合併前一個是 `align-items: flex-start`、一個是 `center`，
+ * 一個有負外距讓 hover 出血、一個沒有，標題一個是 15px 的 `--ink`、
+ * 一個是 13px 的 `--ink-2`。
+ *
+ * 槽位：
+ *
+ *   .sheet-item
+ *   ├─ svg                前導圖示（可選）
+ *   ├─ .sheet-item-main   主體：<strong> 標題 ＋ 可選的 .sub 副說明
+ *   ├─ .sheet-item-value  尾端的值（可選）——「這一列現在是什麼」
+ *   └─ svg.go / .chevron  尾端箭頭（可選）：開子畫面／就地展開
  */
-.menu-item {
-  display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%;
+.sheet-items { display: flex; flex-direction: column; gap: 2px; }
+
+.sheet-item {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%;
   min-height: var(--tap-lg); padding: var(--sp-2) var(--sp-3);
   border: none; border-radius: var(--r-2); background: transparent;
   color: var(--ink); font: inherit; text-align: left; cursor: pointer;
   text-decoration: none;
 }
-.menu-item > svg { flex: none; margin-top: 2px; }
-/* 只有一行的項目維持垂直置中，才不會看起來黏在上緣。 */
-.menu-item > span { flex: 1; min-width: 0; }
-.menu-item:hover { background: var(--surface-2); }
-.menu-item strong { font-weight: 600; font-size: var(--fs-3); }
+/*
+ * **單行的列垂直置中，有副說明的列才靠上對齊。**
+ *
+ * 合併前這裡寫死 `align-items: flex-start`，理由是「有副說明的項目會長成兩三行，
+ * 用 center 的話圖示會浮到中間，整條圖示欄上下跳動」。那個理由是對的，但它把
+ * **所有**的列都變成靠上——實測單行的列內容落在 y=8、底下空 25px，整列讀起來
+ * 黏在上緣。而旁邊那段註解還寫著「只有一行的項目維持垂直置中」，描述的是一件
+ * 程式碼沒有做的事。
+ *
+ * `:has()` 讓兩個需求同時成立：預設置中，只有真的有 `.sub` 的那幾列才靠上，
+ * 而那時候圖示補 2px 對齊標題行（svg 高 20px、標題行高約 24px）。
+ */
+.sheet-item:has(.sub) { align-items: flex-start; }
+.sheet-item:has(.sub) > svg { margin-top: 2px; }
+.sheet-item > svg { flex: none; }
+.sheet-item:hover { background: var(--surface-2); }
+
+.sheet-item-main { flex: 1; min-width: 0; }
+.sheet-item-main > strong { font-weight: 600; font-size: var(--fs-3); }
+.sheet-item .sub { display: block; font-size: var(--fs-2); color: var(--ink-3); font-weight: 400; }
+
+/*
+ * 尾端的值：「這一列現在是什麼」，不用展開就看得到（暱稱、主題、語言）。
+ *
+ * **會被截斷的是值，不是標題**——值可能是一整串 Email，而一列裡最不重要的正是
+ * 「你的帳號叫什麼」的後半段。`flex: none` ＋ `max-width` 讓它先照自己的寬度長，
+ * 超過一半就收成刪節號，剩下的寬度全部留給標題與箭頭。
+ */
+.sheet-item-value {
+  flex: none; min-width: 0; max-width: 55%;
+  font-size: var(--fs-3); color: var(--ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /*
  * 右邊那顆箭頭：**這一列會開一張子畫面**（2026-09）。
  *
@@ -1536,11 +1553,22 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 一片空白。按下去會發生什麼，只能靠按下去才知道。箭頭補的就是這件事，而且順便
  * 讓那一列有右邊界：一張面板上兩三列靠左的短字加一大片空白，是它看起來像沒做完
  * 的主要原因。
+ *
+ * `.chevron`（朝下、會轉）是另一個意思：**就地展開**，不離開這一頁。
  */
-.menu-item .go { flex: none; margin-top: 2px; color: var(--ink-3); }
-.menu-item .sub { display: block; font-size: var(--fs-2); color: var(--ink-3); font-weight: 400; }
-.menu-item.danger { color: var(--fb-error); }
-.menu-divider { height: 1px; background: var(--rule); margin: var(--sp-2) 0; }
+.sheet-item .go { flex: none; color: var(--ink-3); }
+.sheet-item:has(.sub) .go { margin-top: 2px; }
+.sheet-item.danger { color: var(--fb-error); }
+
+/* 「按了會展開」的那顆箭頭。設定列與首頁的「加入空間」共用同一顆。 */
+.chevron { flex: none; transition: transform var(--dur-1) var(--ease); }
+.chevron.is-open { transform: rotate(180deg); }
+
+/*
+ * `.menu-divider` 2026-09 移除：`src/ui/` 裡沒有任何一個地方用它，而
+ * overlays.md 甚至明寫著「這條選單不用 .menu-divider」——一條規範自己說不要用、
+ * 實作也沒在用的樣式，留著只會在下一次被誤用。
+ */
 
 /* --- 確認對話框：不可逆動作的最後一道關卡 --- */
 .dialog {
@@ -1684,7 +1712,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 但面板是從下緣長上來的：Toast 於是落在選單列之間，蓋住當時最底下那一列 49px，
  * 而且 .toast 是 pointer-events: auto，
  * 那五秒內那一列按不下去。深色下更難看出它是外來的——Toast 底色和
- * .menu-item:hover 同一個 --surface-2，圓角與左右內縮也同一套。
+ * .sheet-item:hover 同一個 --surface-2，圓角與左右內縮也同一套。
  *
  * 上緣是面板頂端以上的遮罩區（面板最高 88vh），那裡本來就沒有東西可以按。
  * Toast 仍然是 z-toast 最上層，仍然保有五秒的復原機會。

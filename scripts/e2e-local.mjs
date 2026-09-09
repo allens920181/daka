@@ -424,7 +424,7 @@ ok('圖示唸得出身分',
 await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(600)
 ok('就在首頁打開，不進空間', (await p.locator('.home-title').count()) === 1
    && (await p.locator('.topbar-name').count()) === 0)
-const homeRows = await p.locator('.sheet .menu-item strong').allTextContents()
+const homeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`首頁那份是空間本身的事：${homeRows.join('、')}`,
    JSON.stringify(homeRows) === JSON.stringify(['建立副本', '刪除空間']))
 ok('名單的事不在這裡（編輯、存成常用都不列）',
@@ -574,7 +574,7 @@ const toastVsMenu = await p.evaluate(() => {
   const toast = document.querySelector('.toast')
   if (!toast) return { noToast: true }
   const tr = toast.getBoundingClientRect()
-  const rows = [...document.querySelectorAll('.sheet .menu-item')]
+  const rows = [...document.querySelectorAll('.sheet .sheet-item')]
   const covered = rows.filter((el) => {
     const b = el.getBoundingClientRect()
     return Math.min(b.bottom, tr.bottom) - Math.max(b.top, tr.top) > 0
@@ -651,7 +651,7 @@ ok('第二次 Esc 才收回成圖示，分段控制回來',
 // 再切一層分類只是多一次點擊。排列照一場活動的時間軸：出發前 → 現場 → 車開了。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 ok('面板不再有分頁鍵', (await p.locator('.sheet .segmented').count()) === 0)
-const manageRows = await p.locator('.sheet .menu-item strong').allTextContents()
+const manageRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 // 空間裡這一份只剩「這份名單」的事（2026-09 拆開）：編輯它、把它存成常用。
 // 空間本身的事（建立副本、刪除空間）在首頁那顆「更多」。這一間是單機模式，
 // 所以「存成常用」也不列（要雲端），只剩「編輯」。
@@ -756,7 +756,7 @@ ok(`矮螢幕上面板不超過 88vh（${sheetFit.h} ≤ ${sheetFit.max}）`, sh
 ok('裝不下的時候捲得動，裝得下就不必捲',
    sheetFit.scrollable ? sheetFit.scrolled > 0 : sheetFit.scrolled === 0)
 ok('不管捲不捲，最後一項都看得到',
-   await p.locator('.sheet .menu-item').last().isVisible())
+   await p.locator('.sheet .sheet-item').last().isVisible())
 await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
@@ -888,7 +888,7 @@ await p.goto(URL); await p.waitForTimeout(900)
 await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
 // 「從清單移除」2026-09 收進「刪除空間」裡：同一件事的兩種程度，並排看才分得出。
 await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
-const removeRows = await p.locator('.sheet .menu-item strong').allTextContents()
+const removeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`刪除那一頁兩列：${removeRows.join('、')}`,
    JSON.stringify(removeRows) === JSON.stringify(['從清單移除', '刪除空間']))
 ok('而且先講清楚差在哪',
@@ -950,13 +950,13 @@ ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count
 
 // 設定頁是四列長得一樣的摺疊列：暱稱、帳戶、主題、語言（2026-09）。單機模式
 // 沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
-const rows = await p.locator('.sheet .select-row .label').allTextContents()
+const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`設定頁的四列：${rows.join('、')}`,
    JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '語言']))
 ok('單機模式沒有帳戶那一列', (await p.getByText('帳戶').count()) === 0)
 
 // 收合時右邊印著目前的值，不展開也看得到自己設了什麼。
-const shown = await p.locator('.sheet .select-row-text').allTextContents()
+const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
    shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '中文')
 
@@ -967,7 +967,7 @@ ok('點開之後輸入框在', await p.locator('#checker-name').isVisible())
 await p.locator('#checker-name').fill('陳姐')
 await p.locator('#checker-name').blur(); await p.waitForTimeout(400)
 ok('收合列上就看得到剛填的暱稱',
-   (await p.locator('.sheet .select-row-text').first().textContent()) === '陳姐')
+   (await p.locator('.sheet .sheet-item-value').first().textContent()) === '陳姐')
 
 // 一次只開一列：點主題，暱稱要自己收起來。
 await p.getByRole('button', { name: /^主題/ }).click(); await p.waitForTimeout(300)
