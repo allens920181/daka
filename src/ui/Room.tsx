@@ -451,8 +451,8 @@ export function Room({ code }: { code: string }) {
           再附一顆「複製結果」，因為結束之後才想到要貼回 LINE 是常態。
         */}
         {closed && (
-          <div class="banner banner-result" style="margin-top:12px">
-            <span class="banner-result-text">
+          <div class="result-card" style="margin-top:12px">
+            <span class="result-card-text">
               {t('closedResult', {
                 summary: allHere
                   ? `${t('allHere')} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`

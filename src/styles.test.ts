@@ -87,6 +87,62 @@ describe('設計 token 的靜態檢查', () => {
     expect([...scanned.matchAll(/opacity:\s*([\d.]+)/g)].map((m) => m[1])).toEqual([])
   })
 
+  /**
+   * 形狀與類型的四條規則（2026-09 形狀重整）。
+   *
+   * docs/design/04-components/README.md 訂了兩條軸：表面說種類、圓角說尺寸。
+   * 那份規範以前不存在——2026-09 的整體性評估寫下「沒有一條規則說什麼東西該有
+   * 框」之後就沒有人寫，於是 --r-2 長到全站 38 條形狀規則裡的 20 條。
+   * 這四個檢查讓那份規範有牙齒。
+   */
+  const RULES = (() => {
+    // 逐條規則拆成 [選擇器, 宣告]，先去掉註解（註解裡有反例與歷史紀錄）。
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    return [...stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .map((m) => [(m[1] ?? '').trim().replace(/\s+/g, ' '), m[2] ?? ''] as const)
+      .filter(([sel]) => sel && !sel.startsWith('@'))
+  })()
+
+  it('--r-3 只給覆蓋層（面板、對話框）', () => {
+    // 它是「浮在遮罩上的那一塊」的形狀，不是「比較大的卡片」。
+    const allowed = new Set(['.sheet', '.dialog'])
+    const hits = RULES
+      .filter(([, d]) => /border-radius:[^;]*--r-3/.test(d))
+      .map(([sel]) => sel)
+      .filter((sel) => !allowed.has(sel))
+    expect(hits).toEqual([])
+  })
+
+  it('--el-1 只給「整塊可以按」的東西', () => {
+    // 陰影在這個 app 裡有指派好的意思：這一整塊按得下去。
+    // 名單列未到時浮起、已到時沉回頁面，教的就是這件事。
+    const allowed = new Set(['.recent-item', '.member', ".segment[aria-pressed='true']"])
+    const hits = RULES
+      .filter(([, d]) => /box-shadow:[^;]*--el-1/.test(d))
+      .map(([sel]) => sel)
+      .filter((sel) => !allowed.has(sel))
+    expect(hits).toEqual([])
+  })
+
+  it('凹槽不描邊（--surface-2 底不得同時有 border）', () => {
+    // 填色已經定義形狀了，再描一條只是把同一件事說第二次。
+    const hits = RULES
+      .filter(([, d]) => /background(?:-color)?:\s*var\(--surface-2\)/.test(d))
+      .filter(([, d]) => /(?:^|;)\s*border(?:-(?:top|right|bottom|left))?:\s*(?!none)[^;]*--rule/.test(d))
+      .map(([sel]) => sel)
+    expect(hits).toEqual([])
+  })
+
+  it('狀態選擇器不得改元件自己的形狀', () => {
+    // :focus-visible 裡的 border-radius 不是在畫對焦框的圓角，是在改元件自己的
+    // 圓角——沒有自己圓角的元件會在被 Tab 到的瞬間變形狀。
+    const hits = RULES
+      .filter(([sel]) => /:(?:focus|focus-visible|hover|active)\b/.test(sel))
+      .filter(([, d]) => /(?:^|;)\s*border-radius:/.test(d))
+      .map(([sel]) => sel)
+    expect(hits).toEqual([])
+  })
+
   it('每個色彩 token 在三種主題狀態都有定義', () => {
     const names = [...new Set([...css.matchAll(/--(?:paper|surface|ink|rule|accent|st|fb|toast|scrim)[a-z0-9-]*(?=:)/g)].map((m) => m[0]))]
     const light = css.slice(css.indexOf(':root {'), css.indexOf('@media (prefers-color-scheme: dark)'))

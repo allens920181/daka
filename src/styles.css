@@ -390,10 +390,22 @@ h1, h2, h3 { margin: 0; font-weight: 700; line-height: 1.25; text-wrap: balance;
 p { margin: 0; }
 button, input, textarea, select { font: inherit; color: inherit; }
 
+/*
+ * 對焦框。**它不設 border-radius**（2026-09 形狀重整）。
+ *
+ * 這裡本來寫著 `border-radius: var(--r-1)`，而那不是在畫對焦框的圓角——
+ * `border-radius` 設在元件自己身上，所以那一行的實際效果是**元件被鍵盤聚焦時
+ * 形狀會變**。有自己圓角的元件（`.btn` 12px、`.group-chip` 999px）因為宣告在
+ * 後面而僥倖沒事；沒有自己圓角的就真的變了——`.member-main` 與 `.topbar-title`
+ * 平常是 0，一被 Tab 到就長出 8px 的圓角，而它們是貼齊父層邊緣的滿版列，
+ * 那圈框於是跟它框住的東西對不上。
+ *
+ * 現代瀏覽器的 outline 本來就會跟著元件自己的圓角走，所以正確的做法是把圓角
+ * 還給元件（見 .member-main、.topbar-title），不是讓對焦狀態去發明一個。
+ */
 :focus-visible {
   outline: 3px solid var(--accent-strong);
   outline-offset: 2px;
-  border-radius: var(--r-1);
 }
 
 .mono {
@@ -500,7 +512,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
  */
 .select-row {
   display: flex; align-items: center; gap: var(--sp-2); width: 100%;
-  min-height: var(--tap-min); padding: 0 var(--sp-2); margin: 0 calc(var(--sp-2) * -1);
+  /* 面板裡的一列一律 --tap-lg，跟 .menu-item 同高（2026-09 形狀重整）。
+     它本來是 --tap-min：設定面板的列 48、「更多」面板的列 56，而兩者都是
+     「面板裡的一列，點了會怎樣」——同一種東西的兩個高度。 */
+  min-height: var(--tap-lg); padding: 0 var(--sp-2); margin: 0 calc(var(--sp-2) * -1);
   border: none; border-radius: var(--r-2); background: transparent;
   color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
@@ -601,9 +616,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 要把它擺進哪個範圍，不必先讀說明文字。載入中與拿不到相機時框仍在，靠
  * `--surface-2` 撐出形狀，不會整片空白像壞掉了。
  */
+/*
+ * 取景框是**凹槽**，不是覆蓋層（2026-09 形狀重整）。
+ *
+ * 它本來是 `--surface-2` ＋ 一圈 `--rule` ＋ `--r-3`，於是同時犯了兩條：凹槽
+ * 不描邊（填色已經定義形狀了），而 `--r-3` 是**只給覆蓋層**的圓角——面板與
+ * 對話框。一個嵌在面板裡的取景器用了跟面板本身一樣的圓角，讀起來像面板裡
+ * 又疊了一張面板。
+ *
+ * 凹得下去正是它要的：相機還沒開起來時，那一塊看得出是「畫面會出現在這裡」，
+ * 而不是一塊壞掉的空白。
+ */
 .scan-frame {
   position: relative; overflow: hidden; aspect-ratio: 1 / 1;
-  background: var(--surface-2); border: 1px solid var(--rule); border-radius: var(--r-3);
+  background: var(--surface-2); border-radius: var(--r-2);
 }
 /*
  * 掃碼那一頁的取景框：**滿版寬、4:3**（2026-09）。
@@ -701,6 +727,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border: none; background: transparent; color: inherit;
   font: inherit; text-align: left; padding: 0; cursor: pointer;
   min-height: var(--tap-min);
+  /* 它沒有底也沒有邊，但仍然要有形狀——對焦框靠它。見 :focus-visible。 */
+  border-radius: var(--r-2);
   display: flex; flex-direction: column; justify-content: center;
 }
 /*
@@ -930,7 +958,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .search-clear {
   position: absolute; right: var(--sp-1); top: 50%; transform: translateY(-50%);
   width: var(--tap-min); height: var(--tap-min); border: none; background: transparent;
-  color: var(--ink-3); font-size: var(--fs-5); cursor: pointer; border-radius: var(--r-1);
+  color: var(--ink-3); font-size: var(--fs-5); cursor: pointer;
+  /* 圖示鍵一律 --r-2（跟 .icon-btn 同一種東西）。它本來是 --r-1，於是同一個
+     48px 的圓形按鈕在畫面上有兩種圓角，差別只在它剛好長在哪一個容器裡。 */
+  border-radius: var(--r-2);
 }
 
 /* === 名單列 ============================================================== */
@@ -988,6 +1019,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
   flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-3);
   min-height: var(--tap-row); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-3);
   border: none; background: transparent; color: inherit;
+  /* 圓角跟父層一樣：它貼齊 .member 的左上左下，所以那兩個角要一起收。
+     這也讓對焦框（outline 跟著元件自己的圓角走）框得住正確的形狀——它本來
+     沒有圓角，被 :focus-visible 硬塞了一個 8px，跟 12px 的父層對不上。 */
+  border-radius: var(--r-2);
   text-align: left; cursor: pointer; font: inherit; touch-action: manipulation;
 }
 .member-main:active { background: var(--surface-2); }
@@ -1135,7 +1170,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 邊框也拿掉了：填色已經定義了形狀，再描一條只是把同一件事說第二次。
  * （已到的列不再鋪淡綠，所以當初「光靠底色會溶掉」那個理由也跟著消失了。）
  */
-.chip-count { background: var(--surface-2); color: var(--ink-2); }
+/*
+ * **中性晶片＝資料。** `.chip-count`（帶幾個人）與 `.chip-note`（備註）刻意跟
+ * `.chip` 長得一模一樣——它們都是這個人的補充資料，不該互相搶，也不該跟
+ * 「要你分辨的事」（`.chip-tell`）搶。
+ *
+ * 所以這裡**不再重複宣告 `.chip` 已經給過的底色與文字色**（2026-09 形狀重整）。
+ * 那兩條規則本來一個字都沒有加，卻讓 CSS 看起來有四種晶片；實際上只有兩種
+ * 長相：方角中性（資料）與藥丸 accent（分群）。有名字是為了在 markup 裡讀得出
+ * 語意，不是為了長得不一樣。
+ */
 /* 同名的人才會出現的辨識晶片（分車或電話尾碼）。要比備註更顯眼，
    因為它存在的唯一理由就是「讓你分得出這兩個陳怡君」。
    藥丸形：「這個人屬於哪一群」在這個 app 裡一律是藥丸（分組晶片、身分圖示
@@ -1144,9 +1188,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--accent-soft); color: var(--accent); font-weight: 700;
   padding: 0 var(--sp-2); border-radius: var(--r-full);
 }
-.chip-note { background: var(--surface-2); color: var(--ink-2); }
+/* 等寬那一種：只多了字重與字型，底色與文字色同樣繼承 .chip。 */
 .chip-data {
-  background: var(--surface-2); color: var(--ink-2); font-weight: 500;
+  font-weight: 500;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -1166,14 +1210,27 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 空間已關閉這件事本來就有人在說（頂欄的 `.topbar-count.closed`，而且它是
  * sticky 的，捲到哪裡都在），不需要一整塊底色再說第二次。
  */
-.banner-result {
+/*
+ * 它現在叫 `.result-card`，而且**自己完整**（2026-09 形狀重整）。
+ *
+ * 它本來是 `.banner banner-result`——掛在一個叫「橫幅」的類型上，而那個類型
+ * 的另一個變體（`.banner-muted`）是一句沒有底、沒有內距的話。**一個類型的兩個
+ * 變體如果一個是卡片、一個是段落，那它就不是一個類型**，只是兩個東西共用了一個
+ * 名字和一點 flex。兩邊都拆成自己完整的東西之後，`.banner` 整個移除。
+ *
+ * **不浮（沒有 --el-1）。** 陰影在這個 app 裡的意思是「整塊可以按」——名單列
+ * 未到時浮起、已到時沉回頁面，教的就是這件事。這一塊是收尾的紀錄，只能讀，
+ * 所以它是平的。（上一輪配色重構把它從警告色改成卡片時順手加了 --el-1，
+ * 那時候還沒有這條規則。）
+ */
+.result-card {
   display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+  padding: var(--sp-3); border-radius: var(--r-2);
   background: var(--surface); border: 1px solid var(--rule);
-  box-shadow: var(--el-1); color: var(--ink);
+  color: var(--ink); line-height: 1.6;
 }
-/* 這一行是整場點名的最終答案，不是圖說：跟著內文走 --fs-3，不是 .banner 預設的
-   --fs-2。橫幅其餘的字（沒有）仍然是 13px，這裡只提最該被讀到的那一行。 */
-.banner-result-text { flex: 1; min-width: 0; font-weight: 700; font-size: var(--fs-3); }
+/* 這一行是整場點名的最終答案，不是圖說，所以跟著內文走 --fs-3。 */
+.result-card-text { flex: 1; min-width: 0; font-weight: 700; font-size: var(--fs-3); }
 
 /*
  * 收尾那三顆（複製結果、下載 CSV、存成 PDF）。結束對話框與結束後的橫幅用同一組。
@@ -1521,8 +1578,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-7); font-weight: 700; letter-spacing: .18em;
   /* 字距在最後一個字後面也留一格，靠左邊多一點內距補回視覺中心。 */
   text-align: center; padding: var(--sp-4) 0 var(--sp-4) var(--sp-2);
-  background: var(--surface); border: 1px solid var(--rule);
-  border-radius: var(--r-2); color: var(--ink);
+  color: var(--ink);
+  /* 沒有自己的底、邊、圓角：它只出現在 .copy-row 裡，框是外層那一個。
+     這三個屬性本來寫在這裡，而 `.copy-row > .code-display` 又把它們全部
+     覆寫掉——三行永遠不會被畫出來的宣告，讀 CSS 的人卻會以為它是一個
+     有框的元件。**框在外面，裡面的東西不再各自有框**（見 .copy-row）。 */
 }
 /*
  * 連結那一頁先把網址印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE
@@ -1531,8 +1591,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .link-display {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--fs-2); color: var(--ink-2);
-  padding: var(--sp-3); background: var(--surface); border: 1px solid var(--rule);
-  border-radius: var(--r-2); overflow-wrap: anywhere;
+  padding: var(--sp-3); overflow-wrap: anywhere;
+  /* 同 .code-display：框是 .copy-row 那一層畫的，這裡不再有死掉的表面宣告。 */
 }
 .qr-card {
   /* QR 一律白底黑碼：掃描器要的是對比，不是配色。 */
@@ -1585,27 +1645,30 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .note-warn { background: var(--fb-warn-soft); color: var(--fb-warn); }
 .note-error { background: var(--fb-error-soft); color: var(--fb-error); }
 
-.banner {
-  display: flex; align-items: flex-start; gap: var(--sp-2);
-  padding: var(--sp-3); border-radius: var(--r-2);
-  font-size: var(--fs-2); line-height: 1.6; margin-bottom: var(--sp-3);
-}
 /*
- * `.banner-warn` 2026-09 配色重構移除：它最後一個使用者是結束之後的結果橫幅，
- * 而那一塊本來就不該是警告（見 .banner-result）。留著一個沒有人用的變體，
- * 下一次就會有人為了「這裡好像該有底色」而誤用它——規範自己寫過這條：
- * **一階顏色的存在理由是有人在用它，不是階梯看起來比較完整。**
- * 提示框那一階（.note-warn）還在，那是真的有人在用的。
- */
-/*
- * 中性的那一種**不畫框**（2026-09）。
+ * `.banner` 這個類型 2026-09 形狀重整移除。
  *
- * `--surface-2` 疊在 `--paper` 上只差 1.09:1——那個填色沒有把任何東西框起來，
- * 它只是在首頁最上面放了一塊三行高的灰色大方塊，比它底下的「創建空間」還早被
- * 讀到。有色底的提示（warn／error）是在說「這裡不一樣」，而這一種是在補一句
- * 背景說明，那就讓它長得像一句話。
+ * 它最後只剩兩個變體，而那兩個變體**沒有一個真的想當橫幅**：`.banner-warn`
+ * 上一輪隨著結果橫幅改版一起走了，`.banner-result` 是一張卡片（現在叫
+ * `.result-card`），`.banner-muted` 是一句話——它把 `.banner` 給的底色、內距
+ * 全部覆寫成透明與 0，只留下 flex 與下邊距。
+ *
+ * **一個類型的變體如果各自把它給的東西退掉，那它就不是一個類型。**
+ * 兩邊各自拆成自己完整的東西：卡片是 `.result-card`，話是下面這個。
  */
-.banner-muted { background: transparent; color: var(--ink-2); padding: 0; }
+
+/*
+ * 頁面層級的一句說明（目前只有首頁的「這台裝置還沒設定雲端」）。
+ *
+ * 它就是一句話：沒有底、沒有框、沒有圖示。有色底的提示（`.note-warn`／
+ * `.note-error`）是在說「這裡不一樣」，而這一種是在補一句背景說明。
+ * 跟 `.hint` 的差別只有一階文字色與下邊距——`.hint` 貼在控制項旁邊，
+ * 這一句站在頁面最上面，要比表單提示重一階。
+ */
+.page-note {
+  font-size: var(--fs-2); line-height: 1.6;
+  color: var(--ink-2); margin-bottom: var(--sp-3);
+}
 
 /* === Toast =============================================================== */
 
@@ -1642,7 +1705,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* 帶「復原」的 Toast 是誤觸的安全機制，不得低調化。 */
 .toast-action {
   flex: none; min-height: 44px; padding: 0 var(--sp-3);
-  border: 1px solid currentColor; border-radius: var(--r-1);
+  /* 它是一顆按鈕，所以走按鈕的圓角 --r-2。本來是 --r-1，於是全 app 最重要的
+     那顆按鈕（唯一的復原機會）是唯一一顆形狀跟其他按鈕不一樣的。 */
+  border: 1px solid currentColor; border-radius: var(--r-2);
   background: transparent; color: var(--toast-action);
   font-size: var(--fs-3); font-weight: 700; cursor: pointer;
 }

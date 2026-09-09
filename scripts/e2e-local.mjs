@@ -31,7 +31,7 @@ const openSearch = async () => {
 
 await p.goto(URL); await p.waitForTimeout(1200)
 ok('首頁載入', await p.locator('.home-title').isVisible())
-ok('顯示單機模式提示', (await p.locator('.banner-muted').count()) > 0)
+ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 
 
 // 開空間
@@ -254,7 +254,7 @@ const finishBody = (await p.locator('#dialog-body').textContent()) || ''
 ok(`說明只剩一句：「${finishBody}」`, finishBody.length <= 20 && !finishBody.includes('列印'))
 ok('不再需要任何補充說明', (await p.locator('.result-hint').count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('Esc 關掉對話框，空間沒有被結束', (await p.locator('.banner-result').count()) === 0)
+ok('Esc 關掉對話框，空間沒有被結束', (await p.locator('.result-card').count()) === 0)
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 // 臨時加人（編輯模式的「＋」）與結束點名（動作列）不在選單裡；邀請點名在，
 // 它 2026-09 從頂欄的分享圖示收回來——一個空間只該有一顆「更多」。
@@ -927,14 +927,14 @@ ok('對話框裡沒有 PDF 了', (await p.getByRole('button',{name:/PDF/}).count
 await p.getByRole('button',{name:/^結束點名$/}).last().click(); await p.waitForTimeout(1200)
 await p.keyboard.press('Escape'); await p.waitForTimeout(500)
 // 結束之後要回答的問題已經不是「還能不能點」，而是「這一場最後是幾個人」。
-const closedBanner = (await p.locator('.banner-result-text').textContent()) ?? ''
-ok(`結束後橫幅印的是定格結果：「${closedBanner}」`,
-   closedBanner.includes('已結束') && closedBanner.includes('1 / 3'))
+const closedResult = (await p.locator('.result-card-text').textContent()) ?? ''
+ok(`結束後印的是定格結果卡片：「${closedResult}」`,
+   closedResult.includes('已結束') && closedResult.includes('1 / 3'))
 // 結束之後那三顆要留著：真正需要那份 CSV 的人（教會辦公室、隔天的行政）是在
 // 事情結束之後才想起來的，而「匯出名單」那條路已經不在了。
-const bannerActions = (await p.locator('.banner-result .btn').allTextContents()).map((x) => x.trim())
-ok(`結束後兩種格式都還在：${bannerActions.join('、')}`,
-   JSON.stringify(bannerActions) === JSON.stringify(['複製', 'CSV']))
+const resultActions = (await p.locator('.result-card .btn').allTextContents()).map((x) => x.trim())
+ok(`結束後兩種格式都還在：${resultActions.join('、')}`,
+   JSON.stringify(resultActions) === JSON.stringify(['複製', 'CSV']))
 ok('結束後戳名字沒有作用', await p.locator('.member-main').first().isDisabled())
 ok('頂欄說得出已關閉', (await p.locator('.topbar-count.closed').count()) === 1)
 

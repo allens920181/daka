@@ -38,7 +38,7 @@ const reconcile = async (d) => {
 
 // --- 主揪開空間 ---
 await A.p.goto(URL); await A.p.waitForTimeout(1000)
-ok('[主揪] 連上雲端（不是單機模式）', (await A.p.locator('.banner-muted').count()) === 0)
+ok('[主揪] 連上雲端（不是單機模式）', (await A.p.locator('.page-note').count()) === 0)
 await A.p.getByRole('button', { name: /開啟空間/ }).first().click(); await A.p.waitForTimeout(300)
 await A.p.locator('#room-name').fill('秋季旅遊 · 出發')
 await A.p.locator('#roster-text').fill('王小明 0912345678\n李美花 +1\n陳大同（請假）\n張三\n李四')

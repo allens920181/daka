@@ -129,7 +129,7 @@ export function Home({ onSettings }: { onSettings: () => void }) {
         </div>
 
         {connection.value === 'local-only' && (
-          <p class="banner banner-muted">{t('localOnlyHint')}</p>
+          <p class="page-note">{t('localOnlyHint')}</p>
         )}
 
         <div class="stack">
