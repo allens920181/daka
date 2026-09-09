@@ -143,7 +143,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
               onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
             />
           </div>
-          {error && <p class="note note-warn">{error}</p>}
+          {error && <p class="note note-error">{error}</p>}
           <button
             class="btn btn-primary btn-block"
             disabled={working || !value.trim()}
@@ -334,7 +334,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
       </div>
 
-      {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+      {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
 
     </Sheet>
   )
@@ -419,7 +419,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
               onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
             />
           </div>
-          {error && <p class="note note-warn">{error}</p>}
+          {error && <p class="note note-error">{error}</p>}
           <button
             class="btn btn-primary btn-block"
             disabled={working || !value.trim()}
@@ -467,7 +467,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
           )}
         </div>
 
-        {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+        {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
 
         {/*
           從清單移除也要問一次。它在首頁曾經是一顆一按就生效的垃圾桶，但在單機
@@ -548,7 +548,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
         )}
       </div>
 
-      {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+      {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
     </Sheet>
   )
 }
@@ -646,7 +646,7 @@ export function SavedRostersSheet({ onApply, onClose }: {
             <span><strong>{t('deleteRoster')}</strong></span>
           </button>
         </div>
-        {error && <p class="note note-warn">{error}</p>}
+        {error && <p class="note note-error">{error}</p>}
 
         {confirmingDelete && (
           <ConfirmDialog
@@ -670,7 +670,7 @@ export function SavedRostersSheet({ onApply, onClose }: {
             class="input" value={value} maxLength={80} aria-label={t('rename')}
             onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
           />
-          {error && <p class="note note-warn">{error}</p>}
+          {error && <p class="note note-error">{error}</p>}
           <button
             class="btn btn-primary btn-block"
             disabled={working || !value.trim()}
@@ -980,7 +980,7 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
             */}
             {!secureOrigin() ? <p class="note note-warn">{t('insecureContextWarn')}</p>
               : inAppBrowser() && <p class="note note-warn">{t('inAppBrowserWarn')}</p>}
-            {error && <p class="note note-warn">{error}</p>}
+            {error && <p class="note note-error">{error}</p>}
 
             <button class="btn btn-block" disabled={working} onClick={() => setStep('email')}>
               {t('signInWithEmail')}
@@ -1002,7 +1002,7 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
                 onKeyDown={(e) => { if (e.key === 'Enter' && email.includes('@')) void send() }}
               />
             </div>
-            {error && <p class="note note-warn">{error}</p>}
+            {error && <p class="note note-error">{error}</p>}
             <button
               class="btn btn-primary btn-block btn-lg"
               disabled={working || !email.includes('@')}
@@ -1034,7 +1034,7 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
                 onKeyDown={(e) => { if (e.key === 'Enter' && code.length === 6) void verify() }}
               />
             </div>
-            {error && <p class="note note-warn">{error}</p>}
+            {error && <p class="note note-error">{error}</p>}
             <button
               class="btn btn-primary btn-block btn-lg"
               disabled={working || code.length !== 6}

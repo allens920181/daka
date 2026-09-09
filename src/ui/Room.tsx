@@ -193,7 +193,7 @@ export function Room({ code }: { code: string }) {
   if (status === 'error' && !current) {
     return (
       <div class="shell stack" style="padding-top:60px">
-        <p class="note note-warn">{error}</p>
+        <p class="note note-error">{error}</p>
         <button class="btn btn-block" onClick={() => navigate('/')}>{t('back')}</button>
       </div>
     )
@@ -451,7 +451,7 @@ export function Room({ code }: { code: string }) {
           再附一顆「複製結果」，因為結束之後才想到要貼回 LINE 是常態。
         */}
         {closed && (
-          <div class="banner banner-warn banner-result" style="margin-top:12px">
+          <div class="banner banner-result" style="margin-top:12px">
             <span class="banner-result-text">
               {t('closedResult', {
                 summary: allHere

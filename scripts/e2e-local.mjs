@@ -867,7 +867,8 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 // 掃描端：單機模式下用代碼加入別人的空間，錯的不是代碼，是這個站台沒有雲端。
 // 講「找不到這個代碼。請確認有沒有打錯」會讓人重打三次，而主揪正在數人頭。
 await p.evaluate(() => { window.location.hash = '#/j/ZZZZZZ' }); await p.waitForTimeout(1500)
-const joinMsg = ((await p.locator('.note-warn').textContent().catch(() => '')) ?? '').trim()
+// 失敗訊息掛 .note-error（2026-09 配色重構）：加不進去是「做不到」，不是「先跟你說一聲」。
+const joinMsg = ((await p.locator('.note-error').textContent().catch(() => '')) ?? '').trim()
 ok(`單機模式加入空間的說法：「${joinMsg}」`, joinMsg.includes('沒有連上雲端'))
 ok('不會叫人去檢查代碼有沒有打錯', !joinMsg.includes('打錯'))
 

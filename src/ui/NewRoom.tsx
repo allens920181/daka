@@ -163,7 +163,7 @@ export function NewRoom() {
           >
             <h2 class="room-flow-title">{name.trim() || t('roomNameLabel')}</h2>
             <RosterPreview text={text} onText={setText} result={result} />
-            {error && <p class="note note-warn">{error}</p>}
+            {error && <p class="note note-error">{error}</p>}
           </div>
         </div>
       </div>

@@ -6,25 +6,69 @@
    scripts/design-audit.mjs 會在真實瀏覽器裡驗對比、觸控尺寸與字級。
    =========================================================================== */
 
+/*
+ * ===========================================================================
+ * 配色重構 · 2026-09
+ * ===========================================================================
+ *
+ * 這一輪重新配了整套顏色。**品牌 teal `#0E5E63` 一個位元都沒動**（favicon、
+ * maskable icon、manifest、theme-color、`--accent`、`--accent-fill`）——動的是
+ * 它周圍的每一個顏色。理由與完整推導見 docs/design-review-2026-09-color.md。
+ *
+ * 三件事：
+ *
+ * **一、灰階從紫灰（286°）換成石墨（254°）。**
+ * 上一輪把灰階「從青灰移到 ~240°」，但那個 240° 是在 HSL 裡量的。換算到感知
+ * 空間（OKLCH）之後它其實落在 **286°**——那不是冷中性灰，是**薰衣草紫灰**。
+ * 中明度的那幾階（`--ink-2` `--ink-3` `--rule-strong`）帶著看得見的藕紫調，
+ * 而紫正好在暖琥珀的補色方向上：整個 app 因此讀起來冷、硬、像實驗室。
+ * 現在灰階在 **254°**（真正的藍調石墨），彩度 .008–.023：離 teal 54°，
+ * 是「選過的灰」但不是有顏色的灰。
+ *
+ * **二、暖色不再是一團，是一條「越嚴重越深越紅」的斜坡。**
+ * 舊版 `--st-pending` 與 `--fb-warn` 是**同一個十六進位值**，而 `--fb-error`
+ * 只跟它們差 20° 色相、5 點亮度。也就是說：**這個產品最正常、最健康、開場
+ * 100% 都會出現的狀態（還有 N 位沒到），穿的是錯誤訊息的衣服。**
+ * 現在三個角色各站一個位置，而且方向是單調的——
+ *
+ *     未到  #ab6900  L58 H68°  金  ← 最亮、最金，這是工作不是問題
+ *     提醒  #a04318  L50 H42°  橙  ← 深一階、紅一點
+ *     失敗  #9a292a  L46 H25°  紅  ← 最深、最紅
+ *
+ * 越往下越深、越往紅偏。逆光下、灰階列印下、色盲眼裡，這條斜坡靠**亮度**
+ * 就分得出來，不必先認得色相。
+ *
+ * **三、品牌 teal 沒動，因為它本來就沒錯。**
+ * 它「讀起來像板岩不像 teal」的原因不是它自己不夠彩：`#0E5E63` 在 L44 已經是
+ * sRGB 在該亮度**能給的彩度上限的 ~95%**（teal 是整個色相環上 sRGB 最擠的方向，
+ * L60 的上限只有 C.102，紅色是 .242）。壓住它的是兩件周圍的事：紫灰背景，
+ * 以及 `--accent-soft` 淡到 C.015——那個「teal 淡底」其實是灰的。
+ * 淡底提到 C.032 之後，chip 與身分圖示終於真的是 teal 色的。
+ */
+
 :root {
   /*
    * --- 表面與文字 ------------------------------------------------------
    *
-   * **灰階是冷中性，不是青灰**（2026-09 換過一次）。
+   * **灰階是石墨藍（254°），不是紫灰**（2026-09 配色重構）。
    *
-   * 它本來刻意往品牌色偏（`--ink-2` 色相 193°、`--rule` 197°、`--paper` 200°），
-   * 理由寫在 02-brand §2.6：「純中性灰讀起來像沒選過」。那個直覺沒錯，但執行
-   * 過頭了，而且偏的方向正好是品牌色自己所在的色相（teal 185°）——**背景已經
-   * 是那個色相，強調色就沒有東西可以推**。整個 app 因此泡在一層青灰裡：teal 不
-   * 像強調色，琥珀與綠看起來髒。
+   * 它的來歷是連續兩次修正：一開始刻意往品牌色偏（青灰，193–200°），那一版的
+   * 問題是「背景已經是強調色的色相，強調色就沒有東西可以推」；上一輪把它移開，
+   * 目標寫的是「~240°、彩度 2–3%」，但那組數字是在 HSL 裡挑的，換算到 OKLCH
+   * 是 **286°**——**薰衣草紫**。於是 `--ink-2` `#55555f`、`--rule-strong`
+   * `#8e8e9a` 這幾階帶著肉眼看得出來的藕紫調。
    *
-   * 現在灰階移到 ~240°、彩度砍到 2–3%：還是「選過的灰」（不是死灰），但離 teal
-   * 有 55° 的距離。**而且冷灰是暖琥珀最好的背景**——「未到 N」是這個產品最該被
-   * 看見的一個顏色，整套灰階應該替它服務。
+   * 紫灰不是中性的第三種說法，它是一個色彩決定，而且是最糟的那一個：紫在暖琥珀
+   * 的補色方向上，「未到 N」在紫灰背景上會被推成刺眼的對立面，而不是自然地
+   * 亮起來；同時它把 teal 拉進「藍紫—青綠」的中間地帶，整個畫面讀起來冷而硬。
+   *
+   * 254° 是**真正的冷中性**：藍調石墨，離 teal（202°）54°、離金琥珀（68°）
+   * 174°（幾乎正補色，所以「未到 N」推得動），而它自己低到 C .008–.023，
+   * 在任何一階上都不會被讀成「有顏色」。
    */
-  --paper: #f7f7f9;
+  --paper: #f6f8fa;
   --surface: #ffffff;
-  --surface-2: #eeeef2;
+  --surface-2: #ebeff4;
   /*
    * 「浮在凹槽上」的那一階。分段控制與名單列都靠高度（而不是顏色）表示狀態：
    * 軌道／頁面用凹的那一階，浮起來的那一格要比它亮。
@@ -36,29 +80,30 @@
    * 像沒被選到。
    */
   --raised: #ffffff;
-  --ink: #17171c;
-  --ink-2: #55555f;
-  --ink-3: #676773;          /* 最淺的可用文字色 */
+  --ink: #15191e;
+  --ink-2: #4f5762;
+  --ink-3: #616a75;          /* 最淺的可用文字色 */
   /*
-   * **兩條線，兩個工作**（2026-09 重新分工）。
+   * **兩條線，兩個工作**（分工在 2026-09 訂下，這一輪只換色相不改亮度）。
    *
-   * 它們本來是 1.28:1 與 1.86:1——兩條都遠低於 WCAG 對控制項邊界的 3:1，卻又
-   * 都深到看得見。那是最糟的區間：**不夠強到定義形狀，卻夠強到製造噪點**，
-   * 而全站幾乎每個元件都描了邊，疊起來就是一層灰糊。
-   *
-   * - `--rule` 只做**分隔與容器邊緣**，所以要更輕（1.24:1）：它的工作是節奏，
+   * - `--rule` 只做**分隔與容器邊緣**，所以要輕（1.16:1）：它的工作是節奏，
    *   不是定義。卡片是靠 --surface ＋ --el-1 浮起來的，那條線只是收個邊。
    * - `--rule-strong` 只做**可互動元件的邊界**（按鈕、輸入框、分組晶片、握把），
-   *   所以要真的達標（3.24:1）。1px 的 #8e8e9a 描在白底上是一顆正常的外框按鈕，
-   *   讀起來比原本更俐落，不是更重。
+   *   所以要真的達標（3.24:1）。
    */
-  --rule: #e6e6ec;
-  --rule-strong: #8e8e9a;
+  --rule: #e3e8ee;
+  --rule-strong: #86909d;
   /* 「未到」的空心圈。它是名單上唯一表示「這個人還沒上車」的形狀，非文字元件的
      門檻是 3:1；比 --rule-strong 再淡一點，因為它旁邊沒有填色可以幫忙。 */
-  --check-line: #85858f;
+  --check-line: #7e8792;
 
-  /* --- 品牌與互動 ------------------------------------------------------ */
+  /* --- 品牌與互動 ------------------------------------------------------
+   *
+   * **`#0E5E63` 一個位元都沒動**，而且不是因為捨不得改：它在 L44 已經是 sRGB
+   * 在該亮度的彩度上限（實測 C.071，上限 ~.075）。teal 是整個色相環上 sRGB
+   * 最擠的方向——L60 的彩度天花板只有 .102，同一個亮度的紅是 .242。
+   * **「這個 teal 看起來灰」不是它的錯，是周圍的錯**，所以這一輪改的是周圍。
+   */
   --accent: #0e5e63;         /* 強調**文字與邊框**。淡底上的強調文字也用這個 */
   /*
    * 主要按鈕的**填色**。淺色時它與 --accent 同值，深色時不是——見深色區塊：
@@ -67,31 +112,84 @@
    */
   --accent-fill: #0e5e63;
   --accent-ink: #ffffff;     /* 疊在 --accent-fill 上的文字 */
-  --accent-soft: #e2f0f0;
-  --accent-strong: #0c8a93;  /* 焦點框、載入。不得用於一般文字 */
+  /*
+   * 強調用的淡底。**彩度從 .015 提到 .032**（2026-09 配色重構）。
+   *
+   * .015 在 L95 的淡底上等於沒有顏色：`#e2f0f0` 放在 `--surface-2` `#eeeef2`
+   * 旁邊，兩塊都是灰的，只是一塊偏綠一點點。於是「accent 晶片」「主揪圖示」
+   * 「選中的分組」這些**本來要靠一塊淡 teal 說話**的東西，說出來的是灰。
+   * .032 是「一眼看得出是 teal，但仍然是淡底」的下限——再高就開始跟
+   * `.chip-tell` 裡那個 accent 字搶。
+   */
+  --accent-soft: #d5f4f5;
+  --accent-strong: #009298;  /* 焦點框、載入。不得用於一般文字 */
 
   /* --- 點名狀態（只用於名單成員）---------------------------------------
-     兩個顏色，不是兩套配色：狀態的主要載體是**高度**（未到浮起、已到沉回頁面），
-     顏色只負責那顆勾與那個數字。已到整列鋪淡綠的做法 2026-09 拿掉了——見
-     .member.is-arrived。 */
-  --st-pending: #a84d06;
-  --st-arrived: #1c7a44;
+     兩個狀態，不是兩套配色：狀態的主要載體是**高度**（未到浮起、已到沉回頁面），
+     顏色只負責那顆勾與那個數字。 */
+  /*
+   * 「未到 N」——**這個產品存在的理由，畫面上唯一的彩色數字**。
+   *
+   * 它從燒赭 `#a84d06`（H49°）換成金琥珀 `#ab6900`（H68°）（2026-09 配色重構）。
+   * 兩個理由：
+   *
+   * **一、它跟錯誤紅只差 20° 色相、5 點亮度。**「還有 4 位沒到」是這個產品最
+   * 正常的狀態——開場時 100% 的人都未到——卻穿著錯誤訊息的衣服。移到 68° 之後
+   * 離 `--fb-error`（25°）有 43°，讀起來是「數量、金屬、計數」而不是「出事了」。
+   *
+   * **二、它有比它以為的更多空間。** 它只出現在一個地方（`.segment .count-pending`，
+   * 20px／700），而 WCAG 把 ≥18.66px 粗體算作大字——門檻是 **3:1** 不是 4.5:1。
+   * 舊值卡在 5.3:1 是為了一個不存在的限制（`.topbar-count` 那條 `--st-pending`
+   * 從來沒有被畫出來過，它只在 `.closed` 狀態下渲染，而那個狀態覆寫成 `--ink-2`）。
+   * 亮度因此從 L53 放到 L58：更亮、更金、在冷石墨背景上更推得出來，而 3.83:1
+   * 仍然比門檻多出 28%。
+   */
+  --st-pending: #ab6900;
+  /*
+   * 「已到」拆成三個 token（2026-09 配色重構）。
+   *
+   * 它本來只有一個 `--st-arrived`，同時當**那顆勾的填色**與**歸零時的數字色**。
+   * 那正是上一輪為 `--accent` 拆出 `--accent-fill` 時寫下的那條規則所禁止的：
+   * **一個 token 只能服務一種疊法。** 實際後果看得見——
+   *
+   *   淺色：`.check` ＝ 深綠底 ＋ 白勾
+   *   深色：`.check` ＝ 亮綠底 ＋ 深勾   ← 兩個性格
+   *
+   * 跟主要按鈕當年壞掉的方式一模一樣，只是沒有人並排看過那顆勾。
+   * 現在 `--st-arrived` 專心當**文字**（歸零的數字、上線指示），
+   * `--st-arrived-fill` ＋ `--st-arrived-ink` 專心當**那顆勾**，兩個主題都是
+   * 深綠底 ＋ 白勾。
+   *
+   * 色相順帶從 153° 移到 145°：它離品牌 teal（202°）本來只有 49°，同一列裡
+   * 一顆 teal 晶片配一顆綠勾會讀成同一個家族。145° 拉到 57°，而且彩度砍到
+   * .094（舊 .120）——**已到的人不需要任何行動，它本來就該退場**。
+   */
+  --st-arrived: #407443;
+  --st-arrived-fill: #407443;
+  --st-arrived-ink: #ffffff;
 
-  /* --- 系統回饋（只用於系統訊息）--------------------------------------- */
-  --fb-warn: #a84d06;
-  --fb-warn-soft: #fbecdd;
-  --fb-error: #a02b22;
-  --fb-error-soft: #f9e6e4;
+  /* --- 系統回饋（只用於系統訊息）---------------------------------------
+   *
+   * `--fb-warn` 與 `--st-pending` 舊版是**同一個十六進位值**，規範解釋成
+   * 「兩個 token，哪天要分再分」。這一輪就是那一天：它們現在差 26° 色相與
+   * 8 點亮度，而且方向是有意義的——見檔頭那條暖色斜坡。
+   *
+   * `--fb-warn` 拿到的正是「未到」讓出來的那個燒赭位置（H42°）：**那個顏色
+   * 一直都是對的，只是掛在錯的角色上**。
+   */
+  --fb-warn: #a04318;
+  --fb-warn-soft: #ffe9de;
+  --fb-error: #9a292a;
+  --fb-error-soft: #ffe6e2;
 
   /* --- Toast：獨立表面，不參與明暗反轉 ---------------------------------
-     「復原」那顆用 --accent 家族的亮 teal（深底上的強調色本來就該亮），不再是
-     一個只出現在這裡的專屬霓虹色。 */
-  --toast-bg: #1b1b22;
-  --toast-ink: #f7f7f9;
-  --toast-action: #3fbfc7;
+     「復原」那顆用 --accent 家族的亮 teal（深底上的強調色本來就該亮）。 */
+  --toast-bg: #171c22;
+  --toast-ink: #f6f8fa;
+  --toast-action: #3cc7ce;
   /* Toast 是誤觸的安全網，必須看得出它是一塊獨立的東西。淺色時深底自己就
-     夠分明（17:1），深色時底色只比它蓋住的名單列亮 1.12:1，靠邊框定義。 */
-  --toast-line: #1b1b22;
+     夠分明（16:1），深色時底色只比它蓋住的名單列亮一點點，靠邊框定義。 */
+  --toast-line: #171c22;
 
   /* --- Google 登入按鈕：第三方品牌規範，具名例外 -----------------------
      這四個值來自 Google 自己的 Sign-in with Google 按鈕規範，不是我們的色票，
@@ -133,14 +231,16 @@
 
   /* --- 陰影 ------------------------------------------------------------
      --rule 變輕之後，卡片的形狀改由陰影負責，所以 --el-1 要跟著補回來一點
-     （.06 → .08）：一條 1.24:1 的線加一層幾乎看不見的陰影，等於什麼都沒有。 */
-  --el-1: 0 1px 2px rgba(23, 23, 28, .08);
-  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(23, 23, 28, .07);
-  --el-3: 0 -8px 40px rgba(23, 23, 28, .20);
+     （.06 → .08）：一條 1.16:1 的線加一層幾乎看不見的陰影，等於什麼都沒有。
+     陰影的墨色跟著 --ink 一起換成石墨（21,25,30）——一層紫調的陰影疊在石墨
+     卡片下面，會在邊緣泛出一圈看得見的藕色。 */
+  --el-1: 0 1px 2px rgba(21, 25, 30, .08);
+  --el-2: 0 -1px 0 var(--rule), 0 -8px 20px rgba(21, 25, 30, .07);
+  --el-3: 0 -8px 40px rgba(21, 25, 30, .20);
 
   /* --- 不透明度與遮罩 --------------------------------------------------- */
   --op-disabled: .5;
-  --scrim: rgba(17, 17, 22, .45);
+  --scrim: rgba(21, 25, 30, .45);
 
   /* --- 觸控 ------------------------------------------------------------ */
   --tap-min: 48px;
@@ -163,39 +263,47 @@
   color-scheme: light;
 }
 
+/*
+ * 深色的兩份宣告內容必須完全一致（一份給系統偏好，一份給手動指定）。
+ * src/styles.test.ts 會驗每個色彩 token 在三個區塊都有定義。
+ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --paper: #0f0f13;
-    --surface: #1a1a21;
-    --surface-2: #25252e;
-    --raised: #303039;
-    --ink: #ececf0;
-    --ink-2: #a8a8b3;
-    --ink-3: #9494a0;
-    --rule: #2e2e37;
-    --rule-strong: #6a6a76;
-    --check-line: #7a7a88;
+    --paper: #0b0f13;
+    --surface: #161b21;
+    --surface-2: #21272f;
+    --raised: #2d333c;
+    --ink: #eaedf1;
+    --ink-2: #a3acb6;
+    --ink-3: #939ca8;
+    --rule: #293038;
+    --rule-strong: #646d78;
+    --check-line: #737d89;
 
     /* --accent 只當文字與邊框（深底上的強調色必須亮）；色塊走 --accent-fill。
-       #11757e ＋ 白字 ＝ 5.4:1，而且與淺色的主要按鈕是同一個性格。 */
-    --accent: #3fbfc7;
-    --accent-fill: #11757e;
+       #007176 ＋ 白字 ＝ 5.8:1，而且與淺色的主要按鈕是同一個性格。 */
+    --accent: #3cc7ce;
+    --accent-fill: #007176;
     --accent-ink: #ffffff;
-    --accent-soft: #11292c;
-    --accent-strong: #5fd8df;
+    --accent-soft: #022e30;
+    --accent-strong: #61dde3;
 
-    --st-pending: #e0913f;
-    --st-arrived: #55bd7c;
+    /* 深色的暖色斜坡跟淺色同向：未到最亮、失敗最深，紅的程度依序遞增。 */
+    --st-pending: #f8ab4f;
+    --st-arrived: #80c582;
+    /* 那顆勾在深色也是**深綠底 ＋ 白勾**，跟淺色同一個性格。 */
+    --st-arrived-fill: #447b46;
+    --st-arrived-ink: #ffffff;
 
-    --fb-warn: #e0913f;
-    --fb-warn-soft: #2a2013;
-    --fb-error: #e5736a;
-    --fb-error-soft: #2e1a18;
+    --fb-warn: #f58f67;
+    --fb-warn-soft: #341e11;
+    --fb-error: #e07972;
+    --fb-error-soft: #381c19;
 
-    --toast-bg: #25252e;
-    --toast-ink: #ececf0;
-    --toast-action: #3fbfc7;
-    --toast-line: #6f6f7d;
+    --toast-bg: #21272f;
+    --toast-ink: #eaedf1;
+    --toast-action: #3cc7ce;
+    --toast-line: #69727e;
     --google-bg: #131314;
     --google-ink: #e3e3e3;
     --google-line: #8e918f;
@@ -212,37 +320,37 @@
 }
 
 :root[data-theme='dark'] {
-  --paper: #0f0f13;
-  --surface: #1a1a21;
-  --surface-2: #25252e;
-  --raised: #303039;
-  --ink: #ececf0;
-  --ink-2: #a8a8b3;
-  --ink-3: #9494a0;
-  --rule: #2e2e37;
-  --rule-strong: #6a6a76;
-  --check-line: #7a7a88;
+  --paper: #0b0f13;
+  --surface: #161b21;
+  --surface-2: #21272f;
+  --raised: #2d333c;
+  --ink: #eaedf1;
+  --ink-2: #a3acb6;
+  --ink-3: #939ca8;
+  --rule: #293038;
+  --rule-strong: #646d78;
+  --check-line: #737d89;
 
-  /* --accent 只當文字與邊框（深底上的強調色必須亮）；色塊走 --accent-fill。
-     #11757e ＋ 白字 ＝ 5.4:1，而且與淺色的主要按鈕是同一個性格。 */
-  --accent: #3fbfc7;
-  --accent-fill: #11757e;
+  --accent: #3cc7ce;
+  --accent-fill: #007176;
   --accent-ink: #ffffff;
-  --accent-soft: #11292c;
-  --accent-strong: #5fd8df;
+  --accent-soft: #022e30;
+  --accent-strong: #61dde3;
 
-  --st-pending: #e0913f;
-  --st-arrived: #55bd7c;
+  --st-pending: #f8ab4f;
+  --st-arrived: #80c582;
+  --st-arrived-fill: #447b46;
+  --st-arrived-ink: #ffffff;
 
-  --fb-warn: #e0913f;
-  --fb-warn-soft: #2a2013;
-  --fb-error: #e5736a;
-  --fb-error-soft: #2e1a18;
+  --fb-warn: #f58f67;
+  --fb-warn-soft: #341e11;
+  --fb-error: #e07972;
+  --fb-error-soft: #381c19;
 
-  --toast-bg: #25252e;
-  --toast-ink: #ececf0;
-  --toast-action: #3fbfc7;
-  --toast-line: #6f6f7d;
+  --toast-bg: #21272f;
+  --toast-ink: #eaedf1;
+  --toast-action: #3cc7ce;
+  --toast-line: #69727e;
   --google-bg: #131314;
   --google-ink: #e3e3e3;
   --google-line: #8e918f;
@@ -333,7 +441,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn-primary { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent-fill); }
 /*
  * Google 登入按鈕。照 Google 自己的按鈕規範走，不是這個系統的樣式。
- * 深色時底色只比面板亮 1.10:1，跟 Toast 一樣靠邊框定義形狀（邊框 5.8:1）。
+ * 深色時底色只比面板亮 1.07:1，跟 Toast 一樣靠邊框定義形狀（邊框 5.8:1）。
  */
 .btn-google {
   background: var(--google-bg); color: var(--google-ink);
@@ -347,7 +455,21 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--accent-soft); border-color: var(--accent);
   color: var(--accent); font-weight: 700;
 }
-.btn-danger { color: var(--fb-error); border-color: var(--rule); }
+/*
+ * 破壞性動作的那一顆。**邊框用 --fb-error，不是 --rule**（2026-09 配色重構）。
+ *
+ * 它本來把 `.btn` 的 `--rule-strong`（3.24:1）覆寫成 `--rule`（1.16:1）——也就是
+ * **整個 app 裡邊界最模糊的那顆按鈕，正好是唯一會刪掉東西的那顆**。而它在確認
+ * 對話框裡是主要動作，旁邊的「取消」是一顆正常的 `--rule-strong` 外框按鈕：
+ * 兩顆並排時，安全的那顆看起來比危險的那顆更像一顆按鈕。
+ *
+ * 現在邊框就是 `--fb-error` 自己（白底上 7.7:1）：全站唯一一顆紅框按鈕，
+ * 一眼認得出來，而且真的過 1.4.11 的 3:1。
+ *
+ * **仍然不填色。** 它要「認得出來」，不要「想按它」——初始焦點放在「取消」
+ * 那條原則（01 基礎 §1.2 原則三）沒有鬆掉，填實心紅會把它變成邀請。
+ */
+.btn-danger { color: var(--fb-error); border-color: var(--fb-error); }
 .btn-danger:hover { background: var(--fb-error-soft); }
 .btn-block { width: 100%; }
 .btn-lg { min-height: var(--tap-lg); }
@@ -619,9 +741,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sync-n { font-variant-numeric: tabular-nums; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
 .sync-online { color: var(--st-arrived); }
-/* 「未到」（--st-pending）與「離線」（--fb-warn）本來是同一個琥珀色，而它們
-   唯一會同框的地方就是頂欄那一行。離線是系統狀態不是點名狀態，改用中性色，
-   並把圓點畫成空心以示「還沒接上」。 */
+/*
+ * 離線用**中性色 ＋ 空心圓點**。
+ *
+ * 這條規則原本的理由是「未到與離線是同一個琥珀色，同框會撞」——2026-09 的
+ * 配色重構把 `--st-pending`（金 H68°）與 `--fb-warn`（橙 H42°）分開之後，
+ * 那個理由已經不存在了。但這一條留著，換一個更好的理由：
+ *
+ * **頂欄那一行不能有第二個暖色記號。**「未到 N」是這個畫面唯一該帶顏色的東西，
+ * 而同步指示就在它上面幾十像素、整場都在。給它一顆琥珀圓點，等於在最該安靜的
+ * 位置放一個永久的競爭者——而離線本來就不是要你現在動手的事（原則二：網路狀態
+ * 另外顯示，不阻擋操作）。
+ *
+ * 顏色退場之後意思靠**形狀**扛：實心＝接上了，空心＝還沒接上。逆光與色盲都成立。
+ */
 .sync-offline { color: var(--ink-2); }
 .sync-offline .sync-dot {
   background: transparent; border: 2px solid currentColor;
@@ -677,7 +810,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 /* 選中不改數字的顏色。選中與否是「你現在在看哪一群」，跟「那一群有幾個人」
    是兩件事；讓選中的那一格把數字加深，等於每按一次篩選就換一個數字最醒目。 */
-/* 未到的數字整場都是琥珀色，選不選中都一樣——它是答案，不是選項。
+/* 未到的數字整場都是金琥珀，選不選中都一樣——它是答案，不是選項。
    **全畫面只有這一個彩色數字**，其餘（含分組晶片）一律中性。 */
 .segment .count-pending { color: var(--st-pending); }
 /* 歸零就轉綠：這是整場點名唯一在等的那個瞬間，值得換一個顏色說。 */
@@ -718,8 +851,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 每一車還有幾個沒到——這是選車的人真正在看的數字。
  *
  * **它 2026-09 從琥珀改成中性。** 琥珀是「未到」的顏色，而畫面上同時有兩個地方
- * 在講未到：篩選列的總數，與這一列的分車拆解。三台車就是四個琥珀數字加上面那一個
- * ——一個顏色喊五次，等於沒喊。總數留給琥珀（它是答案），拆解用字重與深淺表達
+ * 在講未到：篩選列的總數，與這一列的分車拆解。三台車就是四個金琥珀數字加上面那一個
+ * ——一個顏色喊五次，等於沒喊。總數留給金琥珀（它是答案），拆解用字重與深淺表達
  * （標籤 --ink-2、數字 --ink 700）。
  *
  * **歸零仍然轉綠**：那是這一列唯一真的發生了什麼的時刻——這台車可以關門了。
@@ -883,7 +1016,22 @@ button, input, textarea, select { font: inherit; color: inherit; }
   display: grid; place-items: center; color: transparent;
   transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
-.member.is-arrived .check { background: var(--st-arrived); border-color: var(--st-arrived); color: var(--surface); }
+/*
+ * 那顆勾：**深綠底 ＋ 白勾，兩個主題都一樣**（2026-09 配色重構）。
+ *
+ * 它本來寫的是 `background: --st-arrived; color: --surface`，而 `--st-arrived`
+ * 在深色是一個亮綠、`--surface` 在深色是接近黑的面板色——於是同一顆勾在淺色是
+ * 「深綠底＋白勾」、在深色變成「亮綠底＋深勾」，**兩個性格**。那正是上一輪為
+ * `.btn-primary` 拆出 `--accent-fill` 時記下的那條規則：一個 token 只能服務一種
+ * 疊法；只是沒有人把這顆 30px 的圓圈並排看過。
+ *
+ * 現在填色走 `--st-arrived-fill`（兩邊都是深綠）、勾走 `--st-arrived-ink`
+ * （兩邊都是白），`--st-arrived` 專心當文字色（`.sync-online`、歸零的數字）。
+ */
+.member.is-arrived .check {
+  background: var(--st-arrived-fill); border-color: var(--st-arrived-fill);
+  color: var(--st-arrived-ink);
+}
 
 .member-body { min-width: 0; flex: 1; }
 /*
@@ -1002,11 +1150,30 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-/* 結束之後的定格結果橫幅。 */
+/*
+ * 結束之後的定格結果橫幅。**它是一張卡片，不是一則警告**（2026-09 配色重構）。
+ *
+ * 它本來掛的是警告橫幅——也就是把整場點名的**最終答案**印在警告色的底上。
+ * 那個選擇在舊配色下看不太出來（`--fb-warn` 跟「未到」是同一個琥珀，讀起來像
+ * 「還有人沒到」的延伸）；配色重構把 `--fb-warn` 定成明確的橙色警示之後，
+ * 這一塊就變成「你把事情做完了，然後畫面對你亮橙燈」。
+ *
+ * 收尾的結果不是問題，是紀錄——不管數字是「全到齊」還是「還差 3 位」，那都是
+ * 這一場的事實，而且它旁邊就放著「複製結果／CSV」讓你把它帶走。所以它走 2026-09
+ * 訂下的那條表面規則：**卡片＝`--surface` ＋ 邊框 ＋ 陰影**，跟名單列、面板
+ * 同一種東西，中性、可讀、不喊。
+ *
+ * 空間已關閉這件事本來就有人在說（頂欄的 `.topbar-count.closed`，而且它是
+ * sticky 的，捲到哪裡都在），不需要一整塊底色再說第二次。
+ */
 .banner-result {
   display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--rule);
+  box-shadow: var(--el-1); color: var(--ink);
 }
-.banner-result-text { flex: 1; min-width: 0; font-weight: 700; }
+/* 這一行是整場點名的最終答案，不是圖說：跟著內文走 --fs-3，不是 .banner 預設的
+   --fs-2。橫幅其餘的字（沒有）仍然是 13px，這裡只提最該被讀到的那一行。 */
+.banner-result-text { flex: 1; min-width: 0; font-weight: 700; font-size: var(--fs-3); }
 
 /*
  * 收尾那三顆（複製結果、下載 CSV、存成 PDF）。結束對話框與結束後的橫幅用同一組。
@@ -1193,7 +1360,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
    * （浮在遮罩上的一塊），卻一個用頁面色、一個用卡片色——同一個 app 的兩個覆蓋層
    * 長在兩個表面上。統一到 --surface 之後，「浮起來的東西＝--surface ＋ 陰影」
    * 這條規則全站沒有例外，而面板裡的凹槽（.note、.preview、.segmented）也才真的
-   * 凹得下去：它們用的 --surface-2 疊在 --paper 上，淺色時亮度差只有 1.06:1。
+   * 凹得下去：它們用的 --surface-2 疊在 --paper 上，淺色時亮度差只有 1.09:1。
    */
   background-color: var(--surface);
   background-image:
@@ -1423,11 +1590,17 @@ button, input, textarea, select { font: inherit; color: inherit; }
   padding: var(--sp-3); border-radius: var(--r-2);
   font-size: var(--fs-2); line-height: 1.6; margin-bottom: var(--sp-3);
 }
-.banner-warn { background: var(--fb-warn-soft); color: var(--fb-warn); }
+/*
+ * `.banner-warn` 2026-09 配色重構移除：它最後一個使用者是結束之後的結果橫幅，
+ * 而那一塊本來就不該是警告（見 .banner-result）。留著一個沒有人用的變體，
+ * 下一次就會有人為了「這裡好像該有底色」而誤用它——規範自己寫過這條：
+ * **一階顏色的存在理由是有人在用它，不是階梯看起來比較完整。**
+ * 提示框那一階（.note-warn）還在，那是真的有人在用的。
+ */
 /*
  * 中性的那一種**不畫框**（2026-09）。
  *
- * `--surface-2` 疊在 `--paper` 上只差 1.08:1——那個填色沒有把任何東西框起來，
+ * `--surface-2` 疊在 `--paper` 上只差 1.09:1——那個填色沒有把任何東西框起來，
  * 它只是在首頁最上面放了一塊三行高的灰色大方塊，比它底下的「創建空間」還早被
  * 讀到。有色底的提示（warn／error）是在說「這裡不一樣」，而這一種是在補一句
  * 背景說明，那就讓它長得像一句話。

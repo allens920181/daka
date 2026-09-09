@@ -309,7 +309,7 @@ function JoinSheet({ onClose }: { onClose: () => void }) {
             {t('join')}
           </button>
         </div>
-        {error && <p class="note note-warn">{error}</p>}
+        {error && <p class="note note-error">{error}</p>}
         {canScanQr() && (
           <button class="btn btn-block" onClick={() => setMode('scan')}>
             <IconCamera /> {t('scanQr')}

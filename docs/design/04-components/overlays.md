@@ -413,7 +413,7 @@
 
 **內容規則** — 錯誤訊息要分得出「碼錯了」與「連不上」。前者可重試，後者不是使用者的問題。
 
-**無障礙契約** — 兩步都用 `<label for>`；錯誤用 `.note-warn` 放在送出鍵上方。
+**無障礙契約** — 兩步都用 `<label for>`；錯誤用 `.note-error` 放在送出鍵上方。
 
 **實作** — `src/ui/Sheets.tsx`（`SignInSheet`）、`src/lib/auth.ts`
 
