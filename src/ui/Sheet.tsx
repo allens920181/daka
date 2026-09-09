@@ -25,19 +25,13 @@ const ENGAGE_AT = 8
  * `aria-label` 仍然是 `title`：眼睛看不到不代表螢幕閱讀器也可以聽不到。
  */
 export function Sheet({
-  title, onClose, onBack, size, children,
+  title, onClose, onBack, children,
 }: {
   title: string
   onClose: () => void
   /** 只有面板內有多階段時才傳（例如「更多」面板的子畫面）：回上一頁，跟
    *  onClose（離開整個面板）是兩個不同的動作。 */
   onBack?: () => void
-  /**
-   * 這一張面板的高度級距。**同一張面板的每一頁都要傳同一個值**——這是
-   * 「切子頁時面板不動」唯一的實作方式（見 styles.css 的 .sheet-body）。
-   * 不傳＝貼合內容，只給不會換頁也不會長高的面板用。
-   */
-  size?: 'm' | 'l'
   children: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)
@@ -100,7 +94,7 @@ export function Sheet({
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        class={`sheet${size ? ` sheet-${size}` : ''}${dragY ? ' is-dragging' : ''}`}
+        class={dragY ? 'sheet is-dragging' : 'sheet'}
         style={dragY ? `transform: translateY(${dragY}px)` : undefined}
         ref={panel}
         role="dialog"
@@ -122,8 +116,8 @@ export function Sheet({
           )}
         </div>
         {/*
-          內容自己一格，高度由 `size` 決定（見 styles.css 的 .sheet-body）。
-          同一張面板的每一頁傳同一個 size，切頁時面板就一格都不動。
+          內容自己一格。**高度貼合內容**，但每一頁的落差要小——那兩件事怎麼一起
+          成立，見 styles.css 的 .sheet-body。
         */}
         <div class="sheet-body">{children}</div>
       </div>

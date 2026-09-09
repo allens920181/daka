@@ -311,11 +311,16 @@ ok('背景整頁 inert 了', await p.evaluate(() =>
 ok('沒有標題文字，但無障礙名稱還在',
    (await p.locator('.sheet-title').count()) === 0
    && (await p.locator('.sheet').getAttribute('aria-label')) === '加入空間')
-// 每一頁的內容都從同一條線開始，而且面板高度不隨頁面變——這是「切子頁時面板
-// 不會在腳下移動」的兩個前提。
-const sheetTop = async () => Math.round((await p.locator('.sheet').boundingBox()).y)
-const codeTop = await sheetTop()
-const codeBodyTop = Math.round((await p.locator('.sheet-body').boundingBox()).y)
+// 面板貼合內容（不留空白），所以切頁時高度會變——但要變得夠小，而且**內容永遠
+// 從面板頂端同一條線開始**（`.sheet-bar` 是固定 48px 的）。
+const sheetH = async () => Math.round((await p.locator('.sheet').boundingBox()).height)
+const bodyOffset = async () => {
+  const s = await p.locator('.sheet').boundingBox()
+  const b = await p.locator('.sheet-body').boundingBox()
+  return Math.round(b.y - s.y)
+}
+const codeH = await sheetH()
+const codeOffset = await bodyOffset()
 // 按下那顆鍵的下一個動作就是打那六碼，跳出鍵盤是它的直接結果。
 ok('開起來焦點就在代碼框',
    await p.evaluate(() => document.activeElement?.classList.contains('code-input') === true))
@@ -358,17 +363,20 @@ ok('掃碼自己一列（在那一列底下）', await p.evaluate(() => {
 // 320px 上輸入框仍要放得下六碼（它是這一列唯一該讓步的東西，但有下限）。
 ok('窄螢幕上輸入框沒有被擠爛', await p.evaluate(() =>
   document.querySelector('.sheet .code-input').getBoundingClientRect().width >= 200))
-// 切到掃碼那一頁：面板一格都不能動，內容也要從同一條線開始。實測改版前這一步
-// 面板上緣往上跳 359px（168 → 527），而要按的返回鍵就跟著移動同樣的距離。
+// 切到掃碼那一頁。實測改版前這一步面板上緣往上跳 359px（168 → 527），而要按的
+// 返回鍵就跟著移動同樣的距離。現在整個 app 每一張面板的落差都在 85px 以內。
 await p.getByRole('button', { name: /QR/ }).click(); await p.waitForTimeout(900)
-ok(`切到掃碼那一頁面板沒有動（top ${codeTop} → ${await sheetTop()}）`,
-   Math.abs(await sheetTop() - codeTop) <= 1)
-ok('內容也從同一條線開始',
-   Math.abs(Math.round((await p.locator('.sheet-body').boundingBox()).y) - codeBodyTop) <= 1)
+const scanH = await sheetH()
+ok(`切到掃碼那一頁的落差夠小（${codeH} → ${scanH}，Δ${Math.abs(scanH - codeH)}）`,
+   Math.abs(scanH - codeH) <= 110)
+ok('內容仍然從面板頂端同一條線開始（.sheet-bar 是固定高的）',
+   (await bodyOffset()) === codeOffset)
 ok('子頁有返回鍵（第一頁沒有，但那一列的高度一樣）',
    (await p.locator('.sheet-bar .icon-btn').count()) === 1)
+ok('返回鍵沒有把那一列撐高',
+   Math.round((await p.locator('.sheet-bar').boundingBox()).height) === 48)
 await p.locator('.sheet-bar .icon-btn').click(); await p.waitForTimeout(400)
-ok(`返回之後也沒有動（top ${await sheetTop()}）`, Math.abs(await sheetTop() - codeTop) <= 1)
+ok(`返回之後回到原來的高度（${await sheetH()}）`, Math.abs(await sheetH() - codeH) <= 1)
 
 // 收起來的路：Esc（點面板外面與從握把往下滑是同一套，Sheet 已經在別處驗過）。
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)

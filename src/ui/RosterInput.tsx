@@ -53,7 +53,9 @@ export function RosterPreview({
     <div class="stack">
       {result.members.length > 0 && (
         <div class="field">
-          <div class="row">
+          {/* 「解析預覽 · n 人」那一行。臨時加人那張面板把它藏起來（見 styles.css
+              的 .walkin）：那裡底下那顆按鈕就寫著「加入 2」。 */}
+          <div class="row preview-head">
             <span class="label">{t('parsePreview')}</span>
             <div class="spacer" />
             {/* 整句中文不套 .mono：等寬的空白會把句子撐出不自然的縫。

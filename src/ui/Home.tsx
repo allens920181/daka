@@ -260,14 +260,14 @@ function JoinSheet({ onClose }: { onClose: () => void }) {
 
   if (mode === 'scan') {
     return (
-      <Sheet size="m" title={t('scanQr')} onClose={onClose} onBack={() => setMode('code')}>
+      <Sheet title={t('scanQr')} onClose={onClose} onBack={() => setMode('code')}>
         <ScanView />
       </Sheet>
     )
   }
 
   return (
-    <Sheet size="m" title={t('joinRoom')} onClose={onClose}>
+    <Sheet title={t('joinRoom')} onClose={onClose}>
       <div class="stack">
         {/*
           兩條路各一列（2026-09）：**打代碼＋加入**是同一件事的兩半，所以它們在
