@@ -296,6 +296,8 @@ function JoinSheet({ onClose }: { onClose: () => void }) {
             // 抓出代碼，原生的長度限制會在那之前就把後半段截斷。裁到固定長度
             // 改成抓完代碼之後才做，抓出來的碼本來就只有 6 碼。
             inputMode="text"
+            // iOS 會把 return 鍵換成「前往」——底下的 onKeyDown 就是這麼做的。
+            enterkeyhint="go"
             autocapitalize="characters"
             autocomplete="off"
             spellcheck={false}

@@ -18,6 +18,9 @@
 **規則**
 
 - `position: sticky`、`--z-sticky`、上方留 `env(safe-area-inset-top)`。
+- **底是半透明材質，不是實色**（2026-09，[iOS 評估](../../design-review-2026-09-ios.md) §2.1）：`color-mix(in srgb, var(--paper) 72%, transparent)` ＋ `backdrop-filter: saturate(180%) blur(20px)`。底部動作列同一份。**這不只是好看：它讓人知道底下還有東西、而且正在動**——一條實色的橫槓會把畫面切成互不相干的兩塊，捲動時上面那塊像釘在別的圖層上。
+  - **兩層退路，順序不能反。** `@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))` 在後面，`@media (prefers-reduced-transparency: reduce)` 再後面（使用者明講過不要，它得蓋得過前一條）。兩條退路都回到 `--paper` 實色，也就是改動前的樣子。**`@supports` 必須兩個寫法一起測**：Safari 18 之前只認 `-webkit-` 前綴的那個。
+  - 按鈕不受影響（`.btn` 自己有 `--surface` 實底），所以動作列上透出來的是按鈕**之間**的縫。頂欄標題沒有底，它確實直接坐在材質上——iOS 的 nav bar 標題也是這樣。
 - 副標平常顯示**代碼**；空間關閉時換成「已關閉」（`.topbar-count`）——關閉是全域狀態，不能只靠一條會捲走的橫幅。
 - **身分（主揪／協助者）排在空間名前面**，是一顆 `.role-badge` 圖示（2026-09：先從「更多」面板的身分列搬到副標行，再換成圖示、往上挪到名字前面）。「我能不能改」決定這個畫面上哪些事做得動（編輯名單、結束點名只有主揪能做），那是進空間第一眼就該知道的事，不該要先點開「更多」面板。
 - **副標那一行（代碼 ＋ 同步狀態）2026-09 整條拿掉了**，這一列因此只剩一行 24px 的標題，`min-height` 也從 `--tap-lg`（56）降到 `--tap-min`（48）——頂欄 121px → 113px。

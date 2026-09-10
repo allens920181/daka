@@ -738,9 +738,32 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* === 頂欄 ================================================================ */
 
+/*
+ * 頂欄與底部動作列是**半透明材質**（2026-09，iOS 評估 §2.1）。
+ *
+ * 它們本來是 --paper 實色。iOS 的 nav bar 與 toolbar 不是——底下的內容會透出來
+ * 並且被模糊掉。那不只是好看：**它讓人知道底下還有東西、而且正在動。** 一條實
+ * 色的橫槓會把畫面切成互不相干的兩塊，捲動時上面那塊像是釘在別的圖層上。
+ *
+ * 兩層退路，順序不能反：
+ *
+ * 1. `@supports not (...)`：**兩個寫法都要測**。Safari 18 之前只認 `-webkit-`
+ *    前綴的那個，只測沒有前綴的版本會讓 iOS 15–17 誤判成「不支援」，退回實色
+ *    ——那正是我們想給它的那群人。
+ * 2. `prefers-reduced-transparency`：使用者在「輔助使用 › 顯示與文字大小 ›
+ *    降低透明度」明講過不要。這一條擺在後面，所以它蓋得過上面那條。
+ *
+ * 退路都是 `--paper` 實色，也就是改動前的樣子——不是什麼將就的近似。
+ *
+ * 按鈕不受影響：`.btn` 自己有 `--surface` 實底，所以動作列上透出來的是按鈕
+ * **之間**的縫，不是按鈕上的字。頂欄標題沒有底，它確實直接坐在材質上——iOS 的
+ * nav bar 標題也是這樣。
+ */
 .topbar {
   position: sticky; top: 0; z-index: var(--z-sticky);
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 72%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--rule);
   padding-top: env(safe-area-inset-top);
 }
@@ -1314,8 +1337,22 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .dock {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-dock);
   padding: var(--sp-2) var(--sp-4) calc(var(--sp-2) + env(safe-area-inset-bottom));
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 72%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
   box-shadow: var(--el-2);
+}
+
+/* 見 .topbar 上面那段：兩條退路，順序不能反。 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar, .dock { background: var(--paper); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .topbar, .dock {
+    background: var(--paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 /*
  * 主按鈕吃掉剩下的寬度，次要按鈕按自己的字寬佔位——反過來（主按鈕 width:100%）

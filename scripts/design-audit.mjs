@@ -32,7 +32,19 @@ const TAP_EXCEPTIONS = { 'toast-action': 44 }
 function collect() {
   const parse = (c) => {
     const m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/)
-    return m ? { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] } : null
+    if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] }
+    /*
+     * `color-mix()` 算出來的顏色，Chromium 回的是 `color(srgb r g b / a)`，
+     * 分量是 0–1 不是 0–255。
+     *
+     * 半透明材質（.topbar / .dock）就是這個格式。少了這一段，`parse()` 對它回
+     * null，`bgOf()` 於是把那一層當成「根本沒有底色」直接跳過去——材質等於沒有
+     * 被量到，而檢查照樣說通過。**這正是 iOS 評估 §2.1 警告過的那個失真**，
+     * 只是原因不是門檻猜錯，是連字串都沒認得。
+     */
+    const s = c.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/)
+    if (s) return { r: +s[1] * 255, g: +s[2] * 255, b: +s[3] * 255, a: s[4] === undefined ? 1 : +s[4] }
+    return null
   }
   const lum = ({ r, g, b }) => {
     const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
@@ -42,14 +54,39 @@ function collect() {
     const [hi, lo] = [lum(a), lum(b)].sort((p, q) => q - p)
     return (hi + 0.05) / (lo + 0.05)
   }
+  /*
+   * 眼睛在這個元素背後看到的顏色。
+   *
+   * 舊版是「往上找第一個 alpha > 0.5 的祖先」。那個 0.5 是個猜的門檻，而且它把
+   * 半透明的底當成不透明的用——一層 72% 的紙疊在深色卡片上，量到的會是紙的
+   * 顏色，不是眼睛看到的那個混合色。頂欄與底部動作列 2026-09 改成半透明材質之
+   * 後，那個近似就直接失真了（見 iOS 評估 §2.1）。
+   *
+   * 現在是真的往下疊：一層層收集半透明的底，碰到不透明的那一層（或 body）就
+   * 停，再由下往上合成回來。
+   *
+   * **量不到的一件事**：`backdrop-filter` 吃的是**畫面上**在它後面的東西，不是
+   * DOM 裡的祖先。頂欄底下捲過去的名單卡片不在這條祖先鏈上，所以這裡算出來的
+   * 是「沒有東西捲到底下時」的顏色。那是靜止狀態的正確答案，不是全部的答案。
+   */
   const bgOf = (el) => {
+    const layers = []
     let n = el
+    let opaque = null
     while (n && n !== document.documentElement) {
       const c = parse(getComputedStyle(n).backgroundColor)
-      if (c && c.a > 0.5) return c
+      if (c && c.a > 0) {
+        if (c.a >= 0.999) { opaque = c; break }
+        layers.push(c)
+      }
       n = n.parentElement
     }
-    return parse(getComputedStyle(document.body).backgroundColor) ?? { r: 255, g: 255, b: 255, a: 1 }
+    let out = opaque
+      ?? parse(getComputedStyle(document.body).backgroundColor)
+      ?? { r: 255, g: 255, b: 255, a: 1 }
+    // 由下往上疊回來。
+    for (let i = layers.length - 1; i >= 0; i--) out = blend(layers[i], out, layers[i].a)
+    return out
   }
   const label = (el) =>
     `${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : ''}`

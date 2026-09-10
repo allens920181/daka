@@ -769,6 +769,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             <label class="label" for="checker-name">{t('yourName')}</label>
             <input
               id="checker-name" class="input" value={name} maxLength={40}
+              // return 鍵變成「完成」，按下去就跟按返回一樣：存起來、回上一頁。
+              enterkeyhint="done"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); save() } }}
               onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
               onBlur={() => { void setCheckerName(name) }}
             />
@@ -1010,6 +1013,9 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
                 class="input"
                 type="email"
                 inputMode="email"
+                // 「傳送」——按下去寄出驗證碼，就是底下 onKeyDown 做的事。
+                // 不是「下一個」：下一欄要等信到了才存在。
+                enterkeyhint="send"
                 autocomplete="email"
                 value={email}
                 placeholder={t('emailPlaceholder')}
@@ -1038,6 +1044,8 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
                 id="signin-code"
                 class="input code-input"
                 inputMode="numeric"
+                // 「前往」——六碼打滿按下去就驗證並登入。
+                enterkeyhint="go"
                 autocomplete="one-time-code"
                 maxLength={6}
                 value={code}

@@ -37,7 +37,13 @@ ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 // 開空間
 await p.getByRole('button', { name: /創建空間/ }).first().click()
 await p.waitForTimeout(400)
+// 空間名稱的 return 鍵寫著「下一個」，所以它得真的跳到下一欄（名單）。
+ok('空間名稱的 return 鍵寫著「下一個」', await p.getAttribute('#room-name', 'enterkeyhint') === 'next')
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
+await p.locator('#room-name').press('Enter'); await p.waitForTimeout(200)
+ok('按下去焦點就在名單欄，名稱原封不動',
+   await p.evaluate(() => document.activeElement?.id) === 'roster-text'
+   && await p.inputValue('#room-name') === '秋季旅遊 · 出發')
 await p.locator('#roster-text').fill(`秋季旅遊報名
 1.王小明 0912345678
 2. 李美花 +1
@@ -351,6 +357,15 @@ ok('代碼框與「加入」等高，而且填滿那個框', await p.evaluate(()
   const join = document.querySelector('.sheet .code-row .btn').getBoundingClientRect()
   return Math.abs(input.height - join.height) <= 1 && row.height - input.height <= 3
 }))
+/*
+ * return 鍵上寫的字（2026-09，iOS 評估 §2.3）。
+ *
+ * iOS 會依 `enterkeyhint` 換掉 return 鍵的字。**所以按下去必須真的發生那件事**
+ * ——鍵上寫「前往」卻什麼都沒發生，比一顆普通的 return 鍵更糟：它承諾過。
+ * 這裡驗的是那個承諾，不只是屬性有沒有寫上去。
+ */
+ok('代碼框的 return 鍵寫著「前往」', await p.getAttribute('.sheet .code-input', 'enterkeyhint') === 'go')
+
 // 對焦圈搬到外框：裡面的輸入框沒有邊可以亮了。
 ok('對焦時亮的是整個框', await p.evaluate(() => {
   document.querySelector('.sheet .code-row .code-input').focus()
@@ -639,6 +654,18 @@ const searchInputBox = await p.locator('.search-wrap input[type=search]').boundi
 const segmentedBox = await p.locator('.filterbar .segmented').boundingBox()
 ok(`搜尋框高度（${Math.round(searchInputBox.height)}px）跟分段控制那一列（${Math.round(segmentedBox.height)}px）一致`,
    Math.abs(searchInputBox.height - segmentedBox.height) <= 1)
+
+// return 鍵（iOS 上寫著「完成」）唯一要做的事是把鍵盤收掉：結果是邊打邊出來的，
+// 沒有第二件事可做。不接的話，收鍵盤的唯一辦法是點別的地方，而這個畫面上「別的
+// 地方」就是名單列——點下去會直接把人標成已到。
+await p.locator('input[type=search]').fill('陳'); await p.waitForTimeout(200)
+ok('搜尋框的 return 鍵寫著「完成」',
+   await p.getAttribute('input[type=search]', 'enterkeyhint') === 'done')
+await p.locator('input[type=search]').press('Enter'); await p.waitForTimeout(250)
+ok('按 Enter 收鍵盤，但字跟框都留著', await p.evaluate(() =>
+     document.activeElement?.getAttribute('type') !== 'search')
+   && await p.locator('input[type=search]').inputValue() === '陳'
+   && (await p.locator('input[type=search]').count()) === 1)
 
 // Esc 分兩段：先清字（名單立刻回來），再按一次才收回成圖示。一次做完兩件事
 // 的話，只是想取消過濾的人會連那顆鍵的位置一起失去。

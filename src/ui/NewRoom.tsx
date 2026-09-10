@@ -147,6 +147,16 @@ export function NewRoom() {
                 value={name}
                 maxLength={80}
                 placeholder={t('roomNamePlaceholder')}
+                // iOS 的 return 鍵會變成「下一個」。**所以 Enter 真的要跳到下一欄**
+                // ——鍵上寫什麼，按下去就得發生什麼，不然那顆鍵是在說謊。
+                // 下一欄是名單，它住在 RosterEditorField 裡面，用 id 取（label 的
+                // `for` 本來就綁著這個 id，多一個 ref 只是把同一件事再說一次）。
+                enterkeyhint="next"
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return
+                  e.preventDefault()
+                  document.getElementById('roster-text')?.focus()
+                }}
                 onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
               />
             </div>
