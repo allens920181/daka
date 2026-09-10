@@ -340,7 +340,11 @@ ok('而且是同一個框：框在外層，裡面兩個都沒有自己的邊', a
   const w = (el) => parseFloat(getComputedStyle(el).borderTopWidth)
   return w(row) >= 1 && w(input) === 0 && w(join) === 0
 }))
-// 並排的元件要對齊：輸入框的高度不能是字級的副產品（2026-09 寫死 --tap-lg）。
+// 並排的元件要對齊：輸入框的高度不能是字級的副產品。高度是 `--tap-lg`，但寫成
+// `min-height`（2026-09 字級改 rem 之後）——寫死的話字放大時框不會跟著長，字就
+// 被夾住。**兩個孩子都用 `align-self: stretch`，不用 `height: 100%`**：外框變成
+// 不定高之後百分比對不上它，那顆「加入」會掉回自己的 48px。
+
 ok('代碼框與「加入」等高，而且填滿那個框', await p.evaluate(() => {
   const row = document.querySelector('.sheet .code-row').getBoundingClientRect()
   const input = document.querySelector('.sheet .code-row .code-input').getBoundingClientRect()

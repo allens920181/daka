@@ -39,8 +39,23 @@ function stripKeyframes(input: string): string {
 const ALLOWED_PX = new Set(['0px', '1px', '2px', '3px', '4px', '6px', '7px', '30px', '38px', '44px', '240px', '260px', '200px', '22px', '120px', '560px', '640px', '420px', '88px', '160px'])
 
 describe('設計 token 的靜態檢查', () => {
-  it('沒有硬寫的 font-size', () => {
-    const hits = [...css.matchAll(/font-size:\s*(\d[\d.]*px)/g)].map((m) => m[1])
+  it('沒有硬寫的 font-size（只有 :root 的 Dynamic Type 基準例外）', () => {
+    // 註解裡有反例與歷史紀錄，先去掉。
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+    // 唯一的例外是根字級，而且它必須是**成對**的兩行：
+    //   font-size: calc(17 / 16 * 1rem);   跟著瀏覽器設定的預設字級走
+    //   font: -apple-system-body;          Apple 平台改綁使用者的 Dynamic Type
+    // 少了第二行，Apple 使用者的 Dynamic Type 失效；第一行若寫死成 px，
+    // 其他平台調過的字級會被這一行吃掉。兩種都是這個檢查要抓的東西，
+    // 所以放行的是整組機制，不是其中某一個數值。
+    const root = stripped.slice(0, stripped.indexOf('}'))
+    const base = /font-size:\s*calc\(17 \/ 16 \* 1rem\);\s*font:\s*-apple-system-body;/
+    expect(base.test(root)).toBe(true)
+
+    // 其餘任何字面字級都是繞過 --fs-* 的證據：七階以外沒有字級，單位是什麼都一樣。
+    const scanned = stripped.replace(base, '')
+    const hits = [...scanned.matchAll(/font-size:\s*([\d.]+(?:px|rem|em|pt|%))/g)].map((m) => m[1])
     expect(hits).toEqual([])
   })
 

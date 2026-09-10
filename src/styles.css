@@ -201,14 +201,33 @@
   --google-line: #747775;
   --google-bg-active: #f2f2f2;
 
-  /* --- 字級（七階，不得新增）------------------------------------------- */
-  --fs-1: 11px;   /* 等寬微標籤，唯一允許小於 13px 的用途 */
-  --fs-2: 13px;
-  --fs-3: 15px;
-  --fs-4: 17px;   /* 內文、姓名、所有輸入框（iOS 低於 16px 會放大頁面）*/
-  --fs-5: 20px;
-  --fs-6: 26px;
-  --fs-7: 34px;
+  /* --- 字級（七階，不得新增）-------------------------------------------
+   *
+   * **值是 rem，不是 px（2026-09，iOS 評估 §1.1）。**
+   *
+   * 它們本來全部是 px，理由寫著「這是應用程式不是文件」。那句話在桌面瀏覽器上
+   * 說得過去，在 iOS 上不成立：使用者在「設定 › 螢幕顯示與亮度 › 文字大小」或
+   * 「輔助使用 › 更大的文字」調過之後，**期待每一個 app 都跟著變**——而這個 app
+   * 的使用者是志工、在戶外、可能逆光，正是最需要那個設定生效的一群人。
+   * 他在別的 app 都看得到，只有這個看不到。
+   *
+   * 機制在下面 `:root` 的那兩行：`-apple-system-body` 在 Apple 平台綁到 Dynamic
+   * Type，其他平台那個值無效、整條宣告被丟掉，於是前面那條根字級生效，跟著
+   * 使用者在瀏覽器裡設的預設字級走。**兩邊的基準都是 17**，所以預設狀態下每一
+   * 階算出來就是原本那七個數字（11/13/15/17/20/26/34），一個像素都沒有變。
+   *
+   * 寫成 `calc(11 / 17 * 1rem)` 而不是 `0.647rem`：分子就是那一階的 px 值，
+   * 讀的人不用回頭換算，而且不會有四捨五入的漂移。
+   *
+   * **只有字級是 rem。** 間距、圓角、觸控尺寸全部維持 px——見它們各自那一段。
+   */
+  --fs-1: calc(11 / 17 * 1rem);   /* 等寬微標籤，唯一允許小於 13px 的用途 */
+  --fs-2: calc(13 / 17 * 1rem);
+  --fs-3: calc(15 / 17 * 1rem);
+  --fs-4: calc(17 / 17 * 1rem);   /* 內文、姓名、所有輸入框（iOS 低於 16px 會放大頁面）*/
+  --fs-5: calc(20 / 17 * 1rem);
+  --fs-6: calc(26 / 17 * 1rem);
+  --fs-7: calc(34 / 17 * 1rem);
   /* 曾經有第八階（44px），它是為計分區的未到大字而存在的。計分區 2026-08 拿掉
      之後那一階再也沒有人用，2026-09 一併移除；「畫面上最大的數字是未到人數」
      現在由篩選列自己扛（見 .segment .count：--fs-5 ＋ --st-pending，
@@ -242,7 +261,10 @@
   --op-disabled: .5;
   --scrim: rgba(21, 25, 30, .45);
 
-  /* --- 觸控 ------------------------------------------------------------ */
+  /* --- 觸控 ------------------------------------------------------------
+     **維持 px，不得改成 rem。** 觸控目標是**物理尺寸**——一根手指在螢幕上有多大
+     跟使用者把字調多大無關。字級 2026-09 改成 rem 時這三個刻意留在 px；
+     名單列與面板列用的是 `min-height`，所以字放大時列自己會長高，不會擠掉。 */
   --tap-min: 48px;
   --tap-row: 64px;
   --tap-lg: 56px;
@@ -259,6 +281,30 @@
   --z-dock: 30;      /* 底部動作列（開空間） */
   --z-modal: 40;     /* 面板、確認對話框 */
   --z-toast: 50;     /* Toast：永遠在最上層，它可能是唯一的復原機會 */
+
+  /*
+   * **根字級：使用者字級設定的接點**（2026-09，iOS 評估 §1.1）。
+   *
+   * 兩行的順序就是機制本身：
+   *
+   * 1. `calc(17 / 16 * 1rem)` —— 非 Apple 平台的基準。**根元素上的 `rem` 指的是
+   *    font-size 的初始值**，也就是使用者在瀏覽器裡設的預設字級（出廠 16px）。
+   *    所以這條算出來是「使用者的預設字級 × 17/16」：他沒動過就是 17px，
+   *    他把 Chrome 調到 24px 就變 25.5px。寫死 `17px` 的話，Android 與桌面
+   *    使用者調過的字級會被這一行吃掉——那正是這次要修的問題本身。
+   *    17 不是隨便選的：它是 iOS 的預設 body 尺寸，也正好是這個 app 本來就在
+   *    用的內文字級（舊 `--fs-4`）。
+   * 2. `font: -apple-system-body` —— Apple 平台上這個關鍵字綁到使用者的
+   *    Dynamic Type 設定；`font` 是簡寫，所以它會覆蓋掉上面那個 `font-size`。
+   *    **在其他平台這個值無效，整條宣告被丟掉**，第 1 行就留下來了。
+   *
+   * 不需要 `@supports`：CSS 對無效宣告的處理本來就是這個順序。
+   *
+   * 它同時把字體與行高設成系統的——所以 `body` 必須自己再宣告一次那兩樣
+   * （它本來就有）。
+   */
+  font-size: calc(17 / 16 * 1rem);
+  font: -apple-system-body;
 
   color-scheme: light;
 }
@@ -521,14 +567,22 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 讓 flex 收得下去，`flex: 1` 把剩下的寬度全拿走。六碼在 320px 的螢幕上仍有
  * 200px 可用，這個字級照樣讀得出來。
  *
- * **高度寫死成 --tap-lg**（2026-09）。它本來是靠內距撐出來的：26px 的字 ＋
- * 1.55 行高 ＋ 上下 12px ＝ 66px，而旁邊那顆鍵是 56px，兩個東西並排在同一列卻
- * 差了 10px——那一列因此永遠是歪的。並排的元件要對齊，就不能讓其中一個的高度是
- * 另一件事（字級）的副產品。（合進同一個框之後這條仍然有用：登入面板的六碼
- * 驗證碼也是這個 class，那裡它是單獨一個框。）
+ * **高度是 --tap-lg，但寫成 `min-height`**（2026-09）。它本來是靠內距撐出來的：
+ * 26px 的字 ＋ 1.55 行高 ＋ 上下 12px ＝ 66px，而旁邊那顆鍵是 56px，兩個東西
+ * 並排在同一列卻差了 10px——那一列因此永遠是歪的。所以先寫死成 56px。
+ *
+ * 字級改成 rem 之後（見 :root），寫死的高度變成一個新問題：字跟著使用者的設定
+ * 長大，框不會。量過——瀏覽器預設字級調到 32px 時這裡的字是 52px，關在 54px 的
+ * 框裡，上下幾乎沒有留白。**畫面上每一樣東西都變大了，只有這一個沒有。**
+ *
+ * `min-height` 兩件事都成立：預設狀態下那行字（26px × 1.55 ＝ 40px）比 56px 矮，
+ * 所以還是 56px，一個像素都沒有變；字放大到撐不下時，框跟著長高，而不是把字
+ * 夾住。（原本那條「要跟旁邊對齊」的理由其實也已經過期：代碼與「加入」
+ * 2026-09 合進同一個框，flex 的 `align-items: center` 就負責對齊了，
+ * 不需要兩邊高度相等。）
  */
 .code-input {
-  flex: 1; min-width: 0; height: var(--tap-lg);
+  flex: 1; min-width: 0; min-height: var(--tap-lg);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--fs-6); font-weight: 700; letter-spacing: .34em;
   text-align: center; text-transform: uppercase;
@@ -552,13 +606,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
  */
 .code-row {
   display: flex; align-items: center;
-  height: var(--tap-lg);
+  min-height: var(--tap-lg);
   background: var(--surface);
   border: 1px solid var(--rule-strong); border-radius: var(--r-2);
   transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 .code-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.code-row > .code-input { height: 100%; border: none; background: none; }
+/* 在框裡面時最小高度交給外框負責（不然 56 ＋ 兩條邊 ＝ 58，整列高 2px）；
+   它自己的內在高度還是那行字，所以字大到撐不下時照樣把外框推高。 */
+.code-row > .code-input { align-self: stretch; min-height: 0; border: none; background: none; }
 /* 裡面那個框自己不再亮——不然對焦時會有兩層圈。 */
 .code-row > .code-input:focus { box-shadow: none; }
 /*
@@ -569,7 +625,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 停用時（還沒打滿六碼）它自己淡下去，打滿就亮起來——那是這一列唯一需要的回饋。
  */
 .code-row > .btn {
-  height: 100%; flex: none;
+  /* `align-self: stretch` 而不是 `height: 100%`：外框的高度是 `min-height`，
+     也就是不定高，百分比高度對不上它會掉回內容高度（那顆鍵就只剩 48px，
+     hover 底色也填不滿整個框）。 */
+  align-self: stretch; flex: none;
   border: none; background: none; border-radius: 0 var(--r-2) var(--r-2) 0;
   color: var(--accent);
 }
