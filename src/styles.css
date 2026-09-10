@@ -1061,6 +1061,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 它問的是「比頁面高還是跟頁面齊」，而不是「什麼顏色」。
  */
 .member {
+  position: relative;
   display: flex; align-items: stretch;
   background: var(--surface); border: 1px solid var(--rule);
   border-radius: var(--r-2); overflow: hidden;
@@ -1071,10 +1072,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
   flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-3);
   min-height: var(--tap-row); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-3);
   border: none; background: transparent; color: inherit;
-  /* 圓角跟父層一樣：它貼齊 .member 的左上左下，所以那兩個角要一起收。
+  /* 圓角**跟著父層**：它貼齊 .member 的左上左下，所以那兩個角要一起收。
      這也讓對焦框（outline 跟著元件自己的圓角走）框得住正確的形狀——它本來
-     沒有圓角，被 :focus-visible 硬塞了一個 8px，跟 12px 的父層對不上。 */
-  border-radius: var(--r-2);
+     沒有圓角，被 :focus-visible 硬塞了一個 8px，跟 12px 的父層對不上。
+     用 `inherit` 而不是寫死 --r-2：收進同一張卡片的中間幾列，父層的上下角是
+     平的（見底下那段），寫死的話對焦框會在方方正正的列上圈出一個圓角。 */
+  border-radius: inherit;
   text-align: left; cursor: pointer; font: inherit; touch-action: manipulation;
 }
 .member-main:active { background: var(--surface-2); }
@@ -1093,8 +1096,67 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 兩邊各要調一組色票的原因。
  */
 .member.is-arrived {
-  background: transparent; border-color: var(--rule); box-shadow: none;
+  /* 邊留著但透明：換成 `border: none` 會讓那一列瞬間矮 2px，點下去整張名單抖
+     一下。它現在是頁面本身，不是一塊放在頁面上的東西。 */
+  background: transparent; border-color: transparent; box-shadow: none;
 }
+/*
+ * **連續的未到收成一張卡片**（2026-09，iOS 評估 §1.3 的 C 方向）。
+ *
+ * iOS 的 inset grouped list 是一張圓角卡片裝所有列，列與列之間是髮絲線。這個
+ * app 不能照抄：它用**高度**編碼狀態（未到浮起、已到沉回頁面），而收進一張卡
+ * 片之後「浮起」這個管道就沒有了——那是原則一（已到的人要退到背景）現在最強
+ * 的一條路。
+ *
+ * 所以卡片的邊界改成**狀態的邊界**：一段連續的未到收成一張卡片，已到的列退出
+ * 卡片、直接坐在頁面上。**卡片＝還要處理的那一群。** 容器語言拿來替原則一服務，
+ * 兩邊都拿到：髮絲線的密度，加上「浮起／沉回」的語意（現在是整段浮起）。
+ *
+ * 要誠實講的一件事：**首屏不會多看到人。** 655 ÷ 74 ＝ 8.8、÷ 66 ＝ 9.9，
+ * 都是 9 個。收掉間距換到的是捲動距離與視覺噪點，不是密度。
+ *
+ * 分車標題會自然切斷一段（`+` 選不過去），這是對的：那本來就是兩群人。
+ */
+
+/*
+ * **每一列的間距一律收掉，不分狀態。**
+ *
+ * 這一條是量出來的，不是設計出來的。第一版只收未到與未到之間的縫，於是每點掉
+ * 一個人就多開一道 8px：由上往下點六個，名單最底下的人往下跑了 48px，而 40 人
+ * 的名單點完會累積到 300px 以上。**點名這個動作把還沒點到的人一直往下推**——
+ * 那正是這個專案第一條現場前提（單手、站著、人潮在動 → 位置不能跳動）在擋的事。
+ *
+ * 收掉之後每個人固定佔 66px（原本 74px），而且**點誰都不會動到任何人的位置**。
+ * 間距本來就不是在區分這兩群人的東西：區分它們的是表面（卡片 vs 頁面）與那條
+ * 髮絲線，而那兩樣不佔高度。
+ */
+.member + .member { margin-top: calc(var(--sp-2) * -1); }
+
+/* 接在未到後面的未到＝同一段的下一列，上緣併進上一列。 */
+.member:not(.is-arrived) + .member:not(.is-arrived) {
+  border-top-left-radius: 0; border-top-right-radius: 0;
+  border-top-color: transparent;
+}
+
+/* 後面還有未到＝這一列不是整段的最後一列。 */
+.member:not(.is-arrived):has(+ .member:not(.is-arrived)) {
+  border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+  /* 陰影只留給整段的最後一列。每一列都留的話，段落內部每一道接縫都會有一條
+     自己的陰影，跟髮絲線打架——而那正是這次要收掉的噪點。 */
+  box-shadow: none;
+}
+
+/*
+ * 髮絲線。**從文字的起點開始**，不是整條貫穿——讓開前導的那顆圈圈，眼睛才
+ * 讀得出「這一段是同一群人」。位置是那顆圈圈實際佔掉的寬度算出來的：
+ * .member-main 的左內距 ＋ .check 的寬 ＋ 它們之間的 gap。
+ */
+.member:not(.is-arrived) + .member:not(.is-arrived)::before {
+  content: ''; position: absolute;
+  top: 0; right: 0; left: calc(var(--sp-3) + var(--sp-5) + var(--sp-3));
+  border-top: 1px solid var(--rule);
+}
+
 .member.is-arrived .member-name { color: var(--ink-2); font-weight: 500; }
 .member.is-arrived .member-note { color: var(--ink-3); }
 .check {

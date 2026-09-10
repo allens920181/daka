@@ -1152,6 +1152,63 @@ const fold = await p.evaluate(() => {
   }
 })
 ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 7)
+
+/*
+ * 名單容器：連續的未到收成一張卡片（2026-09，iOS 評估 §1.3 的 C 方向）。
+ *
+ * 兩件事要一起成立，少一件這個方向就不該留下：
+ *
+ * 1. **每個人固定佔 66px，點誰都不會動到別人的位置。** 第一版只收未到與未到
+ *    之間的縫，於是每點掉一個人就多開一道 8px——由上往下點六個，名單最底下的
+ *    人往下跑 48px。**點名這個動作把還沒點到的人一直往下推**，而「位置不能
+ *    跳動」是這個專案的第一條現場前提。所以間距改成不分狀態一律收掉。
+ * 2. 卡片的邊界＝狀態的邊界：一段連續的未到是一張卡片，已到的列退出卡片。
+ */
+const pitch = await p.evaluate(() => {
+  const r = [...document.querySelectorAll('.member')].slice(0, 4).map((e) => e.getBoundingClientRect())
+  return [r[1].top - r[0].top, r[2].top - r[1].top, r[3].top - r[2].top]
+})
+ok(`每個人固定佔 ${pitch[0]}px（原本 74px：66 的列高＋8 的縫）`,
+   pitch.every((d) => Math.abs(d - pitch[0]) <= 0.5 && d < 70))
+
+const anchorBefore = await p.evaluate(() =>
+  document.querySelectorAll('.member')[9].getBoundingClientRect().top)
+for (let i = 0; i < 4; i++) {
+  await p.locator('.member-main').nth(i).click(); await p.waitForTimeout(350)
+}
+const anchorAfter = await p.evaluate(() =>
+  document.querySelectorAll('.member')[9].getBoundingClientRect().top)
+ok(`點掉 4 個人之後，第 10 個人一格都沒有動（漂移 ${Math.round(anchorAfter - anchorBefore)}px）`,
+   Math.abs(anchorAfter - anchorBefore) <= 1)
+
+const grouping = await p.evaluate(() => {
+  const rows = [...document.querySelectorAll('.member')]
+  const arrived = rows.filter((e) => e.classList.contains('is-arrived'))
+  // 已到退出卡片：底透出頁面、邊透明。
+  const out = arrived.every((e) => {
+    const cs = getComputedStyle(e)
+    return /rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor)
+      && /rgba\(0, 0, 0, 0\)|transparent/.test(cs.borderTopColor)
+  })
+  // 一段連續的未到裡，中間那幾列的上角是平的（併進上一列），而且有髮絲線。
+  const pend = rows.filter((e) => !e.classList.contains('is-arrived'))
+  const mid = pend.find((e) => {
+    const prev = e.previousElementSibling
+    return prev?.classList.contains('member') && !prev.classList.contains('is-arrived')
+  })
+  if (!mid) return { out, run: false }
+  const cs = getComputedStyle(mid)
+  const line = getComputedStyle(mid, '::before')
+  return {
+    out,
+    run: parseFloat(cs.borderTopLeftRadius) === 0
+      && parseFloat(line.borderTopWidth) >= 1
+      // 髮絲線從文字起點開始，不整條貫穿（讓開前面那顆圈圈）。
+      && parseFloat(line.left) >= 40,
+  }
+})
+ok('已到的列退出卡片，直接坐在頁面上', grouping.out)
+ok('連續的未到收成一張卡片：中間的角是平的，接縫是一條讓開圈圈的髮絲線', grouping.run)
 // 動作列 2026-09 回來了，它吃掉的高度是有代價的——換到的是三個時刻不必先開選單。
 ok(`底部動作列只吃掉 ${fold.dockH}px`, fold.hasDock && fold.dockH <= 72)
 ok('搜尋跟篩選同一列，右邊那一顆（省下的 76px 等於一列人名）', fold.searchRow)

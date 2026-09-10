@@ -97,9 +97,25 @@ describe('設計規範與實作的一致性', () => {
     expect(missing).toEqual([])
   })
 
+  /*
+   * 連結檢查掃的檔案比其他幾條多：**評估報告也算**。
+   *
+   * 其他幾條驗的是 token、class 與「實作」欄位，那些只有 docs/design/ 下的規範
+   * 才有。但連結壞掉跟檔案在哪一層無關，而評估報告是規範**引用得最兇**的東西
+   * ——2026-09 那幾份互相指來指去，也被 docs/design/ 底下的規範指著。
+   * （這一條是被一個真的寫錯的連結逼出來的：`docs/design/01-foundations.md`
+   * 寫在 `docs/` 底下的檔案裡，多了一層 `docs/`，而當時的檢查掃不到那個檔。）
+   */
   it('規範裡的相對連結都指得到東西', () => {
     const missing: string[] = []
-    for (const { path, text } of docs) {
+    const linkDocs = [
+      ...docs,
+      ...readdirSync(join(ROOT, 'docs'), { withFileTypes: true })
+        .filter((e) => e.isFile() && e.name.endsWith('.md'))
+        .map((e) => join(ROOT, 'docs', e.name))
+        .map((path) => ({ path, text: readFileSync(path, 'utf8') })),
+    ]
+    for (const { path, text } of linkDocs) {
       const dir = path.slice(0, path.lastIndexOf('/'))
       for (const m of text.matchAll(/\]\((?!https?:)([^)#]+)(?:#[^)]*)?\)/g)) {
         const target = join(dir, m[1] ?? '')
