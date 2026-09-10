@@ -247,6 +247,19 @@ ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace
 | Apple touch icon | 指向 icon-192 | `index.html` |
 | theme-color | 淺色 `#0e5e63`（品牌 teal，未改）／深色 `#0b0f13`，兩個 meta 各帶 media | `index.html` |
 | App 名稱 | `RollRoom`／短名同為 `RollRoom`，中英文一致 | `vite.config.ts` manifest、`index.html` |
+| iOS 狀態列 | `apple-mobile-web-app-status-bar-style: default`（**不要改**，見下） | `index.html` |
+
+**iOS 狀態列一律 `default`，不得改成 `black-translucent`**（2026-09，[iOS 評估](../design-review-2026-09-ios.md) §3.3）。
+
+`black-translucent` 會讓頂欄延伸到狀態列底下，看起來比較滿版——這也是為什麼
+下一個人會想改它。**但它同時強制狀態列文字變成白色**，而這個 app 的淺色模式是
+接近白的 `--paper`：白字白底，時間與電量在淺色模式下直接看不見。
+
+深色模式看起來會很好，所以**在深色模式下測不出這個問題**。這是它值得寫下來的
+原因：一個只在一半情況下壞掉的改動，比全壞的更容易被放行。
+
+（`viewport-fit=cover` 是另一件事，它照舊——安全區的讓開由 `env(safe-area-inset-*)`
+負責，頂欄與底部動作列都已經接了。）
 
 **改圖示時要一起改的**：`favicon.svg` 是來源，`icon-192/512.png` 由它產生；
 `icon-maskable-512.svg`（滿版版本）另外維護，`icon-maskable-512.png` 由它產生。
