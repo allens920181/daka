@@ -100,7 +100,10 @@ describe('設計 token 的靜態檢查', () => {
 
   it('沒有硬寫的十六進位色（token 定義區與列印區除外）', () => {
     const printAt = body.indexOf('@media print')
-    const scanned = printAt === -1 ? body : body.slice(0, printAt)
+    // 跟底下那兩條同一個理由：註解會引用它取代掉的舊值（「本來是 #171c22」），
+    // 那是說明不是宣告。（這條 2026-09 補上時漏了，是被一句寫得很清楚的註解
+    // 逼出來的。）
+    const scanned = stripComments(printAt === -1 ? body : body.slice(0, printAt))
     const hits = [...scanned.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0])
     // QR 卡片必須是純白底：掃描器要的是對比，不是配色。
     expect(hits.filter((h) => h.toLowerCase() !== '#fff')).toEqual([])

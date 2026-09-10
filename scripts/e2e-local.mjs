@@ -128,6 +128,45 @@ ok('未到的列上沒有那一格', (await p.locator('.member:not(.is-arrived) 
 ok('該列變成已到', (await p.locator('.member').nth(1).getAttribute('class'))?.includes('is-arrived'))
 ok('出現復原提示', await p.locator('.toast').isVisible())
 
+/*
+ * 「復原」是誤觸後唯一的機會，所以它有兩條不能鬆的線（2026-09 把邊拿掉時
+ * 一起釘住）：**手指按得到**（44px）、**眼睛讀得到**（4.5:1）。
+ *
+ * 拿掉的只有那條邊——它本來是 `border: 1px solid currentColor`，一個框裡再放
+ * 一個框。字色與字重沒有動。
+ *
+ * 按壓底色也在這裡驗：它疊在深色 Toast 上會把底提亮、吃掉 teal 的對比。第一版
+ * 寫 14% 就掉到 3.89:1，被稽核抓出來（面板一開，Toast 移到上緣正好落在滑鼠下，
+ * hover 就生效了）。
+ */
+const undo = await p.evaluate(() => {
+  const el = document.querySelector('.toast-action')
+  const parse = (c) => { const m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)|color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/)
+    if (!m) return null
+    return m[1] !== undefined
+      ? { r:+m[1], g:+m[2], b:+m[3], a: m[4]===undefined?1:+m[4] }
+      : { r:+m[5]*255, g:+m[6]*255, b:+m[7]*255, a: m[8]===undefined?1:+m[8] }
+  }
+  const lum = ({ r, g, b }) => { const f = (v) => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4) }
+    return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b) }
+  // Toast 的底是半透明的，要跟它後面的頁面合成才是眼睛看到的顏色。
+  const page = parse(getComputedStyle(document.body).backgroundColor)
+  const slab = parse(getComputedStyle(document.querySelector('.toast')).backgroundColor)
+  const bg = { r: slab.r*slab.a + page.r*(1-slab.a),
+               g: slab.g*slab.a + page.g*(1-slab.a),
+               b: slab.b*slab.a + page.b*(1-slab.a) }
+  const fg = parse(getComputedStyle(el).color)
+  const [hi, lo] = [lum(fg), lum(bg)].sort((a, z) => z - a)
+  return {
+    邊: getComputedStyle(el).borderTopWidth,
+    高: Math.round(el.getBoundingClientRect().height),
+    對比: +((hi + 0.05) / (lo + 0.05)).toFixed(2),
+  }
+})
+ok(`「復原」不描邊了（一個框裡不再放第二個框）`, parseFloat(undo.邊) === 0)
+ok(`但手指按得到：${undo.高}px`, undo.高 >= 44)
+ok(`眼睛也讀得到：${undo.對比}:1`, undo.對比 >= 4.5)
+
 
 // 復原
 await p.locator('.toast-action').click()
