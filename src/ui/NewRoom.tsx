@@ -8,7 +8,7 @@ import { navigate } from '../router'
 import { RosterEditorField, RosterPreview } from './RosterInput'
 import { ConfirmDialog } from './Sheet'
 import { SavedRostersSheet } from './Sheets'
-import { IconBack, IconBookmark, IconChevronDown, IconChevronUp } from './icons'
+import { IconBack, IconBookmark, IconChevronRight } from './icons'
 import { useT } from './t'
 
 export function NewRoom() {
@@ -176,12 +176,22 @@ export function NewRoom() {
               disabled={drafts.length === 0}
               onClick={reviewList}
             >
-              {t('generateList')} <IconChevronDown />
+              {/*
+                **箭頭指的是你會往哪裡去。** 這兩顆 2026-09 從 `⌄`／`⌃` 換成 `›`／`‹`：
+                它們是在兩個步驟之間移動（貼名單 ↔ 看名單），不是在原地把東西打開。
+                `⌄` 在這個 app 裡只有一個意思——**就地展開**（設定列那四顆）——
+                而這裡借用它，等於同一個記號給了兩種承諾。
+
+                面板實際上是從下緣滑上來的，但那是進場動畫，不是心智模型：使用者
+                想的是「下一步／回上一步」，而這個 app 的「回上一步」已經有一個
+                長得就是 `‹` 的記號（`IconBack`，頂欄與面板返回都是它）。
+              */}
+              {t('generateList')} <IconChevronRight size={16} />
             </button>
           ) : (
             <>
               <button class="btn btn-lg" disabled={working} onClick={() => setStep('input')}>
-                <IconChevronUp /> {t('adjustList')}
+                <IconBack size={16} /> {t('adjustList')}
               </button>
               <button
                 class="btn btn-primary btn-lg btn-block"

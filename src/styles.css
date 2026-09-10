@@ -1560,7 +1560,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sheet-item:has(.sub) .go { margin-top: 2px; }
 .sheet-item.danger { color: var(--fb-error); }
 
-/* 「按了會展開」的那顆箭頭。設定列與首頁的「加入空間」共用同一顆。 */
+/*
+ * 「按了會在原地展開」的那顆箭頭，收合時 `⌄`、展開時轉 180° 成 `⌃`。
+ *
+ * **`⌄` 在這個 app 裡只有這一個意思。** 開空間的「產生名單」以前也用它，
+ * 2026-09 換成 `›`——那件事是往下一步走，不是把東西在原地打開。同一個記號
+ * 給兩種承諾，兩邊都會變弱。
+ *
+ * （這裡的註解本來寫著「設定列與首頁的『加入空間』共用同一顆」，而首頁那顆
+ * 早就改成一顆開面板的普通按鈕、沒有箭頭了——又一句描述著不存在的東西的散文。）
+ */
 .chevron { flex: none; transition: transform var(--dur-1) var(--ease); }
 .chevron.is-open { transform: rotate(180deg); }
 

@@ -143,6 +143,28 @@ describe('設計 token 的靜態檢查', () => {
     expect(hits).toEqual([])
   })
 
+  /**
+   * 箭頭指的是你會往哪裡去（2026-09）。
+   *
+   * `⌄`（IconChevronDown）在這個 app 裡只有一個意思：**就地展開**，
+   * 而那件事只由 `.chevron` 表示（收合 `⌄`、展開轉 180° 成 `⌃`）。
+   * 「往下一步走」用 `›`、「回上一步」用 `‹`。
+   *
+   * 開空間的「產生名單」曾經借用 `⌄`，於是同一個記號給了兩種承諾。
+   */
+  it('IconChevronDown 只用於「就地展開」（一定掛 .chevron）', () => {
+    const files = ['Home.tsx', 'NewRoom.tsx', 'Room.tsx', 'Sheets.tsx', 'Sheet.tsx',
+      'RosterInput.tsx', 'Scan.tsx', 'Toast.tsx', 'RoleBadge.tsx', 'Sheets.tsx']
+    const bad: string[] = []
+    for (const f of new Set(files)) {
+      const src = readFileSync(new URL(`./ui/${f}`, import.meta.url), 'utf8')
+      for (const m of src.matchAll(/<IconChevronDown\b[^>]*\/>/g)) {
+        if (!/\bchevron\b/.test(m[0])) bad.push(`${f} → ${m[0]}`)
+      }
+    }
+    expect(bad).toEqual([])
+  })
+
   it('每個色彩 token 在三種主題狀態都有定義', () => {
     const names = [...new Set([...css.matchAll(/--(?:paper|surface|ink|rule|accent|st|fb|toast|scrim)[a-z0-9-]*(?=:)/g)].map((m) => m[0]))]
     const light = css.slice(css.indexOf(':root {'), css.indexOf('@media (prefers-color-scheme: dark)'))
