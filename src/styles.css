@@ -504,8 +504,27 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   min-height: var(--tap-min); padding: 0 var(--sp-4);
-  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
+  /*
+   * **邊界靠浮起來，不靠描一條線**（2026-09）。
+   *
+   * 它本來是 `--rule-strong`（3.04:1）。那個值是為了 WCAG 1.4.11 訂的——可互動
+   * 元件的邊界要 3:1——但它讓每一顆次要按鈕都變成一個硬邊灰框，而全站其他線都是
+   * 1.16 的髮絲線：同一個畫面上兩種差 2.6 倍的線，重的那些看起來就是「框」。
+   *
+   * 真正的矛盾在名單上：`.member-main` 也是 `<button>`、整列可按，它用的是
+   * 髮絲線 ＋ `--el-1` 就夠了。**所以 3:1 的硬框是例外，不是規則。**
+   *
+   * 改用這個系統自己既有的說法：`--el-1` ＝「這一整塊按得下去」（見
+   * 04-components/README.md 的兩條軸）。按鈕現在跟名單列、首頁的空間列是同一
+   * 種東西——浮在紙上的一塊，而不是畫在紙上的一個框。
+   *
+   * **打字的東西不適用**：輸入框、代碼框、名單編輯區保留 `--rule-strong`。
+   * 它們沒有浮起來，那條線就是「這裡可以打字」的唯一說法（`--check-line` 的
+   * 註解講的是同一件事：旁邊沒有填色可以幫忙的時候，線要自己撐住）。
+   */
+  border: 1px solid var(--rule); border-radius: var(--r-2);
   background: var(--surface); color: var(--ink);
+  box-shadow: var(--el-1);
   font-size: var(--fs-4); font-weight: 600; cursor: pointer;
   transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
   touch-action: manipulation;
@@ -947,7 +966,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .group-chip {
   display: inline-flex; align-items: center; gap: var(--sp-2);
   min-height: var(--tap-min); padding: 0 var(--sp-3); flex: 0 0 auto;
-  border: 1px solid var(--rule-strong); border-radius: var(--r-full);
+  /* 跟 .btn 同一個理由（見上）：它是一顆按得下去的東西，不是一個框。
+     選取狀態靠 --accent 的邊 ＋ 淡底說話，那個對比因此更明顯了。 */
+  border: 1px solid var(--rule); border-radius: var(--r-full);
   background: var(--surface); color: var(--ink-2);
   font-size: var(--fs-3); font-weight: 600; cursor: pointer;
   white-space: nowrap; touch-action: manipulation;

@@ -57,12 +57,22 @@
 
 | 它是⋯ | 簽名 | 誰 |
 | --- | --- | --- |
-| **控制項**——你直接操作它 | `--surface` ＋ `--rule-strong`，**不浮** | `.btn` `.input` `.textarea` `.code-row` `.group-chip` |
-| **可按的內容塊**——整塊按進去 | `--surface` ＋ `--rule` ＋ `--el-1`，**浮起** | `.recent-item`、`.member`（未到） |
+| **打字的東西**——你把字放進去 | `--surface` ＋ `--rule-strong`，**不浮** | `.input` `.textarea` `.code-row` |
+| **按的東西**——整塊按下去 | `--surface` ＋ `--rule` ＋ `--el-1`，**浮起** | `.btn` `.group-chip` `.recent-item` `.member`（未到） |
 | **靜態內容塊**——只能讀 | `--surface` ＋ `--rule`，**平的** | `.preview` `.copy-row` `.qr-card` `.result-card` `.skeleton-row` |
 | **凹槽**——裝別的東西 | `--surface-2`，**不描邊、不浮** | `.segmented` `.note` `.result-preview` `.scan-frame` `.search-wrap .input` |
 | **覆蓋層**——浮在遮罩上 | `--surface` ＋ `--el-3` | `.sheet` `.dialog` `.toast` |
 | **嵌在上面某一塊裡的觸控區** | **透明**，只有 hover／active 才有底 | `.icon-btn` `.sheet-item` `.member-main` `.recent-main` `.segment` |
+
+> **這兩列 2026-09 底重新切過。** 它們本來是「控制項 vs 可按的內容塊」，而
+> `.btn` 兩邊都算得上——它是控制項，但整塊也確實按得下去。那條界線切不開，
+> 於是按鈕跟輸入框被歸成同一類，拿到同一條 3:1 的硬框；畫面上因此有兩種差
+> 2.6 倍的線，重的那些看起來就是「框」。
+>
+> 現在切的是**你對它做什麼**：按的東西靠浮起來，打字的東西靠一條線。差別在有
+> 沒有別的東西可以幫忙定義它——按鈕有陰影與填色，輸入框平貼在頁面上，那條線
+> 就是「這裡可以打字」的唯一說法。代價（按鈕邊界掉到 1.16–1.44:1）寫在
+> [動作](actions.md)。
 
 **一句話記法：陰影的意思是「這一整塊可以按」。**
 
@@ -101,7 +111,8 @@
 
 ### 這四條有測試在擋
 
-`src/styles.test.ts`：`--r-3` 只准出現在覆蓋層、`--el-1` 只准出現在可按的內容塊、
+`src/styles.test.ts`：`--r-3` 只准出現在覆蓋層、`--el-1` 只准出現在按的東西上、
+`--rule-strong` 只准出現在打字的東西上、
 凹槽不得同時有底色與邊框、`:focus-visible` 不得設 `border-radius`
 （設在那裡的圓角會改掉**元件自己**的形狀，見下面的通則 6）。
 
