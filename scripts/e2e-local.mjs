@@ -1123,7 +1123,9 @@ await p.getByRole('button', { name: /^文字大小/ }).click(); await p.waitForT
 const fontAt = () => p.evaluate(() => ({
   scale: getComputedStyle(document.documentElement).getPropertyValue('--fs-scale').trim(),
   root: getComputedStyle(document.documentElement).fontSize,
-  hint: getComputedStyle(document.querySelector('.sheet .hint')).fontSize,
+  // 量分段控制上的字（那一頁的說明 2026-09 拿掉了）。它走 --fs-3，
+  // 跟其他字級一樣吃得到倍率。
+  sample: getComputedStyle(document.querySelector('.sheet .segment')).fontSize,
 }))
 const fontBase = await fontAt()
 ok(`預設是標準（倍率 ${fontBase.scale}，根字級 ${fontBase.root}）`,
@@ -1131,8 +1133,8 @@ ok(`預設是標準（倍率 ${fontBase.scale}，根字級 ${fontBase.root}）`,
 
 await p.getByRole('button', { name: /^特大$/ }).click(); await p.waitForTimeout(500)
 const fontXl = await fontAt()
-ok(`選「特大」字就變大：${fontBase.hint} → ${fontXl.hint}`,
-   parseFloat(fontXl.hint) > parseFloat(fontBase.hint) * 1.2)
+ok(`選「特大」字就變大：${fontBase.sample} → ${fontXl.sample}`,
+   parseFloat(fontXl.sample) > parseFloat(fontBase.sample) * 1.2)
 ok(`但根字級一格都沒動（${fontBase.root} → ${fontXl.root}）——系統設定沒有被吃掉`,
    fontXl.root === fontBase.root)
 ok('選了不會自己返回（放大字級要看著結果調）',

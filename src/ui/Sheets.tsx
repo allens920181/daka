@@ -793,7 +793,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               onBlur={() => { void setCheckerName(name) }}
             />
           </div>
-          <p class="hint">{t('yourNameHint')}</p>
         </div>
       </Sheet>
     )
@@ -803,13 +802,23 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return (
       <Sheet title={t('account')} onClose={onClose} onBack={back}>
         <div class="stack">
-          <span class="label">{t('account')}</span>
           {session.value ? (
             <>
-              {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
-                  動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
-                  不加確認對話框（重新登入就還原），但後果要講出來。 */}
-              <button class="btn btn-block" onClick={() => { void signOut() }}>{t('signOut')}</button>
+              {/*
+                登入後收成**一列**：左邊是「你是誰」，右邊是那一個動作。
+                滿版的登出鍵會讓這一頁看起來像在邀請你按它，而這一頁真正要回答的
+                問題是「我現在是用哪個帳號」——那個答案本來只印在上一層的收合列上。
+
+                登出鍵刻意做小（`.btn-sm`）：這支手機可能就是今天唯一管得動這場
+                活動的裝置。按登出的常見動機是「借手機給人用一下」，使用者不會
+                預期代價是失去控制。不加確認對話框（重新登入就還原），但後果要
+                用底下那句 `.hint` 講出來。
+              */}
+              <div class="row">
+                <span class="account-who">{session.value.email}</span>
+                <span class="spacer" />
+                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
+              </div>
               <p class="hint">{t('signOutWhat')}</p>
             </>
           ) : (
@@ -832,7 +841,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return (
       <Sheet title={t('theme')} onClose={onClose} onBack={back}>
         <div class="field">
-          <span class="label">{t('theme')}</span>
+          {/* 標題小字拿掉了（2026-09）：你是點了那一列進來的，面板的 aria-label
+              也是同一個字，畫面再印一次是第三遍。分段控制自己的 aria-label 還在，
+              螢幕閱讀器聽得到的沒有變少。 */}
           <div class="segmented" role="group" aria-label={t('theme')}>
             {(['system', 'light', 'dark'] as const).map((theme) => (
               <button
@@ -864,7 +875,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return (
       <Sheet title={t('fontSize')} onClose={onClose} onBack={back}>
         <div class="field">
-          <span class="label">{t('fontSize')}</span>
+          {/* 標題小字拿掉了（2026-09）：你是點了那一列進來的，面板的 aria-label
+              也是同一個字，畫面再印一次是第三遍。分段控制自己的 aria-label 還在，
+              螢幕閱讀器聽得到的沒有變少。 */}
           <div class="segmented" role="group" aria-label={t('fontSize')}>
             {(['base', 'lg', 'xl'] as const).map((font) => (
               <button
@@ -878,7 +891,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
-        <p class="hint">{t('fontSizeHint')}</p>
       </Sheet>
     )
   }
@@ -887,7 +899,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return (
       <Sheet title={t('language')} onClose={onClose} onBack={back}>
         <div class="field">
-          <span class="label">{t('language')}</span>
+          {/* 標題小字拿掉了（2026-09）：你是點了那一列進來的，面板的 aria-label
+              也是同一個字，畫面再印一次是第三遍。分段控制自己的 aria-label 還在，
+              螢幕閱讀器聽得到的沒有變少。 */}
           <div class="segmented" role="group" aria-label={t('language')}>
             {(['zh', 'en'] as const).map((lang) => (
               <button
@@ -1021,9 +1035,20 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
   }
 
   return (
-    <Sheet title={t('signIn')} onClose={onCancel}>
+    /*
+      **返回鍵回上一層，不是回上一個畫面。** 在選擇方式那一步，上一層是「帳戶」
+      那一頁（`onCancel`）；已經走進 Email 或驗證碼那兩步的話，上一層是選擇方式。
+      跟全 app 的 `‹` 是同一個意思——見 04-components 的方向記號。
+
+      說明拿掉了（2026-09）：「為什麼要登入」那句話在上一頁（帳戶）已經講過，
+      而你按了「登入」才會走到這裡——走進來的人已經被說服了。
+    */
+    <Sheet
+      title={t('signIn')}
+      onClose={onCancel}
+      onBack={step === 'choose' ? onCancel : () => { setStep('choose'); setError(null) }}
+    >
       <div class="stack">
-        <p class="hint">{t('signInWhy')}</p>
 
         {step === 'choose' ? (
           <>
@@ -1086,9 +1111,6 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
               onClick={() => { void send() }}
             >
               {working ? t('loading') : t('sendCode')}
-            </button>
-            <button class="btn btn-block" disabled={working} onClick={() => { setStep('choose'); setError(null) }}>
-              {t('back')}
             </button>
           </>
         ) : (

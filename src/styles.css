@@ -1781,6 +1781,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sheet-item > svg { flex: none; }
 .sheet-item:hover { background: var(--surface-2); }
 
+/* 「你現在是用哪個帳號」。Email 可能很長，縮的是它，旁邊那顆登出鍵不縮
+   ——那是這一列唯一的動作，被擠掉就沒有意義了。 */
+.account-who {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-3); color: var(--ink-2);
+}
+
 .sheet-item-main { flex: 1; min-width: 0; }
 .sheet-item-main > strong { font-weight: 600; font-size: var(--fs-3); }
 .sheet-item .sub { display: block; font-size: var(--fs-2); color: var(--ink-3); font-weight: 400; }
