@@ -1237,19 +1237,32 @@ const grouping = await p.evaluate(() => {
     const prev = e.previousElementSibling
     return prev?.classList.contains('member') && !prev.classList.contains('is-arrived')
   })
-  if (!mid) return { out, run: false }
+  if (!mid) return { out, run: false, single: false }
   const cs = getComputedStyle(mid)
   const line = getComputedStyle(mid, '::before')
+  /*
+   * **一個接縫只能有一條線。**
+   *
+   * 上一列的 `border-bottom` 與這一列的髮絲線會落在同一個位置——兩條都留的話
+   * 疊出 2px 的雙線，而且上面那條滿版、下面那條從 48px 才開始，寬度還不一樣。
+   * 那正是「名單上莫名有兩條線」的成因。所以整段裡不是最後一列的那幾列，
+   * 下緣不畫，接縫交給下一列那條縮排的髮絲線。
+   */
+  const above = getComputedStyle(mid.previousElementSibling)
   return {
     out,
     run: parseFloat(cs.borderTopLeftRadius) === 0
       && parseFloat(line.borderTopWidth) >= 1
       // 髮絲線從文字起點開始，不整條貫穿（讓開前面那顆圈圈）。
       && parseFloat(line.left) >= 40,
+    // 這一列的上緣與上一列的下緣都不畫，接縫上就只剩那條髮絲線。
+    single: /rgba\(0, 0, 0, 0\)|transparent/.test(above.borderBottomColor)
+      && /rgba\(0, 0, 0, 0\)|transparent/.test(cs.borderTopColor),
   }
 })
 ok('已到的列退出卡片，直接坐在頁面上', grouping.out)
 ok('連續的未到收成一張卡片：中間的角是平的，接縫是一條讓開圈圈的髮絲線', grouping.run)
+ok('而且一個接縫只有那一條線（上一列的下緣不重複畫）', grouping.single)
 // 動作列 2026-09 回來了，它吃掉的高度是有代價的——換到的是三個時刻不必先開選單。
 ok(`底部動作列只吃掉 ${fold.dockH}px`, fold.hasDock && fold.dockH <= 72)
 ok('搜尋跟篩選同一列，右邊那一顆（省下的 76px 等於一列人名）', fold.searchRow)

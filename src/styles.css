@@ -1190,6 +1190,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* 後面還有未到＝這一列不是整段的最後一列。 */
 .member:not(.is-arrived):has(+ .member:not(.is-arrived)) {
   border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+  /*
+   * **下緣不畫。** 接縫只該有一條線，而那條線是下一列那條縮排的髮絲線
+   * （見底下的 ::before）。兩條都留的話，每一個接縫會疊出 2px 的雙線——
+   * 上面一條滿版、下面一條從 48px 才開始，寬度還不一樣。
+   */
+  border-bottom-color: transparent;
   /* 陰影只留給整段的最後一列。每一列都留的話，段落內部每一道接縫都會有一條
      自己的陰影，跟髮絲線打架——而那正是這次要收掉的噪點。 */
   box-shadow: none;
