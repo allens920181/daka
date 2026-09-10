@@ -1,6 +1,7 @@
 import type { ComponentChildren, JSX } from 'preact'
 import { useRef, useState } from 'preact/hooks'
 import { IconBack } from './icons'
+import { useHistoryLayers } from './history'
 import { useModal } from './useModal'
 import { useT } from './t'
 
@@ -25,17 +26,31 @@ const ENGAGE_AT = 8
  * `aria-label` 仍然是 `title`：眼睛看不到不代表螢幕閱讀器也可以聽不到。
  */
 export function Sheet({
-  title, onClose, onBack, children,
+  title, onClose, onBack, depth, children,
 }: {
   title: string
   onClose: () => void
   /** 只有面板內有多階段時才傳（例如「更多」面板的子畫面）：回上一頁，跟
    *  onClose（離開整個面板）是兩個不同的動作。 */
   onBack?: () => void
+  /**
+   * 這一頁在面板裡的第幾層（根 ＝ 0）。**只有第三層以上要明寫**——
+   * 有 `onBack` 就至少是第二層，所以預設值算得出來；算不出來的只有
+   * 「邀請點名 › 代碼」這種再深一層的頁。
+   *
+   * 它決定這個面板握著幾格歷史紀錄，也就決定了右滑會回到哪裡（見 history.ts）。
+   */
+  depth?: number
   children: ComponentChildren
 }) {
   const panel = useRef<HTMLDivElement>(null)
   useModal(panel, onClose)
+  /*
+    接上系統的返回手勢：這一層自己一格，每深一層子畫面再多一格。
+    被返回掉時要做的事，在子畫面上是「回上一頁」、在根層是「關掉整個面板」
+    ——跟畫面左上角那顆鍵、跟 Esc 是同一件事。
+  */
+  useHistoryLayers(1 + (depth ?? (onBack ? 1 : 0)), onBack ?? onClose)
   const t = useT()
 
   /*
@@ -151,6 +166,9 @@ export function ConfirmDialog({
 }) {
   const panel = useRef<HTMLDivElement>(null)
   useModal(panel, onClose)
+  // 對話框疊在面板之上，所以它也要有自己的一格：右滑先關掉對話框，
+  // 再滑才輪到底下的面板（見 history.ts 的堆疊）。
+  useHistoryLayers(1, onClose)
   const t = useT()
 
   return (

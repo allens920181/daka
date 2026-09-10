@@ -939,6 +939,35 @@ ok(`結束後兩種格式都還在：${resultActions.join('、')}`,
 ok('結束後戳名字沒有作用', await p.locator('.member-main').first().isDisabled())
 ok('頂欄說得出已關閉', (await p.locator('.topbar-count.closed').count()) === 1)
 
+// --- 系統返回手勢（2026-09）---
+// 面板與它的子畫面各是一格歷史紀錄。iOS 的邊緣右滑、Android 的實體返回鍵都走
+// popstate，而在加到主畫面的 PWA 裡右滑是**唯一**的返回操作——沒有接上的話，
+// 在面板上右滑會直接退出空間。
+await p.goto(URL); await p.waitForTimeout(800)
+await p.locator('.recent-item').first().click(); await p.waitForTimeout(1300)
+const inRoom = await p.evaluate(() => location.hash)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+await p.goBack(); await p.waitForTimeout(400)
+ok('面板上返回＝關掉面板，不是離開空間',
+   (await p.locator('.sheet').count()) === 0 && (await p.evaluate(() => location.hash)) === inRoom)
+
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^邀請點名$/ }).click(); await p.waitForTimeout(500)
+await p.goBack(); await p.waitForTimeout(400)
+ok('子畫面上返回＝回上一頁，面板還在',
+   (await p.locator('.sheet').count()) === 1
+   && (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 0)
+await p.goBack(); await p.waitForTimeout(400)
+ok('再返回才關掉面板，空間還在',
+   (await p.locator('.sheet').count()) === 0 && (await p.evaluate(() => location.hash)) === inRoom)
+
+// 程式自己關掉（Esc）要把那一格吃回來，否則歷史裡會留一格按了沒反應的空白。
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(400)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+await p.goBack(); await p.waitForTimeout(500)
+ok('Esc 關掉面板不會在歷史留空格（返回直接離開空間）',
+   (await p.evaluate(() => location.hash)) !== inRoom)
+
 // --- 設定 ---
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 await p.goto(URL); await p.waitForTimeout(800)

@@ -169,7 +169,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
   */
   if (mode === 'inviteCode') {
     return (
-      <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')} depth={2}>
         {/*
           複製收成代碼右邊的一顆圖示（2026-09），不再是底下一顆滿版的按鈕。
           這一頁的主角是那六個字——它是隔著一支手臂唸出去的東西，整頁的寬度都
@@ -193,7 +193,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   if (mode === 'inviteLink') {
     return (
-      <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')} depth={2}>
         <div class="stack">
           {/*
             連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。
@@ -221,7 +221,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   if (mode === 'inviteQr') {
     return (
-      <Sheet title={t('roomQr')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet title={t('roomQr')} onClose={onClose} onBack={() => setMode('invite')} depth={2}>
         <div class="stack">
           <QrCard code={current.code} url={url} />
           <p class="hint">{t('scanToJoin')}</p>
@@ -663,7 +663,7 @@ export function SavedRostersSheet({ onApply, onClose }: {
 
   if (mode === 'rename' && active) {
     return (
-      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('actions')}>
+      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('actions')} depth={2}>
         <div class="stack">
           <input
             class="input" value={value} maxLength={80} aria-label={t('rename')}
