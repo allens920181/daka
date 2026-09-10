@@ -597,10 +597,29 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .label { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
 .hint { font-size: var(--fs-2); color: var(--ink-3); line-height: 1.5; }
 
+/*
+ * **輸入框是凹槽，不是描邊的框**（2026-09）。
+ *
+ * 它本來是白底 ＋ `--rule-strong`（3:1）的邊。那條邊是全站最重的線之一，於是
+ * 每一個輸入框都是一個硬邊灰框——而按鈕同一輪已經改成浮起來了，畫面上只剩
+ * 這些框還在描邊。
+ *
+ * 規範自己早就寫了答案：**「凹槽不描邊——填色已經定義形狀了，再描一條只是把
+ * 同一件事說第二次。」** 而且這個 app 裡早就有一個現成的例子：展開的搜尋框
+ * （`.search-wrap .input`）從以前就是 `--surface-2` 的凹槽，沒有邊，沒有人
+ * 覺得它不像輸入框。
+ *
+ * 於是整套形狀語言收成對稱的兩句話：
+ *
+ *     按的東西 → 浮起來（--el-1）
+ *     打字的東西 → 凹下去（--surface-2）
+ *
+ * 邊留著但透明：對焦時要染成 --accent，留 1px 才不會在那一刻位移。
+ */
 .input, .textarea {
   width: 100%; padding: var(--sp-3) var(--sp-3);
-  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
-  background: var(--surface); color: var(--ink);
+  border: 1px solid transparent; border-radius: var(--r-2);
+  background: var(--surface-2); color: var(--ink);
   font-size: var(--fs-4);
 }
 .input:focus, .textarea:focus {
@@ -654,8 +673,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .code-row {
   display: flex; align-items: center;
   min-height: var(--tap-lg);
-  background: var(--surface);
-  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
+  /* 跟其他輸入框一樣是凹槽（見 .input 上面那段）：整個框就是一個可以打字的地方，
+     所以它凹下去，而不是描一條邊。 */
+  background: var(--surface-2);
+  border: 1px solid transparent; border-radius: var(--r-2);
   transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 .code-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -677,9 +698,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
      hover 底色也填不滿整個框）。 */
   align-self: stretch; flex: none;
   border: none; background: none; border-radius: 0 var(--r-2) var(--r-2) 0;
+  /* **陰影也要拿掉。** `.btn` 2026-09 改成靠 --el-1 浮起來，而這一顆不是一顆
+     獨立的按鈕，是那個框的右半邊——留著會在凹槽裡描出一道自己的邊。 */
+  box-shadow: none;
   color: var(--accent);
 }
-.code-row > .btn:hover:not(:disabled) { background: var(--surface-2); }
+/* 底色從凹槽提到白：整個框是凹的，這一格亮起來就是「手指在這裡」。
+   本來是 --surface-2，而那 2026-09 變成整個框自己的底色了，等於沒有回饋。 */
+.code-row > .btn:hover:not(:disabled) { background: var(--surface); }
 
 /* === 首頁 ================================================================ */
 
@@ -1029,7 +1055,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .search-wrap .input {
   /* 右邊讓開那顆取消鍵（48px＋它自己的呼吸空間），不然打長一點的字會滑到它底下。 */
   height: 100%; padding: 0 calc(var(--tap-min) + var(--sp-1)) 0 var(--sp-3);
-  border-color: transparent; background: var(--surface-2);
+  /* 凹槽的底與透明的邊 2026-09 變成所有輸入框的預設，這裡不必再說一次。
+     這一格本來就是那個做法的原型。 */
 }
 
 /* 往左長：`left` 從那顆圖示鍵的左緣開始，`right` 固定不動——看起來就是從鍵的

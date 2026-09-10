@@ -176,25 +176,24 @@ describe('設計 token 的靜態檢查', () => {
   })
 
   /**
-   * 線與陰影的分工（2026-09）。
+   * 元件不靠描邊定義自己（2026-09）。
    *
    * `--rule-strong`（3:1）本來給「所有可互動元件的邊界」，於是每一顆次要按鈕、
-   * 每一顆晶片都變成一個硬邊灰框。現在分成兩種說法：
+   * 每一顆晶片、每一個輸入框都是一個硬邊灰框——而全站其他線都是 1.16 的髮絲線。
+   * 現在形狀語言收成對稱的兩句話：
    *
-   *   **按的東西** → `--el-1` 浮起來（`.btn`、名單列、空間列）
-   *   **打字的東西** → `--rule-strong` 描一條線
+   *   **按的東西** → 浮起來（`--el-1`）
+   *   **打字的東西** → 凹下去（`--surface-2` 凹槽，不描邊）
    *
-   * 差別是有沒有別的東西可以幫忙定義它。按鈕有陰影與填色；輸入框平貼在頁面上，
-   * 那條線就是「這裡可以打字」的唯一說法（`--check-line` 的註解講的是同一件事）。
+   * 兩邊都不需要那條線了。`--rule-strong` 因此只剩兩個用途：`:hover` 那種
+   * 「正在碰它」的回饋，以及面板握把的**填色**（它是一個實心小長條，不是邊）。
    */
-  it('--rule-strong 只給打字的東西', () => {
-    const typeable = /input|textarea|code-row|code-input|search-wrap|roster-editor/
+  it('元件不用 --rule-strong 描邊', () => {
     const hits = RULES
       .filter(([, d]) => /border(?:-[a-z]+)?(?:-color)?:[^;]*--rule-strong/.test(d))
       .map(([sel]) => sel)
       // :hover／:focus 是「正在碰它」的回饋，不是元件平常的邊界。
       .filter((sel) => !/:(?:hover|focus|focus-visible|active)\b/.test(sel))
-      .filter((sel) => !typeable.test(sel))
     expect(hits).toEqual([])
   })
 

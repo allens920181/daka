@@ -1027,6 +1027,39 @@ await p.getByRole('button', { name: /^暱稱/ }).click(); await p.waitForTimeout
 ok('進到子畫面才有輸入框', await p.locator('#checker-name').isVisible())
 ok('子畫面上那份清單不在了', (await p.locator('.sheet .sheet-item').count()) === 0)
 ok('子畫面有返回鍵', (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 1)
+
+/*
+ * 輸入框是**凹槽**，不是描邊的框（2026-09）。
+ *
+ * 規範自己寫著「凹槽不描邊——填色已經定義形狀了，再描一條只是把同一件事說第二
+ * 次」。所以驗兩件事：平常沒有看得見的邊（底色自己說話），對焦時那條邊染成
+ * accent 並長出光暈——**而且不位移**，因為邊一直都在，只是透明的。
+ */
+const groove = await p.evaluate(() => {
+  const el = document.querySelector('#checker-name')
+  // 這一頁開起來焦點就在輸入框上（面板會把焦點送給第一個可聚焦的東西），
+  // 所以要先讓它失焦，量到的才是「平常」的樣子。
+  el.blur()
+  /* `getComputedStyle` 回的是**活的**物件：對焦之後同一個參照會跟著變。
+     所以要先把值抄下來，不能留著參照等一下再讀。 */
+  const snap = () => { const cs = getComputedStyle(el)
+    return { bg: cs.backgroundColor, border: cs.borderTopColor, shadow: cs.boxShadow } }
+  const idle = snap()
+  const before = el.getBoundingClientRect().height
+  el.focus()
+  const on = snap()
+  return {
+    底是凹槽: idle.bg !== getComputedStyle(document.querySelector('.sheet')).backgroundColor,
+    平常沒有邊: /rgba\(0, 0, 0, 0\)|transparent/.test(idle.border),
+    對焦有邊: !/rgba\(0, 0, 0, 0\)|transparent/.test(on.border),
+    對焦有光暈: on.shadow !== 'none',
+    高度沒變: Math.abs(el.getBoundingClientRect().height - before) < 0.5,
+  }
+})
+ok('輸入框是凹槽：平常沒有看得見的邊', groove.平常沒有邊 && groove.底是凹槽)
+ok('對焦時邊染成 accent、長出光暈，而且高度不變',
+   groove.對焦有邊 && groove.對焦有光暈 && groove.高度沒變)
+
 await p.locator('#checker-name').fill('陳姐')
 await p.locator('#checker-name').blur(); await p.waitForTimeout(300)
 await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
