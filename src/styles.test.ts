@@ -39,8 +39,23 @@ function stripKeyframes(input: string): string {
 const ALLOWED_PX = new Set(['0px', '1px', '2px', '3px', '4px', '6px', '7px', '30px', '38px', '44px', '240px', '260px', '200px', '22px', '120px', '560px', '640px', '420px', '88px', '160px'])
 
 describe('設計 token 的靜態檢查', () => {
-  it('沒有硬寫的 font-size', () => {
-    const hits = [...css.matchAll(/font-size:\s*(\d[\d.]*px)/g)].map((m) => m[1])
+  it('沒有硬寫的 font-size（只有 :root 的 Dynamic Type 基準例外）', () => {
+    // 註解裡有反例與歷史紀錄，先去掉。
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+    // 唯一的例外是根字級，而且它必須是**成對**的兩行：
+    //   font-size: calc(17 / 16 * 1rem);   跟著瀏覽器設定的預設字級走
+    //   font: -apple-system-body;          Apple 平台改綁使用者的 Dynamic Type
+    // 少了第二行，Apple 使用者的 Dynamic Type 失效；第一行若寫死成 px，
+    // 其他平台調過的字級會被這一行吃掉。兩種都是這個檢查要抓的東西，
+    // 所以放行的是整組機制，不是其中某一個數值。
+    const root = stripped.slice(0, stripped.indexOf('}'))
+    const base = /font-size:\s*calc\(17 \/ 16 \* 1rem\);\s*font:\s*-apple-system-body;/
+    expect(base.test(root)).toBe(true)
+
+    // 其餘任何字面字級都是繞過 --fs-* 的證據：七階以外沒有字級，單位是什麼都一樣。
+    const scanned = stripped.replace(base, '')
+    const hits = [...scanned.matchAll(/font-size:\s*([\d.]+(?:px|rem|em|pt|%))/g)].map((m) => m[1])
     expect(hits).toEqual([])
   })
 
@@ -85,6 +100,84 @@ describe('設計 token 的靜態檢查', () => {
     const printAt = body.indexOf('@media print')
     const scanned = stripKeyframes(printAt === -1 ? body : body.slice(0, printAt))
     expect([...scanned.matchAll(/opacity:\s*([\d.]+)/g)].map((m) => m[1])).toEqual([])
+  })
+
+  /**
+   * 形狀與類型的四條規則（2026-09 形狀重整）。
+   *
+   * docs/design/04-components/README.md 訂了兩條軸：表面說種類、圓角說尺寸。
+   * 那份規範以前不存在——2026-09 的整體性評估寫下「沒有一條規則說什麼東西該有
+   * 框」之後就沒有人寫，於是 --r-2 長到全站 38 條形狀規則裡的 20 條。
+   * 這四個檢查讓那份規範有牙齒。
+   */
+  const RULES = (() => {
+    // 逐條規則拆成 [選擇器, 宣告]，先去掉註解（註解裡有反例與歷史紀錄）。
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    return [...stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .map((m) => [(m[1] ?? '').trim().replace(/\s+/g, ' '), m[2] ?? ''] as const)
+      .filter(([sel]) => sel && !sel.startsWith('@'))
+  })()
+
+  it('--r-3 只給覆蓋層（面板、對話框）', () => {
+    // 它是「浮在遮罩上的那一塊」的形狀，不是「比較大的卡片」。
+    const allowed = new Set(['.sheet', '.dialog'])
+    const hits = RULES
+      .filter(([, d]) => /border-radius:[^;]*--r-3/.test(d))
+      .map(([sel]) => sel)
+      .filter((sel) => !allowed.has(sel))
+    expect(hits).toEqual([])
+  })
+
+  it('--el-1 只給「整塊可以按」的東西', () => {
+    // 陰影在這個 app 裡有指派好的意思：這一整塊按得下去。
+    // 名單列未到時浮起、已到時沉回頁面，教的就是這件事。
+    const allowed = new Set(['.recent-item', '.member', ".segment[aria-pressed='true']"])
+    const hits = RULES
+      .filter(([, d]) => /box-shadow:[^;]*--el-1/.test(d))
+      .map(([sel]) => sel)
+      .filter((sel) => !allowed.has(sel))
+    expect(hits).toEqual([])
+  })
+
+  it('凹槽不描邊（--surface-2 底不得同時有 border）', () => {
+    // 填色已經定義形狀了，再描一條只是把同一件事說第二次。
+    const hits = RULES
+      .filter(([, d]) => /background(?:-color)?:\s*var\(--surface-2\)/.test(d))
+      .filter(([, d]) => /(?:^|;)\s*border(?:-(?:top|right|bottom|left))?:\s*(?!none)[^;]*--rule/.test(d))
+      .map(([sel]) => sel)
+    expect(hits).toEqual([])
+  })
+
+  it('狀態選擇器不得改元件自己的形狀', () => {
+    // :focus-visible 裡的 border-radius 不是在畫對焦框的圓角，是在改元件自己的
+    // 圓角——沒有自己圓角的元件會在被 Tab 到的瞬間變形狀。
+    const hits = RULES
+      .filter(([sel]) => /:(?:focus|focus-visible|hover|active)\b/.test(sel))
+      .filter(([, d]) => /(?:^|;)\s*border-radius:/.test(d))
+      .map(([sel]) => sel)
+    expect(hits).toEqual([])
+  })
+
+  /**
+   * 箭頭指的是你會往哪裡去（2026-09）。
+   *
+   * 這個 app 只有兩個去處：**進去一張子畫面**（`›`）與**回上一層**（`‹`）。
+   * 所以方向記號也只有兩個。曾經有第三個方向——設定列的 `⌄`「就地展開」——
+   * 而那個互動 2026-09 收掉了（四列改成子畫面），`IconChevronDown`、
+   * `IconChevronUp`、`.chevron` 一起走。
+   *
+   * **沒有第三種箭頭，因為沒有第三種去處。**
+   */
+  it('方向記號只有兩個：› 進去、‹ 回來', () => {
+    const icons = readFileSync(new URL('./ui/icons.tsx', import.meta.url), 'utf8')
+    const exported = [...icons.matchAll(/export const (Icon\w+)/g)].map((m) => m[1] as string)
+    const directional = exported.filter((n) => /Chevron|Arrow|Caret|Back/.test(n)).sort()
+    expect(directional).toEqual(['IconBack', 'IconChevronRight'])
+  })
+
+  it('沒有「就地展開」這個互動（.chevron 已移除）', () => {
+    const hits = RULES.map(([sel]) => sel).filter((sel) => /\.chevron\b/.test(sel))
+    expect(hits).toEqual([])
   })
 
   it('每個色彩 token 在三種主題狀態都有定義', () => {

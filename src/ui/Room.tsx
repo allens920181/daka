@@ -193,7 +193,7 @@ export function Room({ code }: { code: string }) {
   if (status === 'error' && !current) {
     return (
       <div class="shell stack" style="padding-top:60px">
-        <p class="note note-warn">{error}</p>
+        <p class="note note-error">{error}</p>
         <button class="btn btn-block" onClick={() => navigate('/')}>{t('back')}</button>
       </div>
     )
@@ -406,7 +406,14 @@ export function Room({ code }: { code: string }) {
                 /* 空的時候滑走就收起來（那一列人名還回去）；有字的時候絕不自己
                    收——收起來會清掉字，而使用者只是移開了手指。 */
                 onBlur={() => { if (!query) setSearching(false) }}
+                /* 結果是邊打邊出來的，所以 return 鍵要做的事只剩一件：**把鍵盤
+                   收掉**，好讓人看得到名單。這在 iOS 上不是小事——不接的話，
+                   收鍵盤的唯一辦法是點別的地方，而這個畫面上「別的地方」就是
+                   名單列，點下去會直接把人標成已到。（跟底下那顆「取消」一直
+                   在的理由是同一個。） */
+                enterkeyhint="done"
                 onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); return }
                   if (e.key !== 'Escape') return
                   // 先清字（名單立刻回來），再按一次才收回成圖示。
                   if (query) { setQuery(''); return }
@@ -451,8 +458,8 @@ export function Room({ code }: { code: string }) {
           再附一顆「複製結果」，因為結束之後才想到要貼回 LINE 是常態。
         */}
         {closed && (
-          <div class="banner banner-warn banner-result" style="margin-top:12px">
-            <span class="banner-result-text">
+          <div class="result-card" style="margin-top:12px">
+            <span class="result-card-text">
               {t('closedResult', {
                 summary: allHere
                   ? `${t('allHere')} · ${t('headcount', { arrived: s.arrivedHeadcount, total: s.expectedHeadcount })}`
@@ -612,7 +619,10 @@ export function Room({ code }: { code: string }) {
       {confirmFinish && current && (
         <ConfirmDialog
           title={t('finishRound')}
-          body={t('finishRoundBody')}
+          /* 單機模式下「複製結果／CSV」不是「帶去別的地方」，是**唯一的備份**
+             ——iOS 七天後會把這支手機上的名單清掉（iOS 評估 §3.2）。
+             「紀錄還在」那句話在那個情境下是不成立的，所以換一句。 */
+          body={connection.value === 'local-only' ? t('finishRoundBodyLocal') : t('finishRoundBody')}
           confirmLabel={t('finishRound')}
           onClose={() => setConfirmFinish(false)}
           onConfirm={() => { void setClosed(true) }}

@@ -99,7 +99,7 @@ export function ScanView() {
       </div>
       {status === 'scanning' && <p class="hint">{t('scanQrHint')}</p>}
       {status === 'loading' && <p class="hint">{t('loading')}</p>}
-      {status === 'error' && <p class="note note-warn">{errorText}</p>}
+      {status === 'error' && <p class="note note-error">{errorText}</p>}
     </div>
   )
 }

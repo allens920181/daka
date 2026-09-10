@@ -254,6 +254,13 @@ const zh = {
   syncSyncing: '同步中…',
   syncLocalOnly: '單機模式',
   localOnlyHint: '這台裝置還沒設定雲端，名單只存在這支手機，其他人看不到。',
+  /* iOS 的 Safari 會在七天沒開之後把本機資料清掉（見 config.ts 的
+     atRiskOfStorageEviction）。這句話只在「iOS ＋ 還沒加到主畫面」時出現，
+     因為那時候它是真的、而且有解。 */
+  storageRiskTitle: '加到主畫面，名單才留得住',
+  storageRiskBody: 'iPhone 的 Safari 會在七天沒打開之後清掉這支手機上的名單。按分享鍵 → 加入主畫面，就不會被清掉。回程要用同一份名單的話，這一步別跳過。',
+  /* 單機模式下，「複製結果／CSV」不是「帶去別的地方」，是唯一的備份。 */
+  finishRoundBodyLocal: '這份名單只存在這支手機。先把結果帶走：',
 
   // 錯誤
   errRoomNotFound: '找不到這個代碼。請確認有沒有打錯。',
@@ -504,6 +511,9 @@ const en: Record<MessageKey, string> = {
   syncSyncing: 'Syncing…',
   syncLocalOnly: 'Local only',
   localOnlyHint: 'No cloud configured, so this list lives only on this device.',
+  storageRiskTitle: 'Add to Home Screen to keep this list',
+  storageRiskBody: "Safari on iPhone clears this device's lists after seven days without opening the app. Tap Share → Add to Home Screen and they stay. Don't skip this if you need the same list on the way back.",
+  finishRoundBodyLocal: 'This list lives only on this phone. Take the result with you first:',
 
   errRoomNotFound: "That code doesn't match a room. Check it again.",
   errConfusable: 'Room codes never use {chars}. Please check again.',

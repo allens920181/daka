@@ -17,6 +17,9 @@
 - [`docs/design/`](docs/design/) — 設計規範：[基礎](docs/design/01-foundations.md)、[品牌](docs/design/02-brand.md)、[Token](docs/design/03-tokens.md)、[元件](docs/design/04-components/)、[模式](docs/design/05-patterns.md)、[內容](docs/design/06-content.md)、[品質](docs/design/07-quality.md)、[貢獻](docs/design/08-contributing.md)；另有[視覺對照頁](https://claude.ai/code/artifact/9df0f69b-dc39-4fc6-928f-e62be58ef97f)
 - [`docs/design-review-2026-08.md`](docs/design-review-2026-08.md) — 設計評估報告：找到的 63 條問題、修了哪些、還有 8 條在等你決定方向
 - [`docs/design-review-2026-09.md`](docs/design-review-2026-09.md) — 整體性評估：一個月三十幾次局部改動之後，把六個畫面並排看到的六類系統性問題（層級反了、每塊都是同一種盒子、一個顏色喊五次、規範與實作各說各話、兩條邊界線都落在最糟的區間、灰階往品牌色偏導致強調色沒有東西可以推）
+- [`docs/design-review-2026-09-color.md`](docs/design-review-2026-09-color.md) — 配色重構：把整套色票放進 OKLCH 量一次之後找到的東西（這個產品最正常的狀態「未到 N」穿著錯誤訊息的衣服、五個語意角色擠在九點亮度以內所以逆光下分不出來、灰階想去 240° 卻落在 286° 的薰衣草紫、品牌 teal 其實已經在色域上限而問題全在它周圍）。**品牌 teal `#0E5E63` 一個位元都沒動**
+- [`docs/design-review-2026-09-shape.md`](docs/design-review-2026-09-shape.md) — 形狀與類型重整：38 條形狀規則裡有 20 條是同一個圓角，於是形狀完全不參與溝通；規範說 `--r-3` 是「卡片、面板、對話框」而實作裡的卡片從來都不是它；規範訂了兩種表面、實作有三種而第三種沒有名字。訂下兩條互不干涉的軸（**表面說種類、圓角說尺寸**），並把四條規則寫成測試
+- [`docs/design-review-2026-09-ios.md`](docs/design-review-2026-09-ios.md) — 以 Apple HIG 為標竿的評估：換一把外部的尺之後量到的東西（完全不支援 Dynamic Type、系統返回手勢沒接上所以右滑會直接退出空間、iOS 會在七天後清掉單機模式的名單、品牌規範宣稱了一個 iOS 不提供的能力）。**平台整合的缺陷不會出現在截圖裡**
 
 ---
 
@@ -285,6 +288,9 @@ docs/
   product-direction.md      產品方向與架構決策
   design-review-2026-08.md  設計評估報告與待決事項
   design-review-2026-09.md  整體性評估：層級、表面語言、邊界、配色
+  design-review-2026-09-color.md  配色重構：OKLCH 全面重配，品牌 teal 不動
+  design-review-2026-09-shape.md  形狀與類型：表面說種類、圓角說尺寸
+  design-review-2026-09-ios.md    以 Apple HIG 為標竿：平台整合與清單密度
 ```
 
 ### 設計規範是可執行的

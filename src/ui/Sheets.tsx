@@ -1,4 +1,3 @@
-import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import {
   AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom,
@@ -18,7 +17,7 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconChevronDown, IconChevronRight, IconClose, IconCopy, IconDuplicate,
+  IconBookmark, IconChevronRight, IconClose, IconCopy, IconDuplicate,
   IconEdit, IconGoogle, IconHash, IconLink, IconMore,
   IconQr, IconShare, IconTrash,
 } from './icons'
@@ -143,7 +142,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
               onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
             />
           </div>
-          {error && <p class="note note-warn">{error}</p>}
+          {error && <p class="note note-error">{error}</p>}
           <button
             class="btn btn-primary btn-block"
             disabled={working || !value.trim()}
@@ -170,7 +169,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
   */
   if (mode === 'inviteCode') {
     return (
-      <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet title={t('roomCode')} onClose={onClose} onBack={() => setMode('invite')} depth={2}>
         {/*
           複製收成代碼右邊的一顆圖示（2026-09），不再是底下一顆滿版的按鈕。
           這一頁的主角是那六個字——它是隔著一支手臂唸出去的東西，整頁的寬度都
@@ -194,7 +193,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   if (mode === 'inviteLink') {
     return (
-      <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet title={t('roomLink')} onClose={onClose} onBack={() => setMode('invite')} depth={2}>
         <div class="stack">
           {/*
             連結先印出來：看得到它指去哪一個空間，才敢貼進 200 人的 LINE 群。
@@ -222,7 +221,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
 
   if (mode === 'inviteQr') {
     return (
-      <Sheet title={t('roomQr')} onClose={onClose} onBack={() => setMode('invite')}>
+      <Sheet title={t('roomQr')} onClose={onClose} onBack={() => setMode('invite')} depth={2}>
         <div class="stack">
           <QrCard code={current.code} url={url} />
           <p class="hint">{t('scanToJoin')}</p>
@@ -258,22 +257,22 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
             空間裡」那一區連同 presence 追蹤一起拿掉了。代碼那一列右邊也不再印代碼
             本身——點進去那一頁整頁就是它，用得上的字級在這裡放不下。
           */
-          <div class="menu">
-            <button class="menu-item" onClick={() => setMode('inviteCode')}>
+          <div class="sheet-items">
+            <button class="sheet-item" onClick={() => setMode('inviteCode')}>
               <IconHash />
-              <span><strong>{t('roomCode')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('roomCode')}</strong></span>
               <IconChevronRight class="go" />
             </button>
 
-            <button class="menu-item" onClick={() => setMode('inviteLink')}>
+            <button class="sheet-item" onClick={() => setMode('inviteLink')}>
               <IconLink />
-              <span><strong>{t('roomLink')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('roomLink')}</strong></span>
               <IconChevronRight class="go" />
             </button>
 
-            <button class="menu-item" onClick={() => setMode('inviteQr')}>
+            <button class="sheet-item" onClick={() => setMode('inviteQr')}>
               <IconQr />
-              <span><strong>{t('roomQr')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('roomQr')}</strong></span>
               <IconChevronRight class="go" />
             </button>
           </div>
@@ -295,7 +294,7 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
         三列都是「這個空間裡面」的事；空間本身的事（建立副本、刪除空間）在首頁
         那顆「更多」裡，車開了那一刻的事在「結束點名」的確認鍵前面。
       */}
-      <div class="menu">
+      <div class="sheet-items">
         {/*
           邀請點名。它 2026-09 在三個地方待過：選單 → 底部動作列 → 頂欄的分享
           圖示 → 又回到選單。理由是**一個空間只該有一顆「更多」**：分享單獨掛在
@@ -305,9 +304,9 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
           代價：發代碼要多開一層。那是一場活動按一次的動作，而且不趕時間——
           真正趕的那一顆（結束點名）在底部動作列上，沒有跟著收進來。
         */}
-        <button class="menu-item" onClick={() => setMode('invite')}>
+        <button class="sheet-item" onClick={() => setMode('invite')}>
           <IconShare />
-          <span><strong>{t('invite')}</strong></span>
+          <span class="sheet-item-main"><strong>{t('invite')}</strong></span>
           <IconChevronRight class="go" />
         </button>
 
@@ -316,25 +315,25 @@ export function ManageSheet({ owner, initialMode, onEdit, onClose }: {
           長出叉叉、底下變成一顆「＋」、標題變成可以改的輸入框。改的是眼前這份
           名單，不是它的文字複本。協助者也進得去——他只是看不到叉叉與標題。
         */}
-        <button class="menu-item" onClick={() => { onEdit(); }}>
+        <button class="sheet-item" onClick={() => { onEdit(); }}>
           <IconEdit />
-          <span><strong>{t('edit')}</strong></span>
+          <span class="sheet-item-main"><strong>{t('edit')}</strong></span>
         </button>
 
         {owner && isSupabaseConfigured && (
           <button
-            class="menu-item"
+            class="sheet-item"
             onClick={() => { setValue(current.name); setMode('saveRoster') }}
           >
             <IconBookmark />
-            <span><strong>{t('saveAsRoster')}</strong></span>
+            <span class="sheet-item-main"><strong>{t('saveAsRoster')}</strong></span>
             <IconChevronRight class="go" />
           </button>
         )}
 
       </div>
 
-      {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+      {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
 
     </Sheet>
   )
@@ -419,7 +418,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
               onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
             />
           </div>
-          {error && <p class="note note-warn">{error}</p>}
+          {error && <p class="note note-error">{error}</p>}
           <button
             class="btn btn-primary btn-block"
             disabled={working || !value.trim()}
@@ -451,23 +450,23 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
     return (
       <Sheet title={t('deleteRoom')} onClose={onClose} onBack={() => setMode('menu')}>
         <p class="hint" style="margin-bottom:10px">{t('deleteHint')}</p>
-        <div class="menu">
+        <div class="sheet-items">
           {forgettable && (
-            <button class="menu-item" onClick={() => setConfirming('forget')}>
+            <button class="sheet-item" onClick={() => setConfirming('forget')}>
               <IconClose size={20} />
-              <span><strong>{t('forget')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('forget')}</strong></span>
             </button>
           )}
 
           {owner && (
-            <button class="menu-item danger" onClick={() => setConfirming('delete')}>
+            <button class="sheet-item danger" onClick={() => setConfirming('delete')}>
               <IconTrash />
-              <span><strong>{t('deleteRoom')}</strong></span>
+              <span class="sheet-item-main"><strong>{t('deleteRoom')}</strong></span>
             </button>
           )}
         </div>
 
-        {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+        {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
 
         {/*
           從清單移除也要問一次。它在首頁曾經是一顆一按就生效的垃圾桶，但在單機
@@ -506,7 +505,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
   */
   return (
     <Sheet title={name} onClose={onClose}>
-      <div class="menu">
+      <div class="sheet-items">
         {/*
           複製不限主揪。三個真實劇本都會踩到：主揪臨時不能來、手機在遊覽車上
           沒電、在山區沒訊號被降級成協助者——而那時候「回程再點一次」是產品
@@ -515,14 +514,14 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
           的人可見，所以把它鎖在擁有權後面沒有保護到任何東西。
         */}
         <button
-          class="menu-item"
+          class="sheet-item"
           onClick={() => {
             setValue(name.includes(t('returnTrip')) ? name : `${name} · ${t('returnTrip')}`)
             setMode('copy')
           }}
         >
           <IconDuplicate />
-          <span><strong>{t('copyRoom')}</strong></span>
+          <span class="sheet-item-main"><strong>{t('copyRoom')}</strong></span>
           <IconChevronRight class="go" />
         </button>
 
@@ -537,9 +536,9 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
           說明**。
         */}
         {(owner || forgettable) && (
-          <button class="menu-item danger" onClick={() => setMode('remove')}>
+          <button class="sheet-item danger" onClick={() => setMode('remove')}>
             <IconTrash />
-            <span>
+            <span class="sheet-item-main">
               <strong>{t('deleteRoom')}</strong>
               {expires && <span class="sub">{t('expiresOn', { date: expires })}</span>}
             </span>
@@ -548,7 +547,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
         )}
       </div>
 
-      {error && <p class="note note-warn" style="margin-top:12px">{error}</p>}
+      {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
     </Sheet>
   )
 }
@@ -635,18 +634,18 @@ export function SavedRostersSheet({ onApply, onClose }: {
   if (mode === 'actions' && active) {
     return (
       <Sheet title={active.name} onClose={onClose} onBack={() => setMode('list')}>
-        <div class="menu">
-          <button class="menu-item" onClick={() => { setValue(active.name); setMode('rename') }}>
+        <div class="sheet-items">
+          <button class="sheet-item" onClick={() => { setValue(active.name); setMode('rename') }}>
             <IconEdit />
-            <span><strong>{t('rename')}</strong></span>
+            <span class="sheet-item-main"><strong>{t('rename')}</strong></span>
             <IconChevronRight class="go" />
           </button>
-          <button class="menu-item danger" onClick={() => setConfirmingDelete(true)}>
+          <button class="sheet-item danger" onClick={() => setConfirmingDelete(true)}>
             <IconTrash />
-            <span><strong>{t('deleteRoster')}</strong></span>
+            <span class="sheet-item-main"><strong>{t('deleteRoster')}</strong></span>
           </button>
         </div>
-        {error && <p class="note note-warn">{error}</p>}
+        {error && <p class="note note-error">{error}</p>}
 
         {confirmingDelete && (
           <ConfirmDialog
@@ -664,13 +663,13 @@ export function SavedRostersSheet({ onApply, onClose }: {
 
   if (mode === 'rename' && active) {
     return (
-      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('actions')}>
+      <Sheet title={t('rename')} onClose={onClose} onBack={() => setMode('actions')} depth={2}>
         <div class="stack">
           <input
             class="input" value={value} maxLength={80} aria-label={t('rename')}
             onInput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
           />
-          {error && <p class="note note-warn">{error}</p>}
+          {error && <p class="note note-error">{error}</p>}
           <button
             class="btn btn-primary btn-block"
             disabled={working || !value.trim()}
@@ -689,12 +688,12 @@ export function SavedRostersSheet({ onApply, onClose }: {
         {savedRosters.value.length === 0 ? (
           <p class="note">{t('noSavedRosters')}</p>
         ) : (
-          <div class="menu">
+          <div class="sheet-items">
             {savedRosters.value.map((r) => (
               <div class="row" key={r.id}>
-                <button class="menu-item" style="flex:1; min-width:0" onClick={() => onApply(r)}>
+                <button class="sheet-item" style="flex:1; min-width:0" onClick={() => onApply(r)}>
                   <IconBookmark />
-                  <span>
+                  <span class="sheet-item-main">
                     <strong>{r.name}</strong>
                     <span class="sub">{t('parsedCount', { n: r.members.length })}</span>
                   </span>
@@ -718,43 +717,36 @@ export function SavedRostersSheet({ onApply, onClose }: {
 // ---------------------------------------------------------------------------
 
 /**
- * 設定頁的一列：標籤、目前的值、一顆箭頭；點了才展開自己的內容。
+ * 設定。四列：暱稱、帳戶、主題、語言——都是跟這台裝置／這個人有關的偏好，
+ * 跟任何一個空間無關（所以這個面板只從首頁進得去，見 04-components/overlays.md）。
  *
- * 定義在元件外面不是風格問題——寫在 SettingsSheet 裡面的話每次 render 都是
- * 一個新的元件型別，Preact 會把整棵子樹拆掉重建，暱稱打到一半就會掉焦點。
+ * **每一列點了都是開一張子畫面**（2026-09）。它們本來是「就地上下展開」，
+ * 而那是**全 app 唯一一個會在原地長高的地方**：其他每一張面板（更多、邀請點名、
+ * 空間的更多、常用名單）都是換頁。理由不是「統一比較好看」，是三件具體的事：
+ *
+ * 1. **面板不再在腳下移動。** 實測展開一列會讓面板從 280 長到 360——而這個檔案
+ *    原本的註解寫著「高度鎖住⋯展開與收合都在同一個位置發生」，`Sheet` 根本沒有
+ *    鎖高度的參數。**那個機制從來不存在**，而它想解決的正是這個問題。
+ * 2. **少一個互動方案。** 全 app 的箭頭因此只剩兩個方向：`›` 進去、`‹` 回來。
+ *    `.chevron`／`IconChevronDown` 一併移除。
+ * 3. **這裡本來就有現成的子畫面機制。** 「重新命名」「建立副本」「存成常用名單」
+ *    都是「標籤 ＋ 輸入框 ＋ 確認」的子畫面，暱稱跟它們是同一種東西。
+ *
+ * **沒有換成原生 `<select>`**：主題 3 個選項、語言 2 個，而原生選單在 iOS 上是
+ * 「點 → 滾輪 → 完成」，比現在多一次操作；規範自己也寫著 2–4 個選項用
+ * `.segmented`。而且它蓋不到暱稱（文字）與帳戶（兩顆按鈕）——那兩列還是得有
+ * 別的做法，等於**多一種方案而不是少一種**。
+ *
+ * 收合列右邊仍然印著目前的值（`.sheet-item-value`），不進去也看得到自己設了
+ * 什麼——那個好處來自那一格，不是來自展開。
  */
-function SettingRow({ label, value, open, onToggle, children }: {
-  label: string
-  /** 收合時右邊那段字：這一列現在是什麼。四列都要有，這是不用展開就看得到的資訊。 */
-  value: string
-  open: boolean
-  onToggle: () => void
-  children: ComponentChildren
-}) {
-  return (
-    <div class="field">
-      <button class="select-row" aria-expanded={open} onClick={onToggle}>
-        <span class="label">{label}</span>
-        <span class="select-row-value">
-          <span class="select-row-text">{value}</span>
-          <IconChevronDown class={open ? 'chevron is-open' : 'chevron'} />
-        </span>
-      </button>
-      {open && children}
-    </div>
-  )
-}
-
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const t = useT()
   const p = prefs.value
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
-  /*
-    一次只開一列。四列都是「設一次、很少再改」的偏好，同時攤開只是把面板拉長；
-    而且展開的內容（輸入框、登出鍵、分段控制）互相之間沒有關係，不必並排比較。
-  */
-  const [open, setOpen] = useState<null | 'name' | 'account' | 'theme' | 'lang'>(null)
+  /** 現在停在哪一張子畫面；null 就是那份清單。 */
+  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'lang'>(null)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -762,113 +754,139 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return <SignInSheet onCancel={() => setSigningIn(false)} onDone={onClose} />
   }
 
-  const toggle = (row: 'name' | 'account' | 'theme' | 'lang') =>
-    () => setOpen((cur) => (cur === row ? null : row))
+  const back = () => setMode(null)
   const themeName = p.theme === 'system' ? t('themeSystem')
     : p.theme === 'light' ? t('themeLight') : t('themeDark')
 
-  return (
-    <Sheet
-      /*
-        高度鎖住的理由跟其他面板不太一樣：這一份不換頁，但**展開一列就會長高**
-        （實測收合 220 → 展開暱稱 300）。對使用者來說那是同一種困擾——面板在
-        腳下移動。鎖住之後展開與收合都在同一個位置發生。
-      */
-      title={t('settings')}
-      onClose={onClose}
-    >
-      {/*
-        四列長得一模一樣：暱稱、帳戶、主題、語言。它們是同一種東西——跟這台
-        裝置／這個人有關的偏好，跟任何一個空間無關（所以這個面板只從首頁進得
-        去，見 04-components/overlays.md）。以前暱稱是一直攤開的輸入框、帳戶
-        是一顆 .menu-item，主題與語言才是摺疊列，三種長相排在一起，讀起來像
-        三件不相干的事。收合時右邊直接印出目前的值，不展開也看得到自己設了什麼。
-      */}
-      <div class="stack">
-        <SettingRow
-          label={t('yourName')}
-          value={name.trim() || t('notSet')}
-          open={open === 'name'}
-          onToggle={toggle('name')}
-        >
-          <input
-            id="checker-name" class="input" value={name} maxLength={40}
-            onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
-            onBlur={() => { void setCheckerName(name) }}
-          />
-          <span class="hint">{t('yourNameHint')}</span>
-        </SettingRow>
+  if (mode === 'name') {
+    // 離開這一頁就存。`onBlur` 也留著——用 Esc 直接關掉整張面板時焦點會先離開，
+    // 那條路走不到下面這個 onBack。
+    const save = () => { void setCheckerName(name); back() }
+    return (
+      <Sheet title={t('yourName')} onClose={onClose} onBack={save}>
+        <div class="stack">
+          <div class="field">
+            <label class="label" for="checker-name">{t('yourName')}</label>
+            <input
+              id="checker-name" class="input" value={name} maxLength={40}
+              // return 鍵變成「完成」，按下去就跟按返回一樣：存起來、回上一頁。
+              enterkeyhint="done"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); save() } }}
+              onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
+              onBlur={() => { void setCheckerName(name) }}
+            />
+          </div>
+          <p class="hint">{t('yourNameHint')}</p>
+        </div>
+      </Sheet>
+    )
+  }
 
-        {/* 沒設定雲端的建置沒有帳戶這回事，整列不出現——不給一個按了只會說
-            「還沒設定雲端連線」的入口。 */}
-        {isSupabaseConfigured && (
-          <SettingRow
-            label={t('account')}
-            value={session.value ? session.value.email : t('notSignedIn')}
-            open={open === 'account'}
-            onToggle={toggle('account')}
-          >
-            {session.value ? (
-              <>
-                {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
-                    動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
-                    不加確認對話框（重新登入就還原），但後果要講出來。 */}
-                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
-                <p class="hint">{t('signOutWhat')}</p>
-              </>
-            ) : (
-              <>
-                <button class="btn btn-sm" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
-                <p class="hint">{t('signInWhy')}</p>
-              </>
-            )}
-          </SettingRow>
-        )}
+  if (mode === 'account') {
+    return (
+      <Sheet title={t('account')} onClose={onClose} onBack={back}>
+        <div class="stack">
+          <span class="label">{t('account')}</span>
+          {session.value ? (
+            <>
+              {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
+                  動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
+                  不加確認對話框（重新登入就還原），但後果要講出來。 */}
+              <button class="btn btn-block" onClick={() => { void signOut() }}>{t('signOut')}</button>
+              <p class="hint">{t('signOutWhat')}</p>
+            </>
+          ) : (
+            <>
+              <button class="btn btn-block" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
+              <p class="hint">{t('signInWhy')}</p>
+            </>
+          )}
+        </div>
+      </Sheet>
+    )
+  }
 
-        {/*
-          主題／語言各只有 2-3 個選項，攤開就是一整條 .segmented 的高度。展開
-          用的是篩選列同一顆元件（見 roll-call.md「分段控制」）；選了就收回去，
-          不必再點一次收合。
-        */}
-        <SettingRow
-          label={t('theme')}
-          value={themeName}
-          open={open === 'theme'}
-          onToggle={toggle('theme')}
-        >
+  /*
+    主題／語言各只有 2–3 個選項，用的是篩選列同一顆 `.segmented`
+    （見 roll-call.md「分段控制」）。**選了就自己返回**，不必再按一次返回鍵——
+    這一頁存在的理由只有那一個選擇。
+  */
+  if (mode === 'theme') {
+    return (
+      <Sheet title={t('theme')} onClose={onClose} onBack={back}>
+        <div class="field">
+          <span class="label">{t('theme')}</span>
           <div class="segmented" role="group" aria-label={t('theme')}>
             {(['system', 'light', 'dark'] as const).map((theme) => (
               <button
                 key={theme}
                 class="segment"
                 aria-pressed={p.theme === theme}
-                onClick={() => { void setPrefs({ theme }); setOpen(null) }}
+                onClick={() => { void setPrefs({ theme }); back() }}
               >
                 {theme === 'system' ? t('themeSystem') : theme === 'light' ? t('themeLight') : t('themeDark')}
               </button>
             ))}
           </div>
-        </SettingRow>
+        </div>
+      </Sheet>
+    )
+  }
 
-        <SettingRow
-          label={t('language')}
-          value={p.lang === 'zh' ? '中文' : 'English'}
-          open={open === 'lang'}
-          onToggle={toggle('lang')}
-        >
+  if (mode === 'lang') {
+    return (
+      <Sheet title={t('language')} onClose={onClose} onBack={back}>
+        <div class="field">
+          <span class="label">{t('language')}</span>
           <div class="segmented" role="group" aria-label={t('language')}>
             {(['zh', 'en'] as const).map((lang) => (
               <button
                 key={lang}
                 class="segment"
                 aria-pressed={p.lang === lang}
-                onClick={() => { void setPrefs({ lang }); setOpen(null) }}
+                onClick={() => { void setPrefs({ lang }); back() }}
               >
                 {lang === 'zh' ? '中文' : 'English'}
               </button>
             ))}
           </div>
-        </SettingRow>
+        </div>
+      </Sheet>
+    )
+  }
+
+  return (
+    <Sheet title={t('settings')} onClose={onClose}>
+      <div class="sheet-items">
+        <button class="sheet-item" onClick={() => setMode('name')}>
+          <span class="sheet-item-main"><strong>{t('yourName')}</strong></span>
+          <span class="sheet-item-value">{name.trim() || t('notSet')}</span>
+          <IconChevronRight class="go" />
+        </button>
+
+        {/* 沒設定雲端的建置沒有帳戶這回事，整列不出現——不給一個按了只會說
+            「還沒設定雲端連線」的入口。 */}
+        {isSupabaseConfigured && (
+          <button class="sheet-item" onClick={() => setMode('account')}>
+            <span class="sheet-item-main"><strong>{t('account')}</strong></span>
+            <span class="sheet-item-value">
+              {session.value ? session.value.email : t('notSignedIn')}
+            </span>
+            <IconChevronRight class="go" />
+          </button>
+        )}
+
+        <button class="sheet-item" onClick={() => setMode('theme')}>
+          <span class="sheet-item-main"><strong>{t('theme')}</strong></span>
+          <span class="sheet-item-value">{themeName}</span>
+          <IconChevronRight class="go" />
+        </button>
+
+        <button class="sheet-item" onClick={() => setMode('lang')}>
+          <span class="sheet-item-main"><strong>{t('language')}</strong></span>
+          <span class="sheet-item-value">{p.lang === 'zh' ? '中文' : 'English'}</span>
+          <IconChevronRight class="go" />
+        </button>
       </div>
     </Sheet>
   )
@@ -980,7 +998,7 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
             */}
             {!secureOrigin() ? <p class="note note-warn">{t('insecureContextWarn')}</p>
               : inAppBrowser() && <p class="note note-warn">{t('inAppBrowserWarn')}</p>}
-            {error && <p class="note note-warn">{error}</p>}
+            {error && <p class="note note-error">{error}</p>}
 
             <button class="btn btn-block" disabled={working} onClick={() => setStep('email')}>
               {t('signInWithEmail')}
@@ -995,6 +1013,9 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
                 class="input"
                 type="email"
                 inputMode="email"
+                // 「傳送」——按下去寄出驗證碼，就是底下 onKeyDown 做的事。
+                // 不是「下一個」：下一欄要等信到了才存在。
+                enterkeyhint="send"
                 autocomplete="email"
                 value={email}
                 placeholder={t('emailPlaceholder')}
@@ -1002,7 +1023,7 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
                 onKeyDown={(e) => { if (e.key === 'Enter' && email.includes('@')) void send() }}
               />
             </div>
-            {error && <p class="note note-warn">{error}</p>}
+            {error && <p class="note note-error">{error}</p>}
             <button
               class="btn btn-primary btn-block btn-lg"
               disabled={working || !email.includes('@')}
@@ -1023,6 +1044,8 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
                 id="signin-code"
                 class="input code-input"
                 inputMode="numeric"
+                // 「前往」——六碼打滿按下去就驗證並登入。
+                enterkeyhint="go"
                 autocomplete="one-time-code"
                 maxLength={6}
                 value={code}
@@ -1034,7 +1057,7 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
                 onKeyDown={(e) => { if (e.key === 'Enter' && code.length === 6) void verify() }}
               />
             </div>
-            {error && <p class="note note-warn">{error}</p>}
+            {error && <p class="note note-error">{error}</p>}
             <button
               class="btn btn-primary btn-block btn-lg"
               disabled={working || code.length !== 6}

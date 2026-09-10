@@ -17,7 +17,13 @@ const BROWSER = process.env.CHROMIUM_PATH
     ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
     : undefined)
 
-/** docs/design/03-tokens.md §3.2 的七階字級（44px 那一階隨計分區一起拿掉了）。 */
+/**
+ * docs/design/03-tokens.md §3.2 的七階字級（44px 那一階隨計分區一起拿掉了）。
+ *
+ * 這裡的數字是**基準 17px 之下**那七階的像素值。2026-09 之後 token 是
+ * `calc(11 / 17 * 1rem)` 這種寫法，量到的像素會跟著使用者的字級設定放大，
+ * 所以比對前要先用當下的根字級換算回來。
+ */
 const FONT_SCALE = [11, 13, 15, 17, 20, 26, 34]
 /** §6：一般可互動元素 48px；Toast 動作是暫時性表面，放寬到 44px。 */
 const TAP_MIN = 48
@@ -26,7 +32,19 @@ const TAP_EXCEPTIONS = { 'toast-action': 44 }
 function collect() {
   const parse = (c) => {
     const m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/)
-    return m ? { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] } : null
+    if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] }
+    /*
+     * `color-mix()` 算出來的顏色，Chromium 回的是 `color(srgb r g b / a)`，
+     * 分量是 0–1 不是 0–255。
+     *
+     * 半透明材質（.topbar / .dock）就是這個格式。少了這一段，`parse()` 對它回
+     * null，`bgOf()` 於是把那一層當成「根本沒有底色」直接跳過去——材質等於沒有
+     * 被量到，而檢查照樣說通過。**這正是 iOS 評估 §2.1 警告過的那個失真**，
+     * 只是原因不是門檻猜錯，是連字串都沒認得。
+     */
+    const s = c.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/)
+    if (s) return { r: +s[1] * 255, g: +s[2] * 255, b: +s[3] * 255, a: s[4] === undefined ? 1 : +s[4] }
+    return null
   }
   const lum = ({ r, g, b }) => {
     const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
@@ -36,14 +54,39 @@ function collect() {
     const [hi, lo] = [lum(a), lum(b)].sort((p, q) => q - p)
     return (hi + 0.05) / (lo + 0.05)
   }
+  /*
+   * 眼睛在這個元素背後看到的顏色。
+   *
+   * 舊版是「往上找第一個 alpha > 0.5 的祖先」。那個 0.5 是個猜的門檻，而且它把
+   * 半透明的底當成不透明的用——一層 72% 的紙疊在深色卡片上，量到的會是紙的
+   * 顏色，不是眼睛看到的那個混合色。頂欄與底部動作列 2026-09 改成半透明材質之
+   * 後，那個近似就直接失真了（見 iOS 評估 §2.1）。
+   *
+   * 現在是真的往下疊：一層層收集半透明的底，碰到不透明的那一層（或 body）就
+   * 停，再由下往上合成回來。
+   *
+   * **量不到的一件事**：`backdrop-filter` 吃的是**畫面上**在它後面的東西，不是
+   * DOM 裡的祖先。頂欄底下捲過去的名單卡片不在這條祖先鏈上，所以這裡算出來的
+   * 是「沒有東西捲到底下時」的顏色。那是靜止狀態的正確答案，不是全部的答案。
+   */
   const bgOf = (el) => {
+    const layers = []
     let n = el
+    let opaque = null
     while (n && n !== document.documentElement) {
       const c = parse(getComputedStyle(n).backgroundColor)
-      if (c && c.a > 0.5) return c
+      if (c && c.a > 0) {
+        if (c.a >= 0.999) { opaque = c; break }
+        layers.push(c)
+      }
       n = n.parentElement
     }
-    return parse(getComputedStyle(document.body).backgroundColor) ?? { r: 255, g: 255, b: 255, a: 1 }
+    let out = opaque
+      ?? parse(getComputedStyle(document.body).backgroundColor)
+      ?? { r: 255, g: 255, b: 255, a: 1 }
+    // 由下往上疊回來。
+    for (let i = layers.length - 1; i >= 0; i--) out = blend(layers[i], out, layers[i].a)
+    return out
   }
   const label = (el) =>
     `${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : ''}`
@@ -72,7 +115,9 @@ function collect() {
     a: 1,
   })
 
-  const out = { contrast: [], tap: [], font: [], name: [], nonText: [], primary: 0 }
+  // 根字級：字級是 rem，所以「第幾階」要靠它反算（見下面 audit() 的七階檢查）。
+  const root = parseFloat(getComputedStyle(document.documentElement).fontSize)
+  const out = { root, contrast: [], tap: [], font: [], name: [], nonText: [], clipped: [], primary: 0 }
 
   for (const el of document.querySelectorAll('*')) {
     const cs = getComputedStyle(el)
@@ -109,6 +154,41 @@ function collect() {
         if (r + 0.005 < need) {
           out.contrast.push({ ratio: +r.toFixed(2), need, fs, el: label(el), text: ownText.slice(0, 20) })
         }
+      }
+    }
+
+    /*
+     * 文字被自己的框夾住（2026-09）。
+     *
+     * 字級改成 rem 之後，**任何寫死高度的容器都是一顆定時炸彈**：使用者把字
+     * 調大，字長高、框不會，字就被切掉。而上面每一項檢查都看不到這件事——
+     * 對比照樣達標、觸控尺寸照樣夠大、字級照樣落在七階內、頁面也沒有橫向
+     * 溢出。這個檢查就是為了那個死角。
+     *
+     * 只看真的會裁切的框（overflow-y 是 hidden／clip）：overflow 是 visible
+     * 的話字會溢出去，難看但讀得到，那是另一個問題。刻意的截斷（`.member-note`
+     * 的兩行封頂）用 -webkit-line-clamp 表示，跳過。
+     *
+     * input 的內容不算在 scrollHeight 裡（它自己在裡面捲），所以改看行高
+     * 裝不裝得下——`.code-row` 那組固定高度就是這樣被抓出來的。
+     *
+     * **這一段刻意放在 `if (ownText)` 外面。** input 的值不是文字節點，所以它
+     * 進不了那個分支——而寫死高度的框十之八九就是輸入框。第一版寫在裡面，
+     * 對著已知的 bug 跑出來是「通過」。
+     */
+    const inputLike = el.matches('input, textarea, select')
+    const clipsY = /hidden|clip/.test(cs.overflowY)
+    const clamped = cs.webkitLineClamp && cs.webkitLineClamp !== 'none'
+    // 只看**自己裝著那段字**的元素。裁切的容器不一定有問題：`.room-flow-stage`
+    // 是兩步並排、只露一步的滑軌，`body` 在面板開著時會鎖捲動——兩個都是刻意
+    // 把比自己高的東西關起來，跟「字被夾住」是兩回事。
+    if (clipsY && !clamped && el.clientHeight > 0 && (ownText || inputLike)) {
+      const needed = inputLike ? parseFloat(cs.lineHeight) : el.scrollHeight
+      if (Number.isFinite(needed) && needed > el.clientHeight + 1) {
+        out.clipped.push({
+          el: label(el), need: +needed.toFixed(1), have: el.clientHeight,
+          text: (ownText || el.value || el.placeholder || '').slice(0, 20),
+        })
       }
     }
 
@@ -179,13 +259,19 @@ async function audit(page, scheme, screen) {
     note(scheme, screen, '觸控尺寸', `${t.w}×${t.h}（需 ${t.need}） ${t.el} 「${t.text}」`)
   }
   for (const f of r.font) {
-    if (!FONT_SCALE.includes(Math.round(f.fs))) {
-      note(scheme, screen, '字級不在七階內', `${f.fs}px ${f.el} 「${f.text}」`)
+    // 字級 2026-09 改成 rem，所以量到的像素會跟著使用者的字級設定跑。
+    // 反算回「第幾階」再比對：同一份七階規範在放大字級那一輪照樣適用。
+    const step = Math.round((f.fs / r.root) * 17)
+    if (!FONT_SCALE.includes(step)) {
+      note(scheme, screen, '字級不在七階內', `${f.fs}px（根 ${r.root}px ⇒ 第 ${step} 階）${f.el} 「${f.text}」`)
     }
   }
   for (const n of r.nonText) {
     note(scheme, screen, '非文字元件對比不足',
       `${n.el} ${n.ratio}:1（狀態靠形狀表達時線條要 ${n.need}:1）`)
+  }
+  for (const c of r.clipped) {
+    note(scheme, screen, '文字被框夾住', `需要 ${c.need}px、框只有 ${c.have}px ${c.el} 「${c.text}」`)
   }
   for (const n of r.name) note(scheme, screen, '缺無障礙名稱', n.el)
   if (r.primary > 1) note(scheme, screen, '主要按鈕過多', `找到 ${r.primary} 個 .btn-primary，規範是至多一個`)
@@ -197,12 +283,49 @@ async function audit(page, scheme, screen) {
 
 const browser = await chromium.launch(BROWSER ? { executablePath: BROWSER } : {})
 
-for (const scheme of ['light', 'dark']) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: scheme })
+/**
+ * 三輪（2026-09，iOS 評估 §1.1）。
+ *
+ * 前兩輪是淺色與深色。第三輪把**瀏覽器的預設字級調到 24px**——字級 token 改成
+ * rem 之後，這會把內文從 17px 推到 25.5px（1.5 倍），大約落在 iOS Dynamic Type
+ * 的 xxxLarge 與 AX1 之間。這一輪要驗的不是「字有沒有變大」（那是 CSS 的事），
+ * 是**變大之後版面還成不成立**：橫向溢出、對比、觸控尺寸、七階字級。
+ *
+ * 只跑一輪放大 × 淺色，不跑放大 × 深色：字級與配色是兩件互不影響的事，
+ * 兩兩相乘只是把腳本跑成兩倍長。
+ *
+ * `standard` 是 Chromium 的「預設字型大小」設定，跟使用者在設定頁調的是同一個
+ * 值；根字級寫成 `calc(17 / 16 * 1rem)` 就是為了接這個值（見 styles.css :root）。
+ */
+const PASSES = [
+  { scheme: 'light', label: 'light', rootFont: 16 },
+  { scheme: 'dark', label: 'dark', rootFont: 16 },
+  { scheme: 'light', label: 'light·放大字級', rootFont: 24 },
+]
+
+for (const pass of PASSES) {
+  const scheme = pass.label
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: pass.scheme })
   const page = await ctx.newPage()
   page.on('pageerror', (e) => note(scheme, '—', 'JS 錯誤', e.message))
+  if (pass.rootFont !== 16) {
+    const cdp = await ctx.newCDPSession(page)
+    await cdp.send('Page.setFontSizes', { fontSizes: { standard: pass.rootFont, fixed: pass.rootFont } })
+  }
 
   await page.goto(URL); await page.waitForTimeout(900)
+
+  // 這一輪的字級情境真的生效了嗎？CDP 沒吃到設定的話，放大字級那輪會安靜地
+  // 退化成「再跑一次淺色」——照樣通過，但什麼都沒驗到。所以先對一次根字級：
+  // 它應該是「瀏覽器預設字級 × 17/16」（見 styles.css :root 的那兩行）。
+  {
+    const root = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+    const want = pass.rootFont * 17 / 16
+    if (Math.abs(root - want) > 0.01) {
+      note(scheme, '—', '字級情境沒生效', `根字級量到 ${root}px，預期 ${want}px`)
+    }
+  }
+
   await audit(page, scheme, '首頁')
 
   // 「加入空間」2026-09 從就地展開改成一張底部面板：代碼框、「加入」、掃碼鍵
@@ -294,7 +417,7 @@ for (const scheme of ['light', 'dark']) {
 await browser.close()
 
 if (violations.length === 0) {
-  console.log('設計規範檢查通過：對比（含祖先 opacity）、非文字元件對比、觸控尺寸、字級、無障礙名稱、橫向溢出、主要按鈕數量。')
+  console.log('設計規範檢查通過（淺色、深色、放大字級三輪）：對比（含祖先 opacity）、非文字元件對比、觸控尺寸、字級、文字未被框夾住、無障礙名稱、橫向溢出、主要按鈕數量。')
   process.exit(0)
 }
 

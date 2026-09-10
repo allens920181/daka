@@ -31,13 +31,19 @@ const openSearch = async () => {
 
 await p.goto(URL); await p.waitForTimeout(1200)
 ok('首頁載入', await p.locator('.home-title').isVisible())
-ok('顯示單機模式提示', (await p.locator('.banner-muted').count()) > 0)
+ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 
 
 // 開空間
 await p.getByRole('button', { name: /創建空間/ }).first().click()
 await p.waitForTimeout(400)
+// 空間名稱的 return 鍵寫著「下一個」，所以它得真的跳到下一欄（名單）。
+ok('空間名稱的 return 鍵寫著「下一個」', await p.getAttribute('#room-name', 'enterkeyhint') === 'next')
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
+await p.locator('#room-name').press('Enter'); await p.waitForTimeout(200)
+ok('按下去焦點就在名單欄，名稱原封不動',
+   await p.evaluate(() => document.activeElement?.id) === 'roster-text'
+   && await p.inputValue('#room-name') === '秋季旅遊 · 出發')
 await p.locator('#roster-text').fill(`秋季旅遊報名
 1.王小明 0912345678
 2. 李美花 +1
@@ -254,7 +260,7 @@ const finishBody = (await p.locator('#dialog-body').textContent()) || ''
 ok(`說明只剩一句：「${finishBody}」`, finishBody.length <= 20 && !finishBody.includes('列印'))
 ok('不再需要任何補充說明', (await p.locator('.result-hint').count()) === 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-ok('Esc 關掉對話框，空間沒有被結束', (await p.locator('.banner-result').count()) === 0)
+ok('Esc 關掉對話框，空間沒有被結束', (await p.locator('.result-card').count()) === 0)
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 // 臨時加人（編輯模式的「＋」）與結束點名（動作列）不在選單裡；邀請點名在，
 // 它 2026-09 從頂欄的分享圖示收回來——一個空間只該有一顆「更多」。
@@ -340,13 +346,26 @@ ok('而且是同一個框：框在外層，裡面兩個都沒有自己的邊', a
   const w = (el) => parseFloat(getComputedStyle(el).borderTopWidth)
   return w(row) >= 1 && w(input) === 0 && w(join) === 0
 }))
-// 並排的元件要對齊：輸入框的高度不能是字級的副產品（2026-09 寫死 --tap-lg）。
+// 並排的元件要對齊：輸入框的高度不能是字級的副產品。高度是 `--tap-lg`，但寫成
+// `min-height`（2026-09 字級改 rem 之後）——寫死的話字放大時框不會跟著長，字就
+// 被夾住。**兩個孩子都用 `align-self: stretch`，不用 `height: 100%`**：外框變成
+// 不定高之後百分比對不上它，那顆「加入」會掉回自己的 48px。
+
 ok('代碼框與「加入」等高，而且填滿那個框', await p.evaluate(() => {
   const row = document.querySelector('.sheet .code-row').getBoundingClientRect()
   const input = document.querySelector('.sheet .code-row .code-input').getBoundingClientRect()
   const join = document.querySelector('.sheet .code-row .btn').getBoundingClientRect()
   return Math.abs(input.height - join.height) <= 1 && row.height - input.height <= 3
 }))
+/*
+ * return 鍵上寫的字（2026-09，iOS 評估 §2.3）。
+ *
+ * iOS 會依 `enterkeyhint` 換掉 return 鍵的字。**所以按下去必須真的發生那件事**
+ * ——鍵上寫「前往」卻什麼都沒發生，比一顆普通的 return 鍵更糟：它承諾過。
+ * 這裡驗的是那個承諾，不只是屬性有沒有寫上去。
+ */
+ok('代碼框的 return 鍵寫著「前往」', await p.getAttribute('.sheet .code-input', 'enterkeyhint') === 'go')
+
 // 對焦圈搬到外框：裡面的輸入框沒有邊可以亮了。
 ok('對焦時亮的是整個框', await p.evaluate(() => {
   document.querySelector('.sheet .code-row .code-input').focus()
@@ -424,7 +443,7 @@ ok('圖示唸得出身分',
 await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(600)
 ok('就在首頁打開，不進空間', (await p.locator('.home-title').count()) === 1
    && (await p.locator('.topbar-name').count()) === 0)
-const homeRows = await p.locator('.sheet .menu-item strong').allTextContents()
+const homeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`首頁那份是空間本身的事：${homeRows.join('、')}`,
    JSON.stringify(homeRows) === JSON.stringify(['建立副本', '刪除空間']))
 ok('名單的事不在這裡（編輯、存成常用都不列）',
@@ -574,7 +593,7 @@ const toastVsMenu = await p.evaluate(() => {
   const toast = document.querySelector('.toast')
   if (!toast) return { noToast: true }
   const tr = toast.getBoundingClientRect()
-  const rows = [...document.querySelectorAll('.sheet .menu-item')]
+  const rows = [...document.querySelectorAll('.sheet .sheet-item')]
   const covered = rows.filter((el) => {
     const b = el.getBoundingClientRect()
     return Math.min(b.bottom, tr.bottom) - Math.max(b.top, tr.top) > 0
@@ -636,6 +655,18 @@ const segmentedBox = await p.locator('.filterbar .segmented').boundingBox()
 ok(`搜尋框高度（${Math.round(searchInputBox.height)}px）跟分段控制那一列（${Math.round(segmentedBox.height)}px）一致`,
    Math.abs(searchInputBox.height - segmentedBox.height) <= 1)
 
+// return 鍵（iOS 上寫著「完成」）唯一要做的事是把鍵盤收掉：結果是邊打邊出來的，
+// 沒有第二件事可做。不接的話，收鍵盤的唯一辦法是點別的地方，而這個畫面上「別的
+// 地方」就是名單列——點下去會直接把人標成已到。
+await p.locator('input[type=search]').fill('陳'); await p.waitForTimeout(200)
+ok('搜尋框的 return 鍵寫著「完成」',
+   await p.getAttribute('input[type=search]', 'enterkeyhint') === 'done')
+await p.locator('input[type=search]').press('Enter'); await p.waitForTimeout(250)
+ok('按 Enter 收鍵盤，但字跟框都留著', await p.evaluate(() =>
+     document.activeElement?.getAttribute('type') !== 'search')
+   && await p.locator('input[type=search]').inputValue() === '陳'
+   && (await p.locator('input[type=search]').count()) === 1)
+
 // Esc 分兩段：先清字（名單立刻回來），再按一次才收回成圖示。一次做完兩件事
 // 的話，只是想取消過濾的人會連那顆鍵的位置一起失去。
 await p.locator('input[type=search]').fill('陳'); await p.waitForTimeout(200)
@@ -651,7 +682,7 @@ ok('第二次 Esc 才收回成圖示，分段控制回來',
 // 再切一層分類只是多一次點擊。排列照一場活動的時間軸：出發前 → 現場 → 車開了。
 await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
 ok('面板不再有分頁鍵', (await p.locator('.sheet .segmented').count()) === 0)
-const manageRows = await p.locator('.sheet .menu-item strong').allTextContents()
+const manageRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 // 空間裡這一份只剩「這份名單」的事（2026-09 拆開）：編輯它、把它存成常用。
 // 空間本身的事（建立副本、刪除空間）在首頁那顆「更多」。這一間是單機模式，
 // 所以「存成常用」也不列（要雲端），只剩「編輯」。
@@ -756,7 +787,7 @@ ok(`矮螢幕上面板不超過 88vh（${sheetFit.h} ≤ ${sheetFit.max}）`, sh
 ok('裝不下的時候捲得動，裝得下就不必捲',
    sheetFit.scrollable ? sheetFit.scrolled > 0 : sheetFit.scrolled === 0)
 ok('不管捲不捲，最後一項都看得到',
-   await p.locator('.sheet .menu-item').last().isVisible())
+   await p.locator('.sheet .sheet-item').last().isVisible())
 await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
@@ -853,21 +884,23 @@ ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) 
 // 設定只剩首頁那顆齒輪進得去（2026-09 管理面板拿掉設定入口）。
 await p.goto(URL); await p.waitForTimeout(800)
 await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
-// 主題／語言改成摺疊列（2026-09），要先點開才看得到選項；選了選項後
-// 摺疊列自己收回去，所以切回中文前要用英文的「Language」字樣重新展開。
+// 主題／語言各是一張子畫面（2026-09 從就地展開改過來）：點那一列進去、
+// 選了選項自己返回，所以切回中文前要用英文的「Language」字樣重新進去。
 await p.getByRole('button',{name:/語言/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/English/}).click(); await p.waitForTimeout(600)
 ok('切成英文後 lang=en', (await p.evaluate(() => document.documentElement.lang)) === 'en')
 await p.getByRole('button',{name:/Language/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/中文/}).click(); await p.waitForTimeout(600)
 ok('切回中文後 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
-ok('選了選項後摺疊列自己收回去', (await p.locator('.sheet .segmented').count()) === 0)
+ok('選了選項後自己返回那份清單', (await p.locator('.sheet .segmented').count()) === 0
+   && (await p.locator('.sheet .sheet-item').count()) > 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 掃描端：單機模式下用代碼加入別人的空間，錯的不是代碼，是這個站台沒有雲端。
 // 講「找不到這個代碼。請確認有沒有打錯」會讓人重打三次，而主揪正在數人頭。
 await p.evaluate(() => { window.location.hash = '#/j/ZZZZZZ' }); await p.waitForTimeout(1500)
-const joinMsg = ((await p.locator('.note-warn').textContent().catch(() => '')) ?? '').trim()
+// 失敗訊息掛 .note-error（2026-09 配色重構）：加不進去是「做不到」，不是「先跟你說一聲」。
+const joinMsg = ((await p.locator('.note-error').textContent().catch(() => '')) ?? '').trim()
 ok(`單機模式加入空間的說法：「${joinMsg}」`, joinMsg.includes('沒有連上雲端'))
 ok('不會叫人去檢查代碼有沒有打錯', !joinMsg.includes('打錯'))
 
@@ -887,7 +920,7 @@ await p.goto(URL); await p.waitForTimeout(900)
 await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
 // 「從清單移除」2026-09 收進「刪除空間」裡：同一件事的兩種程度，並排看才分得出。
 await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
-const removeRows = await p.locator('.sheet .menu-item strong').allTextContents()
+const removeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`刪除那一頁兩列：${removeRows.join('、')}`,
    JSON.stringify(removeRows) === JSON.stringify(['從清單移除', '刪除空間']))
 ok('而且先講清楚差在哪',
@@ -926,16 +959,45 @@ ok('對話框裡沒有 PDF 了', (await p.getByRole('button',{name:/PDF/}).count
 await p.getByRole('button',{name:/^結束點名$/}).last().click(); await p.waitForTimeout(1200)
 await p.keyboard.press('Escape'); await p.waitForTimeout(500)
 // 結束之後要回答的問題已經不是「還能不能點」，而是「這一場最後是幾個人」。
-const closedBanner = (await p.locator('.banner-result-text').textContent()) ?? ''
-ok(`結束後橫幅印的是定格結果：「${closedBanner}」`,
-   closedBanner.includes('已結束') && closedBanner.includes('1 / 3'))
+const closedResult = (await p.locator('.result-card-text').textContent()) ?? ''
+ok(`結束後印的是定格結果卡片：「${closedResult}」`,
+   closedResult.includes('已結束') && closedResult.includes('1 / 3'))
 // 結束之後那三顆要留著：真正需要那份 CSV 的人（教會辦公室、隔天的行政）是在
 // 事情結束之後才想起來的，而「匯出名單」那條路已經不在了。
-const bannerActions = (await p.locator('.banner-result .btn').allTextContents()).map((x) => x.trim())
-ok(`結束後兩種格式都還在：${bannerActions.join('、')}`,
-   JSON.stringify(bannerActions) === JSON.stringify(['複製', 'CSV']))
+const resultActions = (await p.locator('.result-card .btn').allTextContents()).map((x) => x.trim())
+ok(`結束後兩種格式都還在：${resultActions.join('、')}`,
+   JSON.stringify(resultActions) === JSON.stringify(['複製', 'CSV']))
 ok('結束後戳名字沒有作用', await p.locator('.member-main').first().isDisabled())
 ok('頂欄說得出已關閉', (await p.locator('.topbar-count.closed').count()) === 1)
+
+// --- 系統返回手勢（2026-09）---
+// 面板與它的子畫面各是一格歷史紀錄。iOS 的邊緣右滑、Android 的實體返回鍵都走
+// popstate，而在加到主畫面的 PWA 裡右滑是**唯一**的返回操作——沒有接上的話，
+// 在面板上右滑會直接退出空間。
+await p.goto(URL); await p.waitForTimeout(800)
+await p.locator('.recent-item').first().click(); await p.waitForTimeout(1300)
+const inRoom = await p.evaluate(() => location.hash)
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+await p.goBack(); await p.waitForTimeout(400)
+ok('面板上返回＝關掉面板，不是離開空間',
+   (await p.locator('.sheet').count()) === 0 && (await p.evaluate(() => location.hash)) === inRoom)
+
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^邀請點名$/ }).click(); await p.waitForTimeout(500)
+await p.goBack(); await p.waitForTimeout(400)
+ok('子畫面上返回＝回上一頁，面板還在',
+   (await p.locator('.sheet').count()) === 1
+   && (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 0)
+await p.goBack(); await p.waitForTimeout(400)
+ok('再返回才關掉面板，空間還在',
+   (await p.locator('.sheet').count()) === 0 && (await p.evaluate(() => location.hash)) === inRoom)
+
+// 程式自己關掉（Esc）要把那一格吃回來，否則歷史裡會留一格按了沒反應的空白。
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(400)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+await p.goBack(); await p.waitForTimeout(500)
+ok('Esc 關掉面板不會在歷史留空格（返回直接離開空間）',
+   (await p.evaluate(() => location.hash)) !== inRoom)
 
 // --- 設定 ---
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
@@ -947,31 +1009,36 @@ ok('設定面板沒有標題列', (await p.locator('.sheet-title').count()) === 
 ok('但無障礙名稱還是「設定」', (await p.locator('.sheet').getAttribute('aria-label')) === '設定')
 ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count()) === 0)
 
-// 設定頁是四列長得一樣的摺疊列：暱稱、帳戶、主題、語言（2026-09）。單機模式
+// 設定頁是四列長得一樣的面板列：暱稱、帳戶、主題、語言（2026-09）。單機模式
 // 沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
-const rows = await p.locator('.sheet .select-row .label').allTextContents()
+const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`設定頁的四列：${rows.join('、')}`,
    JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '語言']))
 ok('單機模式沒有帳戶那一列', (await p.getByText('帳戶').count()) === 0)
 
 // 收合時右邊印著目前的值，不展開也看得到自己設了什麼。
-const shown = await p.locator('.sheet .select-row-text').allTextContents()
+const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
    shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '中文')
 
-// 暱稱要點開才有輸入框；打字之後收合列上就看得到。
-ok('暱稱沒展開時不佔輸入框的高度', (await p.locator('#checker-name').count()) === 0)
-await p.getByRole('button', { name: /^暱稱/ }).click(); await p.waitForTimeout(300)
-ok('點開之後輸入框在', await p.locator('#checker-name').isVisible())
+// 暱稱是一張子畫面（2026-09）：清單上只有值，進去才有輸入框，回來就看得到。
+ok('清單上沒有輸入框', (await p.locator('#checker-name').count()) === 0)
+await p.getByRole('button', { name: /^暱稱/ }).click(); await p.waitForTimeout(400)
+ok('進到子畫面才有輸入框', await p.locator('#checker-name').isVisible())
+ok('子畫面上那份清單不在了', (await p.locator('.sheet .sheet-item').count()) === 0)
+ok('子畫面有返回鍵', (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 1)
 await p.locator('#checker-name').fill('陳姐')
-await p.locator('#checker-name').blur(); await p.waitForTimeout(400)
-ok('收合列上就看得到剛填的暱稱',
-   (await p.locator('.sheet .select-row-text').first().textContent()) === '陳姐')
+await p.locator('#checker-name').blur(); await p.waitForTimeout(300)
+await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
+ok('回到清單就看得到剛填的暱稱',
+   (await p.locator('.sheet .sheet-item-value').first().textContent()) === '陳姐')
 
-// 一次只開一列：點主題，暱稱要自己收起來。
-await p.getByRole('button', { name: /^主題/ }).click(); await p.waitForTimeout(300)
-ok('開了主題，暱稱就收起來', (await p.locator('#checker-name').count()) === 0
-   && (await p.locator('.sheet .segmented').count()) === 1)
+// 每一列都是子畫面，所以不再有「一次只開一列」這回事——進去只會看到那一件事。
+await p.getByRole('button', { name: /^主題/ }).click(); await p.waitForTimeout(400)
+ok('主題子畫面只有那一組選項', (await p.locator('#checker-name').count()) === 0
+   && (await p.locator('.sheet .segmented').count()) === 1
+   && (await p.locator('.sheet .sheet-item').count()) === 0)
+await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 
@@ -1085,6 +1152,63 @@ const fold = await p.evaluate(() => {
   }
 })
 ok(`80 人首屏看得到 ${fold.visible} 個人名（第一個人名在 y=${fold.firstNameTop}）`, fold.visible >= 7)
+
+/*
+ * 名單容器：連續的未到收成一張卡片（2026-09，iOS 評估 §1.3 的 C 方向）。
+ *
+ * 兩件事要一起成立，少一件這個方向就不該留下：
+ *
+ * 1. **每個人固定佔 66px，點誰都不會動到別人的位置。** 第一版只收未到與未到
+ *    之間的縫，於是每點掉一個人就多開一道 8px——由上往下點六個，名單最底下的
+ *    人往下跑 48px。**點名這個動作把還沒點到的人一直往下推**，而「位置不能
+ *    跳動」是這個專案的第一條現場前提。所以間距改成不分狀態一律收掉。
+ * 2. 卡片的邊界＝狀態的邊界：一段連續的未到是一張卡片，已到的列退出卡片。
+ */
+const pitch = await p.evaluate(() => {
+  const r = [...document.querySelectorAll('.member')].slice(0, 4).map((e) => e.getBoundingClientRect())
+  return [r[1].top - r[0].top, r[2].top - r[1].top, r[3].top - r[2].top]
+})
+ok(`每個人固定佔 ${pitch[0]}px（原本 74px：66 的列高＋8 的縫）`,
+   pitch.every((d) => Math.abs(d - pitch[0]) <= 0.5 && d < 70))
+
+const anchorBefore = await p.evaluate(() =>
+  document.querySelectorAll('.member')[9].getBoundingClientRect().top)
+for (let i = 0; i < 4; i++) {
+  await p.locator('.member-main').nth(i).click(); await p.waitForTimeout(350)
+}
+const anchorAfter = await p.evaluate(() =>
+  document.querySelectorAll('.member')[9].getBoundingClientRect().top)
+ok(`點掉 4 個人之後，第 10 個人一格都沒有動（漂移 ${Math.round(anchorAfter - anchorBefore)}px）`,
+   Math.abs(anchorAfter - anchorBefore) <= 1)
+
+const grouping = await p.evaluate(() => {
+  const rows = [...document.querySelectorAll('.member')]
+  const arrived = rows.filter((e) => e.classList.contains('is-arrived'))
+  // 已到退出卡片：底透出頁面、邊透明。
+  const out = arrived.every((e) => {
+    const cs = getComputedStyle(e)
+    return /rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor)
+      && /rgba\(0, 0, 0, 0\)|transparent/.test(cs.borderTopColor)
+  })
+  // 一段連續的未到裡，中間那幾列的上角是平的（併進上一列），而且有髮絲線。
+  const pend = rows.filter((e) => !e.classList.contains('is-arrived'))
+  const mid = pend.find((e) => {
+    const prev = e.previousElementSibling
+    return prev?.classList.contains('member') && !prev.classList.contains('is-arrived')
+  })
+  if (!mid) return { out, run: false }
+  const cs = getComputedStyle(mid)
+  const line = getComputedStyle(mid, '::before')
+  return {
+    out,
+    run: parseFloat(cs.borderTopLeftRadius) === 0
+      && parseFloat(line.borderTopWidth) >= 1
+      // 髮絲線從文字起點開始，不整條貫穿（讓開前面那顆圈圈）。
+      && parseFloat(line.left) >= 40,
+  }
+})
+ok('已到的列退出卡片，直接坐在頁面上', grouping.out)
+ok('連續的未到收成一張卡片：中間的角是平的，接縫是一條讓開圈圈的髮絲線', grouping.run)
 // 動作列 2026-09 回來了，它吃掉的高度是有代價的——換到的是三個時刻不必先開選單。
 ok(`底部動作列只吃掉 ${fold.dockH}px`, fold.hasDock && fold.dockH <= 72)
 ok('搜尋跟篩選同一列，右邊那一顆（省下的 76px 等於一列人名）', fold.searchRow)
