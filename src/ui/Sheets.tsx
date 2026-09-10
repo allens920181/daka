@@ -768,9 +768,24 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       <Sheet title={t('yourName')} onClose={onClose} onBack={save}>
         <div class="stack">
           <div class="field">
-            <label class="label" for="checker-name">{t('yourName')}</label>
+            {/*
+              **標籤收進輸入框裡**（2026-09）。
+              這一頁只有一個欄位，而你是點了一列叫「暱稱」的東西才進來的——畫面
+              再印一次「暱稱」是同一個字說第三遍（面板的 aria-label 也是它）。
+              空的時候由 placeholder 說，寫了之後那兩個字的工作已經做完了。
+
+              **`<label>` 沒有拿掉，只是看不見**：placeholder 不是可靠的無障礙
+              名稱（規範 §inputs「placeholder 不得取代 label」擋的就是這件事）。
+              這裡放行的是「看得見的那一份」，不是那個名稱本身。
+
+              說明沒有跟著收進去：量過，「暱稱（選填，別人會看到是你點的）」在
+              320px 的手機上**預設字級就會被截斷**（272 / 262px），放大字級是
+              530px。而且它講的是後果，那是打字的當下最該看得到的一句。
+            */}
+            <label class="sr-only" for="checker-name">{t('yourName')}</label>
             <input
               id="checker-name" class="input" value={name} maxLength={40}
+              placeholder={t('yourNamePlaceholder')}
               // return 鍵變成「完成」，按下去就跟按返回一樣：存起來、回上一頁。
               enterkeyhint="done"
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); save() } }}

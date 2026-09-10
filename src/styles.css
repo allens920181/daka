@@ -622,6 +622,19 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--surface-2); color: var(--ink);
   font-size: var(--fs-4);
 }
+/*
+ * **placeholder 有自己的顏色**（2026-09）。
+ *
+ * 在這之前全 app 沒有設定過 `::placeholder`，用的是瀏覽器預設的
+ * `rgb(117, 117, 117)`——**兩個主題同一個值**，所以它在深色凹槽上只有 3.27:1，
+ * 淺色 3.99:1，兩邊都低於內文的 4.5:1。以前那只是「淡了點」；暱稱那一頁把標籤
+ * 收進 placeholder 之後，它扛的是「這一格是什麼」，就不能將就了。
+ *
+ * `--ink-3` 是系統指定的「最淺的可用文字色」，在凹槽上是 4.75:1（淺）／
+ * 5.42:1（深）。它會跟著主題走，那個瀏覽器預設值不會。
+ */
+.input::placeholder, .textarea::placeholder { color: var(--ink-3); opacity: 1; }
+
 .input:focus, .textarea:focus {
   border-color: var(--accent); outline: none;
   box-shadow: 0 0 0 3px var(--accent-soft);

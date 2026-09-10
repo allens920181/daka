@@ -14,6 +14,14 @@ const css = readFileSync(new URL('./styles.css', import.meta.url), 'utf8')
 const body = css.slice(css.lastIndexOf("color-scheme: dark;"))
 
 /**
+ * 移除註解。這份樣式表的註解會引用它取代掉的舊值（顏色、尺寸），那些是說明，
+ * 不是會被套用的宣告——掃描前要先拿掉，不然「寫清楚為什麼改」會變成違規。
+ */
+function stripComments(input: string): string {
+  return input.replace(/\/\*[\s\S]*?\*\//g, '')
+}
+
+/**
  * 移除 @keyframes 區塊。裡面的數值是動畫的中間端點（例如 50% 時 opacity: .3），
  * 那是動態曲線的一部分，不是設計 token。
  */
@@ -123,14 +131,24 @@ describe('設計 token 的靜態檢查', () => {
 
   it('沒有硬寫的 rgba（遮罩必須走 --scrim）', () => {
     const printAt = body.indexOf('@media print')
-    const scanned = printAt === -1 ? body : body.slice(0, printAt)
+    // 註解要先去掉：這份樣式表的註解**會引用它取代掉的那個值**（「本來是
+    // rgb(117, 117, 117)」），而寫在註解裡的顏色不會被套用到任何東西上。
+    // 不能因為一條規則寫得清楚就判它違規。
+    const scanned = stripComments(printAt === -1 ? body : body.slice(0, printAt))
     expect([...scanned.matchAll(/rgba?\([^)]*\)/g)].map((m) => m[0])).toEqual([])
   })
 
   it('沒有裸露的 opacity 字面值', () => {
     const printAt = body.indexOf('@media print')
-    const scanned = stripKeyframes(printAt === -1 ? body : body.slice(0, printAt))
-    expect([...scanned.matchAll(/opacity:\s*([\d.]+)/g)].map((m) => m[1])).toEqual([])
+    const scanned = stripKeyframes(stripComments(printAt === -1 ? body : body.slice(0, printAt)))
+    const hits = [...scanned.matchAll(/opacity:\s*([\d.]+)/g)].map((m) => m[1])
+      /*
+       * `1` 是**重置**，不是設計值。Firefox 預設會把 `::placeholder` 調淡，
+       * 不寫這一行的話那裡的對比會低於量好的 4.75:1／5.42:1。
+       * 這條規則要擋的是「隨手挑一個 .6 當淡化」，不是把瀏覽器加的東西拿掉。
+       */
+      .filter((v) => v !== '1')
+    expect(hits).toEqual([])
   })
 
   /**

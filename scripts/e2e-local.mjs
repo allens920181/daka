@@ -1057,6 +1057,41 @@ const groove = await p.evaluate(() => {
   }
 })
 ok('輸入框是凹槽：平常沒有看得見的邊', groove.平常沒有邊 && groove.底是凹槽)
+
+/*
+ * 標籤收進輸入框裡（2026-09）。三件事要一起成立，少一件這個做法就不該留：
+ *
+ * 1. 畫面上不再重複印一次「暱稱」（你是點那一列進來的）。
+ * 2. **但欄位仍然有可靠的無障礙名稱** —— `<label>` 還在，只是 `.sr-only`。
+ *    規範擋的是「沒有名稱」，放行的只是看得見的那一份。
+ * 3. placeholder 讀得出來：它現在扛的是「這一格是什麼」，所以要過內文的 4.5:1。
+ *    （以前沒有設定過 ::placeholder，用瀏覽器預設灰，深色只有 3.27:1。）
+ */
+const nameField = await p.evaluate(() => {
+  const el = document.querySelector('#checker-name')
+  const lab = document.querySelector('label[for="checker-name"]')
+  const parse = (c) => { const m = c.match(/rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)/)
+    return m ? { r:+m[1], g:+m[2], b:+m[3], a: m[4]===undefined?1:+m[4] } : null }
+  const lum = ({ r, g, b }) => { const f = (v) => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4) }
+    return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b) }
+  const ph = getComputedStyle(el, '::placeholder')
+  const bg = parse(getComputedStyle(el).backgroundColor)
+  const fg0 = parse(ph.color)
+  const fg = { r: fg0.r*fg0.a+bg.r*(1-fg0.a), g: fg0.g*fg0.a+bg.g*(1-fg0.a), b: fg0.b*fg0.a+bg.b*(1-fg0.a) }
+  const [hi, lo] = [lum(fg), lum(bg)].sort((a, z) => z - a)
+  return {
+    看不見的標籤還在: Boolean(lab) && lab.getBoundingClientRect().width <= 1,
+    // 用「有沒有一顆看得見的 .label」來判，不用比對文字：`.sr-only` 是**裁切**
+    // 不是 display:none，它的字仍然在 innerText 裡——那是刻意留給螢幕閱讀器的。
+    畫面上沒有重複的標題: document.querySelectorAll('.sheet .label').length === 0,
+    placeholder: el.placeholder,
+    對比: +((hi + 0.05) / (lo + 0.05)).toFixed(2),
+  }
+})
+ok(`空的時候由 placeholder 說「${nameField.placeholder}」，畫面不再重複印標題`,
+   /暱稱/.test(nameField.placeholder) && nameField.畫面上沒有重複的標題)
+ok('但 <label> 還在（只是看不見），欄位仍然有無障礙名稱', nameField.看不見的標籤還在)
+ok(`placeholder 讀得出來：${nameField.對比}:1（內文門檻 4.5）`, nameField.對比 >= 4.5)
 ok('對焦時邊染成 accent、長出光暈，而且高度不變',
    groove.對焦有邊 && groove.對焦有光暈 && groove.高度沒變)
 

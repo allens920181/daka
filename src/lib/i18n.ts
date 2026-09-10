@@ -351,7 +351,10 @@ const zh = {
      errRoomNotFound）。但「由你點的」
      全專案 grep 不到——名字下面真正出現的是 checkedBy「王小明 於 02:58」。
      英文版一直是對的（who checked each name），這裡把中文補上。 */
-  yourNameHint: '選填。填了之後其他人會看到是你點的。',
+  /* 「選填」交給 placeholder 說（見 yourNamePlaceholder），這裡不重複。
+     留下來的是**後果**——那正是打字的當下最該看得到的一句。 */
+  yourNamePlaceholder: '暱稱（選填）',
+  yourNameHint: '填了之後，其他人會看到是你點的。',
   loading: '載入中…',
 } as const
 
@@ -592,7 +595,8 @@ const en: Record<MessageKey, string> = {
   fontXLarge: 'Extra large',
   fontSizeHint: 'This app already follows your system text size. This adds on top of it — if you changed it in your phone settings, the two combine.',
   yourName: 'Nickname',
-  yourNameHint: 'Optional. Others will see who checked each name.',
+  yourNamePlaceholder: 'Nickname (optional)',
+  yourNameHint: 'Others will see who checked each name.',
   loading: 'Loading…',
 }
 
