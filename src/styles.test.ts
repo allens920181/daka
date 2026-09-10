@@ -146,23 +146,23 @@ describe('設計 token 的靜態檢查', () => {
   /**
    * 箭頭指的是你會往哪裡去（2026-09）。
    *
-   * `⌄`（IconChevronDown）在這個 app 裡只有一個意思：**就地展開**，
-   * 而那件事只由 `.chevron` 表示（收合 `⌄`、展開轉 180° 成 `⌃`）。
-   * 「往下一步走」用 `›`、「回上一步」用 `‹`。
+   * 這個 app 只有兩個去處：**進去一張子畫面**（`›`）與**回上一層**（`‹`）。
+   * 所以方向記號也只有兩個。曾經有第三個方向——設定列的 `⌄`「就地展開」——
+   * 而那個互動 2026-09 收掉了（四列改成子畫面），`IconChevronDown`、
+   * `IconChevronUp`、`.chevron` 一起走。
    *
-   * 開空間的「產生名單」曾經借用 `⌄`，於是同一個記號給了兩種承諾。
+   * **沒有第三種箭頭，因為沒有第三種去處。**
    */
-  it('IconChevronDown 只用於「就地展開」（一定掛 .chevron）', () => {
-    const files = ['Home.tsx', 'NewRoom.tsx', 'Room.tsx', 'Sheets.tsx', 'Sheet.tsx',
-      'RosterInput.tsx', 'Scan.tsx', 'Toast.tsx', 'RoleBadge.tsx', 'Sheets.tsx']
-    const bad: string[] = []
-    for (const f of new Set(files)) {
-      const src = readFileSync(new URL(`./ui/${f}`, import.meta.url), 'utf8')
-      for (const m of src.matchAll(/<IconChevronDown\b[^>]*\/>/g)) {
-        if (!/\bchevron\b/.test(m[0])) bad.push(`${f} → ${m[0]}`)
-      }
-    }
-    expect(bad).toEqual([])
+  it('方向記號只有兩個：› 進去、‹ 回來', () => {
+    const icons = readFileSync(new URL('./ui/icons.tsx', import.meta.url), 'utf8')
+    const exported = [...icons.matchAll(/export const (Icon\w+)/g)].map((m) => m[1] as string)
+    const directional = exported.filter((n) => /Chevron|Arrow|Caret|Back/.test(n)).sort()
+    expect(directional).toEqual(['IconBack', 'IconChevronRight'])
+  })
+
+  it('沒有「就地展開」這個互動（.chevron 已移除）', () => {
+    const hits = RULES.map(([sel]) => sel).filter((sel) => /\.chevron\b/.test(sel))
+    expect(hits).toEqual([])
   })
 
   it('每個色彩 token 在三種主題狀態都有定義', () => {

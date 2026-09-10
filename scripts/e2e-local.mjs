@@ -853,15 +853,16 @@ ok('預設 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) 
 // 設定只剩首頁那顆齒輪進得去（2026-09 管理面板拿掉設定入口）。
 await p.goto(URL); await p.waitForTimeout(800)
 await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
-// 主題／語言改成摺疊列（2026-09），要先點開才看得到選項；選了選項後
-// 摺疊列自己收回去，所以切回中文前要用英文的「Language」字樣重新展開。
+// 主題／語言各是一張子畫面（2026-09 從就地展開改過來）：點那一列進去、
+// 選了選項自己返回，所以切回中文前要用英文的「Language」字樣重新進去。
 await p.getByRole('button',{name:/語言/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/English/}).click(); await p.waitForTimeout(600)
 ok('切成英文後 lang=en', (await p.evaluate(() => document.documentElement.lang)) === 'en')
 await p.getByRole('button',{name:/Language/}).click(); await p.waitForTimeout(300)
 await p.getByRole('button',{name:/中文/}).click(); await p.waitForTimeout(600)
 ok('切回中文後 lang=zh-TW', (await p.evaluate(() => document.documentElement.lang)) === 'zh-TW')
-ok('選了選項後摺疊列自己收回去', (await p.locator('.sheet .segmented').count()) === 0)
+ok('選了選項後自己返回那份清單', (await p.locator('.sheet .segmented').count()) === 0
+   && (await p.locator('.sheet .sheet-item').count()) > 0)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 // 掃描端：單機模式下用代碼加入別人的空間，錯的不是代碼，是這個站台沒有雲端。
@@ -948,7 +949,7 @@ ok('設定面板沒有標題列', (await p.locator('.sheet-title').count()) === 
 ok('但無障礙名稱還是「設定」', (await p.locator('.sheet').getAttribute('aria-label')) === '設定')
 ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count()) === 0)
 
-// 設定頁是四列長得一樣的摺疊列：暱稱、帳戶、主題、語言（2026-09）。單機模式
+// 設定頁是四列長得一樣的面板列：暱稱、帳戶、主題、語言（2026-09）。單機模式
 // 沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
 const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`設定頁的四列：${rows.join('、')}`,
@@ -960,19 +961,24 @@ const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
    shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '中文')
 
-// 暱稱要點開才有輸入框；打字之後收合列上就看得到。
-ok('暱稱沒展開時不佔輸入框的高度', (await p.locator('#checker-name').count()) === 0)
-await p.getByRole('button', { name: /^暱稱/ }).click(); await p.waitForTimeout(300)
-ok('點開之後輸入框在', await p.locator('#checker-name').isVisible())
+// 暱稱是一張子畫面（2026-09）：清單上只有值，進去才有輸入框，回來就看得到。
+ok('清單上沒有輸入框', (await p.locator('#checker-name').count()) === 0)
+await p.getByRole('button', { name: /^暱稱/ }).click(); await p.waitForTimeout(400)
+ok('進到子畫面才有輸入框', await p.locator('#checker-name').isVisible())
+ok('子畫面上那份清單不在了', (await p.locator('.sheet .sheet-item').count()) === 0)
+ok('子畫面有返回鍵', (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 1)
 await p.locator('#checker-name').fill('陳姐')
-await p.locator('#checker-name').blur(); await p.waitForTimeout(400)
-ok('收合列上就看得到剛填的暱稱',
+await p.locator('#checker-name').blur(); await p.waitForTimeout(300)
+await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
+ok('回到清單就看得到剛填的暱稱',
    (await p.locator('.sheet .sheet-item-value').first().textContent()) === '陳姐')
 
-// 一次只開一列：點主題，暱稱要自己收起來。
-await p.getByRole('button', { name: /^主題/ }).click(); await p.waitForTimeout(300)
-ok('開了主題，暱稱就收起來', (await p.locator('#checker-name').count()) === 0
-   && (await p.locator('.sheet .segmented').count()) === 1)
+// 每一列都是子畫面，所以不再有「一次只開一列」這回事——進去只會看到那一件事。
+await p.getByRole('button', { name: /^主題/ }).click(); await p.waitForTimeout(400)
+ok('主題子畫面只有那一組選項', (await p.locator('#checker-name').count()) === 0
+   && (await p.locator('.sheet .segmented').count()) === 1
+   && (await p.locator('.sheet .sheet-item').count()) === 0)
+await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 

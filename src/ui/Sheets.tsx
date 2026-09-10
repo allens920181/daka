@@ -1,4 +1,3 @@
-import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import {
   AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom,
@@ -18,7 +17,7 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconChevronDown, IconChevronRight, IconClose, IconCopy, IconDuplicate,
+  IconBookmark, IconChevronRight, IconClose, IconCopy, IconDuplicate,
   IconEdit, IconGoogle, IconHash, IconLink, IconMore,
   IconQr, IconShare, IconTrash,
 } from './icons'
@@ -718,56 +717,36 @@ export function SavedRostersSheet({ onApply, onClose }: {
 // ---------------------------------------------------------------------------
 
 /**
- * 設定頁的一列：標題、目前的值、一顆箭頭；點了才展開自己的內容。
+ * 設定。四列：暱稱、帳戶、主題、語言——都是跟這台裝置／這個人有關的偏好，
+ * 跟任何一個空間無關（所以這個面板只從首頁進得去，見 04-components/overlays.md）。
  *
- * **它就是 `.sheet-item`**（2026-09 合併）。這一列以前是自己一個元件
- * （`.select-row`），跟「更多」面板的列（`.menu-item`）分開長——而那兩個是同一種
- * 東西的兩個版本：同一個 [前導][主體][尾端] 的骨架，只是設定列不放圖示、放的是
- * 一個值。分開的代價是幾何各自漂移（對齊方式、負外距、標題字級都不一樣）。
- * 現在差別只剩「填了哪幾個槽」，而那正是槽位該有的樣子。
+ * **每一列點了都是開一張子畫面**（2026-09）。它們本來是「就地上下展開」，
+ * 而那是**全 app 唯一一個會在原地長高的地方**：其他每一張面板（更多、邀請點名、
+ * 空間的更多、常用名單）都是換頁。理由不是「統一比較好看」，是三件具體的事：
  *
- * 尾端的箭頭朝下且會轉（`.chevron`），不是朝右（`.go`）：這一列**就地展開**，
- * 不會離開這一頁。
+ * 1. **面板不再在腳下移動。** 實測展開一列會讓面板從 280 長到 360——而這個檔案
+ *    原本的註解寫著「高度鎖住⋯展開與收合都在同一個位置發生」，`Sheet` 根本沒有
+ *    鎖高度的參數。**那個機制從來不存在**，而它想解決的正是這個問題。
+ * 2. **少一個互動方案。** 全 app 的箭頭因此只剩兩個方向：`›` 進去、`‹` 回來。
+ *    `.chevron`／`IconChevronDown` 一併移除。
+ * 3. **這裡本來就有現成的子畫面機制。** 「重新命名」「建立副本」「存成常用名單」
+ *    都是「標籤 ＋ 輸入框 ＋ 確認」的子畫面，暱稱跟它們是同一種東西。
  *
- * 定義在元件外面不是風格問題——寫在 SettingsSheet 裡面的話每次 render 都是
- * 一個新的元件型別，Preact 會把整棵子樹拆掉重建，暱稱打到一半就會掉焦點。
+ * **沒有換成原生 `<select>`**：主題 3 個選項、語言 2 個，而原生選單在 iOS 上是
+ * 「點 → 滾輪 → 完成」，比現在多一次操作；規範自己也寫著 2–4 個選項用
+ * `.segmented`。而且它蓋不到暱稱（文字）與帳戶（兩顆按鈕）——那兩列還是得有
+ * 別的做法，等於**多一種方案而不是少一種**。
+ *
+ * 收合列右邊仍然印著目前的值（`.sheet-item-value`），不進去也看得到自己設了
+ * 什麼——那個好處來自那一格，不是來自展開。
  */
-function SettingRow({ label, value, open, onToggle, children }: {
-  label: string
-  /** 收合時右邊那段字：這一列現在是什麼。四列都要有，這是不用展開就看得到的資訊。 */
-  value: string
-  open: boolean
-  onToggle: () => void
-  children: ComponentChildren
-}) {
-  return (
-    <div class="field">
-      <button class="sheet-item" aria-expanded={open} onClick={onToggle}>
-        <span class="sheet-item-main"><strong>{label}</strong></span>
-        <span class="sheet-item-value">{value}</span>
-        {/*
-          尾端的箭頭跟 `.go` 一樣是 20——**尺寸跟著槽走，不跟著圖示走**。
-          IconChevronDown 的預設值 16 是為了「內嵌於文字」那個用途（開空間那顆
-          「產生名單 ⌄」），而這裡它是一列的尾端記號，跟隔壁面板的 `›` 是同一個
-          位置的同一件事。兩張面板切過去只差 4px 的話，那 4px 就是噪點。
-        */}
-        <IconChevronDown size={20} class={open ? 'chevron is-open' : 'chevron'} />
-      </button>
-      {open && children}
-    </div>
-  )
-}
-
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const t = useT()
   const p = prefs.value
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
-  /*
-    一次只開一列。四列都是「設一次、很少再改」的偏好，同時攤開只是把面板拉長；
-    而且展開的內容（輸入框、登出鍵、分段控制）互相之間沒有關係，不必並排比較。
-  */
-  const [open, setOpen] = useState<null | 'name' | 'account' | 'theme' | 'lang'>(null)
+  /** 現在停在哪一張子畫面；null 就是那份清單。 */
+  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'lang'>(null)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -775,113 +754,136 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return <SignInSheet onCancel={() => setSigningIn(false)} onDone={onClose} />
   }
 
-  const toggle = (row: 'name' | 'account' | 'theme' | 'lang') =>
-    () => setOpen((cur) => (cur === row ? null : row))
+  const back = () => setMode(null)
   const themeName = p.theme === 'system' ? t('themeSystem')
     : p.theme === 'light' ? t('themeLight') : t('themeDark')
 
-  return (
-    <Sheet
-      /*
-        高度鎖住的理由跟其他面板不太一樣：這一份不換頁，但**展開一列就會長高**
-        （實測收合 220 → 展開暱稱 300）。對使用者來說那是同一種困擾——面板在
-        腳下移動。鎖住之後展開與收合都在同一個位置發生。
-      */
-      title={t('settings')}
-      onClose={onClose}
-    >
-      {/*
-        四列長得一模一樣：暱稱、帳戶、主題、語言。它們是同一種東西——跟這台
-        裝置／這個人有關的偏好，跟任何一個空間無關（所以這個面板只從首頁進得
-        去，見 04-components/overlays.md）。以前暱稱是一直攤開的輸入框、帳戶
-        是一顆 .sheet-item，主題與語言才是摺疊列，三種長相排在一起，讀起來像
-        三件不相干的事。收合時右邊直接印出目前的值，不展開也看得到自己設了什麼。
-      */}
-      <div class="stack">
-        <SettingRow
-          label={t('yourName')}
-          value={name.trim() || t('notSet')}
-          open={open === 'name'}
-          onToggle={toggle('name')}
-        >
-          <input
-            id="checker-name" class="input" value={name} maxLength={40}
-            onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
-            onBlur={() => { void setCheckerName(name) }}
-          />
-          <span class="hint">{t('yourNameHint')}</span>
-        </SettingRow>
+  if (mode === 'name') {
+    // 離開這一頁就存。`onBlur` 也留著——用 Esc 直接關掉整張面板時焦點會先離開，
+    // 那條路走不到下面這個 onBack。
+    const save = () => { void setCheckerName(name); back() }
+    return (
+      <Sheet title={t('yourName')} onClose={onClose} onBack={save}>
+        <div class="stack">
+          <div class="field">
+            <label class="label" for="checker-name">{t('yourName')}</label>
+            <input
+              id="checker-name" class="input" value={name} maxLength={40}
+              onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
+              onBlur={() => { void setCheckerName(name) }}
+            />
+          </div>
+          <p class="hint">{t('yourNameHint')}</p>
+        </div>
+      </Sheet>
+    )
+  }
 
-        {/* 沒設定雲端的建置沒有帳戶這回事，整列不出現——不給一個按了只會說
-            「還沒設定雲端連線」的入口。 */}
-        {isSupabaseConfigured && (
-          <SettingRow
-            label={t('account')}
-            value={session.value ? session.value.email : t('notSignedIn')}
-            open={open === 'account'}
-            onToggle={toggle('account')}
-          >
-            {session.value ? (
-              <>
-                {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
-                    動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
-                    不加確認對話框（重新登入就還原），但後果要講出來。 */}
-                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
-                <p class="hint">{t('signOutWhat')}</p>
-              </>
-            ) : (
-              <>
-                <button class="btn btn-sm" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
-                <p class="hint">{t('signInWhy')}</p>
-              </>
-            )}
-          </SettingRow>
-        )}
+  if (mode === 'account') {
+    return (
+      <Sheet title={t('account')} onClose={onClose} onBack={back}>
+        <div class="stack">
+          <span class="label">{t('account')}</span>
+          {session.value ? (
+            <>
+              {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
+                  動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
+                  不加確認對話框（重新登入就還原），但後果要講出來。 */}
+              <button class="btn btn-block" onClick={() => { void signOut() }}>{t('signOut')}</button>
+              <p class="hint">{t('signOutWhat')}</p>
+            </>
+          ) : (
+            <>
+              <button class="btn btn-block" onClick={() => setSigningIn(true)}>{t('signIn')}</button>
+              <p class="hint">{t('signInWhy')}</p>
+            </>
+          )}
+        </div>
+      </Sheet>
+    )
+  }
 
-        {/*
-          主題／語言各只有 2-3 個選項，攤開就是一整條 .segmented 的高度。展開
-          用的是篩選列同一顆元件（見 roll-call.md「分段控制」）；選了就收回去，
-          不必再點一次收合。
-        */}
-        <SettingRow
-          label={t('theme')}
-          value={themeName}
-          open={open === 'theme'}
-          onToggle={toggle('theme')}
-        >
+  /*
+    主題／語言各只有 2–3 個選項，用的是篩選列同一顆 `.segmented`
+    （見 roll-call.md「分段控制」）。**選了就自己返回**，不必再按一次返回鍵——
+    這一頁存在的理由只有那一個選擇。
+  */
+  if (mode === 'theme') {
+    return (
+      <Sheet title={t('theme')} onClose={onClose} onBack={back}>
+        <div class="field">
+          <span class="label">{t('theme')}</span>
           <div class="segmented" role="group" aria-label={t('theme')}>
             {(['system', 'light', 'dark'] as const).map((theme) => (
               <button
                 key={theme}
                 class="segment"
                 aria-pressed={p.theme === theme}
-                onClick={() => { void setPrefs({ theme }); setOpen(null) }}
+                onClick={() => { void setPrefs({ theme }); back() }}
               >
                 {theme === 'system' ? t('themeSystem') : theme === 'light' ? t('themeLight') : t('themeDark')}
               </button>
             ))}
           </div>
-        </SettingRow>
+        </div>
+      </Sheet>
+    )
+  }
 
-        <SettingRow
-          label={t('language')}
-          value={p.lang === 'zh' ? '中文' : 'English'}
-          open={open === 'lang'}
-          onToggle={toggle('lang')}
-        >
+  if (mode === 'lang') {
+    return (
+      <Sheet title={t('language')} onClose={onClose} onBack={back}>
+        <div class="field">
+          <span class="label">{t('language')}</span>
           <div class="segmented" role="group" aria-label={t('language')}>
             {(['zh', 'en'] as const).map((lang) => (
               <button
                 key={lang}
                 class="segment"
                 aria-pressed={p.lang === lang}
-                onClick={() => { void setPrefs({ lang }); setOpen(null) }}
+                onClick={() => { void setPrefs({ lang }); back() }}
               >
                 {lang === 'zh' ? '中文' : 'English'}
               </button>
             ))}
           </div>
-        </SettingRow>
+        </div>
+      </Sheet>
+    )
+  }
+
+  return (
+    <Sheet title={t('settings')} onClose={onClose}>
+      <div class="sheet-items">
+        <button class="sheet-item" onClick={() => setMode('name')}>
+          <span class="sheet-item-main"><strong>{t('yourName')}</strong></span>
+          <span class="sheet-item-value">{name.trim() || t('notSet')}</span>
+          <IconChevronRight class="go" />
+        </button>
+
+        {/* 沒設定雲端的建置沒有帳戶這回事，整列不出現——不給一個按了只會說
+            「還沒設定雲端連線」的入口。 */}
+        {isSupabaseConfigured && (
+          <button class="sheet-item" onClick={() => setMode('account')}>
+            <span class="sheet-item-main"><strong>{t('account')}</strong></span>
+            <span class="sheet-item-value">
+              {session.value ? session.value.email : t('notSignedIn')}
+            </span>
+            <IconChevronRight class="go" />
+          </button>
+        )}
+
+        <button class="sheet-item" onClick={() => setMode('theme')}>
+          <span class="sheet-item-main"><strong>{t('theme')}</strong></span>
+          <span class="sheet-item-value">{themeName}</span>
+          <IconChevronRight class="go" />
+        </button>
+
+        <button class="sheet-item" onClick={() => setMode('lang')}>
+          <span class="sheet-item-main"><strong>{t('language')}</strong></span>
+          <span class="sheet-item-value">{p.lang === 'zh' ? '中文' : 'English'}</span>
+          <IconChevronRight class="go" />
+        </button>
       </div>
     </Sheet>
   )

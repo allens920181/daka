@@ -1500,7 +1500,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
  *   ├─ svg                前導圖示（可選）
  *   ├─ .sheet-item-main   主體：<strong> 標題 ＋ 可選的 .sub 副說明
  *   ├─ .sheet-item-value  尾端的值（可選）——「這一列現在是什麼」
- *   └─ svg.go / .chevron  尾端箭頭（可選）：開子畫面／就地展開
+ *   └─ svg.go            尾端箭頭（可選）：這一列會開一張子畫面
  */
 .sheet-items { display: flex; flex-direction: column; gap: 2px; }
 
@@ -1554,24 +1554,24 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 讓那一列有右邊界：一張面板上兩三列靠左的短字加一大片空白，是它看起來像沒做完
  * 的主要原因。
  *
- * `.chevron`（朝下、會轉）是另一個意思：**就地展開**，不離開這一頁。
+ * **`.go` 是唯一的尾端箭頭。** 曾經還有一顆朝下的 `.chevron`（就地展開），
+ * 2026-09 隨著設定面板改成子畫面一起移除——這個 app 只有一種面板內導覽。
  */
 .sheet-item .go { flex: none; color: var(--ink-3); }
 .sheet-item:has(.sub) .go { margin-top: 2px; }
 .sheet-item.danger { color: var(--fb-error); }
 
 /*
- * 「按了會在原地展開」的那顆箭頭，收合時 `⌄`、展開時轉 180° 成 `⌃`。
+ * `.chevron`（就地展開的那顆 `⌄`）2026-09 移除。
  *
- * **`⌄` 在這個 app 裡只有這一個意思。** 開空間的「產生名單」以前也用它，
- * 2026-09 換成 `›`——那件事是往下一步走，不是把東西在原地打開。同一個記號
- * 給兩種承諾，兩邊都會變弱。
+ * 它最後一個使用者是設定面板的四列，而那四列改成了子畫面——**全 app 因此只剩
+ * 一種面板內導覽（換頁），箭頭也只剩兩個方向：`›` 進去、`‹` 回來**。
  *
- * （這裡的註解本來寫著「設定列與首頁的『加入空間』共用同一顆」，而首頁那顆
- * 早就改成一顆開面板的普通按鈕、沒有箭頭了——又一句描述著不存在的東西的散文。）
+ * 就地展開之所以要走，不是為了統一好看，是它是全站唯一一個**會在原地長高**的
+ * 地方：實測展開一列讓面板從 280 長到 360，而這個檔案與 `SettingsSheet` 的註解
+ * 都寫著「高度鎖住⋯展開與收合都在同一個位置發生」——`Sheet` 根本沒有鎖高度的
+ * 參數，**那個機制從來不存在**，而它想解決的正是這件事。
  */
-.chevron { flex: none; transition: transform var(--dur-1) var(--ease); }
-.chevron.is-open { transform: rotate(180deg); }
 
 /*
  * `.menu-divider` 2026-09 移除：`src/ui/` 裡沒有任何一個地方用它，而
