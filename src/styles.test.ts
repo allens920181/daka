@@ -14,6 +14,14 @@ const css = readFileSync(new URL('./styles.css', import.meta.url), 'utf8')
 const body = css.slice(css.lastIndexOf("color-scheme: dark;"))
 
 /**
+ * 移除註解。這份樣式表的註解會引用它取代掉的舊值（顏色、尺寸），那些是說明，
+ * 不是會被套用的宣告——掃描前要先拿掉，不然「寫清楚為什麼改」會變成違規。
+ */
+function stripComments(input: string): string {
+  return input.replace(/\/\*[\s\S]*?\*\//g, '')
+}
+
+/**
  * 移除 @keyframes 區塊。裡面的數值是動畫的中間端點（例如 50% 時 opacity: .3），
  * 那是動態曲線的一部分，不是設計 token。
  */
@@ -59,6 +67,37 @@ describe('設計 token 的靜態檢查', () => {
     expect(hits).toEqual([])
   })
 
+  /*
+   * 設定裡那顆字級鍵是**倍率**（2026-09）。兩條規則守著它的兩端。
+   */
+  it('七階字級每一階都吃得到 --fs-scale', () => {
+    // 漏掉一階，那一階就對使用者的設定免疫——而且是安靜的：畫面上其他字都變大，
+    // 只有那一種不動，沒有任何錯誤。
+    const tiers = [...css.matchAll(/(--fs-[1-7]):\s*([^;]+);/g)]
+    expect(tiers).toHaveLength(7)
+    const missing = tiers.filter(([, , value]) => !(value ?? '').includes('var(--fs-scale)'))
+      .map(([, name]) => name)
+    expect(missing).toEqual([])
+  })
+
+  it('--fs-scale 不得寫進根字級', () => {
+    /*
+     * 看起來這樣比較簡潔：`font-size: calc(17 / 16 * 1rem * var(--fs-scale))`。
+     * 但它是壞的，而且只在 Apple 平台上壞——
+     *
+     *   1. 根元素上的 `rem` 指的是 font-size 的**初始值**（16px），不是 Dynamic
+     *      Type 算出來的值；
+     *   2. 下一行的 `font: -apple-system-body` 是簡寫，會**整條蓋掉** font-size。
+     *
+     * 於是在 iOS 上使用者選了「特大」什麼都不會發生，在 Chrome 上卻好好的。
+     * 倍率必須留在 --fs-* 那七階上，那裡的 `rem` 才是系統真正給的大小。
+     */
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    const root = stripped.slice(0, stripped.indexOf('}'))
+    const decl = root.match(/font-size:[^;]+;/)?.[0] ?? ''
+    expect(decl).not.toContain('--fs-scale')
+  })
+
   it('沒有硬寫的十六進位色（token 定義區與列印區除外）', () => {
     const printAt = body.indexOf('@media print')
     const scanned = printAt === -1 ? body : body.slice(0, printAt)
@@ -92,14 +131,24 @@ describe('設計 token 的靜態檢查', () => {
 
   it('沒有硬寫的 rgba（遮罩必須走 --scrim）', () => {
     const printAt = body.indexOf('@media print')
-    const scanned = printAt === -1 ? body : body.slice(0, printAt)
+    // 註解要先去掉：這份樣式表的註解**會引用它取代掉的那個值**（「本來是
+    // rgb(117, 117, 117)」），而寫在註解裡的顏色不會被套用到任何東西上。
+    // 不能因為一條規則寫得清楚就判它違規。
+    const scanned = stripComments(printAt === -1 ? body : body.slice(0, printAt))
     expect([...scanned.matchAll(/rgba?\([^)]*\)/g)].map((m) => m[0])).toEqual([])
   })
 
   it('沒有裸露的 opacity 字面值', () => {
     const printAt = body.indexOf('@media print')
-    const scanned = stripKeyframes(printAt === -1 ? body : body.slice(0, printAt))
-    expect([...scanned.matchAll(/opacity:\s*([\d.]+)/g)].map((m) => m[1])).toEqual([])
+    const scanned = stripKeyframes(stripComments(printAt === -1 ? body : body.slice(0, printAt)))
+    const hits = [...scanned.matchAll(/opacity:\s*([\d.]+)/g)].map((m) => m[1])
+      /*
+       * `1` 是**重置**，不是設計值。Firefox 預設會把 `::placeholder` 調淡，
+       * 不寫這一行的話那裡的對比會低於量好的 4.75:1／5.42:1。
+       * 這條規則要擋的是「隨手挑一個 .6 當淡化」，不是把瀏覽器加的東西拿掉。
+       */
+      .filter((v) => v !== '1')
+    expect(hits).toEqual([])
   })
 
   /**
@@ -131,11 +180,38 @@ describe('設計 token 的靜態檢查', () => {
   it('--el-1 只給「整塊可以按」的東西', () => {
     // 陰影在這個 app 裡有指派好的意思：這一整塊按得下去。
     // 名單列未到時浮起、已到時沉回頁面，教的就是這件事。
-    const allowed = new Set(['.recent-item', '.member', ".segment[aria-pressed='true']"])
+    //
+    // `.btn` 2026-09 加進來：它本來靠一條 3:1 的硬框定義自己，而同一個畫面上
+    // 其他線都是 1.16 的髮絲線——重的那些看起來就是「框」。按鈕是這條規則最
+    // 標準的例子（整顆都按得下去），改用陰影之後它跟名單列、空間列講的是同一
+    // 句話。
+    const allowed = new Set(['.btn', '.recent-item', '.member', ".segment[aria-pressed='true']"])
     const hits = RULES
       .filter(([, d]) => /box-shadow:[^;]*--el-1/.test(d))
       .map(([sel]) => sel)
       .filter((sel) => !allowed.has(sel))
+    expect(hits).toEqual([])
+  })
+
+  /**
+   * 元件不靠描邊定義自己（2026-09）。
+   *
+   * `--rule-strong`（3:1）本來給「所有可互動元件的邊界」，於是每一顆次要按鈕、
+   * 每一顆晶片、每一個輸入框都是一個硬邊灰框——而全站其他線都是 1.16 的髮絲線。
+   * 現在形狀語言收成對稱的兩句話：
+   *
+   *   **按的東西** → 浮起來（`--el-1`）
+   *   **打字的東西** → 凹下去（`--surface-2` 凹槽，不描邊）
+   *
+   * 兩邊都不需要那條線了。`--rule-strong` 因此只剩兩個用途：`:hover` 那種
+   * 「正在碰它」的回饋，以及面板握把的**填色**（它是一個實心小長條，不是邊）。
+   */
+  it('元件不用 --rule-strong 描邊', () => {
+    const hits = RULES
+      .filter(([, d]) => /border(?:-[a-z]+)?(?:-color)?:[^;]*--rule-strong/.test(d))
+      .map(([sel]) => sel)
+      // :hover／:focus 是「正在碰它」的回饋，不是元件平常的邊界。
+      .filter((sel) => !/:(?:hover|focus|focus-visible|active)\b/.test(sel))
     expect(hits).toEqual([])
   })
 

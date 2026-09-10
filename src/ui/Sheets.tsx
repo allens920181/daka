@@ -746,7 +746,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
   /** 現在停在哪一張子畫面；null 就是那份清單。 */
-  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'lang'>(null)
+  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'font' | 'lang'>(null)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -757,6 +757,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const back = () => setMode(null)
   const themeName = p.theme === 'system' ? t('themeSystem')
     : p.theme === 'light' ? t('themeLight') : t('themeDark')
+  const fontName = p.font === 'base' ? t('fontBase')
+    : p.font === 'lg' ? t('fontLarge') : t('fontXLarge')
 
   if (mode === 'name') {
     // 離開這一頁就存。`onBlur` 也留著——用 Esc 直接關掉整張面板時焦點會先離開，
@@ -766,9 +768,24 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       <Sheet title={t('yourName')} onClose={onClose} onBack={save}>
         <div class="stack">
           <div class="field">
-            <label class="label" for="checker-name">{t('yourName')}</label>
+            {/*
+              **標籤收進輸入框裡**（2026-09）。
+              這一頁只有一個欄位，而你是點了一列叫「暱稱」的東西才進來的——畫面
+              再印一次「暱稱」是同一個字說第三遍（面板的 aria-label 也是它）。
+              空的時候由 placeholder 說，寫了之後那兩個字的工作已經做完了。
+
+              **`<label>` 沒有拿掉，只是看不見**：placeholder 不是可靠的無障礙
+              名稱（規範 §inputs「placeholder 不得取代 label」擋的就是這件事）。
+              這裡放行的是「看得見的那一份」，不是那個名稱本身。
+
+              說明沒有跟著收進去：量過，「暱稱（選填，別人會看到是你點的）」在
+              320px 的手機上**預設字級就會被截斷**（272 / 262px），放大字級是
+              530px。而且它講的是後果，那是打字的當下最該看得到的一句。
+            */}
+            <label class="sr-only" for="checker-name">{t('yourName')}</label>
             <input
               id="checker-name" class="input" value={name} maxLength={40}
+              placeholder={t('yourNamePlaceholder')}
               // return 鍵變成「完成」，按下去就跟按返回一樣：存起來、回上一頁。
               enterkeyhint="done"
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); save() } }}
@@ -833,6 +850,39 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     )
   }
 
+  /*
+    文字大小。三個選項，所以跟主題一樣用 `.segmented`。
+
+    **它是倍率，不是字級。** 那七階仍然跟著系統的 Dynamic Type 走，這裡選的是
+    「在那之上再放大多少」——所以底下那句 `.hint` 是必要的，不然選了「標準」
+    卻發現字跟系統一樣大的人會以為這顆鍵沒有作用。
+
+    這一頁**不自己返回**（主題與語言會）。放大字級是一件要看著結果調的事：
+    整張面板就在眼前跟著變，留在這裡才看得到自己選了什麼。
+  */
+  if (mode === 'font') {
+    return (
+      <Sheet title={t('fontSize')} onClose={onClose} onBack={back}>
+        <div class="field">
+          <span class="label">{t('fontSize')}</span>
+          <div class="segmented" role="group" aria-label={t('fontSize')}>
+            {(['base', 'lg', 'xl'] as const).map((font) => (
+              <button
+                key={font}
+                class="segment"
+                aria-pressed={p.font === font}
+                onClick={() => { void setPrefs({ font }) }}
+              >
+                {font === 'base' ? t('fontBase') : font === 'lg' ? t('fontLarge') : t('fontXLarge')}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p class="hint">{t('fontSizeHint')}</p>
+      </Sheet>
+    )
+  }
+
   if (mode === 'lang') {
     return (
       <Sheet title={t('language')} onClose={onClose} onBack={back}>
@@ -879,6 +929,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <button class="sheet-item" onClick={() => setMode('theme')}>
           <span class="sheet-item-main"><strong>{t('theme')}</strong></span>
           <span class="sheet-item-value">{themeName}</span>
+          <IconChevronRight class="go" />
+        </button>
+
+        <button class="sheet-item" onClick={() => setMode('font')}>
+          <span class="sheet-item-main"><strong>{t('fontSize')}</strong></span>
+          <span class="sheet-item-value">{fontName}</span>
           <IconChevronRight class="go" />
         </button>
 

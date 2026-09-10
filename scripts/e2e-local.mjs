@@ -1012,14 +1012,14 @@ ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count
 // 設定頁是四列長得一樣的面板列：暱稱、帳戶、主題、語言（2026-09）。單機模式
 // 沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
 const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
-ok(`設定頁的四列：${rows.join('、')}`,
-   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '語言']))
+ok(`設定頁的每一列：${rows.join('、')}`,
+   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '語言']))
 ok('單機模式沒有帳戶那一列', (await p.getByText('帳戶').count()) === 0)
 
 // 收合時右邊印著目前的值，不展開也看得到自己設了什麼。
 const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
-   shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '中文')
+   shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '標準' && shown[3] === '中文')
 
 // 暱稱是一張子畫面（2026-09）：清單上只有值，進去才有輸入框，回來就看得到。
 ok('清單上沒有輸入框', (await p.locator('#checker-name').count()) === 0)
@@ -1027,6 +1027,74 @@ await p.getByRole('button', { name: /^暱稱/ }).click(); await p.waitForTimeout
 ok('進到子畫面才有輸入框', await p.locator('#checker-name').isVisible())
 ok('子畫面上那份清單不在了', (await p.locator('.sheet .sheet-item').count()) === 0)
 ok('子畫面有返回鍵', (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 1)
+
+/*
+ * 輸入框是**凹槽**，不是描邊的框（2026-09）。
+ *
+ * 規範自己寫著「凹槽不描邊——填色已經定義形狀了，再描一條只是把同一件事說第二
+ * 次」。所以驗兩件事：平常沒有看得見的邊（底色自己說話），對焦時那條邊染成
+ * accent 並長出光暈——**而且不位移**，因為邊一直都在，只是透明的。
+ */
+const groove = await p.evaluate(() => {
+  const el = document.querySelector('#checker-name')
+  // 這一頁開起來焦點就在輸入框上（面板會把焦點送給第一個可聚焦的東西），
+  // 所以要先讓它失焦，量到的才是「平常」的樣子。
+  el.blur()
+  /* `getComputedStyle` 回的是**活的**物件：對焦之後同一個參照會跟著變。
+     所以要先把值抄下來，不能留著參照等一下再讀。 */
+  const snap = () => { const cs = getComputedStyle(el)
+    return { bg: cs.backgroundColor, border: cs.borderTopColor, shadow: cs.boxShadow } }
+  const idle = snap()
+  const before = el.getBoundingClientRect().height
+  el.focus()
+  const on = snap()
+  return {
+    底是凹槽: idle.bg !== getComputedStyle(document.querySelector('.sheet')).backgroundColor,
+    平常沒有邊: /rgba\(0, 0, 0, 0\)|transparent/.test(idle.border),
+    對焦有邊: !/rgba\(0, 0, 0, 0\)|transparent/.test(on.border),
+    對焦有光暈: on.shadow !== 'none',
+    高度沒變: Math.abs(el.getBoundingClientRect().height - before) < 0.5,
+  }
+})
+ok('輸入框是凹槽：平常沒有看得見的邊', groove.平常沒有邊 && groove.底是凹槽)
+
+/*
+ * 標籤收進輸入框裡（2026-09）。三件事要一起成立，少一件這個做法就不該留：
+ *
+ * 1. 畫面上不再重複印一次「暱稱」（你是點那一列進來的）。
+ * 2. **但欄位仍然有可靠的無障礙名稱** —— `<label>` 還在，只是 `.sr-only`。
+ *    規範擋的是「沒有名稱」，放行的只是看得見的那一份。
+ * 3. placeholder 讀得出來：它現在扛的是「這一格是什麼」，所以要過內文的 4.5:1。
+ *    （以前沒有設定過 ::placeholder，用瀏覽器預設灰，深色只有 3.27:1。）
+ */
+const nameField = await p.evaluate(() => {
+  const el = document.querySelector('#checker-name')
+  const lab = document.querySelector('label[for="checker-name"]')
+  const parse = (c) => { const m = c.match(/rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)/)
+    return m ? { r:+m[1], g:+m[2], b:+m[3], a: m[4]===undefined?1:+m[4] } : null }
+  const lum = ({ r, g, b }) => { const f = (v) => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4) }
+    return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b) }
+  const ph = getComputedStyle(el, '::placeholder')
+  const bg = parse(getComputedStyle(el).backgroundColor)
+  const fg0 = parse(ph.color)
+  const fg = { r: fg0.r*fg0.a+bg.r*(1-fg0.a), g: fg0.g*fg0.a+bg.g*(1-fg0.a), b: fg0.b*fg0.a+bg.b*(1-fg0.a) }
+  const [hi, lo] = [lum(fg), lum(bg)].sort((a, z) => z - a)
+  return {
+    看不見的標籤還在: Boolean(lab) && lab.getBoundingClientRect().width <= 1,
+    // 用「有沒有一顆看得見的 .label」來判，不用比對文字：`.sr-only` 是**裁切**
+    // 不是 display:none，它的字仍然在 innerText 裡——那是刻意留給螢幕閱讀器的。
+    畫面上沒有重複的標題: document.querySelectorAll('.sheet .label').length === 0,
+    placeholder: el.placeholder,
+    對比: +((hi + 0.05) / (lo + 0.05)).toFixed(2),
+  }
+})
+ok(`空的時候由 placeholder 說「${nameField.placeholder}」，畫面不再重複印標題`,
+   /暱稱/.test(nameField.placeholder) && nameField.畫面上沒有重複的標題)
+ok('但 <label> 還在（只是看不見），欄位仍然有無障礙名稱', nameField.看不見的標籤還在)
+ok(`placeholder 讀得出來：${nameField.對比}:1（內文門檻 4.5）`, nameField.對比 >= 4.5)
+ok('對焦時邊染成 accent、長出光暈，而且高度不變',
+   groove.對焦有邊 && groove.對焦有光暈 && groove.高度沒變)
+
 await p.locator('#checker-name').fill('陳姐')
 await p.locator('#checker-name').blur(); await p.waitForTimeout(300)
 await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
@@ -1039,6 +1107,47 @@ ok('主題子畫面只有那一組選項', (await p.locator('#checker-name').cou
    && (await p.locator('.sheet .segmented').count()) === 1
    && (await p.locator('.sheet .sheet-item').count()) === 0)
 await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
+
+/*
+ * 文字大小（2026-09）。
+ *
+ * **它是倍率，不是字級。** 驗的是三件事，而第二件是整個功能的成立條件：
+ *
+ * 1. 選了字真的變大（--fs-scale 乘進七階）。
+ * 2. **根字級一格都沒有動。** 根字級是系統設定（Dynamic Type／瀏覽器預設字級）
+ *    的落點；這顆鍵一旦改到它，就等於把系統設定吃掉——那正是 iOS 評估 §1.1
+ *    花一整輪修掉的東西。所以「有沒有變大」不夠，還要驗「變大的不是它」。
+ * 3. 關掉再打開還記得。
+ */
+await p.getByRole('button', { name: /^文字大小/ }).click(); await p.waitForTimeout(400)
+const fontAt = () => p.evaluate(() => ({
+  scale: getComputedStyle(document.documentElement).getPropertyValue('--fs-scale').trim(),
+  root: getComputedStyle(document.documentElement).fontSize,
+  hint: getComputedStyle(document.querySelector('.sheet .hint')).fontSize,
+}))
+const fontBase = await fontAt()
+ok(`預設是標準（倍率 ${fontBase.scale}，根字級 ${fontBase.root}）`,
+   fontBase.scale === '1' && (await p.evaluate(() => document.documentElement.hasAttribute('data-font'))) === false)
+
+await p.getByRole('button', { name: /^特大$/ }).click(); await p.waitForTimeout(500)
+const fontXl = await fontAt()
+ok(`選「特大」字就變大：${fontBase.hint} → ${fontXl.hint}`,
+   parseFloat(fontXl.hint) > parseFloat(fontBase.hint) * 1.2)
+ok(`但根字級一格都沒動（${fontBase.root} → ${fontXl.root}）——系統設定沒有被吃掉`,
+   fontXl.root === fontBase.root)
+ok('選了不會自己返回（放大字級要看著結果調）',
+   (await p.locator('.sheet .segmented').count()) === 1)
+
+await p.reload(); await p.waitForTimeout(900)
+ok('關掉重開還記得',
+   (await p.evaluate(() => document.documentElement.getAttribute('data-font'))) === 'xl')
+
+// 調回標準，免得後面的檢查都在放大的版面上跑。
+await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^文字大小/ }).click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^標準$/ }).click(); await p.waitForTimeout(500)
+ok('調回標準就把屬性拿掉（預設狀態下 DOM 上一個字都不多）',
+   (await p.evaluate(() => document.documentElement.hasAttribute('data-font'))) === false)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 
@@ -1196,19 +1305,32 @@ const grouping = await p.evaluate(() => {
     const prev = e.previousElementSibling
     return prev?.classList.contains('member') && !prev.classList.contains('is-arrived')
   })
-  if (!mid) return { out, run: false }
+  if (!mid) return { out, run: false, single: false }
   const cs = getComputedStyle(mid)
   const line = getComputedStyle(mid, '::before')
+  /*
+   * **一個接縫只能有一條線。**
+   *
+   * 上一列的 `border-bottom` 與這一列的髮絲線會落在同一個位置——兩條都留的話
+   * 疊出 2px 的雙線，而且上面那條滿版、下面那條從 48px 才開始，寬度還不一樣。
+   * 那正是「名單上莫名有兩條線」的成因。所以整段裡不是最後一列的那幾列，
+   * 下緣不畫，接縫交給下一列那條縮排的髮絲線。
+   */
+  const above = getComputedStyle(mid.previousElementSibling)
   return {
     out,
     run: parseFloat(cs.borderTopLeftRadius) === 0
       && parseFloat(line.borderTopWidth) >= 1
       // 髮絲線從文字起點開始，不整條貫穿（讓開前面那顆圈圈）。
       && parseFloat(line.left) >= 40,
+    // 這一列的上緣與上一列的下緣都不畫，接縫上就只剩那條髮絲線。
+    single: /rgba\(0, 0, 0, 0\)|transparent/.test(above.borderBottomColor)
+      && /rgba\(0, 0, 0, 0\)|transparent/.test(cs.borderTopColor),
   }
 })
 ok('已到的列退出卡片，直接坐在頁面上', grouping.out)
 ok('連續的未到收成一張卡片：中間的角是平的，接縫是一條讓開圈圈的髮絲線', grouping.run)
+ok('而且一個接縫只有那一條線（上一列的下緣不重複畫）', grouping.single)
 // 動作列 2026-09 回來了，它吃掉的高度是有代價的——換到的是三個時刻不必先開選單。
 ok(`底部動作列只吃掉 ${fold.dockH}px`, fold.hasDock && fold.dockH <= 72)
 ok('搜尋跟篩選同一列，右邊那一顆（省下的 76px 等於一列人名）', fold.searchRow)

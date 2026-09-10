@@ -221,13 +221,26 @@
    *
    * **只有字級是 rem。** 間距、圓角、觸控尺寸全部維持 px——見它們各自那一段。
    */
-  --fs-1: calc(11 / 17 * 1rem);   /* 等寬微標籤，唯一允許小於 13px 的用途 */
-  --fs-2: calc(13 / 17 * 1rem);
-  --fs-3: calc(15 / 17 * 1rem);
-  --fs-4: calc(17 / 17 * 1rem);   /* 內文、姓名、所有輸入框（iOS 低於 16px 會放大頁面）*/
-  --fs-5: calc(20 / 17 * 1rem);
-  --fs-6: calc(26 / 17 * 1rem);
-  --fs-7: calc(34 / 17 * 1rem);
+  /*
+   * `--fs-scale` 是**設定裡那顆字級鍵**（2026-09）。它是乘在系統字級上的倍率，
+   * 不是取代它——`1rem` 那一段照樣跟著 Dynamic Type／瀏覽器設定跑，這個倍率再
+   * 疊上去。所以把系統字調大的人，在這裡再選「大」，兩件事會相加而不是互相
+   * 覆蓋。**順序不能反**：如果這顆鍵改寫的是根字級，它就會把系統設定吃掉，
+   * 而那正是 §1.1 花一整輪修掉的東西。
+   *
+   * 只往上，沒有「小」：--fs-1 是 11px，規範寫著它是唯一允許小於 13px 的用途；
+   * 乘 0.85 會變 9px，那條地板就破了。而且這個 app 的使用者在戶外、可能逆光，
+   * 沒有人需要更小的字。
+   */
+  --fs-scale: 1;
+
+  --fs-1: calc(11 / 17 * 1rem * var(--fs-scale));   /* 等寬微標籤，唯一允許小於 13px 的用途 */
+  --fs-2: calc(13 / 17 * 1rem * var(--fs-scale));
+  --fs-3: calc(15 / 17 * 1rem * var(--fs-scale));
+  --fs-4: calc(17 / 17 * 1rem * var(--fs-scale));   /* 內文、姓名、所有輸入框（iOS 低於 16px 會放大頁面）*/
+  --fs-5: calc(20 / 17 * 1rem * var(--fs-scale));
+  --fs-6: calc(26 / 17 * 1rem * var(--fs-scale));
+  --fs-7: calc(34 / 17 * 1rem * var(--fs-scale));
   /* 曾經有第八階（44px），它是為計分區的未到大字而存在的。計分區 2026-08 拿掉
      之後那一階再也沒有人用，2026-09 一併移除；「畫面上最大的數字是未到人數」
      現在由篩選列自己扛（見 .segment .count：--fs-5 ＋ --st-pending，
@@ -311,6 +324,18 @@
 
   color-scheme: light;
 }
+
+/*
+ * 字級倍率的兩階（2026-09）。跟 `data-theme` 同一個做法：標準沒有屬性，
+ * 選了才蓋上去——預設狀態下 DOM 上一個字都不會多。
+ *
+ * 1.15 與 1.3 不是隨手取的：iOS Dynamic Type 從預設（Large）往上到 xxxLarge
+ * 大約是 1.35 倍，這兩階把那段路分成兩步。再往上是輔助使用的 AX 級距，那已經
+ * 是系統設定該負責的範圍——這顆鍵是補**不知道系統哪裡可以調**的人，不是要在
+ * app 裡把整套 Dynamic Type 重做一遍。
+ */
+:root[data-font='lg'] { --fs-scale: 1.15; }
+:root[data-font='xl'] { --fs-scale: 1.3; }
 
 /*
  * 深色的兩份宣告內容必須完全一致（一份給系統偏好，一份給手動指定）。
@@ -479,8 +504,27 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   min-height: var(--tap-min); padding: 0 var(--sp-4);
-  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
+  /*
+   * **邊界靠浮起來，不靠描一條線**（2026-09）。
+   *
+   * 它本來是 `--rule-strong`（3.04:1）。那個值是為了 WCAG 1.4.11 訂的——可互動
+   * 元件的邊界要 3:1——但它讓每一顆次要按鈕都變成一個硬邊灰框，而全站其他線都是
+   * 1.16 的髮絲線：同一個畫面上兩種差 2.6 倍的線，重的那些看起來就是「框」。
+   *
+   * 真正的矛盾在名單上：`.member-main` 也是 `<button>`、整列可按，它用的是
+   * 髮絲線 ＋ `--el-1` 就夠了。**所以 3:1 的硬框是例外，不是規則。**
+   *
+   * 改用這個系統自己既有的說法：`--el-1` ＝「這一整塊按得下去」（見
+   * 04-components/README.md 的兩條軸）。按鈕現在跟名單列、首頁的空間列是同一
+   * 種東西——浮在紙上的一塊，而不是畫在紙上的一個框。
+   *
+   * **打字的東西不適用**：輸入框、代碼框、名單編輯區保留 `--rule-strong`。
+   * 它們沒有浮起來，那條線就是「這裡可以打字」的唯一說法（`--check-line` 的
+   * 註解講的是同一件事：旁邊沒有填色可以幫忙的時候，線要自己撐住）。
+   */
+  border: 1px solid var(--rule); border-radius: var(--r-2);
   background: var(--surface); color: var(--ink);
+  box-shadow: var(--el-1);
   font-size: var(--fs-4); font-weight: 600; cursor: pointer;
   transition: transform var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
   touch-action: manipulation;
@@ -553,12 +597,44 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .label { font-size: var(--fs-2); font-weight: 600; color: var(--ink-2); }
 .hint { font-size: var(--fs-2); color: var(--ink-3); line-height: 1.5; }
 
+/*
+ * **輸入框是凹槽，不是描邊的框**（2026-09）。
+ *
+ * 它本來是白底 ＋ `--rule-strong`（3:1）的邊。那條邊是全站最重的線之一，於是
+ * 每一個輸入框都是一個硬邊灰框——而按鈕同一輪已經改成浮起來了，畫面上只剩
+ * 這些框還在描邊。
+ *
+ * 規範自己早就寫了答案：**「凹槽不描邊——填色已經定義形狀了，再描一條只是把
+ * 同一件事說第二次。」** 而且這個 app 裡早就有一個現成的例子：展開的搜尋框
+ * （`.search-wrap .input`）從以前就是 `--surface-2` 的凹槽，沒有邊，沒有人
+ * 覺得它不像輸入框。
+ *
+ * 於是整套形狀語言收成對稱的兩句話：
+ *
+ *     按的東西 → 浮起來（--el-1）
+ *     打字的東西 → 凹下去（--surface-2）
+ *
+ * 邊留著但透明：對焦時要染成 --accent，留 1px 才不會在那一刻位移。
+ */
 .input, .textarea {
   width: 100%; padding: var(--sp-3) var(--sp-3);
-  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
-  background: var(--surface); color: var(--ink);
+  border: 1px solid transparent; border-radius: var(--r-2);
+  background: var(--surface-2); color: var(--ink);
   font-size: var(--fs-4);
 }
+/*
+ * **placeholder 有自己的顏色**（2026-09）。
+ *
+ * 在這之前全 app 沒有設定過 `::placeholder`，用的是瀏覽器預設的
+ * `rgb(117, 117, 117)`——**兩個主題同一個值**，所以它在深色凹槽上只有 3.27:1，
+ * 淺色 3.99:1，兩邊都低於內文的 4.5:1。以前那只是「淡了點」；暱稱那一頁把標籤
+ * 收進 placeholder 之後，它扛的是「這一格是什麼」，就不能將就了。
+ *
+ * `--ink-3` 是系統指定的「最淺的可用文字色」，在凹槽上是 4.75:1（淺）／
+ * 5.42:1（深）。它會跟著主題走，那個瀏覽器預設值不會。
+ */
+.input::placeholder, .textarea::placeholder { color: var(--ink-3); opacity: 1; }
+
 .input:focus, .textarea:focus {
   border-color: var(--accent); outline: none;
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -610,8 +686,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .code-row {
   display: flex; align-items: center;
   min-height: var(--tap-lg);
-  background: var(--surface);
-  border: 1px solid var(--rule-strong); border-radius: var(--r-2);
+  /* 跟其他輸入框一樣是凹槽（見 .input 上面那段）：整個框就是一個可以打字的地方，
+     所以它凹下去，而不是描一條邊。 */
+  background: var(--surface-2);
+  border: 1px solid transparent; border-radius: var(--r-2);
   transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 .code-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -633,9 +711,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
      hover 底色也填不滿整個框）。 */
   align-self: stretch; flex: none;
   border: none; background: none; border-radius: 0 var(--r-2) var(--r-2) 0;
+  /* **陰影也要拿掉。** `.btn` 2026-09 改成靠 --el-1 浮起來，而這一顆不是一顆
+     獨立的按鈕，是那個框的右半邊——留著會在凹槽裡描出一道自己的邊。 */
+  box-shadow: none;
   color: var(--accent);
 }
-.code-row > .btn:hover:not(:disabled) { background: var(--surface-2); }
+/* 底色從凹槽提到白：整個框是凹的，這一格亮起來就是「手指在這裡」。
+   本來是 --surface-2，而那 2026-09 變成整個框自己的底色了，等於沒有回饋。 */
+.code-row > .btn:hover:not(:disabled) { background: var(--surface); }
 
 /* === 首頁 ================================================================ */
 
@@ -922,7 +1005,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .group-chip {
   display: inline-flex; align-items: center; gap: var(--sp-2);
   min-height: var(--tap-min); padding: 0 var(--sp-3); flex: 0 0 auto;
-  border: 1px solid var(--rule-strong); border-radius: var(--r-full);
+  /* 跟 .btn 同一個理由（見上）：它是一顆按得下去的東西，不是一個框。
+     選取狀態靠 --accent 的邊 ＋ 淡底說話，那個對比因此更明顯了。 */
+  border: 1px solid var(--rule); border-radius: var(--r-full);
   background: var(--surface); color: var(--ink-2);
   font-size: var(--fs-3); font-weight: 600; cursor: pointer;
   white-space: nowrap; touch-action: manipulation;
@@ -983,7 +1068,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .search-wrap .input {
   /* 右邊讓開那顆取消鍵（48px＋它自己的呼吸空間），不然打長一點的字會滑到它底下。 */
   height: 100%; padding: 0 calc(var(--tap-min) + var(--sp-1)) 0 var(--sp-3);
-  border-color: transparent; background: var(--surface-2);
+  /* 凹槽的底與透明的邊 2026-09 變成所有輸入框的預設，這裡不必再說一次。
+     這一格本來就是那個做法的原型。 */
 }
 
 /* 往左長：`left` 從那顆圖示鍵的左緣開始，`right` 固定不動——看起來就是從鍵的
@@ -1144,6 +1230,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* 後面還有未到＝這一列不是整段的最後一列。 */
 .member:not(.is-arrived):has(+ .member:not(.is-arrived)) {
   border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+  /*
+   * **下緣不畫。** 接縫只該有一條線，而那條線是下一列那條縮排的髮絲線
+   * （見底下的 ::before）。兩條都留的話，每一個接縫會疊出 2px 的雙線——
+   * 上面一條滿版、下面一條從 48px 才開始，寬度還不一樣。
+   */
+  border-bottom-color: transparent;
   /* 陰影只留給整段的最後一列。每一列都留的話，段落內部每一道接縫都會有一條
      自己的陰影，跟髮絲線打架——而那正是這次要收掉的噪點。 */
   box-shadow: none;
