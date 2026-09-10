@@ -623,6 +623,14 @@ export async function setStatusWithUndo(
   if (!previous || previous.status === status) return
   const prevStatus = previous.status
   await setStatus(memberId, status)
+  /*
+   * 可以在設定裡關掉（2026-09）。**擋的只有這一個**——錯誤訊息、同步衝突、
+   * 複製結果那幾種照樣跳，它們一場活動出現一兩次而且是使用者需要知道的事。
+   *
+   * 關掉之後仍然改得回來：再點一次那個人就會切回去。**失去的是「知道剛剛動到
+   * 的是誰」**——點錯隔壁那一列的時候，沒有那句「某某 · 已到」你不會發現。
+   */
+  if (!prefs.value.rollCallToast) return
   showToast(describe(previous), {
     label: undoLabel,
     run: () => { void setStatus(memberId, prevStatus) },

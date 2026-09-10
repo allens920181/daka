@@ -1052,13 +1052,14 @@ ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count
 // 沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
 const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`設定頁的每一列：${rows.join('、')}`,
-   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '語言']))
+   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '點名提示', '語言']))
 ok('單機模式沒有帳戶那一列', (await p.getByText('帳戶').count()) === 0)
 
 // 收合時右邊印著目前的值，不展開也看得到自己設了什麼。
 const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
-   shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '標準' && shown[3] === '中文')
+   shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '標準'
+   && shown[3] === '顯示' && shown[4] === '中文')
 
 // 暱稱是一張子畫面（2026-09）：清單上只有值，進去才有輸入框，回來就看得到。
 ok('清單上沒有輸入框', (await p.locator('#checker-name').count()) === 0)
@@ -1189,6 +1190,57 @@ await p.getByRole('button', { name: /^文字大小/ }).click(); await p.waitForT
 await p.getByRole('button', { name: /^標準$/ }).click(); await p.waitForTimeout(500)
 ok('調回標準就把屬性拿掉（預設狀態下 DOM 上一個字都不多）',
    (await p.evaluate(() => document.documentElement.hasAttribute('data-font'))) === false)
+
+/*
+ * 點名提示可以關掉（2026-09）。
+ *
+ * **這一顆的重點在「範圍」。** 它擋的只有點名那一個 Toast（`setStatusWithUndo`）
+ * ——那是每點一個人跳一次、40 個人就 40 次的那個。錯誤訊息、同步衝突、複製結果
+ * 那幾種**不能跟著關掉**：它們一場活動出現一兩次，而且是使用者需要知道的事。
+ * 一個總開關會把錯誤訊息一起關掉，那是這條檢查在守的東西。
+ *
+ * 關掉之後仍然改得回來（再點一次那個人），失去的是「知道剛剛動到的是誰」。
+ */
+await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^點名提示/ }).click(); await p.waitForTimeout(400)
+ok('這一頁有一句說明（它關掉的是一張安全網，不是換個長相）',
+   (await p.locator('.sheet .hint').count()) === 1)
+await p.getByRole('button', { name: /^不顯示$/ }).click(); await p.waitForTimeout(500)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+// 自己開一間：這一段前面那些空間有的已經結束點名了，名單列會是停用的。
+await p.goto(URL); await p.waitForTimeout(700)
+await p.getByRole('button', { name: /創建空間/ }).first().click(); await p.waitForTimeout(400)
+await p.locator('#room-name').fill('點名提示測試')
+await p.locator('#roster-text').fill('王小明\n李美花\n張三')
+await p.waitForTimeout(300)
+await p.getByRole('button', { name: /產生名單/ }).click(); await p.waitForTimeout(600)
+await p.getByRole('button', { name: /建立/ }).click(); await p.waitForTimeout(1500)
+const beforeTap = await p.locator('.member').first().getAttribute('class')
+await p.locator('.member-main').first().click(); await p.waitForTimeout(900)
+ok('關掉之後點名不跳提示', (await p.locator('.toast').count()) === 0)
+ok('但那個人確實被標記了（關的是提示，不是功能）',
+   (await p.locator('.member').first().getAttribute('class')) !== beforeTap)
+await p.locator('.member-main').first().click(); await p.waitForTimeout(900)
+ok('再點一次仍然改得回來（復原這條路沒有斷）',
+   (await p.locator('.member').first().getAttribute('class')) === beforeTap)
+
+// 別的 Toast 不受影響——這是這個設定能成立的前提。
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^編輯$/ }).click(); await p.waitForTimeout(600)
+await p.locator('.dock').getByRole('button').first().click(); await p.waitForTimeout(600)
+await p.locator('.sheet textarea, .sheet input.input').first().fill('臨時來的人')
+await p.waitForTimeout(300)
+await p.locator('.sheet .btn-primary').first().click(); await p.waitForTimeout(1000)
+ok('但錯誤訊息那一類的 Toast 沒有跟著關掉（臨時加人的確認照樣跳）',
+   (await p.locator('.toast').count()) === 1)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+// 調回「顯示」，後面的檢查都靠那個 Toast。
+await p.goto(URL); await p.waitForTimeout(800)
+await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^點名提示/ }).click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^顯示$/ }).click(); await p.waitForTimeout(500)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 

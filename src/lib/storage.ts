@@ -27,6 +27,16 @@ export interface Prefs {
    * 每一台裝置上已經存好的偏好。
    */
   font: 'base' | 'lg' | 'xl'
+  /**
+   * 點名時每點一個人跳不跳提示（2026-09）。
+   *
+   * **只管點名那一個 Toast**（`setStatusWithUndo`）。錯誤訊息、同步衝突、
+   * 複製結果那幾種不受影響——它們一場活動出現一兩次，而且是使用者需要知道的
+   * 事；點名那個是每點一個人跳一次，40 個人就是 40 次。
+   *
+   * 預設開著：它帶著「復原」，是誤觸的安全網。
+   */
+  rollCallToast: boolean
 }
 
 export interface RecentRoom {
@@ -36,7 +46,7 @@ export interface RecentRoom {
   lastSeen: number
 }
 
-export const DEFAULT_PREFS: Prefs = { lang: 'zh', theme: 'system', font: 'base' }
+export const DEFAULT_PREFS: Prefs = { lang: 'zh', theme: 'system', font: 'base', rollCallToast: true }
 
 /** IndexedDB 在無痕模式或停用儲存時會丟錯；一律降級成「沒有資料」而不是讓畫面掛掉。 */
 async function safeGet<T>(key: string): Promise<T | undefined> {

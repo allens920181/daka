@@ -746,7 +746,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
   /** 現在停在哪一張子畫面；null 就是那份清單。 */
-  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'font' | 'lang'>(null)
+  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'font' | 'toast' | 'lang'>(null)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -759,6 +759,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     : p.theme === 'light' ? t('themeLight') : t('themeDark')
   const fontName = p.font === 'base' ? t('fontBase')
     : p.font === 'lg' ? t('fontLarge') : t('fontXLarge')
+  const toastName = p.rollCallToast ? t('rollCallToastOn') : t('rollCallToastOff')
 
   if (mode === 'name') {
     // 離開這一頁就存。`onBlur` 也留著——用 Esc 直接關掉整張面板時焦點會先離開，
@@ -895,6 +896,37 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     )
   }
 
+  /*
+    點名提示。兩個選項，跟語言一樣用 `.segmented`。
+
+    **這一頁留了一句說明**，而主題／字級那幾頁的都拿掉了——因為這一顆關掉的是
+    一張安全網（誤觸後那句「某某 · 已到」與「復原」），不是換個長相。要關可以，
+    但要知道自己關掉的是什麼、以及還有什麼路可以走。
+
+    選了不自己返回：跟字級一樣，這是會想看一眼自己選了什麼的設定。
+  */
+  if (mode === 'toast') {
+    return (
+      <Sheet title={t('rollCallToast')} onClose={onClose} onBack={back}>
+        <div class="field">
+          <div class="segmented" role="group" aria-label={t('rollCallToast')}>
+            {([true, false] as const).map((on) => (
+              <button
+                key={String(on)}
+                class="segment"
+                aria-pressed={p.rollCallToast === on}
+                onClick={() => { void setPrefs({ rollCallToast: on }) }}
+              >
+                {on ? t('rollCallToastOn') : t('rollCallToastOff')}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p class="hint">{t('rollCallToastHint')}</p>
+      </Sheet>
+    )
+  }
+
   if (mode === 'lang') {
     return (
       <Sheet title={t('language')} onClose={onClose} onBack={back}>
@@ -949,6 +981,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <button class="sheet-item" onClick={() => setMode('font')}>
           <span class="sheet-item-main"><strong>{t('fontSize')}</strong></span>
           <span class="sheet-item-value">{fontName}</span>
+          <IconChevronRight class="go" />
+        </button>
+
+        <button class="sheet-item" onClick={() => setMode('toast')}>
+          <span class="sheet-item-main"><strong>{t('rollCallToast')}</strong></span>
+          <span class="sheet-item-value">{toastName}</span>
           <IconChevronRight class="go" />
         </button>
 
