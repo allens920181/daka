@@ -186,7 +186,22 @@
      「復原」那顆用 --accent 家族的亮 teal（深底上的強調色本來就該亮）。 */
   --toast-bg: #171c22;
   --toast-ink: #f6f8fa;
-  --toast-action: #3cc7ce;
+  /*
+   * 「復原」的顏色 2026-09 降彩度：#3cc7ce → #7bc6ca。
+   *
+   * 舊值在 OKLCH 裡是 L.761 C.115——**全 app 最亮、而且第二飽和的顏色**，
+   * 僅次於「未到」那個數字（C.128）。那是一顆小小的文字鍵，卻喊得跟畫面上
+   * 唯一該喊的那個數字一樣大聲，而配色重構自己寫著「顏色預算省下來給真正
+   * 該喊的那一個數字」。
+   *
+   * 新值把它拉回品牌家族：**彩度跟品牌 teal 一樣**（C.075 ≈ .071）、色相一樣
+   * （200°），只有亮度為了坐在深底上提高（L.78）。跟 --st-arrived-fill／
+   * --st-arrived-ink 是同一手法：同一個顏色，兩個明度給兩種場合。
+   *
+   * 而且它更安全，不是在犧牲可讀性：對 Toast 的底 5.93 → 6.23，按壓狀態
+   * 4.64 → 4.88。降彩度在深底上反而把對比拉開了。
+   */
+  --toast-action: #7bc6ca;
   /* Toast 是誤觸的安全網，必須看得出它是一塊獨立的東西。淺色時深底自己就
      夠分明（16:1），深色時底色只比它蓋住的名單列亮一點點，靠邊框定義。 */
   --toast-line: #171c22;
@@ -376,7 +391,7 @@
 
     --toast-bg: #21272f;
     --toast-ink: #eaedf1;
-    --toast-action: #3cc7ce;
+    --toast-action: #7bc6ca;
     --toast-line: #69727e;
     --google-bg: #131314;
     --google-ink: #e3e3e3;
@@ -423,7 +438,7 @@
 
   --toast-bg: #21272f;
   --toast-ink: #eaedf1;
-  --toast-action: #3cc7ce;
+  --toast-action: #7bc6ca;
   --toast-line: #69727e;
   --google-bg: #131314;
   --google-ink: #e3e3e3;
