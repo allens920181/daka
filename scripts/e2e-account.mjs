@@ -38,7 +38,9 @@ async function signInWithGoogle(d) {
   await d.page.goto(URL); await d.page.waitForTimeout(900)
   await d.page.locator('button[aria-label="設定"]').click(); await d.page.waitForTimeout(500)
   // 登入鍵搬進設定頁的 .sheet-item（2026-09），連著一句說明一起算進無障礙名稱，
-  // 所以只認開頭，不整串精確比對。
+  // 所以只認開頭，不整串精確比對。同年設定改成子畫面，它又往裡搬了一層：
+  // 設定 → 帳戶 → 登入。
+  await d.page.getByRole('button', { name: /^帳戶/ }).click(); await d.page.waitForTimeout(500)
   await d.page.getByRole('button', { name: /^登入/ }).click(); await d.page.waitForTimeout(400)
   await d.page.getByRole('button', { name: /用 Google 登入/ }).click()
   // 導走 → 回來 → 重新啟動 → 換 token → 認領資產
@@ -50,6 +52,8 @@ async function signInWithGoogle(d) {
 async function signInWithEmail(d, email) {
   await d.page.goto(URL); await d.page.waitForTimeout(900)
   await d.page.locator('button[aria-label="設定"]').click(); await d.page.waitForTimeout(500)
+  // 設定 2026-09 改成子畫面：登入住在「帳戶」裡面。
+  await d.page.getByRole('button', { name: /^帳戶/ }).click(); await d.page.waitForTimeout(500)
   await d.page.getByRole('button', { name: /^登入/ }).click(); await d.page.waitForTimeout(400)
   await d.page.getByRole('button', { name: /改用 Email/ }).click(); await d.page.waitForTimeout(300)
   await d.page.locator('#signin-email').fill(email)
@@ -76,7 +80,7 @@ await useGoogleAccount(EMAIL)
 
 // --- 舊手機：沒登入就開空間，行為與從前完全相同 ---
 await A.page.goto(URL); await A.page.waitForTimeout(900)
-await A.page.getByRole('button', { name: /開啟空間/ }).first().click(); await A.page.waitForTimeout(300)
+await A.page.getByRole('button', { name: /創建空間/ }).first().click(); await A.page.waitForTimeout(300)
 await A.page.locator('#room-name').fill('秋季旅遊 · 出發')
 await A.page.locator('#roster-text').fill('王小明\n李美花 +1\n陳大同')
 await A.page.waitForTimeout(300)
@@ -89,13 +93,26 @@ ok(`[舊手機] 未登入就開好空間 ${code}`, /^[2-9A-HJ-KM-NP-Z]{6}$/.test
 await A.page.locator('.member-main').nth(0).click(); await A.page.waitForTimeout(1200)
 
 await A.page.goto(URL); await A.page.waitForTimeout(1000)
-ok('[舊手機] 未登入時首頁沒有「我的活動」', (await A.page.getByText('我的活動').count()) === 0)
+// 這裡原本也是看「我的活動」在不在，而那個標題已經不存在了——恆為 0 的檢查
+// 驗不到任何東西。未登入的證據改看設定裡的帳戶那一列。
+await A.page.locator('button[aria-label="設定"]').click(); await A.page.waitForTimeout(600)
+ok('[舊手機] 未登入時帳戶那一列寫著「未登入」',
+   (await A.page.locator('.sheet .sheet-item').allTextContents()).includes('帳戶未登入'))
+await A.page.keyboard.press('Escape'); await A.page.waitForTimeout(400)
 
 // --- 新手機：沒登入，用代碼進得去（協助點名），但管不動 ---
 await B.page.goto(`${URL}#/r/${code}`); await B.page.waitForTimeout(1800)
 ok('[新手機] 用代碼進得去（協助點名不需要帳號）', await B.page.locator('.topbar-name').isVisible())
 await B.page.locator('.topbar button[aria-label="更多"]').click(); await B.page.waitForTimeout(500)
-ok('[新手機] 未登入時看不到擁有者功能', (await B.page.getByRole('button', { name: /^編輯$/ }).count()) === 0)
+/*
+ * 「編輯」對協助者也開放，這是刻意的（見 Sheets.tsx 那一段：他進得去，只是
+ * 看不到叉叉與標題輸入框）。所以它不能當擁有者功能的探針——這裡改用真正鎖在
+ * owner 後面的「存成常用」，並且順便驗那句對協助者說明「你少了什麼」的話。
+ */
+ok('[新手機] 未登入時看不到擁有者功能（存成常用）',
+   (await B.page.getByRole('button', { name: /^存成常用$/ }).count()) === 0)
+ok('[新手機] 而且有一句話說清楚協助者少了什麼',
+   (await B.page.locator('.sheet .hint').count()) >= 1)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
 // 「建立副本」刻意對所有人開放（見 schema.sql 的 copy_room），所以不能拿它
@@ -104,13 +121,25 @@ await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 await B.page.goto(URL); await B.page.waitForTimeout(900)
 await B.page.getByRole('button', { name: /^更多：/ }).first().click(); await B.page.waitForTimeout(500)
 ok('[新手機] 但複製回程空間對所有人開放', (await B.page.getByRole('button', { name: /建立副本/ }).count()) === 1)
-ok('[新手機] 不是主揪就沒有重新命名與刪除空間',
-   (await B.page.getByRole('button', { name: /重新命名|刪除空間/ }).count()) === 0)
+/*
+ * 驗的是「按不按得下去」，不是「看不看得到那五個字」：「刪除空間」那一列現在對
+ * 所有人都印，它是**入口**，進去才分岔——「從清單移除」只影響這支手機（那是他
+ * 自己的清單，誰都可以），真正把所有人紀錄一起刪掉的那一顆鎖在 owner 後面。
+ */
+ok('[新手機] 不是主揪就沒有重新命名',
+   (await B.page.getByRole('button', { name: /^重新命名$/ }).count()) === 0)
+// 那一列的無障礙名稱含副標（「10/10 自動刪除」），所以不能用 ^…$ 錨定。
+await B.page.getByRole('button', { name: /刪除空間/ }).first().click(); await B.page.waitForTimeout(500)
+ok('[新手機] 進去只有「從清單移除」，沒有真的刪掉所有人紀錄的那一顆',
+   (await B.page.getByRole('button', { name: /^從清單移除$/ }).count()) === 1
+   && (await B.page.locator('.sheet .sheet-item.danger').count()) === 0)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
 // --- 登入面板：Google 是主要路徑，Email 是備援 ---
 await A.page.goto(URL); await A.page.waitForTimeout(900)
 await A.page.locator('button[aria-label="設定"]').click(); await A.page.waitForTimeout(500)
+// 設定 2026-09 改成子畫面（收掉「就地展開」那個互動），登入住在「帳戶」裡面。
+await A.page.getByRole('button', { name: /^帳戶/ }).click(); await A.page.waitForTimeout(500)
 await A.page.getByRole('button', { name: /^登入/ }).click(); await A.page.waitForTimeout(400)
 ok('登入面板第一顆是 Google',
   (await A.page.locator('.sheet .btn').first().textContent())?.includes('Google'))
@@ -134,10 +163,17 @@ ok(`登入後網址上沒有殘留的 code：${A.page.url()}`, !/[?&]code=/.test
 const toast = await A.page.locator('.toast-text').textContent().catch(() => '')
 ok(`[舊手機] 登入後接管本機資產：「${toast}」`, /1 個空間/.test(toast ?? ''))
 await A.page.waitForTimeout(400)
-ok('[舊手機] 首頁出現「我的活動」', await A.page.getByText('我的活動').isVisible())
+/*
+ * 首頁的清單 2026-09 從「我的活動／最近的空間」兩個區塊合併成一份，那個標題
+ * 因此不存在了（切子集合改用全部／我的／他人的三顆分段鍵，而且只有一間空間時
+ * 不印那一列）。認領成功現在看的是**那一列自己說它是我的**：主揪的身分記號。
+ */
 const mine = await A.page.locator('.recent-item .recent-name').first().textContent()
-ok(`[舊手機] 我的活動列出「${mine}」`, mine === '秋季旅遊 · 出發')
-ok('[舊手機] 附帶已到人頭統計', (await A.page.locator('.recent-meta').first().textContent())?.includes('/ 4'))
+ok(`[舊手機] 認領後首頁列出「${mine}」`, mine === '秋季旅遊 · 出發')
+ok('[舊手機] 而且那一列標著主揪',
+   (await A.page.locator('.recent-item .role-badge').first().getAttribute('aria-label')) === '主揪')
+// 三個人，點掉一個 →「1 / 3 人」。
+ok('[舊手機] 附帶已到人頭統計', (await A.page.locator('.recent-meta').first().textContent())?.includes('/ 3'))
 
 // --- 新手機登入同一個帳號 → 拿得回空間 ---
 await signInWithGoogle(B)
@@ -145,13 +181,22 @@ await B.page.waitForTimeout(600)
 ok('[新手機] 登入後看得到同一場活動', await B.page.getByText('秋季旅遊 · 出發').first().isVisible())
 await B.page.getByText('秋季旅遊 · 出發').first().click(); await B.page.waitForTimeout(1800)
 await B.page.locator('.topbar button[aria-label="更多"]').click(); await B.page.waitForTimeout(600)
-ok('[新手機] 現在看得到擁有者功能了', await B.page.getByRole('button', { name: /^編輯$/ }).isVisible())
+// 用「存成常用」當探針，不用「編輯」——後者對協助者也開放（見上）。
+ok('[新手機] 現在看得到擁有者功能了', await B.page.getByRole('button', { name: /^存成常用$/ }).isVisible())
 
-// 真的改得動（這是「換手機拿得回空間」的實證）
-await B.page.getByRole('button', { name: /重新命名/ }).click(); await B.page.waitForTimeout(400)
-await B.page.locator('.sheet input.input').fill('從新手機改的名字')
-await B.page.locator('.sheet').getByRole('button', { name: /^儲存$/ }).click(); await B.page.waitForTimeout(1500)
-await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(400)
+/*
+ * 真的改得動（這是「換手機拿得回空間」的實證）。
+ *
+ * 改名字 2026-09 不再是選單裡的一列了：進編輯模式，頂欄的標題**自己變成輸入框**
+ * ——改的是眼前那個標題，不是另開一頁改它的複本。而且那個輸入框主揪限定
+ * （協助者進編輯模式只是為了那顆「＋」），所以它同時也是擁有權的實證。
+ */
+await B.page.getByRole('button', { name: /^編輯$/ }).click(); await B.page.waitForTimeout(700)
+ok('[新手機] 編輯模式下標題變成輸入框（主揪限定）',
+   (await B.page.locator('.topbar-name-input').count()) === 1)
+await B.page.locator('.topbar-name-input').fill('從新手機改的名字')
+await B.page.locator('.topbar-name-input').press('Enter'); await B.page.waitForTimeout(1500)
+await B.page.getByRole('button', { name: /^完成$/ }).click(); await B.page.waitForTimeout(800)
 ok('[新手機] 改得動空間名稱', (await B.page.locator('.topbar-name').textContent()) === '從新手機改的名字')
 
 // --- 舊手機對帳後看得到新手機的改動 ---
@@ -162,20 +207,35 @@ ok('[舊手機] 看得到新手機改的名字', (await A.page.locator('.topbar-
 await A.page.goto(URL); await A.page.waitForTimeout(900)
 await A.page.locator('button[aria-label="設定"]').click(); await A.page.waitForTimeout(500)
 ok('[舊手機] 設定顯示已登入的 Email', (await A.page.getByText(EMAIL).count()) > 0)
+// 登出跟登入一樣住在「帳戶」子畫面裡（2026-09 設定改成子畫面）。
+await A.page.getByRole('button', { name: /^帳戶/ }).click(); await A.page.waitForTimeout(500)
 await A.page.getByRole('button', { name: /^登出$/ }).click(); await A.page.waitForTimeout(1200)
 await A.page.keyboard.press('Escape'); await A.page.waitForTimeout(500)
-ok('[舊手機] 登出後「我的活動」消失', (await A.page.getByText('我的活動').count()) === 0)
+// 「我的活動」那個標題 2026-09 隨著清單合併一起沒了，所以不能再拿它當登出的
+// 證據（它現在恆為 0，那條檢查等於什麼都沒驗）。改看設定裡的帳戶那一列。
+await A.page.locator('button[aria-label="設定"]').click(); await A.page.waitForTimeout(600)
+ok('[舊手機] 登出後帳戶那一列回到「未登入」',
+   (await A.page.locator('.sheet .sheet-item').allTextContents()).includes('帳戶未登入'))
+await A.page.keyboard.press('Escape'); await A.page.waitForTimeout(400)
 await A.page.goto(`${URL}#/r/${code}`); await A.page.waitForTimeout(1800)
 await A.page.locator('.topbar button[aria-label="更多"]').click(); await A.page.waitForTimeout(600)
+// 用「存成常用」當探針：「編輯」對協助者也開放，證明不了擁有權。
 ok('[舊手機] 登出後仍管得動自己開的空間（裝置金鑰還在）',
-  await A.page.getByRole('button', { name: /^編輯$/ }).isVisible())
+  await A.page.getByRole('button', { name: /^存成常用$/ }).isVisible())
 
 // --- 備援路徑仍然通：Google 在內建瀏覽器裡會被擋，那時這條是唯一的路 ---
 const C = await phone('備援手機')
-await signInWithEmail(C, `fallback+${Date.now()}@example.com`)
+const fallbackEmail = `fallback+${Date.now()}@example.com`
+await signInWithEmail(C, fallbackEmail)
 await C.page.waitForTimeout(600)
+/*
+ * 登進去了沒？原本看的是首頁有沒有「我的活動」，而那個標題 2026-09 隨著清單
+ * 合併一起沒了——那條檢查因此恆為 0，等於什麼都沒驗。而且這支手機本來就一間
+ * 空間都沒有，就算標題還在也不會出現。改看設定裡的帳戶那一列印不印得出他是誰。
+ */
+await C.page.locator('button[aria-label="設定"]').click(); await C.page.waitForTimeout(700)
 ok('[備援手機] 用 Email 驗證碼一樣登得進去',
-  (await C.page.getByText('我的活動').count()) > 0)
+  (await C.page.locator('.sheet .sheet-item').allTextContents()).some((t) => t.includes(fallbackEmail)))
 
 const errs = [...A.errs, ...B.errs, ...C.errs]
 ok('無 JS 錯誤', errs.length === 0)

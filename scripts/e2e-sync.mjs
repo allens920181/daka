@@ -39,7 +39,7 @@ const reconcile = async (d) => {
 // --- 主揪開空間 ---
 await A.p.goto(URL); await A.p.waitForTimeout(1000)
 ok('[主揪] 連上雲端（不是單機模式）', (await A.p.locator('.page-note').count()) === 0)
-await A.p.getByRole('button', { name: /開啟空間/ }).first().click(); await A.p.waitForTimeout(300)
+await A.p.getByRole('button', { name: /創建空間/ }).first().click(); await A.p.waitForTimeout(300)
 await A.p.locator('#room-name').fill('秋季旅遊 · 出發')
 await A.p.locator('#roster-text').fill('王小明 0912345678\n李美花 +1\n陳大同（請假）\n張三\n李四')
 await A.p.waitForTimeout(300)
@@ -56,20 +56,20 @@ ok('[主揪] 未到 5', (await missing(A.p)) === '5')
 await B.p.goto(`${URL}#/j/${code}`); await B.p.waitForTimeout(2000)
 ok('[同工] 用分享連結進到同一個空間', (await B.p.locator('.topbar-name').textContent()) === '秋季旅遊 · 出發')
 ok('[同工] 看到同一份名單（5 人）', (await B.p.locator('.member').count()) === 5)
-ok('[同工] 未到也是 4', (await missing(B.p)) === '4')
+ok('[同工] 未到也是 5', (await missing(B.p)) === '5')
 ok('[同工] 標示為協助點名而非擁有者', (await B.p.locator('.topbar button[aria-label="更多"]').count()) === 1)
 
 // --- 主揪點名 → 同工對帳後看到 ---
 await A.p.locator('.member-main').nth(0).click(); await A.p.waitForTimeout(1200)
-ok('[主揪] 點名後未到 3', (await missing(A.p)) === '3')
+ok('[主揪] 點名後未到 4', (await missing(A.p)) === '4')
 await reconcile(B)
-ok('[同工] 對帳後也看到未到 3', (await missing(B.p)) === '3')
+ok('[同工] 對帳後也看到未到 4', (await missing(B.p)) === '4')
 ok('[同工] 王小明那列變成已到', (await B.p.locator('.member').nth(0).getAttribute('class'))?.includes('is-arrived'))
 
 // --- 同工點名 → 主揪看到（反向）---
 await B.p.locator('.member-main').nth(3).click(); await B.p.waitForTimeout(1200)
 await reconcile(A)
-ok('[主揪] 看到同工點的那一筆，未到 2', (await missing(A.p)) === '2')
+ok('[主揪] 看到同工點的那一筆，未到 3', (await missing(A.p)) === '3')
 
 // --- 兩人同時點同一個人（冪等，不重複計算）---
 await Promise.all([
@@ -79,27 +79,28 @@ await Promise.all([
 await A.p.waitForTimeout(1500); await reconcile(A); await reconcile(B)
 const a1 = await missing(A.p)
 const b1 = await missing(B.p)
-ok(`[雙方] 同時點同一人不會重複計算（A=${a1} B=${b1}）`, a1 === '1' && b1 === '1')
+ok(`[雙方] 同時點同一人不會重複計算（A=${a1} B=${b1}）`, a1 === '2' && b1 === '2')
 
 // --- 離線點名 → 恢復連線後上傳 ---
 await B.ctx.setOffline(true)
 await B.p.waitForTimeout(500)
 await B.p.locator('.member-main').nth(1).click(); await B.p.waitForTimeout(800)
-// 全部到齊 = 未到那一段歸零。
-ok('[同工] 離線仍可點名，本地立刻更新', (await missing(B.p)) === '0')
+// 五個人點掉四個，還剩陳大同。（「（請假）」2026-09 只是一則備註，不再是狀態，
+// 所以他也算未到——這一串數字就是那次改動之後整條少一的地方。）
+ok('[同工] 離線仍可點名，本地立刻更新', (await missing(B.p)) === '1')
 const badge = await syncLabel(B.p)
 ok(`[同工] 顯示離線與待上傳筆數：「${badge}」`, /離線|待上傳/.test(badge))
 ok('[同工] 待上傳筆數印在圓點旁邊（那是會變的數字）',
    /\d/.test((await B.p.locator('.sync .sync-n').textContent().catch(() => '')) || ''))
 await reconcile(A)
-// B 離線點掉的是李美花，A 這邊還停在 1。
-ok('[主揪] 此時還看不到（同工尚未上傳）', (await missing(A.p)) === '1')
+// B 離線點掉的是李美花，A 這邊還停在 2。
+ok('[主揪] 此時還看不到（同工尚未上傳）', (await missing(A.p)) === '2')
 
 await B.ctx.setOffline(false)
 await B.p.evaluate(() => window.dispatchEvent(new Event('online')))
 await B.p.waitForTimeout(2000)
 await reconcile(A)
-ok('[主揪] 恢復連線後自動補上，未到歸零', (await missing(A.p)) === '0')
+ok('[主揪] 恢復連線後自動補上，未到剩陳大同一人', (await missing(A.p)) === '1')
 ok('[同工] 同步狀態回到已同步', /已同步/.test(await syncLabel(B.p)))
 
 // --- 建立副本（回程）---
@@ -208,7 +209,7 @@ ok('[主揪] 代碼頁：複製是代碼右邊的圖示鍵',
    && (await A.p.locator('.copy-row button[aria-label="複製代碼"]').count()) === 1
    && (await A.p.getByRole('button', { name: /^複製代碼$/ }).count()) === 1)
 ok('[主揪] 代碼頁底下沒有那一整列按鈕', (await A.p.locator('.sheet .btn').count()) === 0)
-await A.p.locator('.sheet-head .icon-btn').first().click(); await A.p.waitForTimeout(400)
+await A.p.locator('.sheet-bar .icon-btn').first().click(); await A.p.waitForTimeout(400)
 await A.p.getByRole('button', { name: /^連結$/ }).click(); await A.p.waitForTimeout(500)
 ok('[主揪] 連結頁：複製是連結右邊的圖示鍵',
    (await A.p.locator('.copy-row .link-display').count()) === 1
@@ -226,8 +227,24 @@ await A.p.keyboard.press('Escape'); await A.p.waitForTimeout(500)
 await B.p.goto(URL); await B.p.waitForTimeout(1000)
 await B.p.getByRole('button', { name: /^更多：/ }).first().click(); await B.p.waitForTimeout(700)
 ok('[同工] 首頁的空間選單裡有「建立副本」', (await B.p.getByRole('button', { name: /建立副本/ }).count()) > 0)
-ok('[同工] 但沒有主揪才做得到的重新命名與刪除空間',
-   (await B.p.getByRole('button', { name: /重新命名|刪除空間/ }).count()) === 0)
+/*
+ * 同工拿不到主揪才做得到的事。
+ *
+ * **這裡要驗的是「按不按得下去」，不是「看不看得到那五個字」。** 原本這條檢查
+ * 的是選單上有沒有「刪除空間」字樣，而那一列現在對所有人都印——它是**入口**，
+ * 進去才分岔：「從清單移除」只影響這支手機（誰都可以，那是他自己的清單），
+ * 真正的「刪除空間」（所有人的紀錄一起沒）在裡面，鎖在 owner 後面。
+ * 照字樣驗會把一個安全的設計判成失敗。
+ */
+ok('[同工] 沒有重新命名（那是主揪的事）',
+   (await B.p.getByRole('button', { name: /^重新命名$/ }).count()) === 0)
+// 那一列的無障礙名稱含副標（「10/10 自動刪除」），所以不能用 ^…$ 錨定。
+await B.p.getByRole('button', { name: /刪除空間/ }).first().click(); await B.p.waitForTimeout(500)
+ok('[同工] 進去只有「從清單移除」，沒有真的刪掉所有人紀錄的那一顆',
+   (await B.p.getByRole('button', { name: /^從清單移除$/ }).count()) === 1
+   && (await B.p.locator('.sheet .sheet-item.danger').count()) === 0)
+await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
+await B.p.getByRole('button', { name: /^更多：/ }).first().click(); await B.p.waitForTimeout(700)
 await B.p.getByRole('button', { name: /建立副本/ }).click(); await B.p.waitForTimeout(500)
 // 選單列的副標 2026-09 全部拿掉了，「新空間會是你的」改在子畫面說。
 ok('[同工] 子畫面說清楚新空間是誰的',
