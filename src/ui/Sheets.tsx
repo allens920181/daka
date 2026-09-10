@@ -746,7 +746,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
   /** 現在停在哪一張子畫面；null 就是那份清單。 */
-  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'lang'>(null)
+  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'font' | 'lang'>(null)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -757,6 +757,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const back = () => setMode(null)
   const themeName = p.theme === 'system' ? t('themeSystem')
     : p.theme === 'light' ? t('themeLight') : t('themeDark')
+  const fontName = p.font === 'base' ? t('fontBase')
+    : p.font === 'lg' ? t('fontLarge') : t('fontXLarge')
 
   if (mode === 'name') {
     // 離開這一頁就存。`onBlur` 也留著——用 Esc 直接關掉整張面板時焦點會先離開，
@@ -833,6 +835,39 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     )
   }
 
+  /*
+    文字大小。三個選項，所以跟主題一樣用 `.segmented`。
+
+    **它是倍率，不是字級。** 那七階仍然跟著系統的 Dynamic Type 走，這裡選的是
+    「在那之上再放大多少」——所以底下那句 `.hint` 是必要的，不然選了「標準」
+    卻發現字跟系統一樣大的人會以為這顆鍵沒有作用。
+
+    這一頁**不自己返回**（主題與語言會）。放大字級是一件要看著結果調的事：
+    整張面板就在眼前跟著變，留在這裡才看得到自己選了什麼。
+  */
+  if (mode === 'font') {
+    return (
+      <Sheet title={t('fontSize')} onClose={onClose} onBack={back}>
+        <div class="field">
+          <span class="label">{t('fontSize')}</span>
+          <div class="segmented" role="group" aria-label={t('fontSize')}>
+            {(['base', 'lg', 'xl'] as const).map((font) => (
+              <button
+                key={font}
+                class="segment"
+                aria-pressed={p.font === font}
+                onClick={() => { void setPrefs({ font }) }}
+              >
+                {font === 'base' ? t('fontBase') : font === 'lg' ? t('fontLarge') : t('fontXLarge')}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p class="hint">{t('fontSizeHint')}</p>
+      </Sheet>
+    )
+  }
+
   if (mode === 'lang') {
     return (
       <Sheet title={t('language')} onClose={onClose} onBack={back}>
@@ -879,6 +914,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <button class="sheet-item" onClick={() => setMode('theme')}>
           <span class="sheet-item-main"><strong>{t('theme')}</strong></span>
           <span class="sheet-item-value">{themeName}</span>
+          <IconChevronRight class="go" />
+        </button>
+
+        <button class="sheet-item" onClick={() => setMode('font')}>
+          <span class="sheet-item-main"><strong>{t('fontSize')}</strong></span>
+          <span class="sheet-item-value">{fontName}</span>
           <IconChevronRight class="go" />
         </button>
 

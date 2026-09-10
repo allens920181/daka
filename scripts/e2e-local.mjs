@@ -1012,14 +1012,14 @@ ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count
 // 設定頁是四列長得一樣的面板列：暱稱、帳戶、主題、語言（2026-09）。單機模式
 // 沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
 const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
-ok(`設定頁的四列：${rows.join('、')}`,
-   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '語言']))
+ok(`設定頁的每一列：${rows.join('、')}`,
+   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '語言']))
 ok('單機模式沒有帳戶那一列', (await p.getByText('帳戶').count()) === 0)
 
 // 收合時右邊印著目前的值，不展開也看得到自己設了什麼。
 const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
-   shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '中文')
+   shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '標準' && shown[3] === '中文')
 
 // 暱稱是一張子畫面（2026-09）：清單上只有值，進去才有輸入框，回來就看得到。
 ok('清單上沒有輸入框', (await p.locator('#checker-name').count()) === 0)
@@ -1039,6 +1039,47 @@ ok('主題子畫面只有那一組選項', (await p.locator('#checker-name').cou
    && (await p.locator('.sheet .segmented').count()) === 1
    && (await p.locator('.sheet .sheet-item').count()) === 0)
 await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
+
+/*
+ * 文字大小（2026-09）。
+ *
+ * **它是倍率，不是字級。** 驗的是三件事，而第二件是整個功能的成立條件：
+ *
+ * 1. 選了字真的變大（--fs-scale 乘進七階）。
+ * 2. **根字級一格都沒有動。** 根字級是系統設定（Dynamic Type／瀏覽器預設字級）
+ *    的落點；這顆鍵一旦改到它，就等於把系統設定吃掉——那正是 iOS 評估 §1.1
+ *    花一整輪修掉的東西。所以「有沒有變大」不夠，還要驗「變大的不是它」。
+ * 3. 關掉再打開還記得。
+ */
+await p.getByRole('button', { name: /^文字大小/ }).click(); await p.waitForTimeout(400)
+const fontAt = () => p.evaluate(() => ({
+  scale: getComputedStyle(document.documentElement).getPropertyValue('--fs-scale').trim(),
+  root: getComputedStyle(document.documentElement).fontSize,
+  hint: getComputedStyle(document.querySelector('.sheet .hint')).fontSize,
+}))
+const fontBase = await fontAt()
+ok(`預設是標準（倍率 ${fontBase.scale}，根字級 ${fontBase.root}）`,
+   fontBase.scale === '1' && (await p.evaluate(() => document.documentElement.hasAttribute('data-font'))) === false)
+
+await p.getByRole('button', { name: /^特大$/ }).click(); await p.waitForTimeout(500)
+const fontXl = await fontAt()
+ok(`選「特大」字就變大：${fontBase.hint} → ${fontXl.hint}`,
+   parseFloat(fontXl.hint) > parseFloat(fontBase.hint) * 1.2)
+ok(`但根字級一格都沒動（${fontBase.root} → ${fontXl.root}）——系統設定沒有被吃掉`,
+   fontXl.root === fontBase.root)
+ok('選了不會自己返回（放大字級要看著結果調）',
+   (await p.locator('.sheet .segmented').count()) === 1)
+
+await p.reload(); await p.waitForTimeout(900)
+ok('關掉重開還記得',
+   (await p.evaluate(() => document.documentElement.getAttribute('data-font'))) === 'xl')
+
+// 調回標準，免得後面的檢查都在放大的版面上跑。
+await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^文字大小/ }).click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^標準$/ }).click(); await p.waitForTimeout(500)
+ok('調回標準就把屬性拿掉（預設狀態下 DOM 上一個字都不多）',
+   (await p.evaluate(() => document.documentElement.hasAttribute('data-font'))) === false)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 

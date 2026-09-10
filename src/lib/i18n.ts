@@ -339,6 +339,13 @@ const zh = {
   themeLight: '淺色',
   themeDark: '深色',
   themeSystem: '跟隨系統',
+  fontSize: '文字大小',
+  fontBase: '標準',
+  fontLarge: '大',
+  fontXLarge: '特大',
+  /* 這句話要先講「它已經在跟著系統走」，不然選了「標準」卻發現字跟系統一樣大的
+     人，會以為這顆鍵壞了。它補的是**不知道系統哪裡可以調**的那個人。 */
+  fontSizeHint: '這個 app 本來就跟著系統的文字大小走。這裡是在那之上再放大——手機設定裡調過的，兩個會一起算。',
   yourName: '暱稱',
   /* 引號在這個 app 的用法是「照抄你會在畫面上看到的字」（shareLocalBody 引
      errRoomNotFound）。但「由你點的」
@@ -579,6 +586,11 @@ const en: Record<MessageKey, string> = {
   themeLight: 'Light',
   themeDark: 'Dark',
   themeSystem: 'System',
+  fontSize: 'Text size',
+  fontBase: 'Standard',
+  fontLarge: 'Large',
+  fontXLarge: 'Extra large',
+  fontSizeHint: 'This app already follows your system text size. This adds on top of it — if you changed it in your phone settings, the two combine.',
   yourName: 'Nickname',
   yourNameHint: 'Optional. Others will see who checked each name.',
   loading: 'Loading…',

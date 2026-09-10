@@ -140,6 +140,7 @@ export async function boot(): Promise<void> {
   outbox.value = await loadOutbox()
   applyTheme()
   applyLang()
+  applyFontScale()
   // OAuth 回呼要在最早的時候從網址上拿走並清掉：留著的話使用者重新整理就會
   // 拿一個已經用過的 code 再換一次，然後看到一個沒頭沒尾的錯誤。
   const callback = takeOAuthCallback()
@@ -296,10 +297,25 @@ export function applyTheme(): void {
   else root.setAttribute('data-theme', theme)
 }
 
+/**
+ * 字級倍率。跟 `applyTheme` 同一個做法——標準不加屬性，選了才蓋上去。
+ *
+ * **它乘在系統字級上，不取代系統字級**：`--fs-*` 那七階是
+ * `calc(N / 17 * 1rem * var(--fs-scale))`，`rem` 照樣跟著 Dynamic Type 走。
+ * 所以這顆鍵改的是「在系統給的大小之上再放大多少」。
+ */
+export function applyFontScale(): void {
+  const font = prefs.value.font
+  const root = document.documentElement
+  if (font === 'base') root.removeAttribute('data-font')
+  else root.setAttribute('data-font', font)
+}
+
 export async function setPrefs(patch: Partial<Prefs>): Promise<void> {
   prefs.value = { ...prefs.value, ...patch }
   applyTheme()
   applyLang()
+  applyFontScale()
   await savePrefs(prefs.value)
 }
 

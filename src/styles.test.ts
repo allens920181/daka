@@ -59,6 +59,37 @@ describe('設計 token 的靜態檢查', () => {
     expect(hits).toEqual([])
   })
 
+  /*
+   * 設定裡那顆字級鍵是**倍率**（2026-09）。兩條規則守著它的兩端。
+   */
+  it('七階字級每一階都吃得到 --fs-scale', () => {
+    // 漏掉一階，那一階就對使用者的設定免疫——而且是安靜的：畫面上其他字都變大，
+    // 只有那一種不動，沒有任何錯誤。
+    const tiers = [...css.matchAll(/(--fs-[1-7]):\s*([^;]+);/g)]
+    expect(tiers).toHaveLength(7)
+    const missing = tiers.filter(([, , value]) => !(value ?? '').includes('var(--fs-scale)'))
+      .map(([, name]) => name)
+    expect(missing).toEqual([])
+  })
+
+  it('--fs-scale 不得寫進根字級', () => {
+    /*
+     * 看起來這樣比較簡潔：`font-size: calc(17 / 16 * 1rem * var(--fs-scale))`。
+     * 但它是壞的，而且只在 Apple 平台上壞——
+     *
+     *   1. 根元素上的 `rem` 指的是 font-size 的**初始值**（16px），不是 Dynamic
+     *      Type 算出來的值；
+     *   2. 下一行的 `font: -apple-system-body` 是簡寫，會**整條蓋掉** font-size。
+     *
+     * 於是在 iOS 上使用者選了「特大」什麼都不會發生，在 Chrome 上卻好好的。
+     * 倍率必須留在 --fs-* 那七階上，那裡的 `rem` 才是系統真正給的大小。
+     */
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    const root = stripped.slice(0, stripped.indexOf('}'))
+    const decl = root.match(/font-size:[^;]+;/)?.[0] ?? ''
+    expect(decl).not.toContain('--fs-scale')
+  })
+
   it('沒有硬寫的十六進位色（token 定義區與列印區除外）', () => {
     const printAt = body.indexOf('@media print')
     const scanned = printAt === -1 ? body : body.slice(0, printAt)

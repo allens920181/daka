@@ -19,6 +19,14 @@ const roomKey = (code: string) => `room:${code.toUpperCase()}`
 export interface Prefs {
   lang: 'zh' | 'en'
   theme: 'light' | 'dark' | 'system'
+  /**
+   * 字級**倍率**，不是字級本身（2026-09）。
+   *
+   * 'base' 就是系統給的大小（Dynamic Type／瀏覽器的預設字級），另外兩階乘在
+   * 它上面。存的是階名不是數字：倍率哪天要調，改 CSS 一個地方就好，不必去動
+   * 每一台裝置上已經存好的偏好。
+   */
+  font: 'base' | 'lg' | 'xl'
 }
 
 export interface RecentRoom {
@@ -28,7 +36,7 @@ export interface RecentRoom {
   lastSeen: number
 }
 
-export const DEFAULT_PREFS: Prefs = { lang: 'zh', theme: 'system' }
+export const DEFAULT_PREFS: Prefs = { lang: 'zh', theme: 'system', font: 'base' }
 
 /** IndexedDB 在無痕模式或停用儲存時會丟錯；一律降級成「沒有資料」而不是讓畫面掛掉。 */
 async function safeGet<T>(key: string): Promise<T | undefined> {

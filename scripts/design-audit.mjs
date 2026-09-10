@@ -115,9 +115,16 @@ function collect() {
     a: 1,
   })
 
-  // 根字級：字級是 rem，所以「第幾階」要靠它反算（見下面 audit() 的七階檢查）。
-  const root = parseFloat(getComputedStyle(document.documentElement).fontSize)
-  const out = { root, contrast: [], tap: [], font: [], name: [], nonText: [], clipped: [], primary: 0 }
+  /*
+   * 反算「第幾階」需要的兩個數（見下面 audit() 的七階檢查）：
+   *   root  —— 系統那條路（Dynamic Type／瀏覽器預設字級）落在根字級上
+   *   scale —— app 那顆字級鍵，乘在七階上（--fs-scale）
+   * 兩條路是分開的，所以兩個都要除掉才回得到原本那七個數字。
+   */
+  const cs0 = getComputedStyle(document.documentElement)
+  const root = parseFloat(cs0.fontSize)
+  const scale = parseFloat(cs0.getPropertyValue('--fs-scale')) || 1
+  const out = { root, scale, contrast: [], tap: [], font: [], name: [], nonText: [], clipped: [], primary: 0 }
 
   for (const el of document.querySelectorAll('*')) {
     const cs = getComputedStyle(el)
@@ -259,11 +266,19 @@ async function audit(page, scheme, screen) {
     note(scheme, screen, '觸控尺寸', `${t.w}×${t.h}（需 ${t.need}） ${t.el} 「${t.text}」`)
   }
   for (const f of r.font) {
-    // 字級 2026-09 改成 rem，所以量到的像素會跟著使用者的字級設定跑。
-    // 反算回「第幾階」再比對：同一份七階規範在放大字級那一輪照樣適用。
-    const step = Math.round((f.fs / r.root) * 17)
+    /*
+     * 字級 2026-09 改成 rem，同年又多了 app 自己那顆字級鍵，所以量到的像素是
+     *
+     *     那一階 ÷ 17 × 根字級 × 倍率
+     *
+     * 兩個都除掉才回得到原本那七個數字。**只除根字級是不夠的**——第一版就是
+     * 這樣，於是 app 字級那一輪把每一顆按鈕都報成「不在七階內」，而真正的原因
+     * 是檢查自己少算了一個乘數。
+     */
+    const step = Math.round((f.fs / r.root / r.scale) * 17)
     if (!FONT_SCALE.includes(step)) {
-      note(scheme, screen, '字級不在七階內', `${f.fs}px（根 ${r.root}px ⇒ 第 ${step} 階）${f.el} 「${f.text}」`)
+      note(scheme, screen, '字級不在七階內',
+        `${f.fs}px（根 ${r.root}px × 倍率 ${r.scale} ⇒ 第 ${step} 階）${f.el} 「${f.text}」`)
     }
   }
   for (const n of r.nonText) {
@@ -296,11 +311,17 @@ const browser = await chromium.launch(BROWSER ? { executablePath: BROWSER } : {}
  *
  * `standard` 是 Chromium 的「預設字型大小」設定，跟使用者在設定頁調的是同一個
  * 值；根字級寫成 `calc(17 / 16 * 1rem)` 就是為了接這個值（見 styles.css :root）。
+ *
+ * **第四輪跑的是 app 自己那顆字級鍵**（設定 › 文字大小 › 特大，2026-09）。
+ * 它跟第三輪是**兩條不同的路**：系統那條走根字級，app 這條走 `--fs-scale`
+ * 乘在七階上。所以兩輪各自只動一個變數——哪一條壞了，看是哪一輪紅的就知道。
+ * （兩條同時開的極端組合不在這裡跑：那會讓失敗訊息說不清是誰的問題。）
  */
 const PASSES = [
-  { scheme: 'light', label: 'light', rootFont: 16 },
-  { scheme: 'dark', label: 'dark', rootFont: 16 },
-  { scheme: 'light', label: 'light·放大字級', rootFont: 24 },
+  { scheme: 'light', label: 'light', rootFont: 16, appFont: 'base' },
+  { scheme: 'dark', label: 'dark', rootFont: 16, appFont: 'base' },
+  { scheme: 'light', label: 'light·系統放大字級', rootFont: 24, appFont: 'base' },
+  { scheme: 'light', label: 'light·app 字級特大', rootFont: 16, appFont: 'xl' },
 ]
 
 for (const pass of PASSES) {
@@ -313,7 +334,21 @@ for (const pass of PASSES) {
     await cdp.send('Page.setFontSizes', { fontSizes: { standard: pass.rootFont, fixed: pass.rootFont } })
   }
 
+
   await page.goto(URL); await page.waitForTimeout(900)
+
+  /*
+   * app 那顆字級鍵要**走一遍真的設定畫面**，不是直接蓋 DOM 屬性——
+   * `applyFontScale()` 在每次啟動時都會照著存下來的偏好重設那個屬性，蓋上去的
+   * 會被它拿掉（第一版就是這樣安靜地退化成「再跑一次淺色」，被下面那段對帳
+   * 抓出來的）。選過一次就存進 IndexedDB，這個 context 後面每一次 goto 都還在。
+   */
+  if (pass.appFont !== 'base') {
+    await page.locator('button[aria-label="設定"]').click(); await page.waitForTimeout(500)
+    await page.getByRole('button', { name: /^文字大小|^Text size/ }).click(); await page.waitForTimeout(400)
+    await page.getByRole('button', { name: /^特大$|^Extra large$/ }).click(); await page.waitForTimeout(500)
+    await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+  }
 
   // 這一輪的字級情境真的生效了嗎？CDP 沒吃到設定的話，放大字級那輪會安靜地
   // 退化成「再跑一次淺色」——照樣通過，但什麼都沒驗到。所以先對一次根字級：
@@ -323,6 +358,13 @@ for (const pass of PASSES) {
     const want = pass.rootFont * 17 / 16
     if (Math.abs(root - want) > 0.01) {
       note(scheme, '—', '字級情境沒生效', `根字級量到 ${root}px，預期 ${want}px`)
+    }
+    // app 那顆鍵同理：沒吃到就會安靜地退化成「再跑一次淺色」。
+    const scale = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--fs-scale').trim())
+    const wantScale = pass.appFont === 'base' ? '1' : '1.3'
+    if (scale !== wantScale) {
+      note(scheme, '—', '字級情境沒生效', `--fs-scale 量到 ${scale || '(空)'}，預期 ${wantScale}`)
     }
   }
 
@@ -417,7 +459,7 @@ for (const pass of PASSES) {
 await browser.close()
 
 if (violations.length === 0) {
-  console.log('設計規範檢查通過（淺色、深色、放大字級三輪）：對比（含祖先 opacity）、非文字元件對比、觸控尺寸、字級、文字未被框夾住、無障礙名稱、橫向溢出、主要按鈕數量。')
+  console.log('設計規範檢查通過（淺色、深色、系統放大字級、app 字級特大四輪）：對比（含祖先 opacity）、非文字元件對比、觸控尺寸、字級、文字未被框夾住、無障礙名稱、橫向溢出、主要按鈕數量。')
   process.exit(0)
 }
 
