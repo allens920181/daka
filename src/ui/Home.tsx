@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { connection, myRooms, prefs, recentRooms, session } from '../lib/store'
 import { formatDate } from '../lib/format'
 import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '../lib/code'
-import { canScanQr } from '../lib/config'
+import { atRiskOfStorageEviction, canScanQr } from '../lib/config'
 import { navigate } from '../router'
 import { IconCamera, IconMore, IconPlus, IconSettings } from './icons'
 import { ScanView } from './Scan'
@@ -130,6 +130,19 @@ export function Home({ onSettings }: { onSettings: () => void }) {
 
         {connection.value === 'local-only' && (
           <p class="page-note">{t('localOnlyHint')}</p>
+        )}
+
+        {/*
+          iOS 會在七天沒打開之後清掉這支手機上的名單，而單機模式下那是唯一的
+          一份（見 config.ts 的 atRiskOfStorageEviction，與 iOS 評估 §3.2）。
+          只在真的會發生、而且真的有解的時候說：iOS ＋ 還沒加到主畫面。
+          加到主畫面之後 standalone 有自己的儲存區，這一條就不成立，提示也就
+          自己消失——不留一句永遠掛著的警告。
+        */}
+        {connection.value === 'local-only' && atRiskOfStorageEviction() && (
+          <p class="note note-warn" style="margin-bottom:12px">
+            <strong>{t('storageRiskTitle')}</strong><br />{t('storageRiskBody')}
+          </p>
         )}
 
         <div class="stack">

@@ -612,7 +612,10 @@ export function Room({ code }: { code: string }) {
       {confirmFinish && current && (
         <ConfirmDialog
           title={t('finishRound')}
-          body={t('finishRoundBody')}
+          /* 單機模式下「複製結果／CSV」不是「帶去別的地方」，是**唯一的備份**
+             ——iOS 七天後會把這支手機上的名單清掉（iOS 評估 §3.2）。
+             「紀錄還在」那句話在那個情境下是不成立的，所以換一句。 */
+          body={connection.value === 'local-only' ? t('finishRoundBodyLocal') : t('finishRoundBody')}
           confirmLabel={t('finishRound')}
           onClose={() => setConfirmFinish(false)}
           onConfirm={() => { void setClosed(true) }}

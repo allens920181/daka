@@ -56,3 +56,34 @@ export function canScanQr(): boolean {
   return secureOrigin() && typeof navigator !== 'undefined'
     && typeof navigator.mediaDevices?.getUserMedia === 'function'
 }
+
+/**
+ * 這台裝置的本機名單有沒有被系統清掉的風險（2026-09，iOS 評估 §3.2）。
+ *
+ * **iOS Safari 的 ITP 會在七天沒有互動之後，清掉整個來源的 script-writable
+ * storage**——這個 app 的名單、待送佇列、常用名單全部存在 IndexedDB 裡，
+ * 一次都不留。而 `navigator.storage.persist()` 在 iOS Safari **不支援**，
+ * 所以程式沒有辦法主動要求豁免。
+ *
+ * 產品情境正好踩中：方向書把「回程用複製空間」列為核心情境，而一場活動與
+ * 回程之間可能隔兩週。單機模式的使用者兩週後打開，名單不見了。
+ *
+ * **加到主畫面之後就不受這條限制**（standalone 有自己的儲存區），所以這個
+ * 判斷式只在「iOS Safari ＋ 還沒加到主畫面」時為真——那正是唯一該講這件事、
+ * 而且講了有用的情況。
+ *
+ * **這是猜的**（跟 inAppBrowser 一樣靠 UA），猜錯的代價只是多一句提示。
+ * iPadOS 13 之後的 Safari 會報成 Mac，所以要補一個「有觸控的 Mac」的判斷。
+ */
+export function atRiskOfStorageEviction(): boolean {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false
+  const ua = navigator.userAgent
+  const iOSLike = /iPad|iPhone|iPod/.test(ua)
+    || (/Macintosh/.test(ua) && (navigator.maxTouchPoints ?? 0) > 1)
+  if (!iOSLike) return false
+  // 只有真的 WebKit（不是 iOS 上的 Chrome/Firefox 外殼——它們一樣是 WebKit，
+  // 所以其實也適用；這裡不細分，判斷 iOS 就夠）。
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches
+    || (navigator as { standalone?: boolean }).standalone === true
+  return !standalone
+}
