@@ -335,9 +335,7 @@ export function Room({ code, onSettings }: { code: string; onSettings: () => voi
         style={folded ? `transform: translateY(${-foldH}px)` : undefined}
       >
         <div class="room-chrome-fold" ref={foldRef}>
-          <div class="shell">
-            <AppBar onSettings={onSettings} />
-          </div>
+          <AppBar onSettings={onSettings} />
         <div class="shell topbar-inner">
           <button class="icon-btn" onClick={() => navigate('/')} aria-label={t('back')}>
             <IconBack />

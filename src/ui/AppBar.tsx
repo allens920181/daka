@@ -20,12 +20,16 @@ import { useT } from './t'
 export function AppBar({ onSettings }: { onSettings: () => void }) {
   const t = useT()
   return (
-    <div class="app-bar row">
-      <Logo />
-      <h1 class="app-name">{t('appName')}</h1>
-      <button class="icon-btn" onClick={onSettings} aria-label={t('settings')}>
-        <IconSettings />
-      </button>
+    // 底色帶要滿版，所以它自己就是外層，`.shell` 收在裡面——掛在 `.shell` 裡面
+    // 的話，那塊底色會被左右內距切掉兩道縫。
+    <div class="app-bar-band">
+      <div class="shell app-bar row">
+        <Logo />
+        <h1 class="app-name">{t('appName')}</h1>
+        <button class="icon-btn" onClick={onSettings} aria-label={t('settings')}>
+          <IconSettings />
+        </button>
+      </div>
     </div>
   )
 }

@@ -380,8 +380,19 @@ ok('開的是一張面板，不是就地展開',
    && (await p.locator('#join-panel').count()) === 0)
 // 就地展開時底下那份清單仍然按得到、螢幕閱讀器也仍然讀得到。面板要掛在 .shell
 // 外面，useModal 才 inert 得到整頁（見 Home.tsx 的註解）。
-ok('背景整頁 inert 了', await p.evaluate(() =>
-  document.querySelector('.shell')?.hasAttribute('inert') === true))
+ok('背景整頁 inert 了', await p.evaluate(() => {
+  const overlay = document.querySelector('.overlay-bottom')
+  const sibs = [...overlay.parentElement.children]
+    .filter((c) => c !== overlay && !c.classList.contains('toast-wrap'))
+  const gear = document.querySelector('.app-bar .icon-btn')
+  /*
+    問的是「背景真的碰不到了嗎」，不是「某個元素身上有沒有那個屬性」。
+    這一條本來抓 `document.querySelector('.shell')`——那在導航列搬進自己的底色帶
+    之前剛好是最外層那一格，之後變成帶子**裡面**那一格，屬性當然不在它身上，
+    而背景其實好好地 inert 著。inert 會往下繼承，所以要問的是祖先。
+  */
+  return sibs.length > 0 && sibs.every((c) => c.hasAttribute('inert')) && !!gear?.closest('[inert]')
+}))
 // 面板沒有標題列（2026-09 起一張都沒有），但螢幕閱讀器聽得到的不能跟著少。
 ok('沒有標題文字，但無障礙名稱還在',
    (await p.locator('.sheet-title').count()) === 0
@@ -1611,6 +1622,34 @@ ok('空間裡有 app 抬頭（標誌 ＋ RollRoom）', (await p.locator('.room-c
 ok('設定在 app 那一列、返回在空間那一列',
    (await p.locator('.room-chrome .app-bar .icon-btn').count()) === 1
    && await p.locator('.topbar-inner .icon-btn').first().isVisible())
+
+/*
+  導航列與空間標題列本來都直接坐在 --paper 上，讀起來是同一坨東西——而它們是兩
+  件事：一個是 app，一個是你打開的那一間空間。分法不是加一條線（篩選列底下本來
+  就有一條，再加只是變成「一堆髮絲線裡的又一條」），是講結構：導航列有自己的
+  底色，空間是它底下的一塊面板。
+*/
+const chrome = await p.evaluate(() => {
+  const band = document.querySelector('.room-chrome .app-bar-band')
+  const pane = document.querySelector('.room-chrome .topbar-inner')
+  const cs = getComputedStyle(pane)
+  return {
+    band: getComputedStyle(band).backgroundColor,
+    paper: getComputedStyle(document.body).backgroundColor,
+    radius: parseFloat(cs.borderTopLeftRadius),
+    shadow: cs.boxShadow,
+    paneH: Math.round(pane.getBoundingClientRect().height),
+  }
+})
+ok(`導航列有自己的底色，跟頁面分得開（${chrome.band} vs ${chrome.paper}）`,
+   chrome.band !== chrome.paper && !/rgba\(0, 0, 0, 0\)|transparent/.test(chrome.band))
+// 上緣是一條**會轉彎**的髮絲線（圓角 ＋ box-shadow），不是填色的圓角：面板用的
+// 就是頂欄那塊半透明材質，多鋪一層底等於把「看得到底下的東西在動」關掉。
+ok(`空間面板的上緣是一條會轉彎的髮絲線（圓角 ${chrome.radius}px）`,
+   chrome.radius >= 12 && chrome.shadow !== 'none')
+// 「這一列等於它最高的內容」是頂欄自己的規則（48px 的圖示鍵）。面板的上緣靠
+// margin 跟底色帶拉開，不准動這一列的高度——加個上內距就會把它撐成 52。
+ok(`而且沒有把那一列撐高（${chrome.paneH}px）`, chrome.paneH === 48)
 
 const chromeAt = async () => await p.evaluate(() => {
   const top = (sel) => { const e = document.querySelector(sel); return e ? Math.round(e.getBoundingClientRect().top) : null }

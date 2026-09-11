@@ -165,13 +165,14 @@ export function Home({ onSettings }: { onSettings: () => void }) {
 
   return (
     <>
-      <div class="shell">
-        {/* 標語（「大家一起點同一份名單」）2026-09 拿掉：它是講給還沒用過的人聽
-            的一句宣傳，而看得到這一頁的人已經在用了——底下那份清單才是他來這裡要
-            找的東西，而那句話每次都把它往下推一行。
-            這一列本身 2026-09 搬進 AppBar，空間裡用的是同一條。 */}
-        <AppBar onSettings={onSettings} />
+      {/* 標語（「大家一起點同一份名單」）2026-09 拿掉：它是講給還沒用過的人聽的
+          一句宣傳，而看得到這一頁的人已經在用了——底下那份清單才是他來這裡要找的
+          東西，而那句話每次都把它往下推一行。
+          這一列本身 2026-09 搬進 AppBar，空間裡用的是同一條；它自己帶滿版的底色
+          帶，所以掛在 `.shell` 外面。 */}
+      <AppBar onSettings={onSettings} />
 
+      <div class="shell">
         {connection.value === 'local-only' && (
           <p class="page-note">{t('localOnlyHint')}</p>
         )}
