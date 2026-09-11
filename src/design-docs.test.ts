@@ -179,7 +179,10 @@ describe('設計規範與實作的一致性', () => {
    */
   it('README 印的範例名單就是「填入範例」填的那一份', () => {
     const readme = readFileSync(join(ROOT, 'README.md'), 'utf8')
-    const block = readme.match(/LINE 接龍長什麼樣就貼什麼樣，不用先整理：\n\n```\n([\s\S]*?)\n```/)?.[1]
+    // 錨在標題上，不是錨在它下面那句話——那句話是文案，會改；這一節底下第一個
+    // 程式碼區塊是什麼，才是這條測試要釘的東西。
+    const section = readme.split('### 貼上名單能吃什麼')[1] ?? ''
+    const block = section.match(/```\n([\s\S]*?)\n```/)?.[1]
     expect(block).toBeTruthy()
     expect(block).toBe(messages.zh.exampleRoster)
   })

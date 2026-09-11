@@ -62,8 +62,14 @@ const zh = {
      分組標題以前刻意不放——預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範
      一件看不到的事。預覽現在會顯示了（見 RosterInput），所以它進得來了：分車是
      這份名單最常見的第二個結構（兩三台遊覽車很常見），而「原來可以這樣寫」除了
-     這段文字之外沒有別的入口。寫法只教一種——`#`，`rosterToText` 寫出來的也是它。 */
-  exampleRoster: '#第一車\n1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（坐輪椅）\n#第二車\n４．張三\n- 李四\n王五 帶2人',
+     這段文字之外沒有別的入口。寫法只教一種——`#`，`rosterToText` 寫出來的也是它。
+
+     **編號一律 `1. ` 半形，一路數下去不因分車重來。** 它原本刻意混著寫
+     （`1.` `2. ` `3、` 全形「４．」`- ` 與沒有編號各來一行）來示範解析器什麼都
+     吃得下——但範例同時是使用者接下來要編輯的那份文字，一眼看過去像沒整理過的
+     東西，不會讓人想接著往下打。容錯改由 placeholder 那句「LINE 接龍直接貼就行」
+     與 README 講；解析器一個字都沒改，混著寫照樣讀得進來。 */
+  exampleRoster: '#第一車\n1. 王小明 0912345678\n2. 李美花 +1\n3. 陳大同（坐輪椅）\n#第二車\n4. 張三\n5. 李四\n6. 王五 帶2人',
   /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
   fromNote: '備註裡的號碼',
   parsePreview: '清單預覽',
@@ -394,7 +400,7 @@ const en: Record<MessageKey, string> = {
   exampleFill: 'Fill in an example',
   exampleClear: 'Clear the example',
   exampleName: 'Autumn trip · Departure',
-  exampleRoster: '#Bus 1\n1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (wheelchair)\n#Bus 2\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
+  exampleRoster: '#Bus 1\n1. Alice Chen 0912345678\n2. Bob Lin +1\n3. Dana Wu (wheelchair)\n#Bus 2\n4. Ken Chang\n5. Mia Wang\n6. Sam Lee +2',
   fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',

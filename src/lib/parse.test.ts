@@ -507,6 +507,17 @@ describe('填入範例的文字', () => {
       expect(r.members.every((m) => m.group_label !== null)).toBe(true)
     })
 
+    /*
+     * 範例同時是使用者接下來要編輯的那份文字，所以它自己得是整齊的：編號一律
+     * `1. ` 半形、一路數下去不因分車重來。解析器什麼編號都吃得下（上面那幾則
+     * 在驗），但那件事由 placeholder 與 README 用講的——範例用長相說話，而一份
+     * 看起來沒整理過的名單不會讓人想接著往下打。
+     */
+    it(`${lang}：編號整齊——半形「N. 」，跨分車連號`, () => {
+      const people = messages[lang].exampleRoster.split('\n').filter((l) => !l.startsWith('#'))
+      expect(people.map((l, i) => l.startsWith(`${i + 1}. `))).toEqual(people.map(() => true))
+    })
+
     it(`${lang}：撥得出去的號碼與備註都示範到`, () => {
       const r = parseRoster(messages[lang].exampleRoster)
       // 電話不再是欄位，而是備註裡撥得出去的一段——範例仍要示範到這件事，
