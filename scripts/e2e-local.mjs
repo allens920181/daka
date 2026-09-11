@@ -1040,6 +1040,55 @@ ok('走進去就自動取消封存，回首頁看得到它',
    (await p.locator('.recent-name').allTextContents()).includes('確認對話框測試')
    && !(await p.locator('.segmented button').allTextContents()).includes('封存'))
 
+/*
+  首頁 2026-09：標語拿掉、篩選列凍結置頂、滑塊右邊一顆放大鏡。
+  這時候首頁上有好幾個空間，篩選列因此在（它只在兩個以上時出現）。
+*/
+ok('首頁的篩選列在', (await p.locator('.home-filterbar').count()) === 1)
+ok('標語不見了（「大家一起點同一份名單」）',
+   (await p.locator('.home-tagline').count()) === 0
+   && !(await p.locator('.home-head').innerText()).includes('大家一起'))
+// 材質要滿版：貼在 .shell 裡面的話，捲過去的列會從左右內距那兩道縫露出來。
+ok('篩選列的材質滿版（沒被 shell 的內距切掉）',
+   (await p.locator('.home-filterbar').boundingBox()).width === 390)
+ok('滑塊右邊有一顆放大鏡', (await p.locator('.home-filterbar .search-toggle').count()) === 1)
+
+/*
+  凍結置頂。**真的捲給它看**——computed style 寫著 sticky 不代表它真的會 sticky：
+  任何一層祖先有 overflow 就默默失效，而那正是這種版面最常見的壞法，而且畫面上
+  不會有任何錯誤。首頁在 844px 高的視窗裡捲不了那麼遠，所以縮短視窗再量。
+*/
+await p.setViewportSize({ width: 390, height: 260 })
+await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300)
+const barTop0 = (await p.locator('.home-filterbar').boundingBox()).y
+await p.evaluate(() => window.scrollTo(0, 9999)); await p.waitForTimeout(400)
+const barTop1 = (await p.locator('.home-filterbar').boundingBox()).y
+ok(`捲到底之後篩選列仍在畫面上、貼齊頂端（y：${Math.round(barTop0)} → ${Math.round(barTop1)}）`,
+   barTop0 > 0 && barTop1 === 0)
+await p.setViewportSize({ width: 390, height: 844 })
+await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300)
+
+// 搜尋：名稱與代碼都要搜得到——代碼是別人用 LINE 傳過來時，手上唯一的那個線索，
+// 而首頁每一列都印著它。
+const homeCode = ((await p.locator('.recent-meta .mono').first().textContent()) || '').trim()
+await p.locator('.home-filterbar .search-toggle').click(); await p.waitForTimeout(500)
+ok('點了長出輸入框，焦點就在裡面',
+   await p.evaluate(() => document.activeElement?.getAttribute('type') === 'search'))
+await p.locator('.home-filterbar input[type=search]').fill('確認對話框'); await p.waitForTimeout(400)
+ok('用名稱搜得到',
+   (await p.locator('.recent-name').allTextContents()).every((n) => n.includes('確認對話框')))
+await p.locator('.home-filterbar input[type=search]').fill(homeCode); await p.waitForTimeout(400)
+ok(`用代碼 ${homeCode} 也搜得到`, (await p.locator('.recent-name').count()) === 1)
+await p.locator('.home-filterbar input[type=search]').fill('zzz不存在的空間'); await p.waitForTimeout(400)
+// 搜不到時說的是「沒找到」，不是「還沒有開過空間」——後者在那個當下是假的，
+// 而且會讓人以為自己的空間不見了。
+ok('搜不到時說的是「沒有符合的空間」',
+   ((await p.locator('.hint').first().textContent()) || '').includes('沒有符合的空間'))
+await p.locator('.home-filterbar .search-clear').click(); await p.waitForTimeout(400)
+ok('取消之後空間都回來，放大鏡也回來',
+   (await p.locator('.recent-name').count()) > 1
+   && (await p.locator('.home-filterbar .search-toggle').count()) === 1)
+
 // 回到選單，底下那幾條驗的是刪除的確認對話框。
 await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
 await p.locator('.sheet').getByRole('button',{name:/^刪除空間/}).click(); await p.waitForTimeout(500)

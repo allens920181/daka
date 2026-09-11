@@ -4,7 +4,6 @@
  */
 const zh = {
   appName: 'RollRoom',
-  tagline: '大家一起點同一份名單',
 
   // 首頁
   openRoom: '創建空間',
@@ -113,6 +112,10 @@ const zh = {
   arrived: '已到',
   all: '全部',
   searchPlaceholder: '搜尋姓名…',
+  /* 首頁那一顆搜的是空間，不是人——同一個圖示、同一條列，但搜的東西不一樣，
+     所以不共用 searchPlaceholder。 */
+  searchRoomPlaceholder: '搜尋空間…',
+  noRoomMatch: '沒有符合的空間',
   allHere: '全部到齊',
   /* 頂欄接手計分區時要跟計分區逐字相同（大字＋「位沒到」）。這個 key 也用在
      結束後的橫幅，事情都結束了，「還有」本來就不該在那裡。 */
@@ -387,7 +390,6 @@ export type MessageKey = keyof typeof zh
 
 const en: Record<MessageKey, string> = {
   appName: 'RollRoom',
-  tagline: 'Everyone checks the same list',
 
   openRoom: 'Create a room',
   joinRoom: 'Join a room',
@@ -451,6 +453,8 @@ const en: Record<MessageKey, string> = {
   arrived: 'Here',
   all: 'All',
   searchPlaceholder: 'Search names…',
+  searchRoomPlaceholder: 'Search rooms…',
+  noRoomMatch: 'No rooms match',
   allHere: 'Everyone is here',
   missingCount: '{n} missing',
   missingUnit: 'still missing',

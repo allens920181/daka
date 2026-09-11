@@ -452,6 +452,16 @@ for (const pass of PASSES) {
   await audit(page, scheme, '首頁 · 空間的「更多」')
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
 
+  // 首頁的篩選列 2026-09 多了一顆放大鏡，展開之後那條輸入框蓋在分段控制上——
+  // 對比與觸控尺寸都換了一組鄰居（底下是半透明材質，不是頁面），要單獨驗。
+  if (await page.locator('.home-filterbar .search-toggle').count()) {
+    await page.locator('.home-filterbar .search-toggle').click(); await page.waitForTimeout(400)
+    await page.locator('.home-filterbar input[type=search]').fill('秋')
+    await page.waitForTimeout(400)
+    await audit(page, scheme, '首頁 · 搜尋展開')
+    await page.locator('.home-filterbar .search-clear').click(); await page.waitForTimeout(400)
+  }
+
   // 底下幾段是空間裡的東西，要先進去。
   await page.locator('.recent-item').first().click(); await page.waitForTimeout(1400)
 

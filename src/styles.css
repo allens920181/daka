@@ -739,7 +739,29 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 .home-head { padding: var(--sp-6) 0 var(--sp-5); }
 .home-title { font-size: var(--fs-6); letter-spacing: -.01em; }
-.home-tagline { color: var(--ink-2); font-size: var(--fs-3); margin-top: var(--sp-1); }
+
+/*
+ * 首頁的篩選＋搜尋列，sticky（2026-09）。
+ *
+ * 它沿用 `.topbar` 整塊材質（半透明＋模糊、底線、`z-index`、以及沒有
+ * `backdrop-filter` 或偏好減少透明度時的那兩組退路）——同一件東西不該有第二份
+ * 實作，尤其是那兩組退路很容易只補到其中一邊。
+ *
+ * 兩處不同：
+ * - **不吃 safe-area 的上內距。** `.topbar` 在頁面最上緣，那道內距是為了讓開
+ *   瀏海；這一列在標題底下，同一道內距會在頁面中間開一個洞。改成自己的 8px，
+ *   凍住之後上下對稱。
+ * - **底下留一格縫**（`--sp-3`）。分段控制本來住在 `.stack` 裡，靠 stack 的
+ *   gap 跟底下那兩顆按鈕分開；搬出來之後那個 gap 不再管得到它。
+ *   縫是透明的，捲動時內容會先穿過它再鑽到材質底下——跟點名畫面一樣。
+ *
+ * **選擇器要寫成 `.topbar.home-filterbar`，不能只寫 `.home-filterbar`。** 兩者
+ * 特異性相同，而 `.topbar` 宣告在後面（首頁這一段在檔案上半部），所以單類別的
+ * 版本會被它整個蓋掉——`padding-top` 悄悄變回 `env(safe-area-inset-top)`，而在
+ * 沒有瀏海的桌機瀏覽器上那等於 0，測起來一切正常。這個洞是靠「把 sticky 拿掉
+ * 之後測試竟然還是綠的」才發現的。
+ */
+.topbar.home-filterbar { top: 0; padding-top: var(--sp-2); margin-bottom: var(--sp-3); }
 
 /*
  * 掃描加入的鏡頭預覽。方框而非全寬：QR 碼本身是方的，方框讓使用者一眼知道
