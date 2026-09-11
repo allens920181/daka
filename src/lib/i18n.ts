@@ -342,9 +342,6 @@ const zh = {
   rollCallToast: '點名提示',
   rollCallToastOn: '顯示',
   rollCallToastOff: '不顯示',
-  /* 這一顆跟主題、字級不一樣：它關掉的是一張安全網，所以要說清楚失去什麼、
-     以及還有什麼路可以走。 */
-  rollCallToastHint: '關掉之後點名不再跳提示，也沒有那顆「復原」。點錯了仍然改得回來——再點一次那個人就好，只是不會有人告訴你剛剛動到的是誰。',
   fontSize: '文字大小',
   fontBase: '標準',
   fontLarge: '大',
@@ -592,7 +589,6 @@ const en: Record<MessageKey, string> = {
   rollCallToast: 'Roll-call toast',
   rollCallToastOn: 'Show',
   rollCallToastOff: 'Hide',
-  rollCallToastHint: 'With this off, marking someone shows no toast and no Undo. You can still fix a mistap by tapping the person again — but nothing tells you who you just changed.',
   fontSize: 'Text size',
   fontBase: 'Standard',
   fontLarge: 'Large',

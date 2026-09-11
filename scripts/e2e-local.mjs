@@ -1203,8 +1203,6 @@ ok('調回標準就把屬性拿掉（預設狀態下 DOM 上一個字都不多�
  */
 await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
 await p.getByRole('button', { name: /^點名提示/ }).click(); await p.waitForTimeout(400)
-ok('這一頁有一句說明（它關掉的是一張安全網，不是換個長相）',
-   (await p.locator('.sheet .hint').count()) === 1)
 await p.getByRole('button', { name: /^不顯示$/ }).click(); await p.waitForTimeout(500)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
