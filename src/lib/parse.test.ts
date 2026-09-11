@@ -207,6 +207,18 @@ describe('rosterToText', () => {
     expect(rosterToText([draft('王小明', '第一車'), draft('李美花', null)]))
       .toBe('#第一車\n王小明\n#未分組\n李美花')
   })
+
+  /*
+   * 「未分組」那個標記要用當下語言的字：英文介面的人按「套用」之後，不該在自己
+   * 的輸入框裡看到三個中文字——而且「名單怎麼寫」那一頁在英文介面教的就是
+   * `#No group`，畫面上教的寫法必須真的做得到事。
+   */
+  it('未分組的字由呼叫端給，英文往返一樣成立', () => {
+    const text = rosterToText([draft('Alice', 'Bus 1'), draft('Bob', null)], 'No group')
+    expect(text).toBe('#Bus 1\nAlice\n#No group\nBob')
+    expect(parseRoster(text).members.map((m) => [m.name, m.group_label]))
+      .toEqual([['Alice', 'Bus 1'], ['Bob', null]])
+  })
 })
 
 /**
@@ -383,6 +395,14 @@ describe('parseRoster 分組', () => {
     expect(grouped('#第一車\n王小明\n#未分組\n李美花')).toEqual([
       ['王小明', '第一車'], ['李美花', null],
     ])
+  })
+
+  it('英文的 #No group / #Ungrouped 一樣清得掉', () => {
+    for (const marker of ['#No group', '#no group', '#Ungrouped']) {
+      expect(grouped(`#Bus 1\nAlice\n${marker}\nBob`)).toEqual([
+        ['Alice', 'Bus 1'], ['Bob', null],
+      ])
+    }
   })
 
   /*

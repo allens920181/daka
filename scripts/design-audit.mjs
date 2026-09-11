@@ -385,6 +385,12 @@ for (const pass of PASSES) {
   await page.waitForTimeout(400)
   await audit(page, scheme, '創建空間')
 
+  // 「名單怎麼寫」：整面都是字，而且是全 app 唯一一處把等寬例子擺在凹槽上的
+  // 版面——對比與字級都換了一組鄰居，要單獨驗。
+  await page.locator('.topbar .fmt-help-btn').click(); await page.waitForTimeout(600)
+  await audit(page, scheme, '創建空間 · 名單怎麼寫')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+
   // 開空間 2026-09 拆成兩步（貼名單 →「產生名單」→ 看解析結果 →「建立」），
   // 解析結果與「建立」都住在第二步，要先把名單產出來。
   await page.getByRole('button', { name: /產生名單|Generate/ }).click(); await page.waitForTimeout(500)

@@ -37,6 +37,30 @@ ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 // 開空間
 await p.getByRole('button', { name: /創建空間/ }).first().click()
 await p.waitForTimeout(400)
+/*
+  「名單怎麼寫」：頂欄標題右邊那顆 ?。規則本來只活在解析器與 README 裡，而會去
+  讀 README 的是工程師不是主揪——這一頁是那些規則在畫面上唯一的入口。
+*/
+ok('標題右邊有一顆「名單怎麼寫」', (await p.locator('.topbar .fmt-help-btn').count()) === 1)
+ok('它貼著標題，不在最右邊那一排（右邊住的是動作）', await p.evaluate(() => {
+  const bar = document.querySelector('.topbar-inner')
+  const title = bar.querySelector('.topbar-name')
+  const help = bar.querySelector('.fmt-help-btn')
+  const spacer = bar.querySelector('.spacer')
+  // 標題 → ? → spacer：DOM 順序就是它的位置說法。
+  return title.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING
+    && (!spacer || (help.compareDocumentPosition(spacer) & Node.DOCUMENT_POSITION_FOLLOWING))
+}))
+await p.locator('.topbar .fmt-help-btn').click(); await p.waitForTimeout(500)
+ok('點了跳出說明', await p.locator('.fmt').isVisible())
+const fmtEgs = await p.locator('.fmt-eg').allTextContents()
+ok(`每一條都配一個例子（${fmtEgs.length} 個）`,
+   fmtEgs.length === 6 && fmtEgs.includes('#第一車') && fmtEgs.includes('#1 王小明'))
+ok('每個例子底下都有一句說法', (await p.locator('.fmt-row .fmt-say').count()) === 6)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關得掉，而且名單那一頁還在', (await p.locator('.fmt').count()) === 0
+   && await p.locator('#roster-text').isVisible())
+
 // 空間名稱的 return 鍵寫著「下一個」，所以它得真的跳到下一欄（名單）。
 ok('空間名稱的 return 鍵寫著「下一個」', await p.getAttribute('#room-name', 'enterkeyhint') === 'next')
 await p.locator('#room-name').fill('秋季旅遊 · 出發')

@@ -70,6 +70,28 @@ const zh = {
      東西，不會讓人想接著往下打。容錯改由 placeholder 那句「LINE 接龍直接貼就行」
      與 README 講；解析器一個字都沒改，混著寫照樣讀得進來。 */
   exampleRoster: '#第一車\n1. 王小明 0912345678\n2. 李美花 +1\n3. 陳大同（坐輪椅）\n#第二車\n4. 張三\n5. 李四\n6. 王五 帶2人',
+  /* 「名單怎麼寫」——開空間那一頁頂欄、標題右邊那顆 ?。
+     這些規則本來只活在解析器裡與 README 裡，而會去看 README 的是工程師，不是
+     站在遊覽車門口的主揪。範例示範得出「長什麼樣」，示範不出「為什麼」——
+     為什麼那串號碼跑到備註裡、為什麼那一行不見了。所以這一頁用講的，而且每一
+     條都配一個看得出來的例子。 */
+  formatHelp: '名單怎麼寫',
+  fmtLines: '一行一個人',
+  fmtLinesEg: '1. 王小明',
+  fmtLinesSay: '開頭的編號與 - • * 這些符號會自動拿掉，不寫也可以。',
+  fmtNotes: '名字後面可以接東西',
+  fmtNotesEg: '王小明 0912345678',
+  fmtNotesSay: '第一個「空白＋數字」之後整段都是備註。撥得出去的號碼會多一顆撥號鍵。',
+  fmtNotesParenEg: '陳大同（坐輪椅）',
+  fmtNotesParenSay: '括號裡也是備註。',
+  fmtGroups: '分車用 #',
+  fmtGroupsEg: '#第一車',
+  fmtGroupsSay: '這一行以下的人都算第一車，直到下一個 # 為止。',
+  fmtGroupsNoneEg: '#未分組',
+  fmtGroupsNoneSay: '結束分車，後面的人沒有車次。',
+  fmtGroupsNotEg: '#1 王小明',
+  fmtGroupsNotSay: '這是人不是車次——# 後面接編號，那就還是編號。',
+  fmtSkipped: '讀不出名字的行會被略過，下一步的清單預覽底下會說有幾行。',
   /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
   fromNote: '備註裡的號碼',
   parsePreview: '清單預覽',
@@ -401,6 +423,23 @@ const en: Record<MessageKey, string> = {
   exampleClear: 'Clear the example',
   exampleName: 'Autumn trip · Departure',
   exampleRoster: '#Bus 1\n1. Alice Chen 0912345678\n2. Bob Lin +1\n3. Dana Wu (wheelchair)\n#Bus 2\n4. Ken Chang\n5. Mia Wang\n6. Sam Lee +2',
+  formatHelp: 'How to write the roster',
+  fmtLines: 'One person per line',
+  fmtLinesEg: '1. Alice Chen',
+  fmtLinesSay: 'Leading numbers and - • * are stripped. You can leave them out.',
+  fmtNotes: 'Anything after the name',
+  fmtNotesEg: 'Alice Chen 0912345678',
+  fmtNotesSay: 'From the first space-then-digit on, it all becomes a note. Dialable numbers get a call button.',
+  fmtNotesParenEg: 'Dana Wu (wheelchair)',
+  fmtNotesParenSay: 'Brackets are notes too.',
+  fmtGroups: 'Use # for buses',
+  fmtGroupsEg: '#Bus 1',
+  fmtGroupsSay: 'Everyone below this line is on Bus 1, until the next #.',
+  fmtGroupsNoneEg: '#No group',
+  fmtGroupsNoneSay: 'Ends the grouping — people after it have no bus.',
+  fmtGroupsNotEg: '#1 Alice Chen',
+  fmtGroupsNotSay: "That's a person, not a bus — # followed by a number is still numbering.",
+  fmtSkipped: 'Lines with no readable name are skipped; the preview says how many.',
   fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',

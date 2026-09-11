@@ -711,6 +711,51 @@ export function SavedRostersSheet({ onApply, onClose }: {
  * 收合列右邊仍然印著目前的值（`.sheet-item-value`），不進去也看得到自己設了
  * 什麼——那個好處來自那一格，不是來自展開。
  */
+/**
+ * 「名單怎麼寫」。開空間那一頁頂欄、標題右邊那顆 `?`。
+ *
+ * **為什麼需要這一頁。** 這些規則本來只有兩個地方寫著：解析器的原始碼，與
+ * README——而會去讀 README 的是工程師，不是站在遊覽車門口的主揪。範例（「填入
+ * 範例」）示範得出「長什麼樣」，但示範不出「為什麼」：為什麼那串號碼跑到備註裡、
+ * 為什麼那一行不見了、為什麼那六個人掛在第一車。人是在結果不如預期的時候才會
+ * 想找說明，而那個時刻以前無處可去。
+ *
+ * **每一條都配一個看得出來的例子**（`.fmt-eg`，長得像輸入框裡的字）。光是
+ * 「名字之後第一個空白＋數字起算備註」這句話，讀三遍也不如看一眼
+ * `王小明 0912345678`。
+ *
+ * 它刻意**不是**格式的完整規格：`〖〗` 為什麼不再認得、20 字上限這些留在
+ * docs/ 與原始碼裡。這一頁只回答主揪站在現場會問的那幾件事。
+ */
+export function FormatHelpSheet({ onClose }: { onClose: () => void }) {
+  const t = useT()
+  const rows: [string, string, string][] = [
+    [t('fmtLines'), t('fmtLinesEg'), t('fmtLinesSay')],
+    [t('fmtNotes'), t('fmtNotesEg'), t('fmtNotesSay')],
+    ['', t('fmtNotesParenEg'), t('fmtNotesParenSay')],
+    [t('fmtGroups'), t('fmtGroupsEg'), t('fmtGroupsSay')],
+    ['', t('fmtGroupsNoneEg'), t('fmtGroupsNoneSay')],
+    ['', t('fmtGroupsNotEg'), t('fmtGroupsNotSay')],
+  ]
+  return (
+    <Sheet title={t('formatHelp')} onClose={onClose}>
+      <div class="fmt">
+        {rows.map(([heading, eg, say]) => (
+          <div class={heading ? 'fmt-row is-head' : 'fmt-row'} key={eg}>
+            {heading && <h3 class="label fmt-head">{heading}</h3>}
+            {/* 例子用 code：它是一段要照著打的字，不是引用的句子。 */}
+            <code class="mono fmt-eg">{eg}</code>
+            <p class="fmt-say">{say}</p>
+          </div>
+        ))}
+        {/* 略過那條沒有例子——它講的是「沒讀到的東西去哪了」，
+            而那件事的例子就是畫面上那行「N 行看起來不是姓名，已略過」。 */}
+        <p class="fmt-say fmt-tail">{t('fmtSkipped')}</p>
+      </div>
+    </Sheet>
+  )
+}
+
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const t = useT()
   const p = prefs.value

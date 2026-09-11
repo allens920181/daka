@@ -7,8 +7,8 @@ import { AppError, isSupabaseConfigured } from '../lib/supabase'
 import { navigate } from '../router'
 import { RosterEditorField, RosterPreview } from './RosterInput'
 import { ConfirmDialog } from './Sheet'
-import { SavedRostersSheet } from './Sheets'
-import { IconBack, IconBookmark, IconChevronRight } from './icons'
+import { FormatHelpSheet, SavedRostersSheet } from './Sheets'
+import { IconBack, IconBookmark, IconChevronRight, IconHelp } from './icons'
 import { useT } from './t'
 
 export function NewRoom() {
@@ -22,6 +22,7 @@ export function NewRoom() {
   const [error, setError] = useState<string | null>(null)
   const [restored, setRestored] = useState(false)
   const [savedRostersOpen, setSavedRostersOpen] = useState(false)
+  const [formatHelpOpen, setFormatHelpOpen] = useState(false)
 
   const result = useMemo(() => parseRoster(text), [text])
   const drafts = result.members
@@ -110,6 +111,22 @@ export function NewRoom() {
               <IconBack />
             </button>
             <h1 class="topbar-name">{t('openRoom')}</h1>
+            {/*
+              「名單怎麼寫」貼著標題，不在最右邊那一排。右邊住的是**動作**
+              （常用名單），而這顆不做事——它解釋這一頁。放在標題旁邊，它讀起來
+              就是「創建空間？這是什麼」，位置自己說出了它的作用。
+
+              兩個步驟都給：貼名單的時候問的是「該怎麼寫」，看解析結果的時候問的
+              是「為什麼變成這樣」——同一頁答得了兩種問題，而後者才是人真的會伸手
+              去找說明的時刻。
+            */}
+            <button
+              class="icon-btn fmt-help-btn"
+              onClick={() => setFormatHelpOpen(true)}
+              aria-label={t('formatHelp')}
+            >
+              <IconHelp />
+            </button>
             {step === 'input' && isSupabaseConfigured && (
               <>
                 <div class="spacer" />
@@ -231,10 +248,11 @@ export function NewRoom() {
 
       {savedRostersOpen && (
         <SavedRostersSheet
-          onApply={(r) => { setText(rosterToText(r.members)); setSavedRostersOpen(false) }}
+          onApply={(r) => { setText(rosterToText(r.members, t('ungrouped'))); setSavedRostersOpen(false) }}
           onClose={() => setSavedRostersOpen(false)}
         />
       )}
+      {formatHelpOpen && <FormatHelpSheet onClose={() => setFormatHelpOpen(false)} />}
     </>
   )
 }

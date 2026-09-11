@@ -80,8 +80,13 @@ const LEADING_MARKER = /^\s*#?\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–�
  */
 const GROUP_HASH = /^[\s\-–—=*]*#{1,3}\s*(.{1,20}?)[\s\-–—=*:：]*$/
 
-/** 明確表示「這之後的人沒有分組」。rosterToText 會寫出這個標記。 */
-const GROUP_NONE = /^(未分組|無分組|沒分組|—|-)$/
+/**
+ * 明確表示「這之後的人沒有分組」。`rosterToText` 會寫出這個標記。
+ *
+ * 英文也要認得：「名單怎麼寫」那一頁（見 Sheets 的 FormatHelpSheet）在英文介面
+ * 教的是 `#No group`，而畫面上教的寫法必須真的做得到事。
+ */
+const GROUP_NONE = /^(未分組|無分組|沒分組|ungrouped|no ?group|—|-)$/i
 
 function groupHeader(line: string): string | null {
   const hash = line.match(GROUP_HASH)?.[1]?.trim()
@@ -282,8 +287,11 @@ export function groupsOf(members: readonly { group_label: string | null }[]): st
  * 名單轉回可編輯的文字（用於「編輯名單」時把現有名單填回輸入框）。
  * 分組寫成標題行，並在分組結束時明確寫出「未分組」——
  * 否則往返之後那些人會被吸進上一個分組裡，是無聲的資料變更。
+ *
+ * `ungrouped` 是那個標記要用的字，預設中文；呼叫端傳當下語言的 `t('ungrouped')`。
+ * 兩種語言的寫法 `GROUP_NONE` 都認得，所以往返在哪一國語言都成立。
  */
-export function rosterToText(members: readonly DraftMember[]): string {
+export function rosterToText(members: readonly DraftMember[], ungrouped = '未分組'): string {
   const lines: string[] = []
   let current: string | null = null
   let started = false
@@ -292,9 +300,11 @@ export function rosterToText(members: readonly DraftMember[]): string {
     const group = m.group_label ?? null
     if (group !== current) {
       // 寫 `#` 而不是 `【】`：輸入框裡的字是使用者接下來要編輯的東西，全站只
-      // 該教一種分組寫法（範例填的也是這個）。括號那幾種讀得進來，但不寫出去。
+      // 該教一種分組寫法（範例填的也是這個）。
+      // `ungrouped` 由呼叫端給當下語言的字（`t('ungrouped')`）——英文介面的人
+      // 按「套用」之後不該在自己的輸入框裡看到「未分組」三個中文字。
       if (group) lines.push(`#${group}`)
-      else if (started) lines.push('#未分組')
+      else if (started) lines.push(`#${ungrouped}`)
       current = group
     }
     started = true

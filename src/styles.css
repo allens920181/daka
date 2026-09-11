@@ -1968,6 +1968,34 @@ button, input, textarea, select { font: inherit; color: inherit; }
   display: inline-block;
 }
 
+/* === 名單怎麼寫（FormatHelpSheet） ======================================= */
+
+/*
+ * 一條規則一格：例子在上、說法在下。
+ *
+ * 例子與說法**直排不橫排**。橫排時每一格的左欄要對齊，於是欄寬由最長的那個
+ * 例子決定（`陳大同（坐輪椅）`），短的那幾個右邊就拖著一段空白；而手機只有
+ * 390px 寬，說法那一欄會被擠成一行三個字。直排讓兩邊各自用滿整行。
+ */
+.fmt { display: flex; flex-direction: column; gap: var(--sp-3); }
+/* 有標題的那一格是一節的開頭，跟上一節拉開；同一節裡的後續例子貼著。 */
+.fmt-row.is-head:not(:first-child) { margin-top: var(--sp-3); }
+.fmt-head { margin: 0 0 var(--sp-2); }
+/*
+ * 例子長得像**輸入框裡的字**：等寬、凹槽底。這是全站那句「打字的東西凹下去」
+ * 的同一句話（見 04-components/README.md）——它不是引言也不是程式碼，它是一段
+ * 要照著打進上一頁那個框裡的字。凹槽不描邊。
+ */
+.fmt-eg {
+  display: block; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-2);
+  background: var(--surface-2); color: var(--ink);
+  font-size: var(--fs-3); line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
+}
+.fmt-say { margin: var(--sp-2) 0 0; font-size: var(--fs-2); color: var(--ink-2); line-height: 1.6; }
+/* 最後那條沒有例子，自己跟上面拉開一點，不然它讀起來像前一格的第二句。 */
+.fmt-tail { margin-top: var(--sp-3); color: var(--ink-3); }
+
 /* === 提示框 ============================================================== */
 
 .note {

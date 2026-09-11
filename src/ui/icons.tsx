@@ -185,6 +185,14 @@ export const IconLock = ({ size = 20, ...r }: P) => (
     <rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
   </svg>
 )
+// 「名單怎麼寫」那一頁的觸發鍵，住在開空間那一頁的頂欄、標題右邊。
+export const IconHelp = ({ size = 24, ...r }: P) => (
+  <svg {...base(size)} {...r}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.1 9.5a3 3 0 0 1 5.8 1c0 2-2.9 2.5-2.9 4" />
+    <path d="M12 17.5h.01" />
+  </svg>
+)
 // 掃描加入的觸發鍵，跟分享面板「二維碼」那一列的 IconQr 分開：那顆印的是
 // 要被掃的碼本身，這顆印的是拿去掃別人的相機。
 export const IconCamera = ({ size = 20, ...r }: P) => (
