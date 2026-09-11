@@ -1,6 +1,6 @@
 import { Fragment } from 'preact'
 import type { JSX } from 'preact'
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import {
   connection, dismissToast, editMember, enterRoom, groups, isOwner, leaveRoom, members, pendingUploads,
   openMenuOnEnter, prefs, removeMember, renameRoom, room, setRoomClosed, setStatusWithUndo, showToast,
@@ -13,6 +13,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { formatTime } from '../lib/format'
 import { navigate } from '../router'
 import { errorMessage } from './NewRoom'
+import { AppBar } from './AppBar'
 import { RoleBadge } from './RoleBadge'
 import { ConfirmDialog } from './Sheet'
 import { AddWalkInSheet, ManageSheet } from './Sheets'
@@ -33,7 +34,7 @@ type MenuMode = 'invite' | undefined
  */
 const UNGROUPED = '\u0000ungrouped'
 
-export function Room({ code }: { code: string }) {
+export function Room({ code, onSettings }: { code: string; onSettings: () => void }) {
   const t = useT()
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
@@ -91,6 +92,60 @@ export function Room({ code }: { code: string }) {
   /** 編輯模式下正在改的是哪一列。一次只開一列：兩個名字同時是輸入框時，
    *  沒有人看得出自己剛剛在改誰。 */
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  /*
+    頂欄往下滑收起來（2026-09）。
+
+    這個畫面的頂欄有三列：app 抬頭、空間名、篩選＋搜尋。三列疊起來 188px，而
+    390×844 的螢幕總共只有 844——**四分之一的畫面在講「你在哪裡」，而使用者
+    是來看「還有誰沒到」的**。
+
+    收的是上面兩列，**篩選那一列永遠不收**：「未到 N」是畫面上唯一回答「還有
+    幾個沒到」的東西，而搜尋是有人在車門口報上名字時要用的（見 .filterbar 的
+    註解）。那兩件事跟著名單捲走的話，要用得先捲回 17 個螢幕。
+
+    往上滑一點就回來，不必捲到最頂：200 人的名單捲到底時，「拿回返回鍵」不該
+    要人再捲 200 列。
+  */
+  const [folded, setFolded] = useState(false)
+  const [foldH, setFoldH] = useState(0)
+  const foldObserver = useRef<ResizeObserver | null>(null)
+  /*
+    **callback ref，不是 useRef ＋ mount 時量一次。** 這個元件在載入完成之前回傳的是
+    骨架（見底下的 early return），所以掛載那一刻頂欄根本還不存在——量到 0、
+    ResizeObserver 也接不上去，於是位移永遠是 translateY(-0px)：class 換了、
+    visibility 換了，就是不會動。這個 bug 只有在真的瀏覽器裡捲一次才看得出來。
+
+    順便也接住高度會變的那幾種情況：字級設定、轉向、空間名換行。
+  */
+  const foldRef = useCallback((node: HTMLDivElement | null) => {
+    foldObserver.current?.disconnect()
+    foldObserver.current = null
+    if (!node) return
+    setFoldH(node.offsetHeight)
+    if (typeof ResizeObserver === 'undefined') return
+    foldObserver.current = new ResizeObserver(() => setFoldH(node.offsetHeight))
+    foldObserver.current.observe(node)
+  }, [])
+  useEffect(() => {
+    let last = window.scrollY
+    const onScroll = () => {
+      const y = Math.max(0, window.scrollY)
+      // 還在上面就一律展開：那時候收起來只是讓畫面自己抖一下。
+      if (y <= foldH) { last = y; setFolded(false); return }
+      const dy = y - last
+      /*
+        門檻 8px，而且**沒過門檻就不更新 last**——位移因此會累積。每一次 scroll
+        事件都更新的話，手指慢慢移動時每次 dy 都是 1～2px，方向會被雜訊決定，
+        頂欄就在原地抖。
+      */
+      if (Math.abs(dy) < 8) return
+      last = y
+      setFolded(dy > 0)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [foldH])
 
   /**
    * 進編輯模式。Toast 要當場收掉——它上面那顆「復原」也是點名操作，而編輯模式
@@ -270,7 +325,19 @@ export function Room({ code }: { code: string }) {
         唯一不能消失的數字，所以字級要和空間名對調——空間名此刻只是脈絡，
         「還有幾個沒到」才是使用者盯著的東西。
       */}
-      <div class="topbar">
+      {/*
+        位移放在整條 sticky 的頂欄上，不是把那兩列的高度收成 0。
+        高度收掉的話，這條頂欄在流程裡佔的位置跟著變短，**底下整份名單會往上跳
+        124px**——而使用者只是在捲動。transform 不動版面，也走得到合成執行緒。
+      */}
+      <div
+        class={folded ? 'topbar room-chrome is-folded' : 'topbar room-chrome'}
+        style={folded ? `transform: translateY(${-foldH}px)` : undefined}
+      >
+        <div class="room-chrome-fold" ref={foldRef}>
+          <div class="shell">
+            <AppBar onSettings={onSettings} />
+          </div>
         <div class="shell topbar-inner">
           <button class="icon-btn" onClick={() => navigate('/')} aria-label={t('back')}>
             <IconBack />
@@ -358,6 +425,7 @@ export function Room({ code }: { code: string }) {
               <IconMore />
             </button>
           )}
+        </div>
         </div>
         {/*
           篩選與搜尋同一列（2026-09）：三段篩選佔左邊，右邊一顆放大鏡，點下去

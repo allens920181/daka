@@ -28,7 +28,7 @@ export function App() {
   return (
     <>
       {inRoom?.[1]
-        ? <Room code={inRoom[1].toUpperCase()} />
+        ? <Room code={inRoom[1].toUpperCase()} onSettings={() => setSettings(true)} />
         : path === '/new'
           ? <NewRoom />
           : <Home onSettings={() => setSettings(true)} />}

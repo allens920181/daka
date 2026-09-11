@@ -747,8 +747,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 高度實際上由那顆設定鍵（48px 觸控目標）決定，不是由字決定：標題 32.5px、
  * 標誌 28px，兩個都比 48 矮。所以這裡只調內距，動字級不會讓這一列變矮。
  */
-.home-head { padding: var(--sp-4) 0 var(--sp-3); }
-.home-title { font-size: var(--fs-6); letter-spacing: -.01em; }
+.app-bar { padding: var(--sp-4) 0 var(--sp-3); }
+.app-name { flex: 1; min-width: 0; font-size: var(--fs-6); letter-spacing: -.01em; }
 
 /*
  * 首頁的篩選＋搜尋列，sticky（2026-09）。
@@ -906,6 +906,21 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 疊起來才留的。48 就是這一列真正需要的高度——它等於它最高的內容。
  */
 .topbar-inner { display: flex; align-items: center; gap: var(--sp-1); min-height: var(--tap-min); }
+
+/*
+ * 空間的頂欄往下滑收起來（2026-09，見 Room 的 .room-chrome）。
+ *
+ * **位移放在整條 sticky 的頂欄上，不是把折疊那兩列的高度收成 0。** 高度收掉的話
+ * 這條頂欄在流程裡佔的位置跟著變短，底下整份名單會往上跳一百多 px——而使用者
+ * 只是在捲動。transform 不動版面，而且走得到合成執行緒。
+ *
+ * 收起來時那兩列在畫面外，`visibility: hidden` 讓它們也收掉手指與 Tab——
+ * 一顆看不見但按得到的返回鍵，比沒有返回鍵更難解釋。
+ * （`visibility` 可以轉場，所以它會等位移跑完才消失，不會在動畫中途閃掉。）
+ */
+.room-chrome { transition: transform var(--dur-2) var(--ease); }
+.room-chrome-fold { transition: visibility var(--dur-2) var(--ease); }
+.room-chrome.is-folded .room-chrome-fold { visibility: hidden; }
 /* 頂欄標題是一顆按鈕（點了回到名單頂端），但要長得像標題。 */
 .topbar-title {
   min-width: 0; flex: 1;
