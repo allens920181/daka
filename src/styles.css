@@ -70,6 +70,14 @@
   --surface: #ffffff;
   --surface-2: #ebeff4;
   /*
+   * app 那一層的底色：導航列（標誌 ＋ 產品名 ＋ 設定）坐在上面，空間是它底下
+   * 的一塊面板。值目前跟 --surface-2 一樣，但**名字不一樣是刻意的**：
+   * --surface-2 在這套語言裡的意思是「凹槽 ＝ 你打字的東西」（輸入框、分段控制
+   * 的底），拿它當導航列的底色會讓那個詞多一個意思，下一個人讀到「導航列是凹槽」
+   * 只會困惑。兩者將來要分頭調也不會互相絆住。
+   */
+  --chrome: #ebeff4;
+  /*
    * 「浮在凹槽上」的那一階。分段控制與名單列都靠高度（而不是顏色）表示狀態：
    * 軌道／頁面用凹的那一階，浮起來的那一格要比它亮。
    *
@@ -361,6 +369,7 @@
     --paper: #0b0f13;
     --surface: #161b21;
     --surface-2: #21272f;
+    --chrome: #21272f;
     --raised: #2d333c;
     --ink: #eaedf1;
     --ink-2: #a3acb6;
@@ -412,6 +421,7 @@
   --paper: #0b0f13;
   --surface: #161b21;
   --surface-2: #21272f;
+  --chrome: #21272f;
   --raised: #2d333c;
   --ink: #eaedf1;
   --ink-2: #a3acb6;
@@ -747,8 +757,25 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 高度實際上由那顆設定鍵（48px 觸控目標）決定，不是由字決定：標題 32.5px、
  * 標誌 28px，兩個都比 48 矮。所以這裡只調內距，動字級不會讓這一列變矮。
  */
-.home-head { padding: var(--sp-4) 0 var(--sp-3); }
-.home-title { font-size: var(--fs-6); letter-spacing: -.01em; }
+/*
+ * app 那一層坐在自己的底色上（2026-09）。
+ *
+ * 導航列與空間的標題列本來都直接坐在 `--paper` 上，於是「RollRoom」與
+ * 「← 秋季旅遊 · 出發 ⋮」讀起來是同一坨東西——而它們是兩件事：一個是 app，
+ * 一個是你現在打開的那一間空間。加一條髮絲線不夠，那只是把它變成「一堆髮絲線
+ * 裡的又一條」（篩選列底下本來就有一條）。
+ *
+ * 改成**講結構**：導航列有自己的底色，空間是它底下的一塊面板，面板的上緣就是
+ * 分界（見 `.room-chrome .topbar-inner`）。
+ */
+/* 首頁的導航列底下接的是頁面內容，留一格縫；空間裡底下接的是面板，貼著
+   （那一格縫改由面板自己的上緣負責，見 .room-chrome .topbar-inner）。 */
+.app-bar-band { background: var(--chrome); margin-bottom: var(--sp-3); }
+.room-chrome .app-bar-band { margin-bottom: 0; }
+/* `padding-block`，不是 `padding` 簡寫：這一格現在跟 `.shell` 同一個元素，
+   簡寫會把 `.shell` 的左右內距歸零，標誌就貼到螢幕邊緣去了。 */
+.app-bar { padding-block: var(--sp-4) var(--sp-3); }
+.app-name { flex: 1; min-width: 0; font-size: var(--fs-6); letter-spacing: -.01em; }
 
 /*
  * 首頁的篩選＋搜尋列，sticky（2026-09）。
@@ -906,6 +933,40 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 疊起來才留的。48 就是這一列真正需要的高度——它等於它最高的內容。
  */
 .topbar-inner { display: flex; align-items: center; gap: var(--sp-1); min-height: var(--tap-min); }
+
+/*
+ * 空間的頂欄往下滑收起來（2026-09，見 Room 的 .room-chrome）。
+ *
+ * **位移放在整條 sticky 的頂欄上，不是把折疊那兩列的高度收成 0。** 高度收掉的話
+ * 這條頂欄在流程裡佔的位置跟著變短，底下整份名單會往上跳一百多 px——而使用者
+ * 只是在捲動。transform 不動版面，而且走得到合成執行緒。
+ *
+ * 收起來時那兩列在畫面外，`visibility: hidden` 讓它們也收掉手指與 Tab——
+ * 一顆看不見但按得到的返回鍵，比沒有返回鍵更難解釋。
+ * （`visibility` 可以轉場，所以它會等位移跑完才消失，不會在動畫中途閃掉。）
+ */
+.room-chrome { transition: transform var(--dur-2) var(--ease); }
+.room-chrome-fold { transition: visibility var(--dur-2) var(--ease); }
+.room-chrome.is-folded .room-chrome-fold { visibility: hidden; }
+
+/*
+ * 空間那一塊是導航列底下的一塊面板，它的上緣就是分界。
+ *
+ * 那道上緣是**一條會轉彎的髮絲線**（`box-shadow` ＋ 圓角），不是填色的圓角：
+ * 面板本身用的就是頂欄那塊半透明材質，不另外上底色——多鋪一層底就等於把
+ * 「看得到底下的東西在動」那件事關掉，而那正是這條頂欄存在的樣子。
+ *
+ * 只在空間裡（`.room-chrome`）。首頁的導航列底下沒有巢狀的東西，沒有面板要畫。
+ */
+.room-chrome .topbar-inner {
+  /* 只有 margin，沒有 padding：這一列的高度規則是「等於它最高的內容」（48px 的
+     圖示鍵），多 4px 的上內距就把它撐成 52——那條規則有測試在守。面板的上緣靠
+     margin 跟底色帶拉開，不動這一列自己的高度。 */
+  margin-top: var(--sp-1);
+  border-top-left-radius: var(--r-3);
+  border-top-right-radius: var(--r-3);
+  box-shadow: 0 -1px 0 var(--rule);
+}
 /* 頂欄標題是一顆按鈕（點了回到名單頂端），但要長得像標題。 */
 .topbar-title {
   min-width: 0; flex: 1;

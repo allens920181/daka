@@ -30,7 +30,10 @@ const openSearch = async () => {
 }
 
 await p.goto(URL); await p.waitForTimeout(1200)
-ok('首頁載入', await p.locator('.home-title').isVisible())
+// `.app-name` 現在首頁與空間都有（同一條 app 抬頭），所以「在首頁」要靠別的
+// 東西分辨：空間名那一列只長在空間裡。
+ok('首頁載入', await p.locator('.app-name').isVisible()
+   && (await p.locator('.topbar-name').count()) === 0)
 ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 
 
@@ -377,8 +380,19 @@ ok('開的是一張面板，不是就地展開',
    && (await p.locator('#join-panel').count()) === 0)
 // 就地展開時底下那份清單仍然按得到、螢幕閱讀器也仍然讀得到。面板要掛在 .shell
 // 外面，useModal 才 inert 得到整頁（見 Home.tsx 的註解）。
-ok('背景整頁 inert 了', await p.evaluate(() =>
-  document.querySelector('.shell')?.hasAttribute('inert') === true))
+ok('背景整頁 inert 了', await p.evaluate(() => {
+  const overlay = document.querySelector('.overlay-bottom')
+  const sibs = [...overlay.parentElement.children]
+    .filter((c) => c !== overlay && !c.classList.contains('toast-wrap'))
+  const gear = document.querySelector('.app-bar .icon-btn')
+  /*
+    問的是「背景真的碰不到了嗎」，不是「某個元素身上有沒有那個屬性」。
+    這一條本來抓 `document.querySelector('.shell')`——那在導航列搬進自己的底色帶
+    之前剛好是最外層那一格，之後變成帶子**裡面**那一格，屬性當然不在它身上，
+    而背景其實好好地 inert 著。inert 會往下繼承，所以要問的是祖先。
+  */
+  return sibs.length > 0 && sibs.every((c) => c.hasAttribute('inert')) && !!gear?.closest('[inert]')
+}))
 // 面板沒有標題列（2026-09 起一張都沒有），但螢幕閱讀器聽得到的不能跟著少。
 ok('沒有標題文字，但無障礙名稱還在',
    (await p.locator('.sheet-title').count()) === 0
@@ -509,7 +523,7 @@ ok('身分是那一列名字前面的圖示', await p.evaluate(() => {
 ok('圖示唸得出身分',
    /^(主揪|協助者)$/.test((await p.locator('.recent-main .role-badge').first().getAttribute('aria-label')) ?? ''))
 await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).click(); await p.waitForTimeout(600)
-ok('就在首頁打開，不進空間', (await p.locator('.home-title').count()) === 1
+ok('就在首頁打開，不進空間', (await p.locator('.app-name').count()) === 1
    && (await p.locator('.topbar-name').count()) === 0)
 const homeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`首頁那份是空間本身的事：${homeRows.join('、')}`,
@@ -522,7 +536,8 @@ ok('面板的無障礙名稱說得出是哪一個空間',
    (await p.locator('.sheet').getAttribute('aria-label')) === '秋季旅遊 · 出發')
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關閉空間選單，人還在首頁',
-   (await p.locator('.sheet').count()) === 0 && (await p.locator('.home-title').count()) === 1)
+   (await p.locator('.sheet').count()) === 0 && (await p.locator('.app-name').count()) === 1
+   && (await p.locator('.topbar-name').count()) === 0)
 
 // ---- 現場操作：同名辨識、未分組、臨時加人、刪除確認 ----
 await p.goto(URL); await p.waitForTimeout(900)
@@ -701,11 +716,23 @@ ok(`底部動作列只剩一顆：${dockLabels.join('、')}`,
 ok('動作列上沒有主要按鈕（這個畫面的主要動作是戳名字）',
    (await p.locator('.dock .btn-primary').count()) === 0)
 ok('也沒有浮動搜尋鍵', (await p.locator('.fab').count()) === 0)
-// 搜尋跟篩選同一列（2026-09）：一顆放大鏡排在「全部／未到／已到」右邊。
-// 頂欄剩兩列：名字那一列、篩選＋搜尋那一列。搜尋自己那一列（76px）沒了。
+/*
+  搜尋跟篩選同一列（2026-09）：一顆放大鏡排在「全部／未到／已到」右邊，搜尋
+  自己那一列（76px）沒了。
+
+  這一條原本是數「頂欄有幾個 .shell」——2 列就代表搜尋沒有自己一列。頂欄 2026-09
+  變成三列（app 抬頭、空間名、篩選＋搜尋），那個數字就不再是它要問的問題了。
+  改成直接量真正的不變量：**那顆鍵在分段控制的右邊，而且跟它同一列**（比中線，
+  不是比上緣——兩者高度本來就不一樣，48 vs 56）。
+*/
 ok('搜尋是篩選列右邊那一顆，不另外佔一列',
    (await p.locator('.topbar .filterbar .search-toggle').count()) === 1
-   && (await p.locator('.topbar > .shell').count()) === 2)
+   && await p.evaluate(() => {
+     const btn = document.querySelector('.filterbar .search-toggle').getBoundingClientRect()
+     const seg = document.querySelector('.filterbar .segmented').getBoundingClientRect()
+     return btn.left > seg.right - 1
+       && Math.abs((btn.top + btn.height / 2) - (seg.top + seg.height / 2)) <= 1
+   }))
 // 分享在頂欄待過一陣子，2026-09 收回「更多」：一個空間只該有一顆「更多」，
 // 不然同一張面板有兩個入口通往它的不同頁。頂欄因此只剩返回與更多。
 ok('頂欄只剩返回與更多兩顆',
@@ -915,6 +942,16 @@ ok('每一列是 listitem', (await p.locator('.member[role=listitem]').count()) 
 ok('空間名是 h1', (await p.locator('h1.topbar-name').count()) === 1)
 await p.mouse.wheel(0, 3000); await p.waitForTimeout(700)
 ok('捲得下去', (await p.evaluate(() => window.scrollY)) > 500)
+/*
+  **「點頂欄回到頂端」現在要先往上撥一下。** 頂欄往下滑會收起來（2026-09），而
+  空間名那一列正好是收起來的其中一列——它在「你捲得很深」的時候不在畫面上，
+  而那正是想回頂端的時刻。
+
+  這是折疊換來的代價，不是 bug：往上撥一下頂欄就回來（不必捲到頂），接著點它
+  一下回到第一列。手勢跟 iOS 點狀態列回頂是同一個方向，多的是那一撥。
+*/
+await p.mouse.wheel(0, -120); await p.waitForTimeout(700)
+ok('往上撥一下，空間名那一列回來了', await p.locator('.topbar-title').isVisible())
 await p.locator('.topbar-title').click(); await p.waitForTimeout(900)
 ok('點頂欄回到名單頂端', (await p.evaluate(() => window.scrollY)) < 10)
 // 搜尋框只留一顆清除鍵：原生那顆沒有 48px 觸控目標也沒有無障礙名稱。
@@ -1047,7 +1084,7 @@ ok('走進去就自動取消封存，回首頁看得到它',
 ok('首頁的篩選列在', (await p.locator('.home-filterbar').count()) === 1)
 ok('標語不見了（「大家一起點同一份名單」）',
    (await p.locator('.home-tagline').count()) === 0
-   && !(await p.locator('.home-head').innerText()).includes('大家一起'))
+   && !(await p.locator('.app-bar').innerText()).includes('大家一起'))
 // 材質要滿版：貼在 .shell 裡面的話，捲過去的列會從左右內距那兩道縫露出來。
 ok('篩選列的材質滿版（沒被 shell 的內距切掉）',
    (await p.locator('.home-filterbar').boundingBox()).width === 390)
@@ -1573,6 +1610,77 @@ ok('Esc 清空搜尋字、還原名單，搜尋框還在原地',
    && (await p.locator('input[type=search]').inputValue()) === ''
    && (await p.locator('.member').count()) === 80)
 await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(300)
+
+/*
+  空間的頂欄（2026-09）。空間以前是一整頁蓋掉首頁，走進去之後畫面上沒有一個東西
+  說得出「我還在同一個 app 裡」。現在 app 抬頭跟著進來，而三列疊起來太高，所以
+  往下滑時上面兩列收起來——**篩選那一列永遠不收**。
+*/
+await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(700)
+ok('空間裡有 app 抬頭（標誌 ＋ RollRoom）', (await p.locator('.room-chrome .app-bar').count()) === 1)
+// 兩顆出口各在各的列：⚙ 改的是 app 的設定，← 是退出這一間空間。
+ok('設定在 app 那一列、返回在空間那一列',
+   (await p.locator('.room-chrome .app-bar .icon-btn').count()) === 1
+   && await p.locator('.topbar-inner .icon-btn').first().isVisible())
+
+/*
+  導航列與空間標題列本來都直接坐在 --paper 上，讀起來是同一坨東西——而它們是兩
+  件事：一個是 app，一個是你打開的那一間空間。分法不是加一條線（篩選列底下本來
+  就有一條，再加只是變成「一堆髮絲線裡的又一條」），是講結構：導航列有自己的
+  底色，空間是它底下的一塊面板。
+*/
+const chrome = await p.evaluate(() => {
+  const band = document.querySelector('.room-chrome .app-bar-band')
+  const pane = document.querySelector('.room-chrome .topbar-inner')
+  const cs = getComputedStyle(pane)
+  return {
+    band: getComputedStyle(band).backgroundColor,
+    paper: getComputedStyle(document.body).backgroundColor,
+    radius: parseFloat(cs.borderTopLeftRadius),
+    shadow: cs.boxShadow,
+    paneH: Math.round(pane.getBoundingClientRect().height),
+  }
+})
+ok(`導航列有自己的底色，跟頁面分得開（${chrome.band} vs ${chrome.paper}）`,
+   chrome.band !== chrome.paper && !/rgba\(0, 0, 0, 0\)|transparent/.test(chrome.band))
+// 上緣是一條**會轉彎**的髮絲線（圓角 ＋ box-shadow），不是填色的圓角：面板用的
+// 就是頂欄那塊半透明材質，多鋪一層底等於把「看得到底下的東西在動」關掉。
+ok(`空間面板的上緣是一條會轉彎的髮絲線（圓角 ${chrome.radius}px）`,
+   chrome.radius >= 12 && chrome.shadow !== 'none')
+// 「這一列等於它最高的內容」是頂欄自己的規則（48px 的圖示鍵）。面板的上緣靠
+// margin 跟底色帶拉開，不准動這一列的高度——加個上內距就會把它撐成 52。
+ok(`而且沒有把那一列撐高（${chrome.paneH}px）`, chrome.paneH === 48)
+
+const chromeAt = async () => await p.evaluate(() => {
+  const top = (sel) => { const e = document.querySelector(sel); return e ? Math.round(e.getBoundingClientRect().top) : null }
+  return { app: top('.room-chrome .app-bar'), name: top('.topbar-inner'),
+           filter: top('.topbar .filterbar'), member: top('.member'), y: Math.round(window.scrollY) }
+})
+const chromeOpen = await chromeAt()
+await p.evaluate(() => window.scrollTo(0, 1200)); await p.waitForTimeout(700)
+const chromeShut = await chromeAt()
+ok(`往下滑之後 app 抬頭與空間名收到畫面外（${chromeOpen.app} → ${chromeShut.app}）`,
+   chromeShut.app < 0 && chromeShut.name < 0)
+// 「未到 N」是畫面上唯一回答「還有幾個沒到」的東西，搜尋是有人報上名字時要用的。
+ok('篩選與搜尋那一列留在最上面', chromeShut.filter !== null && chromeShut.filter >= 0 && chromeShut.filter < 20)
+/*
+  收起來時名單不能動。位移若做成「把那兩列的高度收成 0」，頂欄在流程裡佔的位置
+  會跟著變短，**底下整份名單往上跳 124px**——而使用者只是在捲動。所以量的是
+  「第一列的位置只跟捲動量有關」。
+*/
+ok('收起來的時候名單一格都沒有跳',
+   chromeShut.member === chromeOpen.member - (chromeShut.y - chromeOpen.y))
+// 看不見但按得到的返回鍵，比沒有返回鍵更難解釋。
+ok('收起來的那兩列碰不到',
+   await p.evaluate(() => getComputedStyle(document.querySelector('.room-chrome-fold')).visibility === 'hidden'))
+
+await p.evaluate(() => window.scrollBy(0, -80)); await p.waitForTimeout(700)
+const chromeBack = await chromeAt()
+// 200 人的名單捲到底時，「拿回返回鍵」不該要人再捲 200 列。
+ok(`往上滑一點就回來，而且沒有捲到頂（scrollY=${chromeBack.y}）`,
+   chromeBack.app === chromeOpen.app && chromeBack.y > 200)
+ok('回來的時候名單也沒有跳',
+   chromeBack.member === chromeOpen.member - (chromeBack.y - chromeOpen.y))
 
 // .list 的下方內距（見 styles.css）決定的是「捲到底之後最後一列還按得到嗎」，
 // 不是首屏能看到幾個人——這裡直接量會蓋住它的東西：點名後彈出的 Toast。
