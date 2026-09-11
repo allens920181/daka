@@ -724,8 +724,10 @@ export function SavedRostersSheet({ onApply, onClose }: {
  * 「名字之後第一個空白＋數字起算備註」這句話，讀三遍也不如看一眼
  * `王小明 0912345678`。
  *
- * 它刻意**不是**格式的完整規格：`〖〗` 為什麼不再認得、20 字上限這些留在
- * docs/ 與原始碼裡。這一頁只回答主揪站在現場會問的那幾件事。
+ * 它刻意**不是**格式的完整規格。`#未分組`（結束分車）與 `#1 王小明`（那是人不是
+ * 車次）都真的有效，但都不在這裡——它們回答的是「我已經知道 # 是分車了，那
+ * 邊界怎麼辦」，而會問到那一步的人，早就不需要這一頁了。說明長一倍，換來的是
+ * 第一次打開的人多讀兩條用不到的規則。`〖〗`、20 字上限這些同理，留在 docs/。
  */
 export function FormatHelpSheet({ onClose }: { onClose: () => void }) {
   const t = useT()
@@ -734,8 +736,6 @@ export function FormatHelpSheet({ onClose }: { onClose: () => void }) {
     [t('fmtNotes'), t('fmtNotesEg'), t('fmtNotesSay')],
     ['', t('fmtNotesParenEg'), t('fmtNotesParenSay')],
     [t('fmtGroups'), t('fmtGroupsEg'), t('fmtGroupsSay')],
-    ['', t('fmtGroupsNoneEg'), t('fmtGroupsNoneSay')],
-    ['', t('fmtGroupsNotEg'), t('fmtGroupsNotSay')],
   ]
   return (
     <Sheet title={t('formatHelp')} onClose={onClose}>

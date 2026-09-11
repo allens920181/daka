@@ -55,8 +55,11 @@ await p.locator('.topbar .fmt-help-btn').click(); await p.waitForTimeout(500)
 ok('點了跳出說明', await p.locator('.fmt').isVisible())
 const fmtEgs = await p.locator('.fmt-eg').allTextContents()
 ok(`每一條都配一個例子（${fmtEgs.length} 個）`,
-   fmtEgs.length === 6 && fmtEgs.includes('#第一車') && fmtEgs.includes('#1 王小明'))
-ok('每個例子底下都有一句說法', (await p.locator('.fmt-row .fmt-say').count()) === 6)
+   fmtEgs.length === 4 && fmtEgs.includes('#第一車'))
+ok('每個例子底下都有一句說法', (await p.locator('.fmt-row .fmt-say').count()) === 4)
+// 說明頁不是規格書：`#未分組`、`#1 王小明` 都真的有效，但不在這裡。會問到分車
+// 邊界的人早就不需要這一頁了，而第一次打開的人會多讀兩條用不到的規則。
+ok('沒有把邊界規則也塞進來', !fmtEgs.some((e) => e.includes('未分組') || e.includes('#1 ')))
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 ok('Esc 關得掉，而且名單那一頁還在', (await p.locator('.fmt').count()) === 0
    && await p.locator('#roster-text').isVisible())
