@@ -7,6 +7,7 @@ import { atRiskOfStorageEviction, canScanQr } from '../lib/config'
 import { navigate } from '../router'
 import { IconCamera, IconMore, IconPlus, IconSearch, IconSettings } from './icons'
 import { ScanView } from './Scan'
+import { Logo } from './Logo'
 import { RoleBadge } from './RoleBadge'
 import { Sheet } from './Sheet'
 import { RoomActionsSheet } from './Sheets'
@@ -168,7 +169,11 @@ export function Home({ onSettings }: { onSettings: () => void }) {
         <div class="home-head row">
           {/* 標語（「大家一起點同一份名單」）2026-09 拿掉：它是講給還沒用過的人聽
               的一句宣傳，而看得到這一頁的人已經在用了——底下那份清單才是他來這裡
-              要找的東西，而那句話每次都把它往下推一行。 */}
+              要找的東西，而那句話每次都把它往下推一行。
+
+              標誌補在標題左邊：主畫面上那顆圖示與這一頁的抬頭要是同一個東西
+              （見 Logo）。 */}
+          <Logo />
           <h1 class="home-title" style="flex:1; min-width:0">{t('appName')}</h1>
           <button class="icon-btn" onClick={onSettings} aria-label={t('settings')}>
             <IconSettings />

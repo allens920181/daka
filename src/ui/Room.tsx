@@ -936,10 +936,22 @@ function SyncBadge() {
     aria-label／title：螢幕閱讀器唸得到，桌機 hover 得出來。
     **例外是待上傳筆數**：那是一個會變的數字，而且它變大就代表有東西還沒送出
     去——那時候圓點旁邊多一個數字，不然「還有幾筆沒上傳」就沒有地方說了。
+
+    **同步好了就連那顆點都不畫**（2026-09）。同一條理由再往前推一步：一顆整場
+    都亮著綠燈的點，說的是「一切正常」——而「一切正常」是使用者本來就假設的事。
+    它唯一有價值的時刻是**不正常**的時候，而那時候它偏偏跟平常長得一樣大、只差
+    一個顏色。拿掉之後，那個位置有東西 ＝ 有事情要注意，不必再去分辨是哪一種綠。
+    （單機模式不算「同步好了」：它說的是「這個空間只有你看得到」，是一件一直
+    成立、而且會影響決定的事。）
+
+    **外層那個 role="status" 留著，不是連元素一起拿掉**：live region 要先存在，
+    之後的變化才播報得出來；整個拆掉的話，斷線那一刻螢幕閱讀器不會有任何反應。
+    空的 inline-flex 沒有寬度，畫面上量不到它。
   */
+  const quiet = state === 'online' && pending === 0
   return (
-    <span class={`sync ${cls}`} role="status" aria-label={label} title={label}>
-      <span class="sync-dot" />
+    <span class={quiet ? 'sync' : `sync ${cls}`} role="status" aria-label={label} title={label}>
+      {!quiet && <span class="sync-dot" />}
       {pending > 0 && <span class="sync-n">{pending}</span>}
     </span>
   )
