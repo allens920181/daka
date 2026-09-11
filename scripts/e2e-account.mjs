@@ -122,17 +122,14 @@ await B.page.goto(URL); await B.page.waitForTimeout(900)
 await B.page.getByRole('button', { name: /^更多：/ }).first().click(); await B.page.waitForTimeout(500)
 ok('[新手機] 但複製回程空間對所有人開放', (await B.page.getByRole('button', { name: /建立副本/ }).count()) === 1)
 /*
- * 驗的是「按不按得下去」，不是「看不看得到那五個字」：「刪除空間」那一列現在對
- * 所有人都印，它是**入口**，進去才分岔——「從清單移除」只影響這支手機（那是他
- * 自己的清單，誰都可以），真正把所有人紀錄一起刪掉的那一顆鎖在 owner 後面。
+ * 2026-09 底「從清單移除」換成「封存」並搬出「刪除空間」，權限因此**看得出來**
+ * 了：不是主揪就沒有「刪除空間」那一列（以前它對所有人都印，進去才分岔）。
  */
 ok('[新手機] 不是主揪就沒有重新命名',
    (await B.page.getByRole('button', { name: /^重新命名$/ }).count()) === 0)
-// 那一列的無障礙名稱含副標（「10/10 自動刪除」），所以不能用 ^…$ 錨定。
-await B.page.getByRole('button', { name: /刪除空間/ }).first().click(); await B.page.waitForTimeout(500)
-ok('[新手機] 進去只有「從清單移除」，沒有真的刪掉所有人紀錄的那一顆',
-   (await B.page.getByRole('button', { name: /^從清單移除$/ }).count()) === 1
-   && (await B.page.locator('.sheet .sheet-item.danger').count()) === 0)
+ok('[新手機] 也沒有「刪除空間」，但封存得起來',
+   (await B.page.getByRole('button', { name: /刪除空間/ }).count()) === 0
+   && (await B.page.getByRole('button', { name: /^封存$/ }).count()) === 1)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
 // --- 登入面板：Google 是主要路徑，Email 是備援 ---
@@ -143,6 +140,16 @@ await A.page.getByRole('button', { name: /^帳戶/ }).click(); await A.page.wait
 await A.page.getByRole('button', { name: /^登入/ }).click(); await A.page.waitForTimeout(400)
 ok('登入面板第一顆是 Google',
   (await A.page.locator('.sheet .btn').first().textContent())?.includes('Google'))
+/*
+ * 選擇方式這一步也有返回鍵（2026-09）。在它之前這一步只有 Esc／點遮罩兩條路
+ * 出去，而加到主畫面的 PWA 沒有瀏覽器返回鍵——那時候它等於沒有退路。
+ * 說明同時拿掉了：「為什麼要登入」在上一頁（帳戶）講過，按了「登入」才走到這裡
+ * 的人已經被說服了。
+ */
+ok('選擇方式那一步有返回鍵',
+  (await A.page.locator('.sheet-bar button[aria-label="返回"]').count()) === 1)
+ok('而且不再擋一段說明在兩顆按鈕前面',
+  (await A.page.locator('.sheet .hint').count()) === 0)
 // Google 的按鈕照他們自己的規範走（白底、四色 G），不是這個系統的 .btn-primary
 // ——四色的 G 放在品牌 teal 上既違反 Google 規範，藍綠兩色的對比也不夠。
 ok('Google 按鈕用的是 Google 自己的樣式', (await A.page.locator('.sheet .btn-google').count()) === 1)
@@ -150,9 +157,14 @@ ok('登入面板沒有系統的主要按鈕', (await A.page.locator('.sheet .btn
 ok('Email 備援看得到（不是死路）', (await A.page.getByRole('button', { name: /改用 Email/ }).count()) === 1)
 await A.page.getByRole('button', { name: /改用 Email/ }).click(); await A.page.waitForTimeout(300)
 ok('切到 Email 之後看得到輸入框', (await A.page.locator('#signin-email').count()) === 1)
-ok('Email 這一步回得去', (await A.page.getByRole('button', { name: /^返回$/ }).count()) === 1)
-await A.page.getByRole('button', { name: /^返回$/ }).click(); await A.page.waitForTimeout(300)
-ok('回到選擇畫面', (await A.page.getByRole('button', { name: /用 Google 登入/ }).count()) === 1)
+// Email 那一步原本自己有一顆滿版的「返回」，跟返回鍵重複了，2026-09 拿掉——
+// 所以這裡驗的是「內容裡沒有第二顆」，回上一層交給返回鍵。
+ok('Email 這一步內容裡沒有多一顆返回',
+  (await A.page.locator('.sheet .btn').filter({ hasText: /^返回$/ }).count()) === 0)
+ok('返回鍵回的是選擇方式，不是關掉整張面板', await (async () => {
+  await A.page.locator('.sheet-bar button[aria-label="返回"]').click(); await A.page.waitForTimeout(400)
+  return (await A.page.getByRole('button', { name: /用 Google 登入/ }).count()) === 1
+})())
 await A.page.keyboard.press('Escape'); await A.page.waitForTimeout(400)
 
 // --- 舊手機登入 → 認領 ---

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom,
-  identity, members, myRooms, openMenuOnEnter, prefs, recentRooms, renameSavedRoster, requestCode,
+  AuthError, addWalkIn, archivedRooms, connection, copyRoom, deleteRoom, deleteSavedRoster,
+  setRoomArchived,
+  identity, members, openMenuOnEnter, prefs, renameSavedRoster, requestCode,
   room, roomExpiry, saveRosterAs, savedRosters,
   session, setCheckerName, setPrefs,
   showToast,
@@ -17,7 +18,7 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconChevronRight, IconClose, IconCopy, IconDuplicate,
+  IconArchive, IconBookmark, IconChevronRight, IconCopy, IconDuplicate,
   IconEdit, IconGoogle, IconHash, IconLink, IconMore,
   IconQr, IconShare, IconTrash,
 } from './icons'
@@ -384,13 +385,14 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
     return () => { alive = false }
   }, [code])
 
-  // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。
-  const localOnly = connection.value === 'local-only'
-  // 「從清單移除」只對本機那份「最近的空間」有意義：「我的活動」是帳號那邊的
-  // 清單，移掉了下一次同步又會長回來——那是一顆按了看起來沒反應的按鈕。
-  const inRecents = recentRooms.value.some((r) => r.code === code)
-  const inMyRooms = Boolean(session.value) && myRooms.value.some((r) => r.code === code)
-  const forgettable = inRecents && !inMyRooms
+  /*
+   * 封存（2026-09，取代「從清單移除」）。
+   *
+   * 舊那顆只對本機那份「最近的空間」有意義——帳號那份（`myRooms`）移掉了下一次
+   * 同步又會長回來，所以它對登入的主揪根本沒作用。**封存不受這個限制**：它存在
+   * 一份獨立的本機清單上，首頁兩份來源都照它篩，所以誰的空間都封存得起來。
+   */
+  const archived = archivedRooms.value.includes(code)
 
   async function run(fn: () => Promise<void>): Promise<void> {
     setWorking(true)
@@ -439,64 +441,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
     )
   }
 
-  /*
-    不要了。兩個選項擺在同一頁，因為它們的差別要並排看才看得出來：「從清單移除」
-    只影響這支手機（別人照樣進得去），「刪除空間」是所有人的紀錄一起沒。
 
-    單機模式是例外：那份名單只存在這支手機裡，移除等於刪掉，所以那時候的警告換
-    一句話說，而且才用 danger。
-  */
-  if (mode === 'remove') {
-    return (
-      <Sheet title={t('deleteRoom')} onClose={onClose} onBack={() => setMode('menu')}>
-        <p class="hint" style="margin-bottom:10px">{t('deleteHint')}</p>
-        <div class="sheet-items">
-          {forgettable && (
-            <button class="sheet-item" onClick={() => setConfirming('forget')}>
-              <IconClose size={20} />
-              <span class="sheet-item-main"><strong>{t('forget')}</strong></span>
-            </button>
-          )}
-
-          {owner && (
-            <button class="sheet-item danger" onClick={() => setConfirming('delete')}>
-              <IconTrash />
-              <span class="sheet-item-main"><strong>{t('deleteRoom')}</strong></span>
-            </button>
-          )}
-        </div>
-
-        {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
-
-        {/*
-          從清單移除也要問一次。它在首頁曾經是一顆一按就生效的垃圾桶，但在單機
-          模式下它同時會清掉本機那份快照——那個空間就真的沒了，而按鍵旁邊沒有
-          一個字說得出這件事。
-        */}
-        {confirming === 'forget' && (
-          <ConfirmDialog
-            title={t('forget')}
-            body={localOnly ? t('forgetWarningLocal') : t('forgetWarning')}
-            confirmLabel={t('forget')}
-            danger={localOnly}
-            onClose={() => setConfirming(null)}
-            onConfirm={() => { void run(async () => { await forgetRecentRoom(code); onClose() }) }}
-          />
-        )}
-
-        {confirming === 'delete' && (
-          <ConfirmDialog
-            title={t('deleteRoom')}
-            body={t('deleteRoomWarning')}
-            confirmLabel={t('deleteRoom')}
-            danger
-            onClose={() => setConfirming(null)}
-            onConfirm={() => { void run(async () => { await deleteRoom(code); onClose() }) }}
-          />
-        )}
-      </Sheet>
-    )
-  }
 
   /*
     這一份**要有標題列**，跟空間裡那一份相反。那一份的標題印的是空間名字，而那個
@@ -526,28 +471,54 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
         </button>
 
         {/*
-          「從清單移除」收進「刪除空間」裡（2026-09）。按下去的當下想的是同一件事
-          ——「我不要再看到這個」——差別在那句話是對誰說的：只有這支手機看不到，
-          還是所有人的紀錄一起沒。選單上並排兩列等於要人在按之前就先分清楚，而那
-          正好是點進去才講得完的事。
+          封存（2026-09，取代「從清單移除」）。
 
+          **它不是一種刪除，所以不再收在「刪除空間」裡面。** 舊的做法把兩者並排
+          在同一張子畫面上，理由是「按下去的當下想的是同一件事」——但那不成立：
+          一個什麼都沒動、隨時拿得回來，另一個是所有人的紀錄一起沒。把可逆的東西
+          擺在不可逆的旁邊，只會讓人在按之前多猶豫一次。
+
+          也因為它可逆，**不需要確認對話框**。舊那顆要問，是因為它會連本機快照
+          一起刪掉。
+        */}
+        <button
+          class="sheet-item"
+          onClick={() => { void run(async () => { await setRoomArchived(code, !archived); onClose() }) }}
+        >
+          <IconArchive />
+          <span class="sheet-item-main">
+            <strong>{archived ? t('unarchiveRoom') : t('archiveRoom')}</strong>
+          </span>
+        </button>
+
+        {/*
           自動刪除的日期印在這一列右邊：那句話講的就是「這個空間什麼時候會不見」，
           跟這一列是同一件事的兩種發生方式——你按，或是時間到。**印的是值，不是
           說明**。
         */}
-        {(owner || forgettable) && (
-          <button class="sheet-item danger" onClick={() => setMode('remove')}>
+        {owner && (
+          <button class="sheet-item danger" onClick={() => setConfirming('delete')}>
             <IconTrash />
             <span class="sheet-item-main">
               <strong>{t('deleteRoom')}</strong>
               {expires && <span class="sub">{t('expiresOn', { date: expires })}</span>}
             </span>
-            <IconChevronRight class="go" />
           </button>
         )}
       </div>
 
       {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
+
+      {confirming === 'delete' && (
+        <ConfirmDialog
+          title={t('deleteRoom')}
+          body={t('deleteRoomWarning')}
+          confirmLabel={t('deleteRoom')}
+          danger
+          onClose={() => setConfirming(null)}
+          onConfirm={() => { void run(async () => { await deleteRoom(code); onClose() }) }}
+        />
+      )}
     </Sheet>
   )
 }
@@ -746,7 +717,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
   /** 現在停在哪一張子畫面；null 就是那份清單。 */
-  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'font' | 'lang'>(null)
+  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'font' | 'toast' | 'lang'>(null)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -759,6 +730,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     : p.theme === 'light' ? t('themeLight') : t('themeDark')
   const fontName = p.font === 'base' ? t('fontBase')
     : p.font === 'lg' ? t('fontLarge') : t('fontXLarge')
+  const toastName = p.rollCallToast ? t('rollCallToastOn') : t('rollCallToastOff')
 
   if (mode === 'name') {
     // 離開這一頁就存。`onBlur` 也留著——用 Esc 直接關掉整張面板時焦點會先離開，
@@ -793,7 +765,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               onBlur={() => { void setCheckerName(name) }}
             />
           </div>
-          <p class="hint">{t('yourNameHint')}</p>
         </div>
       </Sheet>
     )
@@ -803,13 +774,23 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return (
       <Sheet title={t('account')} onClose={onClose} onBack={back}>
         <div class="stack">
-          <span class="label">{t('account')}</span>
           {session.value ? (
             <>
-              {/* 這支手機可能就是今天唯一管得動這場活動的裝置。按登出的常見
-                  動機是「借手機給人用一下」，使用者不會預期代價是失去控制。
-                  不加確認對話框（重新登入就還原），但後果要講出來。 */}
-              <button class="btn btn-block" onClick={() => { void signOut() }}>{t('signOut')}</button>
+              {/*
+                登入後收成**一列**：左邊是「你是誰」，右邊是那一個動作。
+                滿版的登出鍵會讓這一頁看起來像在邀請你按它，而這一頁真正要回答的
+                問題是「我現在是用哪個帳號」——那個答案本來只印在上一層的收合列上。
+
+                登出鍵刻意做小（`.btn-sm`）：這支手機可能就是今天唯一管得動這場
+                活動的裝置。按登出的常見動機是「借手機給人用一下」，使用者不會
+                預期代價是失去控制。不加確認對話框（重新登入就還原），但後果要
+                用底下那句 `.hint` 講出來。
+              */}
+              <div class="row">
+                <span class="account-who">{session.value.email}</span>
+                <span class="spacer" />
+                <button class="btn btn-sm" onClick={() => { void signOut() }}>{t('signOut')}</button>
+              </div>
               <p class="hint">{t('signOutWhat')}</p>
             </>
           ) : (
@@ -832,7 +813,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return (
       <Sheet title={t('theme')} onClose={onClose} onBack={back}>
         <div class="field">
-          <span class="label">{t('theme')}</span>
+          {/* 標題小字拿掉了（2026-09）：你是點了那一列進來的，面板的 aria-label
+              也是同一個字，畫面再印一次是第三遍。分段控制自己的 aria-label 還在，
+              螢幕閱讀器聽得到的沒有變少。 */}
           <div class="segmented" role="group" aria-label={t('theme')}>
             {(['system', 'light', 'dark'] as const).map((theme) => (
               <button
@@ -864,7 +847,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return (
       <Sheet title={t('fontSize')} onClose={onClose} onBack={back}>
         <div class="field">
-          <span class="label">{t('fontSize')}</span>
+          {/* 標題小字拿掉了（2026-09）：你是點了那一列進來的，面板的 aria-label
+              也是同一個字，畫面再印一次是第三遍。分段控制自己的 aria-label 還在，
+              螢幕閱讀器聽得到的沒有變少。 */}
           <div class="segmented" role="group" aria-label={t('fontSize')}>
             {(['base', 'lg', 'xl'] as const).map((font) => (
               <button
@@ -878,7 +863,36 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
-        <p class="hint">{t('fontSizeHint')}</p>
+      </Sheet>
+    )
+  }
+
+  /*
+    點名提示。兩個選項，跟語言一樣用 `.segmented`。
+
+    跟其他子畫面一樣不留說明（使用者要求）。**代價記著**：它關掉的是一張安全網
+    （誤觸後那句「某某 · 已到」與「復原」），而現在沒有任何地方講這件事——選
+    「不顯示」的人不會知道自己少了什麼。要補回來的話，這一頁還有位置放一句 `.hint`。
+
+    選了不自己返回：跟字級一樣，這是會想看一眼自己選了什麼的設定。
+  */
+  if (mode === 'toast') {
+    return (
+      <Sheet title={t('rollCallToast')} onClose={onClose} onBack={back}>
+        <div class="field">
+          <div class="segmented" role="group" aria-label={t('rollCallToast')}>
+            {([true, false] as const).map((on) => (
+              <button
+                key={String(on)}
+                class="segment"
+                aria-pressed={p.rollCallToast === on}
+                onClick={() => { void setPrefs({ rollCallToast: on }) }}
+              >
+                {on ? t('rollCallToastOn') : t('rollCallToastOff')}
+              </button>
+            ))}
+          </div>
+        </div>
       </Sheet>
     )
   }
@@ -887,7 +901,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     return (
       <Sheet title={t('language')} onClose={onClose} onBack={back}>
         <div class="field">
-          <span class="label">{t('language')}</span>
+          {/* 標題小字拿掉了（2026-09）：你是點了那一列進來的，面板的 aria-label
+              也是同一個字，畫面再印一次是第三遍。分段控制自己的 aria-label 還在，
+              螢幕閱讀器聽得到的沒有變少。 */}
           <div class="segmented" role="group" aria-label={t('language')}>
             {(['zh', 'en'] as const).map((lang) => (
               <button
@@ -935,6 +951,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <button class="sheet-item" onClick={() => setMode('font')}>
           <span class="sheet-item-main"><strong>{t('fontSize')}</strong></span>
           <span class="sheet-item-value">{fontName}</span>
+          <IconChevronRight class="go" />
+        </button>
+
+        <button class="sheet-item" onClick={() => setMode('toast')}>
+          <span class="sheet-item-main"><strong>{t('rollCallToast')}</strong></span>
+          <span class="sheet-item-value">{toastName}</span>
           <IconChevronRight class="go" />
         </button>
 
@@ -1021,9 +1043,20 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
   }
 
   return (
-    <Sheet title={t('signIn')} onClose={onCancel}>
+    /*
+      **返回鍵回上一層，不是回上一個畫面。** 在選擇方式那一步，上一層是「帳戶」
+      那一頁（`onCancel`）；已經走進 Email 或驗證碼那兩步的話，上一層是選擇方式。
+      跟全 app 的 `‹` 是同一個意思——見 04-components 的方向記號。
+
+      說明拿掉了（2026-09）：「為什麼要登入」那句話在上一頁（帳戶）已經講過，
+      而你按了「登入」才會走到這裡——走進來的人已經被說服了。
+    */
+    <Sheet
+      title={t('signIn')}
+      onClose={onCancel}
+      onBack={step === 'choose' ? onCancel : () => { setStep('choose'); setError(null) }}
+    >
       <div class="stack">
-        <p class="hint">{t('signInWhy')}</p>
 
         {step === 'choose' ? (
           <>
@@ -1086,9 +1119,6 @@ export function SignInSheet({ onCancel, onDone }: { onCancel: () => void; onDone
               onClick={() => { void send() }}
             >
               {working ? t('loading') : t('sendCode')}
-            </button>
-            <button class="btn btn-block" disabled={working} onClick={() => { setStep('choose'); setError(null) }}>
-              {t('back')}
             </button>
           </>
         ) : (

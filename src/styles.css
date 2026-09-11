@@ -186,7 +186,22 @@
      「復原」那顆用 --accent 家族的亮 teal（深底上的強調色本來就該亮）。 */
   --toast-bg: #171c22;
   --toast-ink: #f6f8fa;
-  --toast-action: #3cc7ce;
+  /*
+   * 「復原」的顏色 2026-09 降彩度：#3cc7ce → #7bc6ca。
+   *
+   * 舊值在 OKLCH 裡是 L.761 C.115——**全 app 最亮、而且第二飽和的顏色**，
+   * 僅次於「未到」那個數字（C.128）。那是一顆小小的文字鍵，卻喊得跟畫面上
+   * 唯一該喊的那個數字一樣大聲，而配色重構自己寫著「顏色預算省下來給真正
+   * 該喊的那一個數字」。
+   *
+   * 新值把它拉回品牌家族：**彩度跟品牌 teal 一樣**（C.075 ≈ .071）、色相一樣
+   * （200°），只有亮度為了坐在深底上提高（L.78）。跟 --st-arrived-fill／
+   * --st-arrived-ink 是同一手法：同一個顏色，兩個明度給兩種場合。
+   *
+   * 而且它更安全，不是在犧牲可讀性：對 Toast 的底 5.93 → 6.23，按壓狀態
+   * 4.64 → 4.88。降彩度在深底上反而把對比拉開了。
+   */
+  --toast-action: #7bc6ca;
   /* Toast 是誤觸的安全網，必須看得出它是一塊獨立的東西。淺色時深底自己就
      夠分明（16:1），深色時底色只比它蓋住的名單列亮一點點，靠邊框定義。 */
   --toast-line: #171c22;
@@ -376,7 +391,7 @@
 
     --toast-bg: #21272f;
     --toast-ink: #eaedf1;
-    --toast-action: #3cc7ce;
+    --toast-action: #7bc6ca;
     --toast-line: #69727e;
     --google-bg: #131314;
     --google-ink: #e3e3e3;
@@ -423,7 +438,7 @@
 
   --toast-bg: #21272f;
   --toast-ink: #eaedf1;
-  --toast-action: #3cc7ce;
+  --toast-action: #7bc6ca;
   --toast-line: #69727e;
   --google-bg: #131314;
   --google-ink: #e3e3e3;
@@ -1503,10 +1518,17 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* 見 .topbar 上面那段：兩條退路，順序不能反。 */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .topbar, .dock { background: var(--paper); }
+  .toast { background: var(--toast-bg); border-color: var(--toast-line); }
 }
 @media (prefers-reduced-transparency: reduce) {
   .topbar, .dock {
     background: var(--paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .toast {
+    background: var(--toast-bg);
+    border-color: var(--toast-line);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -1781,6 +1803,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sheet-item > svg { flex: none; }
 .sheet-item:hover { background: var(--surface-2); }
 
+/* 「你現在是用哪個帳號」。Email 可能很長，縮的是它，旁邊那顆登出鍵不縮
+   ——那是這一列唯一的動作，被擠掉就沒有意義了。 */
+.account-who {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-3); color: var(--ink-2);
+}
+
 .sheet-item-main { flex: 1; min-width: 0; }
 .sheet-item-main > strong { font-weight: 600; font-size: var(--fs-3); }
 .sheet-item .sub { display: block; font-size: var(--fs-2); color: var(--ink-3); font-weight: 400; }
@@ -1982,24 +2011,82 @@ button, input, textarea, select { font: inherit; color: inherit; }
 :root[data-modal] .toast-wrap {
   bottom: auto; top: calc(var(--sp-3) + env(safe-area-inset-top));
 }
+/*
+ * Toast 是**半透明的深色材質**，不是一塊實心黑板（2026-09）。
+ *
+ * 它本來是不透明的 #171c22，於是在淺色模式下成為全畫面唯一一塊近黑的方塊——
+ * 而這一輪其他東西全部軟下來了（凹槽、浮起的卡片、髮絲線），它就變成唯一一個
+ * 硬東西。跟頂欄與底部動作列同一種材質，理由也同一個：**讓人知道底下還有東西**，
+ * 而 Toast 本來就是暫時蓋在名單上的。
+ *
+ * 對比有很大的餘裕，這不是在犧牲可讀性：實測最差情況（底下是白卡片）文字
+ * 11.2:1、復原 5.8:1，兩個都遠高於門檻。原本是 16.1:1 與 8.4:1——**高得超過
+ * 需要**，而那正是它讀起來像硬黑板的一部分原因。
+ *
+ * 退路跟那兩條橫槓共用（見 .topbar）：不支援 backdrop-filter、或使用者要求
+ * 降低透明度時，回到原本的實色。
+ */
 .toast {
   display: flex; align-items: center; gap: var(--sp-3);
   max-width: 560px; width: 100%; pointer-events: auto;
-  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
   border-radius: var(--r-2);
-  background: var(--toast-bg); color: var(--toast-ink);
-  border: 1px solid var(--toast-line);
+  background: color-mix(in srgb, var(--toast-bg) 88%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  color: var(--toast-ink);
+  /*
+   * 邊要**跟著填色一起半透明**，用同一個比例。
+   *
+   * 淺色的 --toast-line 本來就等於 --toast-bg（＝看不見的邊），但底色一變成
+   * 88% 之後，不透明的邊就比填色深，反而在淺色模式下圈出一圈暗線——原本沒有
+   * 的東西。同一個比例混過去，淺色仍然看不見，深色那條分隔用的邊照樣在。
+   */
+  border: 1px solid color-mix(in srgb, var(--toast-line) 88%, transparent);
+  /*
+   * **背景不要鋪到邊框底下。** 預設的 `border-box` 會讓 88% 的底與 88% 的邊在
+   * 那 1px 上疊起來，合成出一圈比填色更深的線——顏色明明一模一樣，眼睛卻看得到
+   * 一個框。兩層半透明疊在同一個位置就是會這樣。
+   */
+  background-clip: padding-box;
   box-shadow: var(--el-3); font-size: var(--fs-3);
 }
 .toast-text { flex: 1; min-width: 0; }
-/* 帶「復原」的 Toast 是誤觸的安全機制，不得低調化。 */
+/*
+ * 「復原」**不描邊**（2026-09）。
+ *
+ * 它本來是 `border: 1px solid currentColor`——一個框裡再放一個框，而那是這一輪
+ * 從按鈕、晶片、輸入框上一路拿掉的東西，Toast 是最後一個。teal 的字配 700 的
+ * 字重在深底上是 8.4:1，那已經足夠說「這個按得下去」；那條邊只是把同一件事
+ * 說第二次。
+ *
+ * **「不得低調化」那條原則沒有鬆掉**（它是誤觸後唯一的復原機會）：字色、字重、
+ * 44px 的觸控高度都沒有動，動的只有那條邊。按下去的回饋改用底色，而且那是
+ * 原本沒有的——一個透明無邊的按鈕本來按下去什麼都不會發生。
+ *
+ * 44px 用內距撐、再用負外距收回來（跟 `.note-call` 同一個做法）：手指拿到 44px，
+ * 而 Toast 的視覺高度由那一行字決定，不會被按鈕撐胖一圈。
+ */
 .toast-action {
   flex: none; min-height: 44px; padding: 0 var(--sp-3);
-  /* 它是一顆按鈕，所以走按鈕的圓角 --r-2。本來是 --r-1，於是全 app 最重要的
-     那顆按鈕（唯一的復原機會）是唯一一顆形狀跟其他按鈕不一樣的。 */
-  border: 1px solid currentColor; border-radius: var(--r-2);
+  margin: calc(var(--sp-3) * -1) 0;
+  border: none; border-radius: var(--r-2);
   background: transparent; color: var(--toast-action);
   font-size: var(--fs-3); font-weight: 700; cursor: pointer;
+}
+/*
+ * 按下去的底色**有上限，而且很低**（6%）。
+ *
+ * 它疊在深色的 Toast 上會把底提亮，而「復原」是 teal 的字——底一亮，字的對比就
+ * 掉。實測：14% → 3.89:1（不合格）、10% → 4.39、8% → 4.67、6% → 4.96。
+ * 第一版寫 14%，被稽核抓出來：面板一打開 Toast 就移到上緣，正好落在剛剛點
+ * 「更多」的滑鼠底下，於是 hover 生效——**那個狀態下全 app 最重要的那顆按鈕
+ * 讀不到 4.5:1**。
+ *
+ * 深色表面上的按壓回饋就是這樣：能用的範圍被它上面那個字的對比夾住。
+ */
+.toast-action:hover, .toast-action:active {
+  background: color-mix(in srgb, var(--toast-ink) 6%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

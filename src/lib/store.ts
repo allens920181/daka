@@ -17,8 +17,9 @@ import { translate } from './i18n'
 import { countForRoom, dequeue, enqueue, flushOrder, pendingAddIds } from './outbox'
 import {
   DEFAULT_PREFS, type Prefs, type RecentRoom,
-  dropRecentRoom, forgetRoom, loadIdentity, loadOutbox, loadPrefs, loadRecentRooms,
+  dropRecentRoom, forgetRoom, loadArchivedRooms, loadIdentity, loadOutbox, loadPrefs, loadRecentRooms,
   loadRoom, rememberRoom, renameRecentRoom, saveIdentity, saveOutbox, savePrefs, saveRoom,
+  setRoomArchived as persistRoomArchived,
 } from './storage'
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,11 @@ export const booted = signal(false)
 export const prefs = signal<Prefs>(DEFAULT_PREFS)
 export const identity = signal<Identity>({ ownerKey: '', checkerName: '' })
 export const recentRooms = signal<RecentRoom[]>([])
+/**
+ * 封存起來的空間代碼。**這支手機的檢視狀態**，不是那間空間的屬性——
+ * 封存不影響別人，也不動任何資料，只是「我暫時不想在首頁看到它」。
+ */
+export const archivedRooms = signal<string[]>([])
 export const savedRosters = signal<SavedRoster[]>([])
 /** 主揪帳號。null = 沒登入（協助點名的人永遠是這個狀態）。 */
 export const session = signal<Session | null>(null)
@@ -137,6 +143,7 @@ export async function boot(): Promise<void> {
   session.value = await restoreSession()
   prefs.value = await loadPrefs()
   recentRooms.value = await loadRecentRooms()
+  archivedRooms.value = await loadArchivedRooms()
   outbox.value = await loadOutbox()
   applyTheme()
   applyLang()
@@ -478,6 +485,14 @@ export async function enterRoom(code: string): Promise<void> {
     const wasOwner = (recentRooms.value.find((x) => x.code === c)?.isOwner ?? false) ||
       myRooms.value.some((x) => x.code === c)
     recentRooms.value = await rememberRoom({ code: c, name: r.name, isOwner: wasOwner, lastSeen: Date.now() })
+    /*
+     * 又走進來了就自動取消封存。
+     *
+     * 封存的意思是「我暫時不想在首頁看到它」；人都已經在裡面點名了，那句話就
+     * 不成立了。不這樣做的話，你從連結或代碼進到一間封存過的空間，用完回首頁
+     * 卻找不到它——那正是這次要修的那種「自己看不到很怪」。
+     */
+    if (archivedRooms.value.includes(c)) await setRoomArchived(c, false)
   }
   refreshConnection()
 }
@@ -623,6 +638,14 @@ export async function setStatusWithUndo(
   if (!previous || previous.status === status) return
   const prevStatus = previous.status
   await setStatus(memberId, status)
+  /*
+   * 可以在設定裡關掉（2026-09）。**擋的只有這一個**——錯誤訊息、同步衝突、
+   * 複製結果那幾種照樣跳，它們一場活動出現一兩次而且是使用者需要知道的事。
+   *
+   * 關掉之後仍然改得回來：再點一次那個人就會切回去。**失去的是「知道剛剛動到
+   * 的是誰」**——點錯隔壁那一列的時候，沒有那句「某某 · 已到」你不會發現。
+   */
+  if (!prefs.value.rollCallToast) return
   showToast(describe(previous), {
     label: undoLabel,
     run: () => { void setStatus(memberId, prevStatus) },
@@ -873,9 +896,17 @@ export async function roomExpiry(code: string): Promise<string | null> {
   return (await loadRoom(code))?.room.expires_at ?? null
 }
 
-export async function forgetRecentRoom(code: string): Promise<void> {
-  await forgetRoom(code)
-  recentRooms.value = await dropRecentRoom(code)
+/**
+ * 封存／取消封存（2026-09，取代舊的「從清單移除」）。
+ *
+ * **什麼都沒有刪掉**：本機快照留著、伺服器上那間空間完全沒有動、別人照常用。
+ * 它只是把那間空間從首頁的清單裡收起來，隨時可以拿回來。
+ *
+ * 舊的「從清單移除」會連本機快照一起刪，於是那間空間要回來得重新有代碼——
+ * 對協助者來說就是「我按了一下，它對我消失了，對別人還活著」，而且拿不回來。
+ */
+export async function setRoomArchived(code: string, archived: boolean): Promise<void> {
+  archivedRooms.value = await persistRoomArchived(code, archived)
 }
 
 // ---------------------------------------------------------------------------

@@ -163,6 +163,14 @@ export const IconTrash = ({ size = 20, ...r }: P) => (
     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 )
+/* 封存：一個蓋子加一個箱子。跟 IconTrash 明顯不同——那一顆是不可逆的。 */
+export const IconArchive = ({ size = 20, ...r }: P) => (
+  <svg {...base(size)} {...r}>
+    <rect x="3" y="4" width="18" height="4" rx="1" />
+    <path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" />
+    <line x1="10" y1="13" x2="14" y2="13" />
+  </svg>
+)
 export const IconClose = ({ size = 24, ...r }: P) => (
   <svg {...base(size)} {...r}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
 )

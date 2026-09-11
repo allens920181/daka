@@ -128,6 +128,45 @@ ok('未到的列上沒有那一格', (await p.locator('.member:not(.is-arrived) 
 ok('該列變成已到', (await p.locator('.member').nth(1).getAttribute('class'))?.includes('is-arrived'))
 ok('出現復原提示', await p.locator('.toast').isVisible())
 
+/*
+ * 「復原」是誤觸後唯一的機會，所以它有兩條不能鬆的線（2026-09 把邊拿掉時
+ * 一起釘住）：**手指按得到**（44px）、**眼睛讀得到**（4.5:1）。
+ *
+ * 拿掉的只有那條邊——它本來是 `border: 1px solid currentColor`，一個框裡再放
+ * 一個框。字色與字重沒有動。
+ *
+ * 按壓底色也在這裡驗：它疊在深色 Toast 上會把底提亮、吃掉 teal 的對比。第一版
+ * 寫 14% 就掉到 3.89:1，被稽核抓出來（面板一開，Toast 移到上緣正好落在滑鼠下，
+ * hover 就生效了）。
+ */
+const undo = await p.evaluate(() => {
+  const el = document.querySelector('.toast-action')
+  const parse = (c) => { const m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)|color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/)
+    if (!m) return null
+    return m[1] !== undefined
+      ? { r:+m[1], g:+m[2], b:+m[3], a: m[4]===undefined?1:+m[4] }
+      : { r:+m[5]*255, g:+m[6]*255, b:+m[7]*255, a: m[8]===undefined?1:+m[8] }
+  }
+  const lum = ({ r, g, b }) => { const f = (v) => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4) }
+    return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b) }
+  // Toast 的底是半透明的，要跟它後面的頁面合成才是眼睛看到的顏色。
+  const page = parse(getComputedStyle(document.body).backgroundColor)
+  const slab = parse(getComputedStyle(document.querySelector('.toast')).backgroundColor)
+  const bg = { r: slab.r*slab.a + page.r*(1-slab.a),
+               g: slab.g*slab.a + page.g*(1-slab.a),
+               b: slab.b*slab.a + page.b*(1-slab.a) }
+  const fg = parse(getComputedStyle(el).color)
+  const [hi, lo] = [lum(fg), lum(bg)].sort((a, z) => z - a)
+  return {
+    邊: getComputedStyle(el).borderTopWidth,
+    高: Math.round(el.getBoundingClientRect().height),
+    對比: +((hi + 0.05) / (lo + 0.05)).toFixed(2),
+  }
+})
+ok(`「復原」不描邊了（一個框裡不再放第二個框）`, parseFloat(undo.邊) === 0)
+ok(`但手指按得到：${undo.高}px`, undo.高 >= 44)
+ok(`眼睛也讀得到：${undo.對比}:1`, undo.對比 >= 4.5)
+
 
 // 復原
 await p.locator('.toast-action').click()
@@ -415,7 +454,7 @@ ok('首頁清單每一列右邊都有一顆「更多」',
    (await p.getByRole('button', { name: /^更多：/ }).count()) === (await p.locator('.recent-item').count()))
 ok('無障礙名稱說得出是哪一個空間',
    (await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).count()) === 1)
-ok('列上那顆垃圾桶不見了（從清單移除搬進選單，跟刪除空間排在一起才分得出差別）',
+ok('列上那顆垃圾桶不見了（那件事搬進選單了）',
    (await p.getByRole('button', { name: /^從清單移除：/ }).count()) === 0)
 // 框圈住整列，「更多」在框裡面（2026-09）：它本來浮在框外面，七列並排時看不出
 // 它是上面那一列的還是下面那一列的。
@@ -445,7 +484,7 @@ ok('就在首頁打開，不進空間', (await p.locator('.home-title').count())
    && (await p.locator('.topbar-name').count()) === 0)
 const homeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`首頁那份是空間本身的事：${homeRows.join('、')}`,
-   JSON.stringify(homeRows) === JSON.stringify(['建立副本', '刪除空間']))
+   JSON.stringify(homeRows) === JSON.stringify(['建立副本', '封存', '刪除空間']))
 ok('名單的事不在這裡（編輯、存成常用都不列）',
    (await p.locator('.sheet').getByRole('button', { name: /^編輯$|^存成常用$/ }).count()) === 0)
 // 這一份的名字只在無障礙名稱裡（2026-09 標題列整套拿掉）：從一列七個長得差不多
@@ -918,14 +957,57 @@ await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200
 // 刪除空間 2026-09 只在首頁那顆「更多」裡（空間本身的事），就地打開，不進空間。
 await p.goto(URL); await p.waitForTimeout(900)
 await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
-// 「從清單移除」2026-09 收進「刪除空間」裡：同一件事的兩種程度，並排看才分得出。
-await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
-const removeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
-ok(`刪除那一頁兩列：${removeRows.join('、')}`,
-   JSON.stringify(removeRows) === JSON.stringify(['從清單移除', '刪除空間']))
-ok('而且先講清楚差在哪',
-   ((await p.locator('.sheet .hint').first().textContent()) || '').includes('只影響這支手機'))
-await p.locator('.sheet').getByRole('button',{name:/^刪除空間$/}).click(); await p.waitForTimeout(500)
+/*
+ * 「從清單移除」2026-09 底換成「封存」，而且**搬出「刪除空間」**。
+ *
+ * 它們本來並排在同一張子畫面上，理由是「按下去的當下想的是同一件事」。那不
+ * 成立：封存什麼都沒動、隨時拿得回來，刪除是所有人的紀錄一起沒。把可逆的東西
+ * 擺在不可逆的旁邊，只會讓人在按之前多猶豫一次。
+ *
+ * 所以選單上是三列，而「刪除空間」直接跳確認對話框，不再多一層子畫面。
+ */
+const roomMenu = await p.locator('.sheet .sheet-item strong').allTextContents()
+ok(`空間選單三列：${roomMenu.join('、')}`,
+   JSON.stringify(roomMenu) === JSON.stringify(['建立副本', '封存', '刪除空間']))
+
+/*
+ * 封存（2026-09，取代「從清單移除」）。
+ *
+ * 使用者的原話是「刪掉後變得只有別人看得到，自己看不到很怪」。舊那顆會把**本機
+ * 快照一起刪掉**，所以那間空間要回來得重新有代碼——對協助者來說就是按一下就
+ * 拿不回來了。
+ *
+ * 所以這裡驗的三件事，每一件都是舊做法沒有的：
+ *   1. 封存之後那間空間**還打得開**，名單與已到狀態都在（什麼都沒刪）。
+ *   2. 首頁找得到它（第四顆分段只在有封存時出現）。
+ *   3. 走進去就自動取消封存——人都在裡面點名了，「不想看到它」就不成立了。
+ */
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
+await p.getByRole('button', { name: /^封存$/ }).click(); await p.waitForTimeout(800)
+ok('封存之後它離開首頁清單',
+   !(await p.locator('.recent-name').allTextContents()).includes('確認對話框測試'))
+ok('而且不需要確認對話框（它可逆，什麼都沒動）',
+   (await p.locator('[role=alertdialog]').count()) === 0)
+const segs = await p.locator('.segmented button').allTextContents()
+ok(`篩選列長出第四顆：${segs.join('、')}`, segs.includes('封存'))
+await p.getByRole('button', { name: /^封存$/ }).click(); await p.waitForTimeout(600)
+ok('封存那一頁找得到它',
+   (await p.locator('.recent-name').allTextContents()).includes('確認對話框測試'))
+
+// 打得開，而且資料都在——舊的「從清單移除」會把本機快照刪掉。
+await p.getByText('確認對話框測試').first().click(); await p.waitForTimeout(1600)
+ok('封存之後那間空間照樣打得開（快照沒有被刪）',
+   (await p.locator('.topbar-name').textContent()) === '確認對話框測試'
+   && (await p.locator('.member').count()) > 0)
+await p.goto(URL); await p.waitForTimeout(900)
+ok('走進去就自動取消封存，回首頁看得到它',
+   (await p.locator('.recent-name').allTextContents()).includes('確認對話框測試')
+   && !(await p.locator('.segmented button').allTextContents()).includes('封存'))
+
+// 回到選單，底下那幾條驗的是刪除的確認對話框。
+await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
+await p.locator('.sheet').getByRole('button',{name:/^刪除空間/}).click(); await p.waitForTimeout(500)
 ok('刪除空間跳出 alertdialog（不是 window.confirm）', await p.locator('[role=alertdialog]').isVisible())
 ok('對話框有標題與說明', (await p.locator('#dialog-title').textContent())==='刪除空間'
    && (await p.locator('#dialog-body').textContent())?.includes('無法復原'))
@@ -1013,13 +1095,14 @@ ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count
 // 沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
 const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`設定頁的每一列：${rows.join('、')}`,
-   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '語言']))
+   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '點名提示', '語言']))
 ok('單機模式沒有帳戶那一列', (await p.getByText('帳戶').count()) === 0)
 
 // 收合時右邊印著目前的值，不展開也看得到自己設了什麼。
 const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
-   shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '標準' && shown[3] === '中文')
+   shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '標準'
+   && shown[3] === '顯示' && shown[4] === '中文')
 
 // 暱稱是一張子畫面（2026-09）：清單上只有值，進去才有輸入框，回來就看得到。
 ok('清單上沒有輸入框', (await p.locator('#checker-name').count()) === 0)
@@ -1123,7 +1206,9 @@ await p.getByRole('button', { name: /^文字大小/ }).click(); await p.waitForT
 const fontAt = () => p.evaluate(() => ({
   scale: getComputedStyle(document.documentElement).getPropertyValue('--fs-scale').trim(),
   root: getComputedStyle(document.documentElement).fontSize,
-  hint: getComputedStyle(document.querySelector('.sheet .hint')).fontSize,
+  // 量分段控制上的字（那一頁的說明 2026-09 拿掉了）。它走 --fs-3，
+  // 跟其他字級一樣吃得到倍率。
+  sample: getComputedStyle(document.querySelector('.sheet .segment')).fontSize,
 }))
 const fontBase = await fontAt()
 ok(`預設是標準（倍率 ${fontBase.scale}，根字級 ${fontBase.root}）`,
@@ -1131,8 +1216,8 @@ ok(`預設是標準（倍率 ${fontBase.scale}，根字級 ${fontBase.root}）`,
 
 await p.getByRole('button', { name: /^特大$/ }).click(); await p.waitForTimeout(500)
 const fontXl = await fontAt()
-ok(`選「特大」字就變大：${fontBase.hint} → ${fontXl.hint}`,
-   parseFloat(fontXl.hint) > parseFloat(fontBase.hint) * 1.2)
+ok(`選「特大」字就變大：${fontBase.sample} → ${fontXl.sample}`,
+   parseFloat(fontXl.sample) > parseFloat(fontBase.sample) * 1.2)
 ok(`但根字級一格都沒動（${fontBase.root} → ${fontXl.root}）——系統設定沒有被吃掉`,
    fontXl.root === fontBase.root)
 ok('選了不會自己返回（放大字級要看著結果調）',
@@ -1148,6 +1233,55 @@ await p.getByRole('button', { name: /^文字大小/ }).click(); await p.waitForT
 await p.getByRole('button', { name: /^標準$/ }).click(); await p.waitForTimeout(500)
 ok('調回標準就把屬性拿掉（預設狀態下 DOM 上一個字都不多）',
    (await p.evaluate(() => document.documentElement.hasAttribute('data-font'))) === false)
+
+/*
+ * 點名提示可以關掉（2026-09）。
+ *
+ * **這一顆的重點在「範圍」。** 它擋的只有點名那一個 Toast（`setStatusWithUndo`）
+ * ——那是每點一個人跳一次、40 個人就 40 次的那個。錯誤訊息、同步衝突、複製結果
+ * 那幾種**不能跟著關掉**：它們一場活動出現一兩次，而且是使用者需要知道的事。
+ * 一個總開關會把錯誤訊息一起關掉，那是這條檢查在守的東西。
+ *
+ * 關掉之後仍然改得回來（再點一次那個人），失去的是「知道剛剛動到的是誰」。
+ */
+await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^點名提示/ }).click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^不顯示$/ }).click(); await p.waitForTimeout(500)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+// 自己開一間：這一段前面那些空間有的已經結束點名了，名單列會是停用的。
+await p.goto(URL); await p.waitForTimeout(700)
+await p.getByRole('button', { name: /創建空間/ }).first().click(); await p.waitForTimeout(400)
+await p.locator('#room-name').fill('點名提示測試')
+await p.locator('#roster-text').fill('王小明\n李美花\n張三')
+await p.waitForTimeout(300)
+await p.getByRole('button', { name: /產生名單/ }).click(); await p.waitForTimeout(600)
+await p.getByRole('button', { name: /建立/ }).click(); await p.waitForTimeout(1500)
+const beforeTap = await p.locator('.member').first().getAttribute('class')
+await p.locator('.member-main').first().click(); await p.waitForTimeout(900)
+ok('關掉之後點名不跳提示', (await p.locator('.toast').count()) === 0)
+ok('但那個人確實被標記了（關的是提示，不是功能）',
+   (await p.locator('.member').first().getAttribute('class')) !== beforeTap)
+await p.locator('.member-main').first().click(); await p.waitForTimeout(900)
+ok('再點一次仍然改得回來（復原這條路沒有斷）',
+   (await p.locator('.member').first().getAttribute('class')) === beforeTap)
+
+// 別的 Toast 不受影響——這是這個設定能成立的前提。
+await p.locator('.topbar button[aria-label="更多"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^編輯$/ }).click(); await p.waitForTimeout(600)
+await p.locator('.dock').getByRole('button').first().click(); await p.waitForTimeout(600)
+await p.locator('.sheet textarea, .sheet input.input').first().fill('臨時來的人')
+await p.waitForTimeout(300)
+await p.locator('.sheet .btn-primary').first().click(); await p.waitForTimeout(1000)
+ok('但錯誤訊息那一類的 Toast 沒有跟著關掉（臨時加人的確認照樣跳）',
+   (await p.locator('.toast').count()) === 1)
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+// 調回「顯示」，後面的檢查都靠那個 Toast。
+await p.goto(URL); await p.waitForTimeout(800)
+await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^點名提示/ }).click(); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^顯示$/ }).click(); await p.waitForTimeout(500)
 
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 
