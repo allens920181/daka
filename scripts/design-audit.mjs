@@ -385,6 +385,12 @@ for (const pass of PASSES) {
   await page.waitForTimeout(400)
   await audit(page, scheme, '創建空間')
 
+  // 「名單怎麼寫」：整面都是字，而且是全 app 唯一一處把等寬例子擺在凹槽上的
+  // 版面——對比與字級都換了一組鄰居，要單獨驗。
+  await page.locator('.topbar .fmt-help-btn').click(); await page.waitForTimeout(600)
+  await audit(page, scheme, '創建空間 · 名單怎麼寫')
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+
   // 開空間 2026-09 拆成兩步（貼名單 →「產生名單」→ 看解析結果 →「建立」），
   // 解析結果與「建立」都住在第二步，要先把名單產出來。
   await page.getByRole('button', { name: /產生名單|Generate/ }).click(); await page.waitForTimeout(500)
@@ -427,10 +433,14 @@ for (const pass of PASSES) {
   await page.getByRole('button', { name: /創建空間|Create a room/ }).first().click()
   await page.waitForTimeout(300)
   await page.locator('#room-name').fill('秋季旅遊 · 分車')
+  // `#` 是範例教的、也是 rosterToText 寫回來的那一種分組記號。
   await page.locator('#roster-text').fill(
-    '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（坐輪椅）\n張三\n李四')
+    '#第一車\n王小明 0912345678\n李美花 +1\n#第二車\n陳大同（坐輪椅）\n張三\n李四')
   await page.waitForTimeout(400)
   await page.getByRole('button', { name: /產生名單|Generate/ }).click(); await page.waitForTimeout(500)
+  // 解析預覽有分組時多一列 `.group-divider`（淺底的帶子）——那是這一輪唯一
+  // 只在「名單有分車」時才存在的東西，上面那一輪的預覽驗不到它。
+  await audit(page, scheme, '創建空間 · 解析結果（含分組）')
   await page.getByRole('button', { name: /建立|Create/ }).click(); await page.waitForTimeout(1300)
   await audit(page, scheme, '空間（含分組）')
 
@@ -441,6 +451,16 @@ for (const pass of PASSES) {
   await page.getByRole('button', { name: /^(更多|More)：/ }).first().click(); await page.waitForTimeout(600)
   await audit(page, scheme, '首頁 · 空間的「更多」')
   await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+
+  // 首頁的篩選列 2026-09 多了一顆放大鏡，展開之後那條輸入框蓋在分段控制上——
+  // 對比與觸控尺寸都換了一組鄰居（底下是半透明材質，不是頁面），要單獨驗。
+  if (await page.locator('.home-filterbar .search-toggle').count()) {
+    await page.locator('.home-filterbar .search-toggle').click(); await page.waitForTimeout(400)
+    await page.locator('.home-filterbar input[type=search]').fill('秋')
+    await page.waitForTimeout(400)
+    await audit(page, scheme, '首頁 · 搜尋展開')
+    await page.locator('.home-filterbar .search-clear').click(); await page.waitForTimeout(400)
+  }
 
   // 底下幾段是空間裡的東西，要先進去。
   await page.locator('.recent-item').first().click(); await page.waitForTimeout(1400)

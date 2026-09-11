@@ -5,7 +5,7 @@ import { formatDate } from '../lib/format'
 import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '../lib/code'
 import { atRiskOfStorageEviction, canScanQr } from '../lib/config'
 import { navigate } from '../router'
-import { IconCamera, IconMore, IconPlus, IconSettings } from './icons'
+import { IconCamera, IconMore, IconPlus, IconSearch, IconSettings } from './icons'
 import { ScanView } from './Scan'
 import { RoleBadge } from './RoleBadge'
 import { Sheet } from './Sheet'
@@ -26,6 +26,11 @@ export function Home({ onSettings }: { onSettings: () => void }) {
   const t = useT()
   const [joinOpen, setJoinOpen] = useState(false)
   const [filter, setFilter] = useState<RoomFilter>('all')
+  /* 搜尋跟點名畫面同一套（見 Room 的 .filterbar）：收起來是一顆放大鏡，點下去
+     從那個位置往左長成整條輸入框。收起來＝不再過濾，兩件事一起發生。 */
+  const [searching, setSearching] = useState(false)
+  const [query, setQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
 
   const lang = prefs.value.lang
 
@@ -90,6 +95,14 @@ export function Home({ onSettings }: { onSettings: () => void }) {
   const visibleRows = active === 'archived'
     ? archivedList
     : active === 'all' ? liveRows : liveRows.filter((r) => (active === 'mine' ? r.isOwner : !r.isOwner))
+  /*
+    搜尋比對名稱**與代碼**。代碼是使用者手上唯一可能有的另一個線索——別人用
+    LINE 傳過來的就是那六碼，而首頁每一列都印著它。
+  */
+  const q = query.trim().toLowerCase()
+  const shownRows = q
+    ? visibleRows.filter((r) => r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q))
+    : visibleRows
   const emptyText = active === 'mine' ? t('myRoomsEmpty')
     : active === 'others' ? t('noOtherRooms')
     : active === 'archived' ? t('archivedEmpty')
@@ -100,6 +113,16 @@ export function Home({ onSettings }: { onSettings: () => void }) {
   // 都置頂。並排時各自 flex:1，單獨出現時滿版寬度跟底下的列對齊。
   const showCreate = active !== 'others' && active !== 'archived'
   const showJoin = active !== 'mine' && active !== 'archived'
+
+  /** 收起來＝不再過濾。兩件事必須一起發生，不然會留下一個看不見的篩選在藏東西。 */
+  const closeSearch = () => { setSearching(false); setQuery('') }
+  const openSearch = () => setSearching(true)
+  useEffect(() => { if (searching) searchRef.current?.focus() }, [searching])
+  /*
+    篩選列收起來的時候搜尋也要跟著收（`filterVisible` 只有一兩個空間時是 false）：
+    那顆鍵住在那一列上，列不見了，它握著的過濾條件就沒有出口可以取消。
+  */
+  useEffect(() => { if (!filterVisible && searching) closeSearch() }, [filterVisible, searching])
 
   const createButton = (block: boolean) => (
     <button
@@ -143,10 +166,10 @@ export function Home({ onSettings }: { onSettings: () => void }) {
     <>
       <div class="shell">
         <div class="home-head row">
-          <div style="flex:1; min-width:0">
-            <h1 class="home-title">{t('appName')}</h1>
-            <p class="home-tagline">{t('tagline')}</p>
-          </div>
+          {/* 標語（「大家一起點同一份名單」）2026-09 拿掉：它是講給還沒用過的人聽
+              的一句宣傳，而看得到這一頁的人已經在用了——底下那份清單才是他來這裡
+              要找的東西，而那句話每次都把它往下推一行。 */}
+          <h1 class="home-title" style="flex:1; min-width:0">{t('appName')}</h1>
           <button class="icon-btn" onClick={onSettings} aria-label={t('settings')}>
             <IconSettings />
           </button>
@@ -169,21 +192,33 @@ export function Home({ onSettings }: { onSettings: () => void }) {
           </p>
         )}
 
-        <div class="stack">
-          {/*
-            篩選只在真的有東西可以篩的時候才出現（2026-09）。
+      </div>
 
-            它本來永遠都在，於是**第一次打開這個 app 的人，看到的第一個東西是一組
-            三段的篩選器**——為一份空清單準備的。那條 56px 的控制項比它下面那顆
-            「創建空間」還早被讀到，而它在那個當下一件事都做不到。只有一個空間時
-            也一樣：三選一之後還是那一列。
+      {/*
+        篩選只在真的有東西可以篩的時候才出現（2026-09）。
 
-            門檻放在「兩個以上」，不是「一個以上」：一個空間不需要篩選，而
-            `rows.length` 是篩選前的總數，所以這一列不會因為自己篩掉了東西而消失。
-            它收起來的時候 filter 一定停在 all（沒有人改得動它），所以底下那兩顆
-            按鈕會同時在——這正是空手起步時該有的畫面。
-          */}
-          {filterVisible && (
+        它本來永遠都在，於是**第一次打開這個 app 的人，看到的第一個東西是一組
+        三段的篩選器**——為一份空清單準備的。那條 56px 的控制項比它下面那顆
+        「創建空間」還早被讀到，而它在那個當下一件事都做不到。只有一個空間時
+        也一樣：三選一之後還是那一列。
+
+        門檻放在「兩個以上」，不是「一個以上」：一個空間不需要篩選，而
+        `rows.length` 是篩選前的總數，所以這一列不會因為自己篩掉了東西而消失。
+        它收起來的時候 filter 一定停在 all（沒有人改得動它），所以底下那兩顆
+        按鈕會同時在——這正是空手起步時該有的畫面。
+
+        **這一列 sticky（2026-09）**，而且它因此得住在 `.shell` 外面：`.shell`
+        有左右內距，貼在裡面的話捲過去的列會從那條材質的兩側露出來。跟點名畫面
+        的頂欄是同一個判斷——真正需要篩選與搜尋的時刻，是你已經捲過一整頁空間在
+        找某一個，而那時候它們正好都在畫面外。
+
+        篩選與搜尋同一列，也跟點名畫面同一套（`.filterbar`）：三段佔左邊，右邊
+        一顆放大鏡，點下去從那顆鍵的位置往左長成整條輸入框，蓋住分段控制——一列
+        裡塞不下四段篩選加一條堪用的輸入框。
+      */}
+      {filterVisible && (
+        <div class="topbar home-filterbar">
+          <div class="shell filterbar">
             <div class="segmented" role="group" aria-label={t('filter')}>
               <button class="segment" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
                 {t('roomFilterAll')}
@@ -201,8 +236,53 @@ export function Home({ onSettings }: { onSettings: () => void }) {
                 </button>
               )}
             </div>
-          )}
 
+            {searching ? (
+              <div class="search-wrap">
+                <input
+                  ref={searchRef}
+                  class={query.trim() ? 'input is-on' : 'input'}
+                  type="search"
+                  value={query}
+                  placeholder={t('searchRoomPlaceholder')}
+                  aria-label={t('searchRoomPlaceholder')}
+                  onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+                  /* 空的時候滑走就收起來；有字的時候絕不自己收——收起來會清掉字，
+                     而使用者只是移開了手指。 */
+                  onBlur={() => { if (!query) setSearching(false) }}
+                  enterkeyhint="done"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); return }
+                    if (e.key !== 'Escape') return
+                    // 先清字（清單立刻回來），再按一次才收回成圖示。
+                    if (query) { setQuery(''); return }
+                    closeSearch()
+                  }}
+                />
+                {/* 取消一直在，不是有字才長出來：沒有字的時候，「滑去別的地方」
+                    在這一頁就是點到某個空間，那會直接走進去。 */}
+                <button
+                  class="search-clear"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={closeSearch}
+                  aria-label={t('cancel')}
+                >×</button>
+              </div>
+            ) : (
+              <button
+                class="icon-btn search-toggle"
+                onClick={openSearch}
+                aria-label={t('searchRoomPlaceholder')}
+              >
+                <IconSearch />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div class="shell">
+        <div class="stack">
           {showCreate && showJoin ? (
             <div class="row" style="gap:8px">
               {joinButton(false)}
@@ -214,11 +294,13 @@ export function Home({ onSettings }: { onSettings: () => void }) {
             空狀態是一句話，不是一個灰框（2026-09）：它旁邊已經有兩個框了
             （分段控制、加入空間），再加一個只是讓這一頁更像一疊盒子。
           */}
-          {visibleRows.length === 0 ? (
-            <p class="hint">{emptyText}</p>
+          {shownRows.length === 0 ? (
+            /* 搜不到東西時說的是「沒找到」，不是「還沒有開過空間」——後者在那個
+               當下是假的，而且會讓人以為自己的空間不見了。 */
+            <p class="hint">{q ? t('noRoomMatch') : emptyText}</p>
           ) : (
             <div class="stack" style="gap:8px">
-              {visibleRows.map((r) => (
+              {shownRows.map((r) => (
                 <div class="recent-item" key={r.code}>
                   <button class="recent-main" onClick={() => navigate(`/r/${r.code}`)}>
                     {/* 身分排在名字前面（2026-09 從那一列最右邊的文字標籤換過來）：

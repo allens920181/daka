@@ -739,7 +739,29 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 .home-head { padding: var(--sp-6) 0 var(--sp-5); }
 .home-title { font-size: var(--fs-6); letter-spacing: -.01em; }
-.home-tagline { color: var(--ink-2); font-size: var(--fs-3); margin-top: var(--sp-1); }
+
+/*
+ * 首頁的篩選＋搜尋列，sticky（2026-09）。
+ *
+ * 它沿用 `.topbar` 整塊材質（半透明＋模糊、底線、`z-index`、以及沒有
+ * `backdrop-filter` 或偏好減少透明度時的那兩組退路）——同一件東西不該有第二份
+ * 實作，尤其是那兩組退路很容易只補到其中一邊。
+ *
+ * 兩處不同：
+ * - **不吃 safe-area 的上內距。** `.topbar` 在頁面最上緣，那道內距是為了讓開
+ *   瀏海；這一列在標題底下，同一道內距會在頁面中間開一個洞。改成自己的 8px，
+ *   凍住之後上下對稱。
+ * - **底下留一格縫**（`--sp-3`）。分段控制本來住在 `.stack` 裡，靠 stack 的
+ *   gap 跟底下那兩顆按鈕分開；搬出來之後那個 gap 不再管得到它。
+ *   縫是透明的，捲動時內容會先穿過它再鑽到材質底下——跟點名畫面一樣。
+ *
+ * **選擇器要寫成 `.topbar.home-filterbar`，不能只寫 `.home-filterbar`。** 兩者
+ * 特異性相同，而 `.topbar` 宣告在後面（首頁這一段在檔案上半部），所以單類別的
+ * 版本會被它整個蓋掉——`padding-top` 悄悄變回 `env(safe-area-inset-top)`，而在
+ * 沒有瀏海的桌機瀏覽器上那等於 0，測起來一切正常。這個洞是靠「把 sticky 拿掉
+ * 之後測試竟然還是綠的」才發現的。
+ */
+.topbar.home-filterbar { top: 0; padding-top: var(--sp-2); margin-bottom: var(--sp-3); }
 
 /*
  * 掃描加入的鏡頭預覽。方框而非全寬：QR 碼本身是方的，方框讓使用者一眼知道
@@ -1939,6 +1961,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-3);
 }
 .preview-row:last-child { border-bottom: none; }
+/*
+ * 分組標題（見 RosterInput）。點名畫面的 `.group-divider` 是浮在頁面上的一段
+ * 標題，尾巴拖一條線把這一段與上一段分開；預覽是一個有框的清單，那條尾巴會
+ * 撞上框線，所以這裡改用一條淺色的帶子——同一個記號，換成清單裡的講法。
+ *
+ * 帶子不再描邊：填色已經把這一列跟上下分開了，再加一條線只是把同一件事說第二次
+ * （見 styles.test.ts 的「凹槽不描邊」）。上面那一列自己的 border-bottom 仍在。
+ */
+.preview .group-divider {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2);
+  font-size: var(--fs-1);
+}
+.preview .group-divider::after { display: none; }
 /* 移除鍵。這是「解析器猜錯了」唯一的出口，不能小到按不到——48px 觸控目標，
    但視覺上收斂（--ink-3），因為多數列不需要動它。 */
 .preview-remove { color: var(--ink-3); flex: none; }
@@ -1953,6 +1989,34 @@ button, input, textarea, select { font: inherit; color: inherit; }
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   display: inline-block;
 }
+
+/* === 名單怎麼寫（FormatHelpSheet） ======================================= */
+
+/*
+ * 一條規則一格：例子在上、說法在下。
+ *
+ * 例子與說法**直排不橫排**。橫排時每一格的左欄要對齊，於是欄寬由最長的那個
+ * 例子決定（`陳大同（坐輪椅）`），短的那幾個右邊就拖著一段空白；而手機只有
+ * 390px 寬，說法那一欄會被擠成一行三個字。直排讓兩邊各自用滿整行。
+ */
+.fmt { display: flex; flex-direction: column; gap: var(--sp-3); }
+/* 有標題的那一格是一節的開頭，跟上一節拉開；同一節裡的後續例子貼著。 */
+.fmt-row.is-head:not(:first-child) { margin-top: var(--sp-3); }
+.fmt-head { margin: 0 0 var(--sp-2); }
+/*
+ * 例子長得像**輸入框裡的字**：等寬、凹槽底。這是全站那句「打字的東西凹下去」
+ * 的同一句話（見 04-components/README.md）——它不是引言也不是程式碼，它是一段
+ * 要照著打進上一頁那個框裡的字。凹槽不描邊。
+ */
+.fmt-eg {
+  display: block; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-2);
+  background: var(--surface-2); color: var(--ink);
+  font-size: var(--fs-3); line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
+}
+.fmt-say { margin: var(--sp-2) 0 0; font-size: var(--fs-2); color: var(--ink-2); line-height: 1.6; }
+/* 最後那條沒有例子，自己跟上面拉開一點，不然它讀起來像前一格的第二句。 */
+.fmt-tail { margin-top: var(--sp-3); color: var(--ink-3); }
 
 /* === 提示框 ============================================================== */
 

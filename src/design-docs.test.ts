@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { messages } from './lib/i18n'
 
 /**
  * 防止規範與實作漂移。
@@ -167,6 +168,23 @@ describe('設計規範與實作的一致性', () => {
     }
     expect(checked).toBeGreaterThanOrEqual(10)
     expect(wrong).toEqual([])
+  })
+
+  /*
+   * README 的「貼上名單能吃什麼」底下那塊示範，緊接著就寫「按一下會把活動名稱
+   * 與**上面這份名單**一起填好」——所以它不是隨手寫的示意，它是一句關於按鈕會
+   * 做什麼的承諾。兩邊分開放就會漂移：寫這條的時候 README 印的是「陳大同（請假）」
+   * 而按鈕填的是「（坐輪椅）」，而「請假」在這個 app 裡是一種狀態，看的人會以為
+   * 那顆按鈕示範了一件它其實不做的事。
+   */
+  it('README 印的範例名單就是「填入範例」填的那一份', () => {
+    const readme = readFileSync(join(ROOT, 'README.md'), 'utf8')
+    // 錨在標題上，不是錨在它下面那句話——那句話是文案，會改；這一節底下第一個
+    // 程式碼區塊是什麼，才是這條測試要釘的東西。
+    const section = readme.split('### 貼上名單能吃什麼')[1] ?? ''
+    const block = section.match(/```\n([\s\S]*?)\n```/)?.[1]
+    expect(block).toBeTruthy()
+    expect(block).toBe(messages.zh.exampleRoster)
   })
 
   it('每個元件家族都用了規格模板的必要欄位', () => {

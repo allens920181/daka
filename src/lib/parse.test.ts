@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { messages } from './i18n'
 import { dialableFrom, parseRoster, removeParsedMember, rosterToText, telHref } from './parse'
+import type { DraftMember } from './types'
 
 const names = (s: string) => parseRoster(s).members.map((m) => m.name)
+
+/** 只驗 rosterToText 的時候用：不經過解析器，才問得出「寫出來的是什麼」。 */
+const draft = (name: string, group: string | null): DraftMember =>
+  ({ name, note: null, phone: null, companions: 0, group_label: group })
 
 describe('parseRoster', () => {
   it('每行一個名字', () => {
@@ -162,8 +167,8 @@ describe('removeParsedMember', () => {
   })
 
   it('刪掉分組裡的人不會動到分組標題', () => {
-    const text = '【第一車】\n王小明\n李美花'
-    expect(drop(text, '王小明')).toBe('【第一車】\n李美花')
+    const text = '#第一車\n王小明\n李美花'
+    expect(drop(text, '王小明')).toBe('#第一車\n李美花')
   })
 
   it('刪完之後重新解析，剩下的人位置仍然正確', () => {
@@ -187,6 +192,32 @@ describe('rosterToText', () => {
     const original = '王小明\n李美花 +1\n陳大同（請假）'
     const round = rosterToText(parseRoster(original).members)
     expect(parseRoster(round).members).toEqual(parseRoster(original).members)
+  })
+
+  /*
+   * 寫回輸入框的字是使用者接下來要編輯的東西，所以它得跟範例教的是同一種寫法。
+   * 全站只教一種分組記號：`#`。（括號那幾種讀得進來，但不寫出去。）
+   */
+  it('分組寫成 # 標題', () => {
+    expect(rosterToText([draft('王小明', '第一車'), draft('李美花', '第二車')]))
+      .toBe('#第一車\n王小明\n#第二車\n李美花')
+  })
+
+  it('分組結束時寫出 #未分組', () => {
+    expect(rosterToText([draft('王小明', '第一車'), draft('李美花', null)]))
+      .toBe('#第一車\n王小明\n#未分組\n李美花')
+  })
+
+  /*
+   * 「未分組」那個標記要用當下語言的字：英文介面的人按「套用」之後，不該在自己
+   * 的輸入框裡看到三個中文字——而且「名單怎麼寫」那一頁在英文介面教的就是
+   * `#No group`，畫面上教的寫法必須真的做得到事。
+   */
+  it('未分組的字由呼叫端給，英文往返一樣成立', () => {
+    const text = rosterToText([draft('Alice', 'Bus 1'), draft('Bob', null)], 'No group')
+    expect(text).toBe('#Bus 1\nAlice\n#No group\nBob')
+    expect(parseRoster(text).members.map((m) => [m.name, m.group_label]))
+      .toEqual([['Alice', 'Bus 1'], ['Bob', null]])
   })
 })
 
@@ -346,39 +377,81 @@ describe('parseRoster 不再判斷狀態', () => {
 describe('parseRoster 分組', () => {
   const grouped = (s: string) => parseRoster(s).members.map((m) => [m.name, m.group_label])
 
-  it('括號標題行把後續的人歸到該組', () => {
-    expect(grouped('【第一車】\n王小明\n李美花\n【第二車】\n陳大同')).toEqual([
+  it('井字號標題把後續的人歸到該組', () => {
+    expect(grouped('#第一車\n王小明\n李美花\n#第二車\n陳大同')).toEqual([
       ['王小明', '第一車'], ['李美花', '第一車'], ['陳大同', '第二車'],
     ])
   })
 
-  it('沒有括號的「第二車」也算標題', () => {
-    expect(grouped('第一車\n王小明\n第二車\n李美花')).toEqual([
-      ['王小明', '第一車'], ['李美花', '第二車'],
+  it('全形＃跟半形一樣認得', () => {
+    expect(grouped('＃第一車\n王小明')).toEqual([['王小明', '第一車']])
+  })
+
+  it('Markdown 習慣的 ## 也認得', () => {
+    expect(grouped('## 第一車\n王小明')).toEqual([['王小明', '第一車']])
+  })
+
+  it('#未分組 把分組清掉', () => {
+    expect(grouped('#第一車\n王小明\n#未分組\n李美花')).toEqual([
+      ['王小明', '第一車'], ['李美花', null],
     ])
   })
 
-  it('A車 / B組 這種也認得', () => {
-    expect(grouped('A車\n王小明\nB組\n李美花')).toEqual([
-      ['王小明', 'A車'], ['李美花', 'B組'],
+  it('英文的 #No group / #Ungrouped 一樣清得掉', () => {
+    for (const marker of ['#No group', '#no group', '#Ungrouped']) {
+      expect(grouped(`#Bus 1\nAlice\n${marker}\nBob`)).toEqual([
+        ['Alice', 'Bus 1'], ['Bob', null],
+      ])
+    }
+  })
+
+  /*
+   * 井字號在別的地方是編號的記號（`#1 王小明`），而把一個人吃成分組標題是看不
+   * 見的錯：那一列不會出現在預覽裡，現場也就永遠不會有人去打他的勾。
+   */
+  it('「#1 王小明」是編號不是分組標題', () => {
+    expect(grouped('#1 王小明\n#2 李美花')).toEqual([
+      ['王小明', null], ['李美花', null],
     ])
+  })
+
+  it('「#1.王小明」沒有空白也一樣', () => {
+    expect(grouped('#1.王小明')).toEqual([['王小明', null]])
+  })
+
+  it('「#2組」這種以數字開頭的分組名仍然是標題', () => {
+    expect(grouped('#2組\n王小明')).toEqual([['王小明', '2組']])
   })
 
   it('分隔線與冒號不影響判斷', () => {
-    expect(grouped('--- 第一車 ---\n王小明\n【第二車】：\n李美花')).toEqual([
+    expect(grouped('--- #第一車 ---\n王小明\n#第二車：\n李美花')).toEqual([
       ['王小明', '第一車'], ['李美花', '第二車'],
     ])
   })
 
   it('標題之前的人沒有分組', () => {
-    expect(grouped('王小明\n【第一車】\n李美花')).toEqual([
+    expect(grouped('王小明\n#第一車\n李美花')).toEqual([
       ['王小明', null], ['李美花', '第一車'],
     ])
   })
 
-  it('「未分組」標題可以把分組清掉', () => {
-    expect(grouped('【第一車】\n王小明\n【未分組】\n李美花')).toEqual([
-      ['王小明', '第一車'], ['李美花', null],
+  /*
+   * 分組只認 `#`（見 GROUP_HASH）。舊寫法不會安靜地不見：`【第一車】` 整行只剩
+   * 括號，算進「已略過」，預覽底下那行「1 行看起來不是姓名，已略過」會報出來；
+   * 光禿禿的「第一車」變成一個人名，在預覽裡看得見、按一下就拿掉。
+   * 兩種都在畫面上留下痕跡——看得見的錯才改得掉。
+   */
+  it('【第一車】不再是標題，而且會被回報成略過的那一行', () => {
+    const r = parseRoster('【第一車】\n王小明\n李美花')
+    expect(r.members.map((m) => [m.name, m.group_label])).toEqual([
+      ['王小明', null], ['李美花', null],
+    ])
+    expect(r.skipped).toBe(1)
+  })
+
+  it('光禿禿的「第一車」「A車」只是人名，看得見', () => {
+    expect(grouped('第一車\n王小明\nA車\n李美花')).toEqual([
+      ['第一車', null], ['王小明', null], ['A車', null], ['李美花', null],
     ])
   })
 
@@ -394,26 +467,26 @@ describe('parseRoster 分組', () => {
   })
 
   it('回報出現過的分組，依順序', () => {
-    expect(parseRoster('【B車】\n甲\n【A車】\n乙\n【B車】\n丙').groups).toEqual(['B車', 'A車'])
+    expect(parseRoster('#B車\n甲\n#A車\n乙\n#B車\n丙').groups).toEqual(['B車', 'A車'])
   })
 
   it('分組名長度上限 20', () => {
     const long = '車'.repeat(30)
-    expect(parseRoster(`【${long}】\n甲`).members[0]?.group_label ?? '').toHaveLength(0)
+    expect(parseRoster(`#${long}\n甲`).members[0]?.group_label ?? '').toHaveLength(0)
   })
 
   it('分組往返不會把「未分組」的人吸進上一組', () => {
-    const original = '【第一車】\n王小明 +1\n【未分組】\n李美花 0912345678'
+    const original = '#第一車\n王小明 +1\n#未分組\n李美花 0912345678'
     const round = rosterToText(parseRoster(original).members)
     expect(parseRoster(round).members).toEqual(parseRoster(original).members)
   })
 
   it('完整的分車接龍', () => {
     const r = parseRoster(`秋季旅遊
-【第一車】
+#第一車
 1.王小明 0912345678
 2. 李美花 +1
-【第二車】
+#第二車
 3、陳大同（請假）
 4.王媽媽 帶2人`)
     expect(r.groups).toEqual(['第一車', '第二車'])
@@ -435,11 +508,34 @@ describe('parseRoster 分組', () => {
  */
 describe('填入範例的文字', () => {
   for (const lang of ['zh', 'en'] as const) {
-    it(`${lang}：每一行都解析得出一個人`, () => {
+    it(`${lang}：每一行不是一個人就是一行分組標題`, () => {
       const text = messages[lang].exampleRoster
+      const lines = text.split('\n')
+      const headers = lines.filter((l) => l.trim().startsWith('#'))
       const r = parseRoster(text)
       expect(r.skipped).toBe(0)
-      expect(r.members.length).toBe(text.split('\n').length)
+      expect(r.members.length).toBe(lines.length - headers.length)
+    })
+
+    /*
+     * 分組是這份名單最常見的第二個結構，而「原來可以這樣寫」除了這段文字之外
+     * 沒有別的入口——範例少了它，分車就等於不存在。
+     */
+    it(`${lang}：示範到分組，而且沒有人掉在分組外面`, () => {
+      const r = parseRoster(messages[lang].exampleRoster)
+      expect(r.groups.length).toBeGreaterThanOrEqual(2)
+      expect(r.members.every((m) => m.group_label !== null)).toBe(true)
+    })
+
+    /*
+     * 範例同時是使用者接下來要編輯的那份文字，所以它自己得是整齊的：編號一律
+     * `1. ` 半形、一路數下去不因分車重來。解析器什麼編號都吃得下（上面那幾則
+     * 在驗），但那件事由 placeholder 與 README 用講的——範例用長相說話，而一份
+     * 看起來沒整理過的名單不會讓人想接著往下打。
+     */
+    it(`${lang}：編號整齊——半形「N. 」，跨分車連號`, () => {
+      const people = messages[lang].exampleRoster.split('\n').filter((l) => !l.startsWith('#'))
+      expect(people.map((l, i) => l.startsWith(`${i + 1}. `))).toEqual(people.map(() => true))
     })
 
     it(`${lang}：撥得出去的號碼與備註都示範到`, () => {

@@ -37,6 +37,33 @@ ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 // 開空間
 await p.getByRole('button', { name: /創建空間/ }).first().click()
 await p.waitForTimeout(400)
+/*
+  「名單怎麼寫」：頂欄標題右邊那顆 ?。規則本來只活在解析器與 README 裡，而會去
+  讀 README 的是工程師不是主揪——這一頁是那些規則在畫面上唯一的入口。
+*/
+ok('標題右邊有一顆「名單怎麼寫」', (await p.locator('.topbar .fmt-help-btn').count()) === 1)
+ok('它貼著標題，不在最右邊那一排（右邊住的是動作）', await p.evaluate(() => {
+  const bar = document.querySelector('.topbar-inner')
+  const title = bar.querySelector('.topbar-name')
+  const help = bar.querySelector('.fmt-help-btn')
+  const spacer = bar.querySelector('.spacer')
+  // 標題 → ? → spacer：DOM 順序就是它的位置說法。
+  return title.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING
+    && (!spacer || (help.compareDocumentPosition(spacer) & Node.DOCUMENT_POSITION_FOLLOWING))
+}))
+await p.locator('.topbar .fmt-help-btn').click(); await p.waitForTimeout(500)
+ok('點了跳出說明', await p.locator('.fmt').isVisible())
+const fmtEgs = await p.locator('.fmt-eg').allTextContents()
+ok(`每一條都配一個例子（${fmtEgs.length} 個）`,
+   fmtEgs.length === 4 && fmtEgs.includes('#第一車'))
+ok('每個例子底下都有一句說法', (await p.locator('.fmt-row .fmt-say').count()) === 4)
+// 說明頁不是規格書：`#未分組`、`#1 王小明` 都真的有效，但不在這裡。會問到分車
+// 邊界的人早就不需要這一頁了，而第一次打開的人會多讀兩條用不到的規則。
+ok('沒有把邊界規則也塞進來', !fmtEgs.some((e) => e.includes('未分組') || e.includes('#1 ')))
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('Esc 關得掉，而且名單那一頁還在', (await p.locator('.fmt').count()) === 0
+   && await p.locator('#roster-text').isVisible())
+
 // 空間名稱的 return 鍵寫著「下一個」，所以它得真的跳到下一欄（名單）。
 ok('空間名稱的 return 鍵寫著「下一個」', await p.getAttribute('#room-name', 'enterkeyhint') === 'next')
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
@@ -427,7 +454,9 @@ ok('窄螢幕上輸入框沒有被擠爛', await p.evaluate(() =>
   不是「高度一樣」，是那三件真正的不變量——內容從同一條線開始、返回鍵不移動、
   而且再高也不會超過面板自己的 88vh 上限。
 */
-await p.getByRole('button', { name: /QR/ }).click(); await p.waitForTimeout(900)
+// 名字寫全：代碼是隨機的六碼，而 /QR/ 曾經同時對到首頁那一列「QR7KR2」的空間，
+// 於是這個測試每跑幾百次就會無緣無故掛掉一次（strict mode violation）。
+await p.getByRole('button', { name: /^掃描 QR 碼$/ }).click(); await p.waitForTimeout(900)
 const scanH = await sheetH()
 ok(`掃碼那一頁比較高，但沒有超過 88vh（${codeH} → ${scanH}）`,
    scanH > codeH && scanH <= Math.round(844 * 0.88))
@@ -501,14 +530,20 @@ await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitF
 await p.locator('#room-name').fill('現場操作測試')
 await p.locator('#roster-text').fill(`沒填車次的甲
 沒填車次的乙
-【第一車】
+#第一車
 陳怡君 0912345678
 王小明
-【第二車】
+#第二車
 陳怡君 0955666777
 陳大同（請假）`)
 await p.waitForTimeout(400)
 await generateList()
+// 開頭那兩個沒填車次的人也是一群，預覽的第一列標題因此是「未分組」——規則與
+// 點名畫面一字不差。漏掉它，他們讀起來就像第一車的人。
+const pvFirst = await p.locator('.preview .group-divider').allTextContents()
+ok(`預覽第一段標的是未分組：${pvFirst.join(' | ')}`,
+   pvFirst.length===3 && pvFirst[0].includes('未分組')
+   && pvFirst[1].includes('第一車') && pvFirst[2].includes('第二車'))
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
 
 // #28 沒有分車的人也要有自己的晶片與標題，否則兩個顧車的志工會同時漏掉他們。
@@ -1005,6 +1040,55 @@ ok('走進去就自動取消封存，回首頁看得到它',
    (await p.locator('.recent-name').allTextContents()).includes('確認對話框測試')
    && !(await p.locator('.segmented button').allTextContents()).includes('封存'))
 
+/*
+  首頁 2026-09：標語拿掉、篩選列凍結置頂、滑塊右邊一顆放大鏡。
+  這時候首頁上有好幾個空間，篩選列因此在（它只在兩個以上時出現）。
+*/
+ok('首頁的篩選列在', (await p.locator('.home-filterbar').count()) === 1)
+ok('標語不見了（「大家一起點同一份名單」）',
+   (await p.locator('.home-tagline').count()) === 0
+   && !(await p.locator('.home-head').innerText()).includes('大家一起'))
+// 材質要滿版：貼在 .shell 裡面的話，捲過去的列會從左右內距那兩道縫露出來。
+ok('篩選列的材質滿版（沒被 shell 的內距切掉）',
+   (await p.locator('.home-filterbar').boundingBox()).width === 390)
+ok('滑塊右邊有一顆放大鏡', (await p.locator('.home-filterbar .search-toggle').count()) === 1)
+
+/*
+  凍結置頂。**真的捲給它看**——computed style 寫著 sticky 不代表它真的會 sticky：
+  任何一層祖先有 overflow 就默默失效，而那正是這種版面最常見的壞法，而且畫面上
+  不會有任何錯誤。首頁在 844px 高的視窗裡捲不了那麼遠，所以縮短視窗再量。
+*/
+await p.setViewportSize({ width: 390, height: 260 })
+await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300)
+const barTop0 = (await p.locator('.home-filterbar').boundingBox()).y
+await p.evaluate(() => window.scrollTo(0, 9999)); await p.waitForTimeout(400)
+const barTop1 = (await p.locator('.home-filterbar').boundingBox()).y
+ok(`捲到底之後篩選列仍在畫面上、貼齊頂端（y：${Math.round(barTop0)} → ${Math.round(barTop1)}）`,
+   barTop0 > 0 && barTop1 === 0)
+await p.setViewportSize({ width: 390, height: 844 })
+await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300)
+
+// 搜尋：名稱與代碼都要搜得到——代碼是別人用 LINE 傳過來時，手上唯一的那個線索，
+// 而首頁每一列都印著它。
+const homeCode = ((await p.locator('.recent-meta .mono').first().textContent()) || '').trim()
+await p.locator('.home-filterbar .search-toggle').click(); await p.waitForTimeout(500)
+ok('點了長出輸入框，焦點就在裡面',
+   await p.evaluate(() => document.activeElement?.getAttribute('type') === 'search'))
+await p.locator('.home-filterbar input[type=search]').fill('確認對話框'); await p.waitForTimeout(400)
+ok('用名稱搜得到',
+   (await p.locator('.recent-name').allTextContents()).every((n) => n.includes('確認對話框')))
+await p.locator('.home-filterbar input[type=search]').fill(homeCode); await p.waitForTimeout(400)
+ok(`用代碼 ${homeCode} 也搜得到`, (await p.locator('.recent-name').count()) === 1)
+await p.locator('.home-filterbar input[type=search]').fill('zzz不存在的空間'); await p.waitForTimeout(400)
+// 搜不到時說的是「沒找到」，不是「還沒有開過空間」——後者在那個當下是假的，
+// 而且會讓人以為自己的空間不見了。
+ok('搜不到時說的是「沒有符合的空間」',
+   ((await p.locator('.hint').first().textContent()) || '').includes('沒有符合的空間'))
+await p.locator('.home-filterbar .search-clear').click(); await p.waitForTimeout(400)
+ok('取消之後空間都回來，放大鏡也回來',
+   (await p.locator('.recent-name').count()) > 1
+   && (await p.locator('.home-filterbar .search-toggle').count()) === 1)
+
 // 回到選單，底下那幾條驗的是刪除的確認對話框。
 await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
 await p.locator('.sheet').getByRole('button',{name:/^刪除空間/}).click(); await p.waitForTimeout(500)
@@ -1293,17 +1377,24 @@ await p.goto(URL); await p.waitForTimeout(900)
 
 await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
-await p.locator('#roster-text').fill(`【第一車】
+// 分組寫成 `#第一車`——這是範例教的、也是 rosterToText 寫回來的那一種。
+await p.locator('#roster-text').fill(`#第一車
 1.王小明 0912345678
 2. 李美花 +1
 3.張三
-【第二車】
+#第二車
 4、陳大同（請假）
 5.李四
 6.王五 帶2人`)
 await p.waitForTimeout(400)
 const preview = await p.locator('.preview-row').count()
 ok(`解析預覽 ${preview} 人（標題行不算人）`, preview===6)
+// 標題行不算人，但也不能就這樣消失：預覽是主揪確認「解析器讀到了什麼」唯一的
+// 地方，看不到分組就等於沒辦法確認它有沒有被讀到。（範例以前不敢示範分組，
+// 就是因為這兩行會憑空不見。）
+const pvGroups = await p.locator('.preview .group-divider').allTextContents()
+ok(`預覽裡看得到分組標題：${pvGroups.join(' | ')}`,
+   pvGroups.length===2 && pvGroups[0].includes('第一車') && pvGroups[1].includes('第二車'))
 await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300)
 
@@ -1373,8 +1464,8 @@ await p.goto(URL); await p.waitForTimeout(600)
 await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(400)
 await p.locator('#room-name').fill('員工旅遊 · 出發')
 await p.locator('#roster-text').fill(
-  ['【第一車】', ...Array.from({length:40},(_,i)=>`第一車學員${String(i+1).padStart(2,'0')}`),
-   '【第二車】', ...Array.from({length:40},(_,i)=>`第二車學員${String(i+1).padStart(2,'0')}`)].join('\n'))
+  ['#第一車', ...Array.from({length:40},(_,i)=>`第一車學員${String(i+1).padStart(2,'0')}`),
+   '#第二車', ...Array.from({length:40},(_,i)=>`第二車學員${String(i+1).padStart(2,'0')}`)].join('\n'))
 await p.waitForTimeout(800)
 await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(2200)

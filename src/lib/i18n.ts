@@ -4,7 +4,6 @@
  */
 const zh = {
   appName: 'RollRoom',
-  tagline: '大家一起點同一份名單',
 
   // 首頁
   openRoom: '創建空間',
@@ -57,9 +56,37 @@ const zh = {
   exampleFill: '填入範例',
   exampleClear: '清除範例',
   exampleName: '秋季旅遊 · 出發',
-  /* 範例的每一行都必須解析得出一個人（parse.test.ts 會驗）。分組標題不放進來——
-     預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範一件看不到的事。 */
-  exampleRoster: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（坐輪椅）\n４．張三\n- 李四\n王五 帶2人',
+  /* 範例的每一行都必須被讀進去（parse.test.ts 會驗）：不是一個人，就是一行分組
+     標題，沒有第三種。
+     分組標題以前刻意不放——預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範
+     一件看不到的事。預覽現在會顯示了（見 RosterInput），所以它進得來了：分車是
+     這份名單最常見的第二個結構（兩三台遊覽車很常見），而「原來可以這樣寫」除了
+     這段文字之外沒有別的入口。寫法只教一種——`#`，`rosterToText` 寫出來的也是它。
+
+     **編號一律 `1. ` 半形，一路數下去不因分車重來。** 它原本刻意混著寫
+     （`1.` `2. ` `3、` 全形「４．」`- ` 與沒有編號各來一行）來示範解析器什麼都
+     吃得下——但範例同時是使用者接下來要編輯的那份文字，一眼看過去像沒整理過的
+     東西，不會讓人想接著往下打。容錯改由 placeholder 那句「LINE 接龍直接貼就行」
+     與 README 講；解析器一個字都沒改，混著寫照樣讀得進來。 */
+  exampleRoster: '#第一車\n1. 王小明 0912345678\n2. 李美花 +1\n3. 陳大同（坐輪椅）\n#第二車\n4. 張三\n5. 李四\n6. 王五 帶2人',
+  /* 「名單怎麼寫」——開空間那一頁頂欄、標題右邊那顆 ?。
+     這些規則本來只活在解析器裡與 README 裡，而會去看 README 的是工程師，不是
+     站在遊覽車門口的主揪。範例示範得出「長什麼樣」，示範不出「為什麼」——
+     為什麼那串號碼跑到備註裡、為什麼那一行不見了。所以這一頁用講的，而且每一
+     條都配一個看得出來的例子。 */
+  formatHelp: '名單怎麼寫',
+  fmtLines: '一行一個人',
+  fmtLinesEg: '1. 王小明',
+  fmtLinesSay: '開頭的編號與 - • * 這些符號會自動拿掉，不寫也可以。',
+  fmtNotes: '名字後面可以接東西',
+  fmtNotesEg: '王小明 0912345678',
+  fmtNotesSay: '第一個「空白＋數字」之後整段都是備註。撥得出去的號碼會多一顆撥號鍵。',
+  fmtNotesParenEg: '陳大同（坐輪椅）',
+  fmtNotesParenSay: '括號裡也是備註。',
+  fmtGroups: '分車用 #',
+  fmtGroupsEg: '#第一車',
+  fmtGroupsSay: '這一行以下的人都算第一車，直到下一個 # 為止。',
+  fmtSkipped: '讀不出名字的行會被略過，下一步的清單預覽底下會說有幾行。',
   /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
   fromNote: '備註裡的號碼',
   parsePreview: '清單預覽',
@@ -85,6 +112,10 @@ const zh = {
   arrived: '已到',
   all: '全部',
   searchPlaceholder: '搜尋姓名…',
+  /* 首頁那一顆搜的是空間，不是人——同一個圖示、同一條列，但搜的東西不一樣，
+     所以不共用 searchPlaceholder。 */
+  searchRoomPlaceholder: '搜尋空間…',
+  noRoomMatch: '沒有符合的空間',
   allHere: '全部到齊',
   /* 頂欄接手計分區時要跟計分區逐字相同（大字＋「位沒到」）。這個 key 也用在
      結束後的橫幅，事情都結束了，「還有」本來就不該在那裡。 */
@@ -359,7 +390,6 @@ export type MessageKey = keyof typeof zh
 
 const en: Record<MessageKey, string> = {
   appName: 'RollRoom',
-  tagline: 'Everyone checks the same list',
 
   openRoom: 'Create a room',
   joinRoom: 'Join a room',
@@ -390,7 +420,20 @@ const en: Record<MessageKey, string> = {
   exampleFill: 'Fill in an example',
   exampleClear: 'Clear the example',
   exampleName: 'Autumn trip · Departure',
-  exampleRoster: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (wheelchair)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
+  exampleRoster: '#Bus 1\n1. Alice Chen 0912345678\n2. Bob Lin +1\n3. Dana Wu (wheelchair)\n#Bus 2\n4. Ken Chang\n5. Mia Wang\n6. Sam Lee +2',
+  formatHelp: 'How to write the roster',
+  fmtLines: 'One person per line',
+  fmtLinesEg: '1. Alice Chen',
+  fmtLinesSay: 'Leading numbers and - • * are stripped. You can leave them out.',
+  fmtNotes: 'Anything after the name',
+  fmtNotesEg: 'Alice Chen 0912345678',
+  fmtNotesSay: 'From the first space-then-digit on, it all becomes a note. Dialable numbers get a call button.',
+  fmtNotesParenEg: 'Dana Wu (wheelchair)',
+  fmtNotesParenSay: 'Brackets are notes too.',
+  fmtGroups: 'Use # for buses',
+  fmtGroupsEg: '#Bus 1',
+  fmtGroupsSay: 'Everyone below this line is on Bus 1, until the next #.',
+  fmtSkipped: 'Lines with no readable name are skipped; the preview says how many.',
   fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',
@@ -410,6 +453,8 @@ const en: Record<MessageKey, string> = {
   arrived: 'Here',
   all: 'All',
   searchPlaceholder: 'Search names…',
+  searchRoomPlaceholder: 'Search rooms…',
+  noRoomMatch: 'No rooms match',
   allHere: 'Everyone is here',
   missingCount: '{n} missing',
   missingUnit: 'still missing',

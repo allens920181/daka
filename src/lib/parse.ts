@@ -35,39 +35,67 @@ function normalizeWidth(input: string): string {
     .replace(/＋/g, '+')
     .replace(/（/g, '(')
     .replace(/）/g, ')')
+    // 方括號轉半形是給備註用的（`王小明【素食】`，見 NOTE_PAREN）——分組標題
+    // 只認 `#`，見 GROUP_HASH。
     .replace(/[［【]/g, '[')
     .replace(/[］】]/g, ']')
+    .replace(/＃/g, '#')
 }
 
-/** 開頭的編號或項目符號：`1.` `2、` `3)` `10 ` `- ` `• ` */
-const LEADING_MARKER = /^\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–—•·*✦▪◦]\s+)/
+/**
+ * 開頭的編號或項目符號：`1.` `2、` `3)` `10 ` `- ` `• `，以及前面可以再掛一個
+ * 井字號（`#1 王小明`）。
+ *
+ * `#` 現在是分組標題的記號，所以「#後面接編號」這種行必須有地方去：`groupHeader`
+ * 認出它不是標題（見 GROUP_HASH）之後會落到這裡，那顆井字號要跟編號一起拿掉，
+ * 否則名字會叫「#1 王小明」。
+ */
+const LEADING_MARKER = /^\s*#?\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–—•·*✦▪◦]\s+)/
 
 /**
- * 分組標題行。真實的 LINE 接龍分車長這樣：
+ * 分組標題行。**只有一種寫法：`#第一車`。**
  *
- *   【第一車】
+ *   #第一車
  *   1.王小明
  *   2.李美花
- *   【第二車】
+ *   #第二車
  *   3.陳大同
  *
- * 所以分組是「區段標題」而不是每個人的標籤。標題之後的人都屬於它，
- * 直到下一個標題為止。
+ * 分組是「區段標題」而不是每個人的標籤：標題之後的人都屬於它，直到下一個標題
+ * 為止。
+ *
+ * 以前 `【第一車】`、`〖〗`、`《》` 與光禿禿的「第一車」也算標題，為的是讓 LINE
+ * 接龍貼進來不用先整理。代價是「哪幾行會變成標題」由一組猜出來的規則決定，而
+ * 那組規則沒有一個地方說得出自己涵蓋到哪——`A車` 算、`甲車` 不算，兩個都是有人
+ * 真的會打的字。猜錯的時候一整段人會安靜地掛到錯的車上，而車門口沒有人看得出來。
+ * 現在規則只剩一條，看著自己打的字就知道會發生什麼：`#` 開頭的是標題，其他都是人。
+ *
+ * 舊寫法貼進來不會安靜地不見：`【第一車】` 整行只剩括號，算進 `skipped`，預覽
+ * 底下那行「N 行看起來不是姓名，已略過」會報出來；光禿禿的「第一車」變成一個
+ * 人名，在預覽裡看得見、按一下就拿掉。兩種都在畫面上留下痕跡——**看得見的錯
+ * 才改得掉**，這跟少一行是兩回事。
+ *
+ * `＃` 由 normalizeWidth 轉成半形；`#{1,3}` 是因為有人照 Markdown 的習慣打
+ * `## 第一車`。
  */
-// normalizeWidth 已經把【】［］轉成 []，所以這裡要認的是半形方括號。
-// 整行只有括號內容才算標題——`王小明[遲到]` 的括號是備註，不是分組。
-const GROUP_BRACKETED = /^[\s\-–—=*]*[[〖《]\s*(.{1,20}?)\s*[\]〗》][\s\-–—=*:：]*$/
-const GROUP_BARE = /^[\s\-–—=*]*(第?[一二三四五六七八九十百\d]{1,3}\s*[車組隊桌梯團班]|[A-Za-z]\s*[車組隊桌])[\s\-–—=*:：]*$/
+const GROUP_HASH = /^[\s\-–—=*]*#{1,3}\s*(.{1,20}?)[\s\-–—=*:：]*$/
 
-/** 明確表示「這之後的人沒有分組」。rosterToText 會寫出這個標記。 */
-const GROUP_NONE = /^(未分組|無分組|沒分組|—|-)$/
+/**
+ * 明確表示「這之後的人沒有分組」。`rosterToText` 會寫出這個標記。
+ *
+ * 英文也要認得：「名單怎麼寫」那一頁（見 Sheets 的 FormatHelpSheet）在英文介面
+ * 教的是 `#No group`，而畫面上教的寫法必須真的做得到事。
+ */
+const GROUP_NONE = /^(未分組|無分組|沒分組|ungrouped|no ?group|—|-)$/i
 
 function groupHeader(line: string): string | null {
-  const bracketed = line.match(GROUP_BRACKETED)
-  if (bracketed?.[1]) return bracketed[1].trim()
-  const bare = line.match(GROUP_BARE)
-  if (bare?.[1]) return bare[1].replace(/\s+/g, '')
-  return null
+  const hash = line.match(GROUP_HASH)?.[1]?.trim()
+  if (!hash) return null
+  // `#1 王小明`、`#1.李美花`：井字號在這裡是項目符號，後面那串才是人。判準跟
+  // 行首編號同一條——把編號拿掉之後還剩下字，那些字就是名字，不是分組名。
+  // （拿不準的時候寧可當成人：少一個分組是看得見的，少一個人不是。）
+  if (LEADING_MARKER.test(hash) && hash.replace(LEADING_MARKER, '').trim()) return null
+  return hash
 }
 
 /** 行內編號（一行被貼成 `1.甲 2.乙 3.丙` 的情況）。 */
@@ -259,8 +287,11 @@ export function groupsOf(members: readonly { group_label: string | null }[]): st
  * 名單轉回可編輯的文字（用於「編輯名單」時把現有名單填回輸入框）。
  * 分組寫成標題行，並在分組結束時明確寫出「未分組」——
  * 否則往返之後那些人會被吸進上一個分組裡，是無聲的資料變更。
+ *
+ * `ungrouped` 是那個標記要用的字，預設中文；呼叫端傳當下語言的 `t('ungrouped')`。
+ * 兩種語言的寫法 `GROUP_NONE` 都認得，所以往返在哪一國語言都成立。
  */
-export function rosterToText(members: readonly DraftMember[]): string {
+export function rosterToText(members: readonly DraftMember[], ungrouped = '未分組'): string {
   const lines: string[] = []
   let current: string | null = null
   let started = false
@@ -268,8 +299,12 @@ export function rosterToText(members: readonly DraftMember[]): string {
   for (const m of members) {
     const group = m.group_label ?? null
     if (group !== current) {
-      if (group) lines.push(`【${group}】`)
-      else if (started) lines.push('【未分組】')
+      // 寫 `#` 而不是 `【】`：輸入框裡的字是使用者接下來要編輯的東西，全站只
+      // 該教一種分組寫法（範例填的也是這個）。
+      // `ungrouped` 由呼叫端給當下語言的字（`t('ungrouped')`）——英文介面的人
+      // 按「套用」之後不該在自己的輸入框裡看到「未分組」三個中文字。
+      if (group) lines.push(`#${group}`)
+      else if (started) lines.push(`#${ungrouped}`)
       current = group
     }
     started = true
