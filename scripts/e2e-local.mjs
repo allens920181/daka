@@ -503,17 +503,16 @@ await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitF
 await p.locator('#room-name').fill('現場操作測試')
 await p.locator('#roster-text').fill(`沒填車次的甲
 沒填車次的乙
-【第一車】
+#第一車
 陳怡君 0912345678
 王小明
-【第二車】
+#第二車
 陳怡君 0955666777
 陳大同（請假）`)
 await p.waitForTimeout(400)
 await generateList()
 // 開頭那兩個沒填車次的人也是一群，預覽的第一列標題因此是「未分組」——規則與
 // 點名畫面一字不差。漏掉它，他們讀起來就像第一車的人。
-// （順便驗到舊的【】寫法仍然讀得進來：別人貼什麼樣就是什麼樣。）
 const pvFirst = await p.locator('.preview .group-divider').allTextContents()
 ok(`預覽第一段標的是未分組：${pvFirst.join(' | ')}`,
    pvFirst.length===3 && pvFirst[0].includes('未分組')
@@ -1389,8 +1388,8 @@ await p.goto(URL); await p.waitForTimeout(600)
 await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(400)
 await p.locator('#room-name').fill('員工旅遊 · 出發')
 await p.locator('#roster-text').fill(
-  ['【第一車】', ...Array.from({length:40},(_,i)=>`第一車學員${String(i+1).padStart(2,'0')}`),
-   '【第二車】', ...Array.from({length:40},(_,i)=>`第二車學員${String(i+1).padStart(2,'0')}`)].join('\n'))
+  ['#第一車', ...Array.from({length:40},(_,i)=>`第一車學員${String(i+1).padStart(2,'0')}`),
+   '#第二車', ...Array.from({length:40},(_,i)=>`第二車學員${String(i+1).padStart(2,'0')}`)].join('\n'))
 await p.waitForTimeout(800)
 await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(2200)

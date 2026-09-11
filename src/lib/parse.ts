@@ -35,6 +35,8 @@ function normalizeWidth(input: string): string {
     .replace(/＋/g, '+')
     .replace(/（/g, '(')
     .replace(/）/g, ')')
+    // 方括號轉半形是給備註用的（`王小明【素食】`，見 NOTE_PAREN）——分組標題
+    // 只認 `#`，見 GROUP_HASH。
     .replace(/[［【]/g, '[')
     .replace(/[］】]/g, ']')
     .replace(/＃/g, '#')
@@ -51,7 +53,7 @@ function normalizeWidth(input: string): string {
 const LEADING_MARKER = /^\s*#?\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–—•·*✦▪◦]\s+)/
 
 /**
- * 分組標題行。真實的 LINE 接龍分車長這樣：
+ * 分組標題行。**只有一種寫法：`#第一車`。**
  *
  *   #第一車
  *   1.王小明
@@ -59,38 +61,36 @@ const LEADING_MARKER = /^\s*#?\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–�
  *   #第二車
  *   3.陳大同
  *
- * 所以分組是「區段標題」而不是每個人的標籤。標題之後的人都屬於它，
- * 直到下一個標題為止。
- */
-// normalizeWidth 已經把【】［］轉成 []，所以這裡要認的是半形方括號。
-// 整行只有括號內容才算標題——`王小明[遲到]` 的括號是備註，不是分組。
-const GROUP_BRACKETED = /^[\s\-–—=*]*[[〖《]\s*(.{1,20}?)\s*[\]〗》][\s\-–—=*:：]*$/
-/*
- * `#第一車`——**這是這個 app 教的寫法**（「填入範例」填的就是它，`rosterToText`
- * 寫回輸入框的也是它）。括號那三種仍然認得：LINE 接龍貼進來什麼樣子就是什麼
- * 樣子，我們不能要求別人先改格式再貼。
+ * 分組是「區段標題」而不是每個人的標籤：標題之後的人都屬於它，直到下一個標題
+ * 為止。
  *
- * `#{1,3}` 是因為有人會照 Markdown 的習慣打 `## 第一車`。
+ * 以前 `【第一車】`、`〖〗`、`《》` 與光禿禿的「第一車」也算標題，為的是讓 LINE
+ * 接龍貼進來不用先整理。代價是「哪幾行會變成標題」由一組猜出來的規則決定，而
+ * 那組規則沒有一個地方說得出自己涵蓋到哪——`A車` 算、`甲車` 不算，兩個都是有人
+ * 真的會打的字。猜錯的時候一整段人會安靜地掛到錯的車上，而車門口沒有人看得出來。
+ * 現在規則只剩一條，看著自己打的字就知道會發生什麼：`#` 開頭的是標題，其他都是人。
+ *
+ * 舊寫法貼進來不會安靜地不見：`【第一車】` 整行只剩括號，算進 `skipped`，預覽
+ * 底下那行「N 行看起來不是姓名，已略過」會報出來；光禿禿的「第一車」變成一個
+ * 人名，在預覽裡看得見、按一下就拿掉。兩種都在畫面上留下痕跡——**看得見的錯
+ * 才改得掉**，這跟少一行是兩回事。
+ *
+ * `＃` 由 normalizeWidth 轉成半形；`#{1,3}` 是因為有人照 Markdown 的習慣打
+ * `## 第一車`。
  */
 const GROUP_HASH = /^[\s\-–—=*]*#{1,3}\s*(.{1,20}?)[\s\-–—=*:：]*$/
-const GROUP_BARE = /^[\s\-–—=*]*(第?[一二三四五六七八九十百\d]{1,3}\s*[車組隊桌梯團班]|[A-Za-z]\s*[車組隊桌])[\s\-–—=*:：]*$/
 
 /** 明確表示「這之後的人沒有分組」。rosterToText 會寫出這個標記。 */
 const GROUP_NONE = /^(未分組|無分組|沒分組|—|-)$/
 
 function groupHeader(line: string): string | null {
   const hash = line.match(GROUP_HASH)?.[1]?.trim()
-  if (hash) {
-    // `#1 王小明`、`#1.李美花`：井字號在這裡是項目符號，後面那串才是人。判準跟
-    // 行首編號同一條——把編號拿掉之後還剩下字，那些字就是名字，不是分組名。
-    // （拿不準的時候寧可當成人：少一個分組是看得見的，少一個人不是。）
-    if (!(LEADING_MARKER.test(hash) && hash.replace(LEADING_MARKER, '').trim())) return hash
-  }
-  const bracketed = line.match(GROUP_BRACKETED)
-  if (bracketed?.[1]) return bracketed[1].trim()
-  const bare = line.match(GROUP_BARE)
-  if (bare?.[1]) return bare[1].replace(/\s+/g, '')
-  return null
+  if (!hash) return null
+  // `#1 王小明`、`#1.李美花`：井字號在這裡是項目符號，後面那串才是人。判準跟
+  // 行首編號同一條——把編號拿掉之後還剩下字，那些字就是名字，不是分組名。
+  // （拿不準的時候寧可當成人：少一個分組是看得見的，少一個人不是。）
+  if (LEADING_MARKER.test(hash) && hash.replace(LEADING_MARKER, '').trim()) return null
+  return hash
 }
 
 /** 行內編號（一行被貼成 `1.甲 2.乙 3.丙` 的情況）。 */
