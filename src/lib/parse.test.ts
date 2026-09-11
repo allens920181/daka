@@ -188,6 +188,20 @@ describe('rosterToText', () => {
     const round = rosterToText(parseRoster(original).members)
     expect(parseRoster(round).members).toEqual(parseRoster(original).members)
   })
+
+  /*
+   * 寫回輸入框的字是使用者接下來要編輯的東西，所以它得跟範例教的是同一種寫法。
+   * 全站只教一種分組記號：`#`。（括號那幾種讀得進來，但不寫出去。）
+   */
+  it('分組寫成 # 標題，不是【】', () => {
+    const text = rosterToText(parseRoster('【第一車】\n王小明\n【第二車】\n李美花').members)
+    expect(text).toBe('#第一車\n王小明\n#第二車\n李美花')
+  })
+
+  it('分組結束時寫出 #未分組', () => {
+    const text = rosterToText(parseRoster('【第一車】\n王小明\n【未分組】\n李美花').members)
+    expect(text).toBe('#第一車\n王小明\n#未分組\n李美花')
+  })
 })
 
 /**
@@ -352,6 +366,44 @@ describe('parseRoster 分組', () => {
     ])
   })
 
+  it('井字號標題把後續的人歸到該組', () => {
+    expect(grouped('#第一車\n王小明\n李美花\n#第二車\n陳大同')).toEqual([
+      ['王小明', '第一車'], ['李美花', '第一車'], ['陳大同', '第二車'],
+    ])
+  })
+
+  it('全形＃跟半形一樣認得', () => {
+    expect(grouped('＃第一車\n王小明')).toEqual([['王小明', '第一車']])
+  })
+
+  it('Markdown 習慣的 ## 也認得', () => {
+    expect(grouped('## 第一車\n王小明')).toEqual([['王小明', '第一車']])
+  })
+
+  it('#未分組 把分組清掉', () => {
+    expect(grouped('#第一車\n王小明\n#未分組\n李美花')).toEqual([
+      ['王小明', '第一車'], ['李美花', null],
+    ])
+  })
+
+  /*
+   * 井字號在別的地方是編號的記號（`#1 王小明`），而把一個人吃成分組標題是看不
+   * 見的錯：那一列不會出現在預覽裡，現場也就永遠不會有人去打他的勾。
+   */
+  it('「#1 王小明」是編號不是分組標題', () => {
+    expect(grouped('#1 王小明\n#2 李美花')).toEqual([
+      ['王小明', null], ['李美花', null],
+    ])
+  })
+
+  it('「#1.王小明」沒有空白也一樣', () => {
+    expect(grouped('#1.王小明')).toEqual([['王小明', null]])
+  })
+
+  it('「#2組」這種以數字開頭的分組名仍然是標題', () => {
+    expect(grouped('#2組\n王小明')).toEqual([['王小明', '2組']])
+  })
+
   it('沒有括號的「第二車」也算標題', () => {
     expect(grouped('第一車\n王小明\n第二車\n李美花')).toEqual([
       ['王小明', '第一車'], ['李美花', '第二車'],
@@ -435,11 +487,23 @@ describe('parseRoster 分組', () => {
  */
 describe('填入範例的文字', () => {
   for (const lang of ['zh', 'en'] as const) {
-    it(`${lang}：每一行都解析得出一個人`, () => {
+    it(`${lang}：每一行不是一個人就是一行分組標題`, () => {
       const text = messages[lang].exampleRoster
+      const lines = text.split('\n')
+      const headers = lines.filter((l) => l.trim().startsWith('#'))
       const r = parseRoster(text)
       expect(r.skipped).toBe(0)
-      expect(r.members.length).toBe(text.split('\n').length)
+      expect(r.members.length).toBe(lines.length - headers.length)
+    })
+
+    /*
+     * 分組是這份名單最常見的第二個結構，而「原來可以這樣寫」除了這段文字之外
+     * 沒有別的入口——範例少了它，分車就等於不存在。
+     */
+    it(`${lang}：示範到分組，而且沒有人掉在分組外面`, () => {
+      const r = parseRoster(messages[lang].exampleRoster)
+      expect(r.groups.length).toBeGreaterThanOrEqual(2)
+      expect(r.members.every((m) => m.group_label !== null)).toBe(true)
     })
 
     it(`${lang}：撥得出去的號碼與備註都示範到`, () => {

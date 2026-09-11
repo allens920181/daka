@@ -427,10 +427,14 @@ for (const pass of PASSES) {
   await page.getByRole('button', { name: /創建空間|Create a room/ }).first().click()
   await page.waitForTimeout(300)
   await page.locator('#room-name').fill('秋季旅遊 · 分車')
+  // `#` 是範例教的、也是 rosterToText 寫回來的那一種分組記號。
   await page.locator('#roster-text').fill(
-    '【第一車】\n王小明 0912345678\n李美花 +1\n【第二車】\n陳大同（坐輪椅）\n張三\n李四')
+    '#第一車\n王小明 0912345678\n李美花 +1\n#第二車\n陳大同（坐輪椅）\n張三\n李四')
   await page.waitForTimeout(400)
   await page.getByRole('button', { name: /產生名單|Generate/ }).click(); await page.waitForTimeout(500)
+  // 解析預覽有分組時多一列 `.group-divider`（淺底的帶子）——那是這一輪唯一
+  // 只在「名單有分車」時才存在的東西，上面那一輪的預覽驗不到它。
+  await audit(page, scheme, '創建空間 · 解析結果（含分組）')
   await page.getByRole('button', { name: /建立|Create/ }).click(); await page.waitForTimeout(1300)
   await audit(page, scheme, '空間（含分組）')
 

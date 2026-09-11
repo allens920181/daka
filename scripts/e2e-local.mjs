@@ -509,6 +509,13 @@ await p.locator('#roster-text').fill(`沒填車次的甲
 陳大同（請假）`)
 await p.waitForTimeout(400)
 await generateList()
+// 開頭那兩個沒填車次的人也是一群，預覽的第一列標題因此是「未分組」——規則與
+// 點名畫面一字不差。漏掉它，他們讀起來就像第一車的人。
+// （順便驗到舊的【】寫法仍然讀得進來：別人貼什麼樣就是什麼樣。）
+const pvFirst = await p.locator('.preview .group-divider').allTextContents()
+ok(`預覽第一段標的是未分組：${pvFirst.join(' | ')}`,
+   pvFirst.length===3 && pvFirst[0].includes('未分組')
+   && pvFirst[1].includes('第一車') && pvFirst[2].includes('第二車'))
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200)
 
 // #28 沒有分車的人也要有自己的晶片與標題，否則兩個顧車的志工會同時漏掉他們。
@@ -1293,17 +1300,24 @@ await p.goto(URL); await p.waitForTimeout(900)
 
 await p.getByRole('button',{name:/創建空間/}).first().click(); await p.waitForTimeout(300)
 await p.locator('#room-name').fill('秋季旅遊 · 出發')
-await p.locator('#roster-text').fill(`【第一車】
+// 分組寫成 `#第一車`——這是範例教的、也是 rosterToText 寫回來的那一種。
+await p.locator('#roster-text').fill(`#第一車
 1.王小明 0912345678
 2. 李美花 +1
 3.張三
-【第二車】
+#第二車
 4、陳大同（請假）
 5.李四
 6.王五 帶2人`)
 await p.waitForTimeout(400)
 const preview = await p.locator('.preview-row').count()
 ok(`解析預覽 ${preview} 人（標題行不算人）`, preview===6)
+// 標題行不算人，但也不能就這樣消失：預覽是主揪確認「解析器讀到了什麼」唯一的
+// 地方，看不到分組就等於沒辦法確認它有沒有被讀到。（範例以前不敢示範分組，
+// 就是因為這兩行會憑空不見。）
+const pvGroups = await p.locator('.preview .group-divider').allTextContents()
+ok(`預覽裡看得到分組標題：${pvGroups.join(' | ')}`,
+   pvGroups.length===2 && pvGroups[0].includes('第一車') && pvGroups[1].includes('第二車'))
 await generateList()
 await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1300)
 

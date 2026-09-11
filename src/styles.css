@@ -1939,6 +1939,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: var(--fs-3);
 }
 .preview-row:last-child { border-bottom: none; }
+/*
+ * 分組標題（見 RosterInput）。點名畫面的 `.group-divider` 是浮在頁面上的一段
+ * 標題，尾巴拖一條線把這一段與上一段分開；預覽是一個有框的清單，那條尾巴會
+ * 撞上框線，所以這裡改用一條淺色的帶子——同一個記號，換成清單裡的講法。
+ *
+ * 帶子不再描邊：填色已經把這一列跟上下分開了，再加一條線只是把同一件事說第二次
+ * （見 styles.test.ts 的「凹槽不描邊」）。上面那一列自己的 border-bottom 仍在。
+ */
+.preview .group-divider {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2);
+  font-size: var(--fs-1);
+}
+.preview .group-divider::after { display: none; }
 /* 移除鍵。這是「解析器猜錯了」唯一的出口，不能小到按不到——48px 觸控目標，
    但視覺上收斂（--ink-3），因為多數列不需要動它。 */
 .preview-remove { color: var(--ink-3); flex: none; }

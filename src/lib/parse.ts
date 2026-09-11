@@ -37,18 +37,26 @@ function normalizeWidth(input: string): string {
     .replace(/）/g, ')')
     .replace(/[［【]/g, '[')
     .replace(/[］】]/g, ']')
+    .replace(/＃/g, '#')
 }
 
-/** 開頭的編號或項目符號：`1.` `2、` `3)` `10 ` `- ` `• ` */
-const LEADING_MARKER = /^\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–—•·*✦▪◦]\s+)/
+/**
+ * 開頭的編號或項目符號：`1.` `2、` `3)` `10 ` `- ` `• `，以及前面可以再掛一個
+ * 井字號（`#1 王小明`）。
+ *
+ * `#` 現在是分組標題的記號，所以「#後面接編號」這種行必須有地方去：`groupHeader`
+ * 認出它不是標題（見 GROUP_HASH）之後會落到這裡，那顆井字號要跟編號一起拿掉，
+ * 否則名字會叫「#1 王小明」。
+ */
+const LEADING_MARKER = /^\s*#?\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–—•·*✦▪◦]\s+)/
 
 /**
  * 分組標題行。真實的 LINE 接龍分車長這樣：
  *
- *   【第一車】
+ *   #第一車
  *   1.王小明
  *   2.李美花
- *   【第二車】
+ *   #第二車
  *   3.陳大同
  *
  * 所以分組是「區段標題」而不是每個人的標籤。標題之後的人都屬於它，
@@ -57,12 +65,27 @@ const LEADING_MARKER = /^\s*(?:\d{1,3}\s*[.、):：,]\s*|\d{1,3}\s+|[-–—•�
 // normalizeWidth 已經把【】［］轉成 []，所以這裡要認的是半形方括號。
 // 整行只有括號內容才算標題——`王小明[遲到]` 的括號是備註，不是分組。
 const GROUP_BRACKETED = /^[\s\-–—=*]*[[〖《]\s*(.{1,20}?)\s*[\]〗》][\s\-–—=*:：]*$/
+/*
+ * `#第一車`——**這是這個 app 教的寫法**（「填入範例」填的就是它，`rosterToText`
+ * 寫回輸入框的也是它）。括號那三種仍然認得：LINE 接龍貼進來什麼樣子就是什麼
+ * 樣子，我們不能要求別人先改格式再貼。
+ *
+ * `#{1,3}` 是因為有人會照 Markdown 的習慣打 `## 第一車`。
+ */
+const GROUP_HASH = /^[\s\-–—=*]*#{1,3}\s*(.{1,20}?)[\s\-–—=*:：]*$/
 const GROUP_BARE = /^[\s\-–—=*]*(第?[一二三四五六七八九十百\d]{1,3}\s*[車組隊桌梯團班]|[A-Za-z]\s*[車組隊桌])[\s\-–—=*:：]*$/
 
 /** 明確表示「這之後的人沒有分組」。rosterToText 會寫出這個標記。 */
 const GROUP_NONE = /^(未分組|無分組|沒分組|—|-)$/
 
 function groupHeader(line: string): string | null {
+  const hash = line.match(GROUP_HASH)?.[1]?.trim()
+  if (hash) {
+    // `#1 王小明`、`#1.李美花`：井字號在這裡是項目符號，後面那串才是人。判準跟
+    // 行首編號同一條——把編號拿掉之後還剩下字，那些字就是名字，不是分組名。
+    // （拿不準的時候寧可當成人：少一個分組是看得見的，少一個人不是。）
+    if (!(LEADING_MARKER.test(hash) && hash.replace(LEADING_MARKER, '').trim())) return hash
+  }
   const bracketed = line.match(GROUP_BRACKETED)
   if (bracketed?.[1]) return bracketed[1].trim()
   const bare = line.match(GROUP_BARE)
@@ -268,8 +291,10 @@ export function rosterToText(members: readonly DraftMember[]): string {
   for (const m of members) {
     const group = m.group_label ?? null
     if (group !== current) {
-      if (group) lines.push(`【${group}】`)
-      else if (started) lines.push('【未分組】')
+      // 寫 `#` 而不是 `【】`：輸入框裡的字是使用者接下來要編輯的東西，全站只
+      // 該教一種分組寫法（範例填的也是這個）。括號那幾種讀得進來，但不寫出去。
+      if (group) lines.push(`#${group}`)
+      else if (started) lines.push('#未分組')
       current = group
     }
     started = true

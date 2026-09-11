@@ -57,9 +57,13 @@ const zh = {
   exampleFill: '填入範例',
   exampleClear: '清除範例',
   exampleName: '秋季旅遊 · 出發',
-  /* 範例的每一行都必須解析得出一個人（parse.test.ts 會驗）。分組標題不放進來——
-     預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範一件看不到的事。 */
-  exampleRoster: '1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（坐輪椅）\n４．張三\n- 李四\n王五 帶2人',
+  /* 範例的每一行都必須被讀進去（parse.test.ts 會驗）：不是一個人，就是一行分組
+     標題，沒有第三種。
+     分組標題以前刻意不放——預覽不顯示分組，貼進去會有兩行憑空消失，那是在示範
+     一件看不到的事。預覽現在會顯示了（見 RosterInput），所以它進得來了：分車是
+     這份名單最常見的第二個結構（兩三台遊覽車很常見），而「原來可以這樣寫」除了
+     這段文字之外沒有別的入口。寫法只教一種——`#`，`rosterToText` 寫出來的也是它。 */
+  exampleRoster: '#第一車\n1.王小明 0912345678\n2. 李美花 +1\n3、陳大同（坐輪椅）\n#第二車\n４．張三\n- 李四\n王五 帶2人',
   /** 撥號鍵下面那行小字：這個號碼是從備註裡認出來的，不是填好的欄位。 */
   fromNote: '備註裡的號碼',
   parsePreview: '清單預覽',
@@ -390,7 +394,7 @@ const en: Record<MessageKey, string> = {
   exampleFill: 'Fill in an example',
   exampleClear: 'Clear the example',
   exampleName: 'Autumn trip · Departure',
-  exampleRoster: '1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (wheelchair)\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
+  exampleRoster: '#Bus 1\n1. Alice Chen 0912345678\n2. Bob Lin +1\n3) Dana Wu (wheelchair)\n#Bus 2\n4. Ken Chang\n- Mia Wang\nSam Lee +2',
   fromNote: 'From the note',
   parsePreview: 'Preview',
   parsedCount: '{n} names',

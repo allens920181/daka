@@ -1,3 +1,4 @@
+import { Fragment } from 'preact'
 import { useMemo } from 'preact/hooks'
 import { parseRoster, removeParsedMember } from '../lib/parse'
 import type { ParseResult } from '../lib/parse'
@@ -70,31 +71,52 @@ export function RosterPreview({
             永遠歸不了零。文字仍然是唯一的真相：移除是去改那段文字。
           */}
           <div class="preview">
-            {result.members.map((m, i) => (
-              <div class="preview-row" key={`${m.name}-${i}`}>
-                <span class="preview-index mono">{i + 1}</span>
-                {/*
-                  備註跟在名字後面，不是被推到列的最右邊（2026-09）。靠右時每一列的
-                  晶片各自停在不同的位置（備註多長它就多寬），八列排下來右邊是一條
-                  鋸齒；而且中間那段空白會讓人以為名字跟那個晶片是兩欄不同的資料。
-                  它們是同一個人的兩件事，就該讀在一起。
-                */}
-                <span class="preview-name">
-                  {m.name}
-                  {m.note && <span class="chip chip-note">{m.note}</span>}
-                </span>
-                <button
-                  class="icon-btn preview-remove"
-                  aria-label={t('removeFromPreview', { name: m.name })}
-                  onClick={() => {
-                    const src = result.sources[i]
-                    if (src) onText(removeParsedMember(text, src))
-                  }}
-                >
-                  <IconClose size={20} />
-                </button>
-              </div>
-            ))}
+            {result.members.map((m, i) => {
+              /*
+                分組標題也要在預覽裡出現。「#第一車」不是一個人，但它確實做了
+                一件事——把後面的人歸到第一車——而預覽是主揪確認「解析器讀到
+                了什麼」唯一的地方。少了它，貼進去的那兩行會憑空消失：畫面上
+                沒有任何跡象說分組被讀到了，也沒有跡象說它被吃掉了。
+                （範例因此以前不敢示範分組，等於這個功能沒有入口。）
+
+                規則跟點名畫面的 `.group-divider` 一字不差（見 Room）：有分組時
+                每一段都有標題，包含開頭那段沒分組的人——他們也是一群，漏掉他們
+                就等於把他們默默算進上一車。
+              */
+              const prev = i > 0 ? result.members[i - 1] : undefined
+              const divider =
+                result.groups.length > 0 && (i === 0 || m.group_label !== prev?.group_label)
+              return (
+                <Fragment key={`${m.name}-${i}`}>
+                  {divider && (
+                    <div class="group-divider">{m.group_label ?? t('ungrouped')}</div>
+                  )}
+                  <div class="preview-row">
+                    <span class="preview-index mono">{i + 1}</span>
+                    {/*
+                      備註跟在名字後面，不是被推到列的最右邊（2026-09）。靠右時每一列的
+                      晶片各自停在不同的位置（備註多長它就多寬），八列排下來右邊是一條
+                      鋸齒；而且中間那段空白會讓人以為名字跟那個晶片是兩欄不同的資料。
+                      它們是同一個人的兩件事，就該讀在一起。
+                    */}
+                    <span class="preview-name">
+                      {m.name}
+                      {m.note && <span class="chip chip-note">{m.note}</span>}
+                    </span>
+                    <button
+                      class="icon-btn preview-remove"
+                      aria-label={t('removeFromPreview', { name: m.name })}
+                      onClick={() => {
+                        const src = result.sources[i]
+                        if (src) onText(removeParsedMember(text, src))
+                      }}
+                    >
+                      <IconClose size={20} />
+                    </button>
+                  </div>
+                </Fragment>
+              )
+            })}
           </div>
         </div>
       )}
