@@ -122,17 +122,14 @@ await B.page.goto(URL); await B.page.waitForTimeout(900)
 await B.page.getByRole('button', { name: /^更多：/ }).first().click(); await B.page.waitForTimeout(500)
 ok('[新手機] 但複製回程空間對所有人開放', (await B.page.getByRole('button', { name: /建立副本/ }).count()) === 1)
 /*
- * 驗的是「按不按得下去」，不是「看不看得到那五個字」：「刪除空間」那一列現在對
- * 所有人都印，它是**入口**，進去才分岔——「從清單移除」只影響這支手機（那是他
- * 自己的清單，誰都可以），真正把所有人紀錄一起刪掉的那一顆鎖在 owner 後面。
+ * 2026-09 底「從清單移除」換成「封存」並搬出「刪除空間」，權限因此**看得出來**
+ * 了：不是主揪就沒有「刪除空間」那一列（以前它對所有人都印，進去才分岔）。
  */
 ok('[新手機] 不是主揪就沒有重新命名',
    (await B.page.getByRole('button', { name: /^重新命名$/ }).count()) === 0)
-// 那一列的無障礙名稱含副標（「10/10 自動刪除」），所以不能用 ^…$ 錨定。
-await B.page.getByRole('button', { name: /刪除空間/ }).first().click(); await B.page.waitForTimeout(500)
-ok('[新手機] 進去只有「從清單移除」，沒有真的刪掉所有人紀錄的那一顆',
-   (await B.page.getByRole('button', { name: /^從清單移除$/ }).count()) === 1
-   && (await B.page.locator('.sheet .sheet-item.danger').count()) === 0)
+ok('[新手機] 也沒有「刪除空間」，但封存得起來',
+   (await B.page.getByRole('button', { name: /刪除空間/ }).count()) === 0
+   && (await B.page.getByRole('button', { name: /^封存$/ }).count()) === 1)
 await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(300)
 
 // --- 登入面板：Google 是主要路徑，Email 是備援 ---

@@ -14,6 +14,7 @@ const K_RECENT = 'recentRooms'
 const K_PREFS = 'prefs'
 const K_SESSION = 'session'
 const K_DRAFT = 'newRoomDraft'
+const K_ARCHIVED = 'archivedRooms'
 const roomKey = (code: string) => `room:${code.toUpperCase()}`
 
 export interface Prefs {
@@ -178,6 +179,31 @@ export async function rememberRoom(entry: RecentRoom): Promise<RecentRoom[]> {
 export async function renameRecentRoom(code: string, name: string): Promise<RecentRoom[]> {
   const next = (await loadRecentRooms()).map((r) => (r.code === code ? { ...r, name } : r))
   await safeSet(K_RECENT, next)
+  return next
+}
+
+/**
+ * 封存起來的空間代碼（2026-09）。
+ *
+ * **它是這支手機的檢視狀態，不是那間空間的屬性**，所以獨立存一份，不掛在
+ * `RecentRoom` 上。兩個理由：
+ *
+ * 1. 登入之後主揪自己的空間是從帳號那份清單（`myRooms`）來的，根本不經過
+ *    `recentRooms`——寫在那筆記錄上對它沒有作用。（現在「從清單移除」對主揪
+ *    沒反應就是這個原因，程式碼裡原本的註解已經寫過了。）
+ * 2. 封存不該影響別人：它只是「我暫時不想在首頁看到它」。
+ *
+ * **不動本機快照。** 舊的「從清單移除」會把快照一起刪掉，所以那間空間要拿回來
+ * 得重新有代碼——那正是使用者說「自己看不到很怪」的一半原因。
+ */
+export async function loadArchivedRooms(): Promise<string[]> {
+  return (await safeGet<string[]>(K_ARCHIVED)) ?? []
+}
+
+export async function setRoomArchived(code: string, archived: boolean): Promise<string[]> {
+  const now = (await loadArchivedRooms()).filter((c) => c !== code)
+  const next = archived ? [...now, code] : now
+  await safeSet(K_ARCHIVED, next)
   return next
 }
 

@@ -230,21 +230,17 @@ ok('[同工] 首頁的空間選單裡有「建立副本」', (await B.p.getByRol
 /*
  * 同工拿不到主揪才做得到的事。
  *
- * **這裡要驗的是「按不按得下去」，不是「看不看得到那五個字」。** 原本這條檢查
- * 的是選單上有沒有「刪除空間」字樣，而那一列現在對所有人都印——它是**入口**，
- * 進去才分岔：「從清單移除」只影響這支手機（誰都可以，那是他自己的清單），
- * 真正的「刪除空間」（所有人的紀錄一起沒）在裡面，鎖在 owner 後面。
- * 照字樣驗會把一個安全的設計判成失敗。
+ * 2026-09 底「從清單移除」換成「封存」並搬出「刪除空間」，權限因此**看得出來**
+ * 了：同工的選單裡根本沒有「刪除空間」那一列（以前它對所有人都印，只是進去
+ * 之後才分岔）。封存誰都可以——它什麼都沒動，只是他自己的清單。
  */
 ok('[同工] 沒有重新命名（那是主揪的事）',
    (await B.p.getByRole('button', { name: /^重新命名$/ }).count()) === 0)
-// 那一列的無障礙名稱含副標（「10/10 自動刪除」），所以不能用 ^…$ 錨定。
-await B.p.getByRole('button', { name: /刪除空間/ }).first().click(); await B.p.waitForTimeout(500)
-ok('[同工] 進去只有「從清單移除」，沒有真的刪掉所有人紀錄的那一顆',
-   (await B.p.getByRole('button', { name: /^從清單移除$/ }).count()) === 1
+ok('[同工] 也沒有「刪除空間」——那一列現在只給主揪',
+   (await B.p.getByRole('button', { name: /刪除空間/ }).count()) === 0
    && (await B.p.locator('.sheet .sheet-item.danger').count()) === 0)
-await B.p.keyboard.press('Escape'); await B.p.waitForTimeout(400)
-await B.p.getByRole('button', { name: /^更多：/ }).first().click(); await B.p.waitForTimeout(700)
+ok('[同工] 但封存得起來（那是他自己的清單，什麼都沒動）',
+   (await B.p.getByRole('button', { name: /^封存$/ }).count()) === 1)
 await B.p.getByRole('button', { name: /建立副本/ }).click(); await B.p.waitForTimeout(500)
 // 選單列的副標 2026-09 全部拿掉了，「新空間會是你的」改在子畫面說。
 ok('[同工] 子畫面說清楚新空間是誰的',

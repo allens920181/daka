@@ -454,7 +454,7 @@ ok('首頁清單每一列右邊都有一顆「更多」',
    (await p.getByRole('button', { name: /^更多：/ }).count()) === (await p.locator('.recent-item').count()))
 ok('無障礙名稱說得出是哪一個空間',
    (await p.getByRole('button', { name: /^更多：秋季旅遊 · 出發$/ }).count()) === 1)
-ok('列上那顆垃圾桶不見了（從清單移除搬進選單，跟刪除空間排在一起才分得出差別）',
+ok('列上那顆垃圾桶不見了（那件事搬進選單了）',
    (await p.getByRole('button', { name: /^從清單移除：/ }).count()) === 0)
 // 框圈住整列，「更多」在框裡面（2026-09）：它本來浮在框外面，七列並排時看不出
 // 它是上面那一列的還是下面那一列的。
@@ -484,7 +484,7 @@ ok('就在首頁打開，不進空間', (await p.locator('.home-title').count())
    && (await p.locator('.topbar-name').count()) === 0)
 const homeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`首頁那份是空間本身的事：${homeRows.join('、')}`,
-   JSON.stringify(homeRows) === JSON.stringify(['建立副本', '刪除空間']))
+   JSON.stringify(homeRows) === JSON.stringify(['建立副本', '封存', '刪除空間']))
 ok('名單的事不在這裡（編輯、存成常用都不列）',
    (await p.locator('.sheet').getByRole('button', { name: /^編輯$|^存成常用$/ }).count()) === 0)
 // 這一份的名字只在無障礙名稱裡（2026-09 標題列整套拿掉）：從一列七個長得差不多
@@ -957,14 +957,57 @@ await p.getByRole('button',{name:/建立/}).click(); await p.waitForTimeout(1200
 // 刪除空間 2026-09 只在首頁那顆「更多」裡（空間本身的事），就地打開，不進空間。
 await p.goto(URL); await p.waitForTimeout(900)
 await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
-// 「從清單移除」2026-09 收進「刪除空間」裡：同一件事的兩種程度，並排看才分得出。
-await p.getByRole('button',{name:/刪除空間/}).click(); await p.waitForTimeout(500)
-const removeRows = await p.locator('.sheet .sheet-item strong').allTextContents()
-ok(`刪除那一頁兩列：${removeRows.join('、')}`,
-   JSON.stringify(removeRows) === JSON.stringify(['從清單移除', '刪除空間']))
-ok('而且先講清楚差在哪',
-   ((await p.locator('.sheet .hint').first().textContent()) || '').includes('只影響這支手機'))
-await p.locator('.sheet').getByRole('button',{name:/^刪除空間$/}).click(); await p.waitForTimeout(500)
+/*
+ * 「從清單移除」2026-09 底換成「封存」，而且**搬出「刪除空間」**。
+ *
+ * 它們本來並排在同一張子畫面上，理由是「按下去的當下想的是同一件事」。那不
+ * 成立：封存什麼都沒動、隨時拿得回來，刪除是所有人的紀錄一起沒。把可逆的東西
+ * 擺在不可逆的旁邊，只會讓人在按之前多猶豫一次。
+ *
+ * 所以選單上是三列，而「刪除空間」直接跳確認對話框，不再多一層子畫面。
+ */
+const roomMenu = await p.locator('.sheet .sheet-item strong').allTextContents()
+ok(`空間選單三列：${roomMenu.join('、')}`,
+   JSON.stringify(roomMenu) === JSON.stringify(['建立副本', '封存', '刪除空間']))
+
+/*
+ * 封存（2026-09，取代「從清單移除」）。
+ *
+ * 使用者的原話是「刪掉後變得只有別人看得到，自己看不到很怪」。舊那顆會把**本機
+ * 快照一起刪掉**，所以那間空間要回來得重新有代碼——對協助者來說就是按一下就
+ * 拿不回來了。
+ *
+ * 所以這裡驗的三件事，每一件都是舊做法沒有的：
+ *   1. 封存之後那間空間**還打得開**，名單與已到狀態都在（什麼都沒刪）。
+ *   2. 首頁找得到它（第四顆分段只在有封存時出現）。
+ *   3. 走進去就自動取消封存——人都在裡面點名了，「不想看到它」就不成立了。
+ */
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
+await p.getByRole('button', { name: /^封存$/ }).click(); await p.waitForTimeout(800)
+ok('封存之後它離開首頁清單',
+   !(await p.locator('.recent-name').allTextContents()).includes('確認對話框測試'))
+ok('而且不需要確認對話框（它可逆，什麼都沒動）',
+   (await p.locator('[role=alertdialog]').count()) === 0)
+const segs = await p.locator('.segmented button').allTextContents()
+ok(`篩選列長出第四顆：${segs.join('、')}`, segs.includes('封存'))
+await p.getByRole('button', { name: /^封存$/ }).click(); await p.waitForTimeout(600)
+ok('封存那一頁找得到它',
+   (await p.locator('.recent-name').allTextContents()).includes('確認對話框測試'))
+
+// 打得開，而且資料都在——舊的「從清單移除」會把本機快照刪掉。
+await p.getByText('確認對話框測試').first().click(); await p.waitForTimeout(1600)
+ok('封存之後那間空間照樣打得開（快照沒有被刪）',
+   (await p.locator('.topbar-name').textContent()) === '確認對話框測試'
+   && (await p.locator('.member').count()) > 0)
+await p.goto(URL); await p.waitForTimeout(900)
+ok('走進去就自動取消封存，回首頁看得到它',
+   (await p.locator('.recent-name').allTextContents()).includes('確認對話框測試')
+   && !(await p.locator('.segmented button').allTextContents()).includes('封存'))
+
+// 回到選單，底下那幾條驗的是刪除的確認對話框。
+await p.getByRole('button', { name: /^更多：確認對話框測試$/ }).click(); await p.waitForTimeout(600)
+await p.locator('.sheet').getByRole('button',{name:/^刪除空間/}).click(); await p.waitForTimeout(500)
 ok('刪除空間跳出 alertdialog（不是 window.confirm）', await p.locator('[role=alertdialog]').isVisible())
 ok('對話框有標題與說明', (await p.locator('#dialog-title').textContent())==='刪除空間'
    && (await p.locator('#dialog-body').textContent())?.includes('無法復原'))

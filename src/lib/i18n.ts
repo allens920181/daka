@@ -37,11 +37,8 @@ const zh = {
   /* 清單畫面的次要按鈕：滑回步驟一改字，不是取消整個流程，所以不叫「返回」。 */
   adjustList: '調整清單',
   join: '加入',
-  forget: '從清單移除',
   /* 雲端模式下移掉只是不再列出來，代碼還在、還進得去；單機模式下那份名單只
      存在這支手機裡，移掉就是真的沒了——同一顆鍵，兩種後果，要分開講。 */
-  forgetWarning: '這個空間會從清單上消失。你還是可以用代碼再進來。',
-  forgetWarningLocal: '這支手機沒有連上雲端，這個空間只存在這裡。從清單移除等於刪掉它，而且沒有辦法再進來。',
   /* 分享有代碼、連結、QR 碼三種方式，加入原本只接得住代碼——這顆按鍵補上
      第三條路：直接用相機掃別人給的 QR 碼。連結貼進代碼框則由 extractRoomCode
      接住，不需要另外的入口。 */
@@ -204,11 +201,14 @@ const zh = {
   closedResult: '已結束 · {summary}',
   reopenRoom: '重新開啟',
   roomClosed: '這個空間已關閉',
+  archiveRoom: '封存',
+  unarchiveRoom: '取消封存',
+  roomFilterArchived: '封存',
+  archivedEmpty: '沒有封存的空間。封存只是把它從清單上收起來，隨時可以拿回來。',
   deleteRoom: '刪除空間',
   deleteRoomWarning: '刪除後無法復原，所有點名紀錄都會消失。確定嗎？',
   /* 同一頁上的兩個選項差在「只有我看不到」還是「所有人都沒了」。這句話要先講，
      因為兩顆鍵長得一樣、後果卻差很遠。 */
-  deleteHint: '「從清單移除」只影響這支手機，別人照樣進得去；「刪除空間」是所有人的紀錄一起沒。',
   expiresOn: '{date} 自動刪除',
 
   // 匯出
@@ -379,9 +379,6 @@ const en: Record<MessageKey, string> = {
   confirmCreate: 'Confirm & create',
   adjustList: 'Adjust the list',
   join: 'Join',
-  forget: 'Remove from list',
-  forgetWarning: 'It disappears from your list. You can still join again with the code.',
-  forgetWarningLocal: 'This phone has no cloud, so this room lives only here. Removing it from the list deletes it, and there is no way back in.',
   scanQr: 'Scan a QR code',
   scanQrHint: 'Point the QR code at the frame',
   errNoCamera: "This browser can't scan with the camera. Use a code or link instead.",
@@ -488,9 +485,12 @@ const en: Record<MessageKey, string> = {
   closedResult: 'Finished · {summary}',
   reopenRoom: 'Reopen',
   roomClosed: 'This room is closed',
+  archiveRoom: 'Archive',
+  unarchiveRoom: 'Unarchive',
+  roomFilterArchived: 'Archived',
+  archivedEmpty: 'Nothing archived. Archiving just tucks a room away — you can bring it back any time.',
   deleteRoom: 'Delete room',
   deleteRoomWarning: 'This cannot be undone. Every check-in will be lost. Continue?',
-  deleteHint: 'Removing from the list only affects this phone — everyone else can still get in. Deleting takes the record away from everyone.',
   expiresOn: 'Auto-deleted on {date}',
 
   shareArrived: '{arrived} / {total} here',

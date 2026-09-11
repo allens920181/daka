@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
-  AuthError, addWalkIn, connection, copyRoom, deleteRoom, deleteSavedRoster, forgetRecentRoom,
-  identity, members, myRooms, openMenuOnEnter, prefs, recentRooms, renameSavedRoster, requestCode,
+  AuthError, addWalkIn, archivedRooms, connection, copyRoom, deleteRoom, deleteSavedRoster,
+  setRoomArchived,
+  identity, members, openMenuOnEnter, prefs, renameSavedRoster, requestCode,
   room, roomExpiry, saveRosterAs, savedRosters,
   session, setCheckerName, setPrefs,
   showToast,
@@ -17,7 +18,7 @@ import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
 import {
-  IconBookmark, IconChevronRight, IconClose, IconCopy, IconDuplicate,
+  IconArchive, IconBookmark, IconChevronRight, IconCopy, IconDuplicate,
   IconEdit, IconGoogle, IconHash, IconLink, IconMore,
   IconQr, IconShare, IconTrash,
 } from './icons'
@@ -384,13 +385,14 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
     return () => { alive = false }
   }, [code])
 
-  // 單機模式是建置期常數（沒設定 Supabase），不是暫時斷線。
-  const localOnly = connection.value === 'local-only'
-  // 「從清單移除」只對本機那份「最近的空間」有意義：「我的活動」是帳號那邊的
-  // 清單，移掉了下一次同步又會長回來——那是一顆按了看起來沒反應的按鈕。
-  const inRecents = recentRooms.value.some((r) => r.code === code)
-  const inMyRooms = Boolean(session.value) && myRooms.value.some((r) => r.code === code)
-  const forgettable = inRecents && !inMyRooms
+  /*
+   * 封存（2026-09，取代「從清單移除」）。
+   *
+   * 舊那顆只對本機那份「最近的空間」有意義——帳號那份（`myRooms`）移掉了下一次
+   * 同步又會長回來，所以它對登入的主揪根本沒作用。**封存不受這個限制**：它存在
+   * 一份獨立的本機清單上，首頁兩份來源都照它篩，所以誰的空間都封存得起來。
+   */
+  const archived = archivedRooms.value.includes(code)
 
   async function run(fn: () => Promise<void>): Promise<void> {
     setWorking(true)
@@ -439,64 +441,7 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
     )
   }
 
-  /*
-    不要了。兩個選項擺在同一頁，因為它們的差別要並排看才看得出來：「從清單移除」
-    只影響這支手機（別人照樣進得去），「刪除空間」是所有人的紀錄一起沒。
 
-    單機模式是例外：那份名單只存在這支手機裡，移除等於刪掉，所以那時候的警告換
-    一句話說，而且才用 danger。
-  */
-  if (mode === 'remove') {
-    return (
-      <Sheet title={t('deleteRoom')} onClose={onClose} onBack={() => setMode('menu')}>
-        <p class="hint" style="margin-bottom:10px">{t('deleteHint')}</p>
-        <div class="sheet-items">
-          {forgettable && (
-            <button class="sheet-item" onClick={() => setConfirming('forget')}>
-              <IconClose size={20} />
-              <span class="sheet-item-main"><strong>{t('forget')}</strong></span>
-            </button>
-          )}
-
-          {owner && (
-            <button class="sheet-item danger" onClick={() => setConfirming('delete')}>
-              <IconTrash />
-              <span class="sheet-item-main"><strong>{t('deleteRoom')}</strong></span>
-            </button>
-          )}
-        </div>
-
-        {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
-
-        {/*
-          從清單移除也要問一次。它在首頁曾經是一顆一按就生效的垃圾桶，但在單機
-          模式下它同時會清掉本機那份快照——那個空間就真的沒了，而按鍵旁邊沒有
-          一個字說得出這件事。
-        */}
-        {confirming === 'forget' && (
-          <ConfirmDialog
-            title={t('forget')}
-            body={localOnly ? t('forgetWarningLocal') : t('forgetWarning')}
-            confirmLabel={t('forget')}
-            danger={localOnly}
-            onClose={() => setConfirming(null)}
-            onConfirm={() => { void run(async () => { await forgetRecentRoom(code); onClose() }) }}
-          />
-        )}
-
-        {confirming === 'delete' && (
-          <ConfirmDialog
-            title={t('deleteRoom')}
-            body={t('deleteRoomWarning')}
-            confirmLabel={t('deleteRoom')}
-            danger
-            onClose={() => setConfirming(null)}
-            onConfirm={() => { void run(async () => { await deleteRoom(code); onClose() }) }}
-          />
-        )}
-      </Sheet>
-    )
-  }
 
   /*
     這一份**要有標題列**，跟空間裡那一份相反。那一份的標題印的是空間名字，而那個
@@ -526,28 +471,54 @@ export function RoomActionsSheet({ code, name, owner, onClose }: {
         </button>
 
         {/*
-          「從清單移除」收進「刪除空間」裡（2026-09）。按下去的當下想的是同一件事
-          ——「我不要再看到這個」——差別在那句話是對誰說的：只有這支手機看不到，
-          還是所有人的紀錄一起沒。選單上並排兩列等於要人在按之前就先分清楚，而那
-          正好是點進去才講得完的事。
+          封存（2026-09，取代「從清單移除」）。
 
+          **它不是一種刪除，所以不再收在「刪除空間」裡面。** 舊的做法把兩者並排
+          在同一張子畫面上，理由是「按下去的當下想的是同一件事」——但那不成立：
+          一個什麼都沒動、隨時拿得回來，另一個是所有人的紀錄一起沒。把可逆的東西
+          擺在不可逆的旁邊，只會讓人在按之前多猶豫一次。
+
+          也因為它可逆，**不需要確認對話框**。舊那顆要問，是因為它會連本機快照
+          一起刪掉。
+        */}
+        <button
+          class="sheet-item"
+          onClick={() => { void run(async () => { await setRoomArchived(code, !archived); onClose() }) }}
+        >
+          <IconArchive />
+          <span class="sheet-item-main">
+            <strong>{archived ? t('unarchiveRoom') : t('archiveRoom')}</strong>
+          </span>
+        </button>
+
+        {/*
           自動刪除的日期印在這一列右邊：那句話講的就是「這個空間什麼時候會不見」，
           跟這一列是同一件事的兩種發生方式——你按，或是時間到。**印的是值，不是
           說明**。
         */}
-        {(owner || forgettable) && (
-          <button class="sheet-item danger" onClick={() => setMode('remove')}>
+        {owner && (
+          <button class="sheet-item danger" onClick={() => setConfirming('delete')}>
             <IconTrash />
             <span class="sheet-item-main">
               <strong>{t('deleteRoom')}</strong>
               {expires && <span class="sub">{t('expiresOn', { date: expires })}</span>}
             </span>
-            <IconChevronRight class="go" />
           </button>
         )}
       </div>
 
       {error && <p class="note note-error" style="margin-top:12px">{error}</p>}
+
+      {confirming === 'delete' && (
+        <ConfirmDialog
+          title={t('deleteRoom')}
+          body={t('deleteRoomWarning')}
+          confirmLabel={t('deleteRoom')}
+          danger
+          onClose={() => setConfirming(null)}
+          onConfirm={() => { void run(async () => { await deleteRoom(code); onClose() }) }}
+        />
+      )}
     </Sheet>
   )
 }

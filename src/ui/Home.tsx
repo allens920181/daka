@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { connection, myRooms, prefs, recentRooms, session } from '../lib/store'
+import { archivedRooms, connection, myRooms, prefs, recentRooms, session } from '../lib/store'
 import { formatDate } from '../lib/format'
 import { extractRoomCode, findConfusables, isValidRoomCode, CODE_LENGTH } from '../lib/code'
 import { atRiskOfStorageEviction, canScanQr } from '../lib/config'
@@ -12,7 +12,7 @@ import { Sheet } from './Sheet'
 import { RoomActionsSheet } from './Sheets'
 import { useT } from './t'
 
-type RoomFilter = 'all' | 'mine' | 'others'
+type RoomFilter = 'all' | 'mine' | 'others' | 'archived'
 
 interface RoomRow {
   code: string
@@ -66,16 +66,40 @@ export function Home({ onSettings }: { onSettings: () => void }) {
     `active`：清單被刪到剩一個時那一列會收起來，而使用者上一次選的「他人的」
     不能就這樣留在畫面外面繼續生效——那會變成一個看不見的篩選在藏東西。
   */
-  const filterVisible = rows.length > 1
-  const active: RoomFilter = filterVisible ? filter : 'all'
-  const visibleRows = active === 'all' ? rows : rows.filter((r) => (active === 'mine' ? r.isOwner : !r.isOwner))
-  const emptyText = active === 'mine' ? t('myRoomsEmpty') : active === 'others' ? t('noOtherRooms') : t('noRecentRooms')
+  /*
+    封存（2026-09）。
+
+    **它是一份獨立的本機清單，不是那筆記錄的屬性**，所以兩個來源（帳號那份
+    `myRooms` 與本機那份）一起照它篩——舊的「從清單移除」只動得了本機那份，
+    對登入的主揪等於沒有作用。
+
+    「全部」不含封存：封存的意思就是「我不想在清單上看到它」，含進去等於白封。
+    第四顆**只在真的有封存的東西時才出現**，不然它是一顆永遠空的分頁；同理，
+    最後一個封存被取消時要把 filter 拉回 all，不然畫面會停在一個看不見的篩選上
+    （跟底下 `filterVisible` 那條是同一個道理）。
+  */
+  const archivedSet = new Set(archivedRooms.value)
+  const liveRows = rows.filter((r) => !archivedSet.has(r.code))
+  const archivedList = rows.filter((r) => archivedSet.has(r.code))
+
+  const filterVisible = liveRows.length > 1 || archivedList.length > 0
+  const canArchived = archivedList.length > 0
+  const active: RoomFilter = !filterVisible || (filter === 'archived' && !canArchived)
+    ? 'all'
+    : filter
+  const visibleRows = active === 'archived'
+    ? archivedList
+    : active === 'all' ? liveRows : liveRows.filter((r) => (active === 'mine' ? r.isOwner : !r.isOwner))
+  const emptyText = active === 'mine' ? t('myRoomsEmpty')
+    : active === 'others' ? t('noOtherRooms')
+    : active === 'archived' ? t('archivedEmpty')
+    : t('noRecentRooms')
 
   // 「創建空間」屬於「我的」——它生出來的空間就是主揪自己的；「加入空間」屬於
   // 「他人的」——會加進來的本來就是別人開的空間。「所有」是兩邊的聯集，兩顆
   // 都置頂。並排時各自 flex:1，單獨出現時滿版寬度跟底下的列對齊。
-  const showCreate = active !== 'others'
-  const showJoin = active !== 'mine'
+  const showCreate = active !== 'others' && active !== 'archived'
+  const showJoin = active !== 'mine' && active !== 'archived'
 
   const createButton = (block: boolean) => (
     <button
@@ -170,6 +194,12 @@ export function Home({ onSettings }: { onSettings: () => void }) {
               <button class="segment" aria-pressed={filter === 'others'} onClick={() => setFilter('others')}>
                 {t('roomFilterOthers')}
               </button>
+              {/* 只在有東西的時候才出現：一顆永遠空的分頁不值得佔那一列的寬度。 */}
+              {canArchived && (
+                <button class="segment" aria-pressed={active === 'archived'} onClick={() => setFilter('archived')}>
+                  {t('roomFilterArchived')}
+                </button>
+              )}
             </div>
           )}
 
