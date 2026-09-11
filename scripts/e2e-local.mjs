@@ -427,7 +427,9 @@ ok('窄螢幕上輸入框沒有被擠爛', await p.evaluate(() =>
   不是「高度一樣」，是那三件真正的不變量——內容從同一條線開始、返回鍵不移動、
   而且再高也不會超過面板自己的 88vh 上限。
 */
-await p.getByRole('button', { name: /QR/ }).click(); await p.waitForTimeout(900)
+// 名字寫全：代碼是隨機的六碼，而 /QR/ 曾經同時對到首頁那一列「QR7KR2」的空間，
+// 於是這個測試每跑幾百次就會無緣無故掛掉一次（strict mode violation）。
+await p.getByRole('button', { name: /^掃描 QR 碼$/ }).click(); await p.waitForTimeout(900)
 const scanH = await sheetH()
 ok(`掃碼那一頁比較高，但沒有超過 88vh（${codeH} → ${scanH}）`,
    scanH > codeH && scanH <= Math.round(844 * 0.88))
