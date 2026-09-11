@@ -90,6 +90,8 @@ await B.p.locator('.member-main').nth(1).click(); await B.p.waitForTimeout(800)
 ok('[同工] 離線仍可點名，本地立刻更新', (await missing(B.p)) === '1')
 const badge = await syncLabel(B.p)
 ok(`[同工] 顯示離線與待上傳筆數：「${badge}」`, /離線|待上傳/.test(badge))
+// 不正常的時候那顆點要在——它整場唯一有價值的就是這個時刻。
+ok('[同工] 離線時圓點畫出來了', (await B.p.locator('.sync .sync-dot').count()) === 1)
 ok('[同工] 待上傳筆數印在圓點旁邊（那是會變的數字）',
    /\d/.test((await B.p.locator('.sync .sync-n').textContent().catch(() => '')) || ''))
 await reconcile(A)
@@ -102,6 +104,20 @@ await B.p.waitForTimeout(2000)
 await reconcile(A)
 ok('[主揪] 恢復連線後自動補上，未到剩陳大同一人', (await missing(A.p)) === '1')
 ok('[同工] 同步狀態回到已同步', /已同步/.test(await syncLabel(B.p)))
+/*
+  同步好了就連那顆點都不畫（2026-09）。一顆整場都亮著綠燈的點說的是「一切正常」，
+  而那是使用者本來就假設的事；它唯一有價值的時刻是不正常的時候，偏偏那時候它跟
+  平常長得一樣大、只差一個顏色。拿掉之後「那個位置有東西」就等於「有事要注意」。
+
+  外層的 role="status" 留著（live region 要先存在，變化才播報得出來），所以這裡
+  驗的是**圓點不見了**而不是整個元素不見了，而且 aria-label 仍然說得出狀態。
+*/
+ok('[同工] 同步好了就不畫那顆點', (await B.p.locator('.sync .sync-dot').count()) === 0)
+ok('[同工] 但 live region 與說法都還在（螢幕閱讀器唸得到）',
+   (await B.p.locator('.sync[role=status]').count()) === 1
+   && /已同步/.test(await syncLabel(B.p)))
+ok('[同工] 畫面上量不到它（空的 inline-flex 沒有寬度）',
+   (await B.p.locator('.sync').boundingBox())?.width === 0)
 
 // --- 建立副本（回程）---
 // 2026-09 從空間裡的「更多」搬到首頁每個空間右邊那顆「更多」：它動的是空間這個

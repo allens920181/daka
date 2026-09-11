@@ -53,6 +53,7 @@
 | --- | --- |
 | `src/lib/i18n.ts` 的 `appName`（zh／en 各一筆，值相同） | 首頁大標與分享標題 |
 | `index.html` 的 `<title>` | 分頁名稱、書籤、分享預覽 |
+| `src/ui/Logo.tsx` | 首頁抬頭，標題左邊那一顆 |
 | `index.html` 的 `apple-mobile-web-app-title` | iOS 加到主畫面的標籤 |
 | `vite.config.ts` manifest 的 `name`／`short_name` | Android／PWA 安裝後的名稱 |
 | `package.json` 的 `name`、README 與這份設計系統的標題、`src/styles.css` 檔頭 | 專案身分，不影響畫面 |
