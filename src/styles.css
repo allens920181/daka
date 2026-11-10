@@ -2242,6 +2242,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .guide-demo-slot .toast { box-shadow: none; }
 /* 兩顆等寬、永遠兩格：左邊是「略過／上一步」，右邊永遠是往前。 */
 .guide-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+/* 目錄的按鈕列只有一顆（「從頭看」）：佔滿整列，不是只佔左半。 */
+.guide-actions > :only-child { grid-column: 1 / -1; }
 /*
  * 卡片放不下（矮的手機、放大的字級）時是**卡片內部在捲**，這時候「上一步／下一步」要
  * 黏在卡片下緣——不然「下一步」會捲到看不見，而導覽沒有別的往前的路。

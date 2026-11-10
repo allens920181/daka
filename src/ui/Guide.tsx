@@ -108,6 +108,14 @@ function IndexCard({ chapters, current, onPick, onClose, exitLabel }: {
           </button>
         ))}
       </div>
+      {/*
+        「從頭看」：不想挑章的人有一顆大的、永遠在同一個位置的路（黏在卡片下緣，跟步驟卡的
+        按鈕列是同一格）。它跟點第一章走到同一處，但說的是意圖：「帶我全部走一遍」，不必先
+        讀完九章的名字再決定。目錄裡只有這一顆 `.btn-primary`。
+      */}
+      <div class="guide-actions">
+        <button class="btn btn-primary btn-lg btn-block" onClick={() => onPick(0)}>{t('guideFromStart')}</button>
+      </div>
     </div>
   )
 }

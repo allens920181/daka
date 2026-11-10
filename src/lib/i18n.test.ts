@@ -193,6 +193,12 @@ describe('聚焦導覽：其他文案', () => {
       expect(translate(lang, 'guideProgress', { n: 2, total: 4 })).toMatch(/2.*4/)
     })
 
+    // 目錄下緣那顆大按鈕：不能是空字串，也不能跟「目錄」撞名（兩個都出現在步驟卡的第一步附近）。
+    it(`${lang}：目錄的「從頭看」有字，而且不跟「目錄」同名`, () => {
+      expect(m.guideFromStart.trim().length).toBeGreaterThan(0)
+      expect(m.guideFromStart).not.toBe(m.guideIndex)
+    })
+
     // 入口是導航列右上角那顆 ? 鍵（2026-11 從設定最後一列搬出來）。這句話說的是那顆鍵的圖示；
     // 入口再搬家時，這條會逼你回來改這句話，而不是讓它指著一個不存在的地方。
     it(`${lang}：告訴使用者去哪裡拿回來的那句，說的是導航列那顆 ? 鍵`, () => {

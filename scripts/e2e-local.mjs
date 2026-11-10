@@ -279,6 +279,17 @@ await p.locator('.guide-where').click(); await p.waitForTimeout(500)
 ok('卡片上的章節名可以回目錄，而且目前這一章有標示',
    (await p.locator('.tour-callout').getAttribute('data-step')) === 'index'
    && (await p.locator('.tour-callout .sheet-item[aria-current="true"]').textContent() || '').includes('點名'))
+ok('目錄下緣有一顆「從頭看」，是目錄裡唯一的主要按鈕，而且在螢幕裡（不必捲就按得到）',
+   (await p.locator('.tour-callout .btn-primary').count()) === 1
+   && ((await p.locator('.tour-callout .btn-primary').textContent()) || '').trim() === '從頭看'
+   && await p.locator('.tour-callout .btn-primary').evaluate((el) => {
+     const r = el.getBoundingClientRect()
+     return r.height >= 48 && r.bottom <= window.innerHeight && r.top >= 0
+   }))
+await p.getByRole('button', { name: '從頭看' }).click(); await p.waitForTimeout(600)
+ok('按「從頭看」從第 1 步開始（就算剛剛人停在第 7 步）',
+   (await p.locator('.tour-callout').getAttribute('data-step')) === 'create'
+   && ((await p.locator('.guide-where').textContent()) || '').includes('開一個空間 · 1 / 24'))
 await p.getByRole('button', { name: '關閉' }).click(); await p.waitForTimeout(400)
 ok('按「關閉」關得掉', (await p.locator('.guide').count()) === 0)
 await p.locator('.app-bar button[aria-label="使用說明"]').click(); await p.waitForTimeout(600)
