@@ -76,8 +76,11 @@ describe('使用說明引用的按鈕名稱', () => {
       expect(m.guideStep4Body).toContain(q(m.finishRound))
     })
 
-    it(`${lang}：告訴使用者去哪裡拿回來的那句，路徑跟設定裡的一致`, () => {
-      expect(m.guideLater).toContain(`${m.settings} › ${m.guideTitle}`)
+    // 入口是導航列右上角那顆 ? 鍵（2026-11 從設定最後一列搬出來）。這句話說的是那顆鍵
+    // 的圖示；入口再搬家時，這條會逼你回來改這句話，而不是讓它指著一個不存在的地方。
+    it(`${lang}：告訴使用者去哪裡拿回來的那句，說的是導航列那顆 ? 鍵`, () => {
+      expect(m.guideLater).toContain('?')
+      expect(m.guideLater).not.toContain(m.settings)
     })
   }
 })

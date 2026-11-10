@@ -775,7 +775,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* `padding-block`，不是 `padding` 簡寫：這一格現在跟 `.shell` 同一個元素，
    簡寫會把 `.shell` 的左右內距歸零，標誌就貼到螢幕邊緣去了。 */
 .app-bar { padding-block: var(--sp-4) var(--sp-3); }
-.app-name { flex: 1; min-width: 0; font-size: var(--fs-6); letter-spacing: -.01em; }
+/*
+ * 名字讓位給右邊兩顆鍵，不是反過來（2026-11，加了「?」之後）。
+ *
+ * `min-width: 0` 只讓這個 flex 項目**可以**縮得比內容窄，字本身仍然是 `visible`
+ * 溢出——「RollRoom」是一個不能斷行的詞，所以在 320px 寬、系統字級放到 1.5 倍時（需要
+ * 176px、只剩 140px），它的尾巴會蓋到「?」鍵上，而那顆鍵是看得見、按得到的。
+ * 加那顆鍵之前這一格有 196px，放得下，所以這個洞是那顆鍵帶出來的。
+ *
+ * 截的是名字：兩顆鍵是動作，名字只是標籤；而且標誌就在名字旁邊，「RollR…」仍然認得出來。
+ */
+.app-name {
+  flex: 1; min-width: 0; font-size: var(--fs-6); letter-spacing: -.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 /*
  * 首頁的篩選＋搜尋列，sticky（2026-09）。
@@ -2092,7 +2105,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* === 使用說明 ============================================================ */
 
 /*
- * 一次一步的互動式教學（2026-11）。第一次打開 app 的彈窗與「設定 › 使用說明」共用。
+ * 一次一步的互動式教學（2026-11）。第一次打開 app 自己跳出來，與使用者按導航列「?」
+ * 打開的是同一張面板。
  *
  * 比 `.stack` 的預設間距鬆一階（`--sp-4`）：這一頁是要讀、要動手的內容，不是一疊
  * 控制項，標題列、這一步、按鈕列之間要有呼吸才分得出各自是哪一塊。

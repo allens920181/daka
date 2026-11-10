@@ -66,7 +66,7 @@ ok('「下一步」是唯一的主要按鈕',
 ok('背景是 inert，不只是視覺遮罩',
    await p.evaluate(() => document.querySelector('.app-name')?.closest('[inert]') != null))
 ok('說了關掉之後去哪裡拿回來',
-   ((await guide.textContent()) || '').includes('設定 › 使用說明'))
+   ((await guide.textContent()) || '').includes('右上角') && ((await guide.textContent()) || '').includes('?'))
 ok('螢幕閱讀器聽得到走到第幾步',
    ((await p.locator('.sheet [role=status].sr-only').textContent()) || '').includes('第 1 步，共 4 步'))
 
@@ -129,23 +129,63 @@ ok('按「開始使用」關得掉', (await p.locator('.guide').count()) === 0)
 await p.reload(); await p.waitForTimeout(1200)
 ok('重新整理之後不再跳出來', (await p.locator('.guide').count()) === 0)
 
-// 關掉之後的那條路：設定 › 使用說明，同一份教學，只是出口不同。
-await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
-await p.getByRole('button', { name: /^使用說明/ }).click(); await p.waitForTimeout(500)
-ok('設定 › 使用說明 拿得回來，從第一步重新開始（演練也是新的）',
-   (await stepTitle()) === '創建空間' && (await p.locator('.guide-bar.is-on').count()) === 1)
-ok('設定裡沒有「略過」：左上角的返回鍵就是出口',
-   (await p.getByRole('button', { name: '略過' }).count()) === 0
-   && (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 1)
-ok('設定裡不重複說「之後去設定看」（人已經在那裡了）',
+// 關掉之後的那條路：導航列的「?」（2026-11 從設定最後一列搬出來），同一份教學，只是出口不同。
+ok('導航列有一顆「?」，在設定的左邊，兩顆都是 48px',
+   await p.evaluate(() => {
+     const help = document.querySelector('.app-bar button[aria-label="使用說明"]')
+     const gear = document.querySelector('.app-bar button[aria-label="設定"]')
+     if (!help || !gear) return false
+     const h = help.getBoundingClientRect(); const g = gear.getBoundingClientRect()
+     return h.right <= g.left + 1 && Math.abs(h.top - g.top) <= 1
+       && h.width >= 48 && h.height >= 48 && g.width >= 48 && g.height >= 48
+   }))
+ok('「?」說得出「按下去會開一層」（aria-haspopup）',
+   (await p.locator('.app-bar button[aria-label="使用說明"]').getAttribute('aria-haspopup')) === 'dialog')
+{
+  // 最窄的情形：320px 寬、系統字級 24px（約 1.5 倍）。名字需要 176px、只剩 140px（加那顆
+  // 「?」之前這一格有 196px，放得下）。名字沒有截斷處理的時候，「RollRoom」的尾巴會蓋到
+  // 「?」鍵上——那顆鍵是看得見、按得到的，所以讓位的得是名字。
+  const ctxN = await b.newContext({ viewport: { width: 320, height: 700 } })
+  const qn = await ctxN.newPage()
+  const cdpN = await ctxN.newCDPSession(qn)
+  await cdpN.send('Page.setFontSizes', { fontSizes: { standard: 24, fixed: 24 } })
+  await qn.goto(URL); await qn.waitForTimeout(1000)
+  await qn.getByRole('button', { name: '略過' }).click(); await qn.waitForTimeout(400)
+  ok('320px ＋ 系統放大字級：名字讓位（截斷），不蓋到「?」鍵', await qn.evaluate(() => {
+    const name = document.querySelector('.app-bar .app-name')
+    const help = document.querySelector('.app-bar button[aria-label="使用說明"]')
+    const cs = getComputedStyle(name)
+    return cs.textOverflow === 'ellipsis' && cs.overflow === 'hidden'
+      && name.getBoundingClientRect().right <= help.getBoundingClientRect().left + 1
+  }))
+  await ctxN.close()
+}
+ok('設定裡不再有「使用說明」那一列（同一個目的地不需要第二條路）',
+   await (async () => {
+     await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+     const none = (await p.locator('.sheet .sheet-item').filter({ hasText: '使用說明' }).count()) === 0
+     await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+     return none
+   })())
+await p.locator('.app-bar button[aria-label="使用說明"]').click(); await p.waitForTimeout(500)
+ok('按「?」打開，從第一步重新開始（演練也是新的）',
+   (await stepTitle()) === '創建空間' && (await p.locator('.guide-bar.is-on').count()) === 1
+   && (await p.locator('.guide-demo').count()) === 0)
+ok('手動打開：第一步左邊是「關閉」，不是「略過」',
+   (await p.getByRole('button', { name: '關閉' }).count()) === 1
+   && (await p.getByRole('button', { name: '略過' }).count()) === 0)
+ok('手動打開：不再說「之後想再看」（他剛剛才按過那顆鍵）',
    !((await p.locator('.sheet').textContent()) || '').includes('之後想再看'))
+await p.getByRole('button', { name: '關閉' }).click(); await p.waitForTimeout(400)
+ok('按「關閉」關得掉', (await p.locator('.guide').count()) === 0)
+await p.locator('.app-bar button[aria-label="使用說明"]').click(); await p.waitForTimeout(500)
 await nextStep(); await nextStep(); await nextStep()
-ok('設定裡最後一步叫「完成」，不是「開始使用」',
+ok('手動打開：最後一步叫「完成」，不是「開始使用」',
    (await p.getByRole('button', { name: '完成' }).count()) === 1
    && (await p.getByRole('button', { name: '開始使用' }).count()) === 0)
 await p.getByRole('button', { name: '完成' }).click(); await p.waitForTimeout(400)
-ok('按「完成」回到設定清單（不是把整張面板關掉）', await p.getByRole('button', { name: /^暱稱/ }).isVisible())
-await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+ok('按「完成」關掉面板，回到按「?」之前的那一頁',
+   (await p.locator('.guide').count()) === 0 && (await p.locator('.app-name').isVisible()))
 
 {
   // 另外三台手機。關法不只一種，任何一種都算看過；而協助者是掃連結直接落進空間
@@ -1352,16 +1392,15 @@ ok('設定面板沒有標題列', (await p.locator('.sheet-title').count()) === 
 ok('但無障礙名稱還是「設定」', (await p.locator('.sheet').getAttribute('aria-label')) === '設定')
 ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count()) === 0)
 
-// 設定頁是長得一樣的面板列：暱稱、帳戶、主題、字級、點名提示、語言（2026-09），
-// 最後一列是使用說明（2026-11：第一次打開 app 的彈窗關掉之後，拿回來的那條路）。
+// 設定頁是長得一樣的面板列：暱稱、帳戶、主題、字級、點名提示、語言（2026-09）。
 // 單機模式沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
+// 使用說明 2026-11 一度是這裡的最後一列，同月搬去導航列的「?」（它不是偏好）。
 const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`設定頁的每一列：${rows.join('、')}`,
-   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '點名提示', '語言', '使用說明']))
+   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '點名提示', '語言']))
 ok('單機模式沒有帳戶那一列', (await p.getByText('帳戶').count()) === 0)
 
 // 收合時右邊印著目前的值，不展開也看得到自己設了什麼。
-// 使用說明那一列不是偏好，沒有「目前的值」可以印，所以不在這份清單裡。
 const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
    shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '標準'
@@ -1760,9 +1799,11 @@ await p.locator('input[type=search]').press('Escape'); await p.waitForTimeout(30
 */
 await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(700)
 ok('空間裡有 app 抬頭（標誌 ＋ RollRoom）', (await p.locator('.room-chrome .app-bar').count()) === 1)
-// 兩顆出口各在各的列：⚙ 改的是 app 的設定，← 是退出這一間空間。
-ok('設定在 app 那一列、返回在空間那一列',
-   (await p.locator('.room-chrome .app-bar .icon-btn').count()) === 1
+// app 那一列右邊兩顆（? 說明、⚙ 設定）都是 app 的事；← 是退出這一間空間，在空間那一列。
+ok('說明與設定在 app 那一列、返回在空間那一列',
+   (await p.locator('.room-chrome .app-bar .icon-btn').count()) === 2
+   && (await p.locator('.room-chrome .app-bar button[aria-label="使用說明"]').count()) === 1
+   && (await p.locator('.room-chrome .app-bar button[aria-label="設定"]').count()) === 1
    && await p.locator('.topbar-inner .icon-btn').first().isVisible())
 
 /*

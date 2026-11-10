@@ -137,8 +137,8 @@ function ResultPreview({ names, at }: { names: string[]; at: (number | null)[] }
 /**
  * 使用說明：**一次一步的互動式教學**（2026-11）。
  *
- * 兩個地方用同一份：第一次打開 app 的彈窗（`GuideSheet`），與「設定 › 使用說明」
- * 那張子畫面（`SettingsSheet`）。差別只有出口——見兩個 `on*` 參數。
+ * 一份教學，兩種打開方式：第一次打開 app 時自己跳出來，與使用者按導航列的「?」。
+ * 兩者都是 `GuideSheet`，差別只有出口——見 `firstRun`。
  *
  * 一次只給一步，是因為四步裡真正需要**動手**的只有第三步（點名），而把四步同時攤開
  * 的話，那份演練名單會被夾在兩段文字中間、跟另外三步一樣大聲。分步之後每一步都只有
@@ -155,14 +155,15 @@ function ResultPreview({ names, at }: { names: string[]; at: (number | null)[] }
  * `sr-only` 的 `role="status"` 報「第 2 步，共 4 步：邀請點名」。
  */
 export function GuideWalkthrough({
-  onSkip, onFinish, finishLabel, showLater = false, primaryRef,
+  onSkip, skipLabel, onFinish, finishLabel, showLater = false, primaryRef,
 }: {
-  /** 只有第一次打開時才有（第一步左邊那顆「略過」）。設定裡重看的那一份沒有。 */
-  onSkip?: () => void
-  /** 最後一步右邊那顆鍵：第一次打開是關掉彈窗，設定裡是回到設定清單。 */
+  /** 第一步左邊那顆鍵（略過／關閉）。面板沒有關閉鍵，所以這一頁自己帶一個出口。 */
+  onSkip: () => void
+  skipLabel: string
+  /** 最後一步右邊那顆鍵。 */
   onFinish: () => void
   finishLabel: string
-  /** 「之後想再看，到設定」——只有自己會消失的那一份才需要說。 */
+  /** 「之後想再看，按右上角的 ?」——只有自己會消失的那一份才需要說。 */
   showLater?: boolean
   /** 右邊那顆鍵。呼叫端用它把初始焦點放在「下一步」，而不是 DOM 裡的第一顆（「略過」）。 */
   primaryRef?: RefObject<HTMLButtonElement>
@@ -218,11 +219,8 @@ export function GuideWalkthrough({
           <button class="btn btn-lg btn-block" onClick={() => setStep(step - 1)}>
             {t('guidePrev')}
           </button>
-        ) : onSkip ? (
-          <button class="btn btn-lg btn-block" onClick={onSkip}>{t('guideSkip')}</button>
         ) : (
-          /* 空著，不是收掉：右邊那顆要留在右邊，不然第一步它會跳到左邊去。 */
-          <span />
+          <button class="btn btn-lg btn-block" onClick={onSkip}>{skipLabel}</button>
         )}
         <button
           ref={primaryRef}
@@ -234,27 +232,32 @@ export function GuideWalkthrough({
       </div>
 
       {/* 關掉之後它就不會再自己出現，所以要說一次去哪裡拿回來——每一步都在，
-          因為「略過」可以從第一步就按。 */}
+          因為「略過」可以從第一步就按。說的是導航列右上角那顆「?」。 */}
       {showLater && <p class="hint">{t('guideLater')}</p>}
     </div>
   )
 }
 
 /**
- * 第一次打開 app 時的彈窗。
+ * 教學的面板。兩種打開方式，同一份內容（2026-11）：
+ *
+ * - **`firstRun`**：第一次打開 app、停在首頁時自己跳出來。左邊是「略過」、最後一步是
+ *   「開始使用」，底下說一次去哪裡拿回來。
+ * - **手動**：使用者按導航列的「?」。人已經在 app 裡了，所以左邊是「關閉」、最後一步是
+ *   「完成」，也不必再說「去哪裡拿回來」——他剛剛才按過那顆鍵。
  *
  * 用底部面板（`Sheet`），不是確認對話框：它是一段要讀、要動手的內容，不是一個
  * 「是或否」的決定；而且這個 app 只有一種「再給我一層」的形狀（見 `Sheet` 的說明）。
  *
- * **面板本身沒有關閉鍵，所以這一頁自己帶出口**：第一步的「略過」、最後一步的
- * 「開始使用」。點面板外面、Esc、往下滑一樣關得掉，而且**任何一種關法都算看過**
- * （由呼叫端在 `onClose` 裡記下來）。
+ * **面板本身沒有關閉鍵，所以這一頁自己帶出口**：第一步左邊那顆、最後一步右邊那顆。
+ * 點面板外面、Esc、往下滑一樣關得掉，而且**任何一種關法都算看過**（由呼叫端在
+ * `onClose` 裡記下來）。
  *
- * 初始焦點放在「下一步」：`useModal` 取的是 DOM 裡第一個可聚焦元素，那是「略過」，
+ * 初始焦點放在「下一步」：`useModal` 取的是 DOM 裡第一個可聚焦元素，那是左邊那顆，
  * 而 Enter 不該是跳過。這個 effect 在 `Sheet` 的**父層**，所以跑在 `useModal` 之後，
  * 後到的贏。
  */
-export function GuideSheet({ onClose }: { onClose: () => void }) {
+export function GuideSheet({ onClose, firstRun }: { onClose: () => void; firstRun: boolean }) {
   const t = useT()
   const primary = useRef<HTMLButtonElement>(null)
   useEffect(() => { primary.current?.focus() }, [])
@@ -262,9 +265,10 @@ export function GuideSheet({ onClose }: { onClose: () => void }) {
     <Sheet title={t('guideTitle')} onClose={onClose}>
       <GuideWalkthrough
         onSkip={onClose}
+        skipLabel={firstRun ? t('guideSkip') : t('close')}
         onFinish={onClose}
-        finishLabel={t('guideStart')}
-        showLater
+        finishLabel={firstRun ? t('guideStart') : t('done')}
+        showLater={firstRun}
         primaryRef={primary}
       />
     </Sheet>
