@@ -186,10 +186,17 @@ function collect() {
     const inputLike = el.matches('input, textarea, select')
     const clipsY = /hidden|clip/.test(cs.overflowY)
     const clamped = cs.webkitLineClamp && cs.webkitLineClamp !== 'none'
+    /*
+     * `.sr-only`（視覺上隱藏、螢幕閱讀器仍聽得到）本來就是一個 1px、`clip: rect(0 0 0 0)`
+     * 的框——它的工作就是把字裁到看不見，跟「字被夾住」是兩回事。具名例外
+     * （docs/design/07-quality.md §7.4）：用在教學的「第 N 步，共 4 步」報讀
+     * （`role="status"`）與設定裡看不見的 `<label>`。
+     */
+    const visuallyHidden = el.classList.contains('sr-only')
     // 只看**自己裝著那段字**的元素。裁切的容器不一定有問題：`.room-flow-stage`
     // 是兩步並排、只露一步的滑軌，`body` 在面板開著時會鎖捲動——兩個都是刻意
     // 把比自己高的東西關起來，跟「字被夾住」是兩回事。
-    if (clipsY && !clamped && el.clientHeight > 0 && (ownText || inputLike)) {
+    if (clipsY && !clamped && !visuallyHidden && el.clientHeight > 0 && (ownText || inputLike)) {
       const needed = inputLike ? parseFloat(cs.lineHeight) : el.scrollHeight
       if (Number.isFinite(needed) && needed > el.clientHeight + 1) {
         out.clipped.push({
@@ -338,11 +345,24 @@ for (const pass of PASSES) {
   await page.goto(URL); await page.waitForTimeout(900)
 
   /*
-   * 使用說明（2026-11）：全新的 context 第一次停在首頁時會跳出一次。它是覆蓋層，
-   * 得先走過它才碰得到後面的任何東西——而它自己也是一個畫面，所以先驗再關。
-   * 系統放大字級那一輪（內文 1.5 倍）是它最容易爆版的地方：四段說明加一顆按鈕。
+   * 使用說明（2026-11）：全新的 context 第一次停在首頁時會跳出一次互動式教學。它是
+   * 覆蓋層，得先走過它才碰得到後面的任何東西——而它自己有四個不一樣的畫面，所以一步
+   * 一步驗：第三步（三人演練名單）與點過一個人之後（Toast 長出來）是兩個狀態，
+   * 後者是半透明材質加一顆 44px 的復原鍵，只在那一刻才存在。
+   * 系統放大字級那一輪（內文 1.5 倍）是它最容易爆版的地方：第三步最高。
    */
-  await audit(page, scheme, '首頁 · 使用說明（第一次開啟）')
+  const nextStep = async () => {
+    await page.getByRole('button', { name: /^下一步$|^Next$/ }).click(); await page.waitForTimeout(300)
+  }
+  await audit(page, scheme, '使用說明 · 第 1 步（第一次開啟）')
+  await nextStep()
+  await audit(page, scheme, '使用說明 · 第 2 步')
+  await nextStep()
+  await audit(page, scheme, '使用說明 · 第 3 步（演練名單）')
+  await page.locator('.guide-demo .member-main').first().click(); await page.waitForTimeout(300)
+  await audit(page, scheme, '使用說明 · 第 3 步（點過一個人之後）')
+  await nextStep()
+  await audit(page, scheme, '使用說明 · 第 4 步（結果預覽）')
   await page.getByRole('button', { name: /^開始使用$|^Get started$/ }).click(); await page.waitForTimeout(500)
 
   /*

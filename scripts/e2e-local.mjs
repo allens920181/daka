@@ -37,58 +37,136 @@ ok('首頁載入', await p.locator('.app-name').isVisible()
 ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 
 /*
-  使用說明（2026-11）：第一次打開 app、停在首頁時跳出一次。全新的 context 就是
-  「第一次打開」，而它是覆蓋層——後面所有的點擊都會被它擋住，所以這一段要在碰任何
-  別的東西之前跑完。
+  使用說明（2026-11）：第一次打開 app、停在首頁時跳出一次的**互動式教學**——一次一步，
+  第三步是一份點得動的三人演練名單。全新的 context 就是「第一次打開」，而它是覆蓋層，
+  後面所有的點擊都會被它擋住，所以這一段要在碰任何別的東西之前跑完。
 */
 const guide = p.getByRole('dialog', { name: '使用說明' })
+const stepTitle = async () => ((await p.locator('.guide-step-title').textContent()) || '').trim()
+const nextStep = async () => {
+  await p.getByRole('button', { name: '下一步' }).click(); await p.waitForTimeout(250)
+}
+const prevStep = async () => {
+  await p.getByRole('button', { name: '上一步' }).click(); await p.waitForTimeout(250)
+}
 ok('第一次打開：跳出使用說明', await guide.isVisible())
-ok('四步，每一步一個編號、一個標題、一段說明',
-   (await p.locator('.guide-step').count()) === 4
-   && (await p.locator('.guide-step-title').count()) === 4
-   && (await p.locator('.guide-step-body').count()) === 4)
-ok('步驟是一份有序清單（螢幕閱讀器唸得出「第幾項」）',
-   (await p.locator('ol.guide-steps[role=list]').count()) === 1)
-const guideText = (await guide.textContent()) || ''
-// 說明是拿去畫面上找字的：引用的每個按鈕名稱都要是畫面上的原字。
-ok('步驟引用的按鈕名稱都是畫面上的原字',
-   ['創建空間', '邀請點名', '復原', '未到', '結束點名'].every((s) => guideText.includes(s)))
-// 這支腳本跑的是單機模式：那時候「把代碼給協助的人」是不會發生的事，第二步要換一句。
-ok('單機模式下第二步不承諾別人加得進來',
-   ((await p.locator('.guide-step-body').nth(1).textContent()) || '').includes('只存在這支手機'))
-ok('說了關掉之後去哪裡拿回來', guideText.includes('設定 › 使用說明'))
-ok('「開始使用」是唯一的主要按鈕，焦點一開始就在它身上（Enter ＝ 知道了）',
-   (await p.locator('.sheet .btn-primary').count()) === 1
-   && (await p.evaluate(() => document.activeElement?.textContent?.trim())) === '開始使用')
+ok('一次只給一步，從第一步開始（進度條四根、亮一根）',
+   (await stepTitle()) === '創建空間'
+   && (await p.locator('.guide-step-title').count()) === 1
+   && (await p.locator('.guide-bar').count()) === 4
+   && (await p.locator('.guide-bar.is-on').count()) === 1)
+ok('第一步左邊是「略過」、右邊是「下一步」，沒有「上一步」',
+   (await p.getByRole('button', { name: '略過' }).count()) === 1
+   && (await p.getByRole('button', { name: '下一步' }).count()) === 1
+   && (await p.getByRole('button', { name: '上一步' }).count()) === 0)
+ok('初始焦點在「下一步」，不是「略過」（Enter 不該是跳過）',
+   (await p.evaluate(() => document.activeElement?.textContent?.trim())) === '下一步')
+ok('「下一步」是唯一的主要按鈕',
+   (await p.locator('.sheet .btn-primary').count()) === 1)
 ok('背景是 inert，不只是視覺遮罩',
    await p.evaluate(() => document.querySelector('.app-name')?.closest('[inert]') != null))
+ok('說了關掉之後去哪裡拿回來',
+   ((await guide.textContent()) || '').includes('設定 › 使用說明'))
+ok('螢幕閱讀器聽得到走到第幾步',
+   ((await p.locator('.sheet [role=status].sr-only').textContent()) || '').includes('第 1 步，共 4 步'))
+
+// 第二步。這支腳本跑的是單機模式：那時候「把代碼給協助的人」是不會發生的事，要換一句。
+await nextStep()
+ok('第二步：邀請點名（單機模式不承諾別人加得進來）',
+   (await stepTitle()) === '邀請點名'
+   && ((await p.locator('.guide-step-body').textContent()) || '').includes('只存在這支手機')
+   && (await p.locator('.guide-bar.is-on').count()) === 2)
+ok('第二步起左邊換成「上一步」，右邊的位置不動',
+   (await p.getByRole('button', { name: '上一步' }).count()) === 1
+   && (await p.getByRole('button', { name: '略過' }).count()) === 0)
+
+// 第三步：演練名單。用的是真的 .member，行為跟真的點名畫面一樣。
+await nextStep()
+const demoPressed = (n) => p.locator('.guide-demo .member-main').nth(n).getAttribute('aria-pressed')
+ok('第三步：三個人的演練名單，一開始都沒到、沒有 Toast',
+   (await stepTitle()) === '點名'
+   && (await p.locator('.guide-demo .member').count()) === 3
+   && (await demoPressed(0)) === 'false' && (await demoPressed(1)) === 'false' && (await demoPressed(2)) === 'false'
+   && (await p.locator('.guide-demo .toast').count()) === 0
+   && ((await p.locator('.guide-demo-count').textContent()) || '').includes('3 位沒到'))
+await p.getByRole('button', { name: /王小明/ }).click(); await p.waitForTimeout(250)
+ok('點一下名字＝已到，跟真的畫面一樣跳出「某某 · 已到」＋復原',
+   (await demoPressed(0)) === 'true'
+   && (await p.locator('.guide-demo .member.is-arrived').count()) === 1
+   && ((await p.locator('.guide-demo .toast-text').textContent()) || '').trim() === '王小明 · 已到'
+   && (await p.locator('.guide-demo .toast').getByRole('button', { name: '復原' }).count()) === 1
+   && ((await p.locator('.guide-demo-count').textContent()) || '').includes('2 位沒到'))
+ok('已到的那一列右邊印著時間（真的畫面也有）',
+   /^\d{2}:\d{2}$/.test(((await p.locator('.guide-demo .member-when').textContent()) || '').trim()))
+await p.getByRole('button', { name: '復原' }).click(); await p.waitForTimeout(250)
+ok('復原：退回剛剛那一個人，Toast 收起，回到提示',
+   (await demoPressed(0)) === 'false'
+   && (await p.locator('.guide-demo .toast').count()) === 0
+   && ((await p.locator('.guide-demo .hint').textContent()) || '').includes('試試看'))
+await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
+await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
+ok('點錯了再點一次也退得回來（不靠復原）', (await demoPressed(1)) === 'false')
+await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
+// 演練的結果會活過換頁：走回上一步再回來，李美花還是已到。
+await prevStep(); await nextStep()
+ok('換頁不會把演練洗掉', (await demoPressed(1)) === 'true')
+ok('演練不碰真的資料：後面的首頁仍然是空的',
+   (await p.locator('.recent-item').count()) === 0)
+
+// 第四步：結果預覽就是「結束點名」會交出去的那段文字，吃的是剛剛點出來的名單。
+await nextStep()
+const guideResult = ((await p.locator('.guide-result .fmt-eg').textContent()) || '')
+ok('第四步：結果預覽反映剛剛點的人（已到 1 / 3、李美花不在未到裡）',
+   (await stepTitle()) === '結束點名'
+   && guideResult.includes('已到 1 / 3 人')
+   && guideResult.includes('未到 2 位：王小明、陳大同')
+   && (await p.locator('.guide-bar.is-on').count()) === 4)
+ok('最後一步右邊換成「開始使用」，而且仍是唯一的主要按鈕',
+   (await p.getByRole('button', { name: '開始使用' }).count()) === 1
+   && (await p.locator('.sheet .btn-primary').count()) === 1)
 await p.getByRole('button', { name: '開始使用' }).click(); await p.waitForTimeout(500)
 ok('按「開始使用」關得掉', (await p.locator('.guide').count()) === 0)
 await p.reload(); await p.waitForTimeout(1200)
 ok('重新整理之後不再跳出來', (await p.locator('.guide').count()) === 0)
 
-// 關掉之後的那條路：設定 › 使用說明，同一份四步。
+// 關掉之後的那條路：設定 › 使用說明，同一份教學，只是出口不同。
 await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
 await p.getByRole('button', { name: /^使用說明/ }).click(); await p.waitForTimeout(500)
-ok('設定 › 使用說明 拿得回來，同一份四步', (await p.locator('.guide-step').count()) === 4)
-ok('子畫面不帶「開始使用」：左上角的返回鍵就是出口',
-   (await p.getByRole('button', { name: '開始使用' }).count()) === 0
+ok('設定 › 使用說明 拿得回來，從第一步重新開始（演練也是新的）',
+   (await stepTitle()) === '創建空間' && (await p.locator('.guide-bar.is-on').count()) === 1)
+ok('設定裡沒有「略過」：左上角的返回鍵就是出口',
+   (await p.getByRole('button', { name: '略過' }).count()) === 0
    && (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 1)
-await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
-ok('返回之後回到設定清單', await p.getByRole('button', { name: /^暱稱/ }).isVisible())
+ok('設定裡不重複說「之後去設定看」（人已經在那裡了）',
+   !((await p.locator('.sheet').textContent()) || '').includes('之後想再看'))
+await nextStep(); await nextStep(); await nextStep()
+ok('設定裡最後一步叫「完成」，不是「開始使用」',
+   (await p.getByRole('button', { name: '完成' }).count()) === 1
+   && (await p.getByRole('button', { name: '開始使用' }).count()) === 0)
+await p.getByRole('button', { name: '完成' }).click(); await p.waitForTimeout(400)
+ok('按「完成」回到設定清單（不是把整張面板關掉）', await p.getByRole('button', { name: /^暱稱/ }).isVisible())
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
 
 {
-  // 另外兩台手機。關法不只一種，任何一種都算看過；而協助者是掃連結直接落進空間
-  // 的，一張寫給主揪看的四步說明擋在名單前面，是在最不該的時候多一層。
+  // 另外三台手機。關法不只一種，任何一種都算看過；而協助者是掃連結直接落進空間
+  // 的，一份寫給主揪看的教學擋在名單前面，是在最不該的時候多一層。
   const ctx2 = await b.newContext({ viewport: { width: 390, height: 844 } })
   const q2 = await ctx2.newPage()
   await q2.goto(URL); await q2.waitForTimeout(1000)
-  await q2.keyboard.press('Escape'); await q2.waitForTimeout(500)
-  ok('Esc 關掉也算看過', (await q2.locator('.guide').count()) === 0)
+  await q2.getByRole('button', { name: '略過' }).click(); await q2.waitForTimeout(500)
+  ok('第一步按「略過」關得掉', (await q2.locator('.guide').count()) === 0)
   await q2.reload(); await q2.waitForTimeout(1000)
-  ok('Esc 關掉之後重新整理不再跳出來', (await q2.locator('.guide').count()) === 0)
+  ok('略過之後重新整理不再跳出來', (await q2.locator('.guide').count()) === 0)
   await ctx2.close()
+
+  const ctx4 = await b.newContext({ viewport: { width: 390, height: 844 } })
+  const q4 = await ctx4.newPage()
+  await q4.goto(URL); await q4.waitForTimeout(1000)
+  await q4.keyboard.press('Escape'); await q4.waitForTimeout(500)
+  ok('Esc 關掉也算看過', (await q4.locator('.guide').count()) === 0)
+  await q4.reload(); await q4.waitForTimeout(1000)
+  ok('Esc 關掉之後重新整理不再跳出來', (await q4.locator('.guide').count()) === 0)
+  await ctx4.close()
 
   const ctx3 = await b.newContext({ viewport: { width: 390, height: 844 } })
   const q3 = await ctx3.newPage()
@@ -98,7 +176,6 @@ await p.keyboard.press('Escape'); await p.waitForTimeout(400)
   ok('第一次回到首頁才看到', (await q3.locator('.guide').count()) === 1)
   await ctx3.close()
 }
-
 
 // 開空間
 await p.getByRole('button', { name: /創建空間/ }).first().click()

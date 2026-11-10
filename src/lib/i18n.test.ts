@@ -82,6 +82,32 @@ describe('使用說明引用的按鈕名稱', () => {
   }
 })
 
+describe('互動式教學的文案', () => {
+  for (const lang of ['zh', 'en'] as const) {
+    const m = messages[lang]
+
+    it(`${lang}：進度文字吃得到 {n} 與 {total}（少一個，螢幕閱讀器就聽不到走到哪了）`, () => {
+      expect(m.guideProgress).toContain('{n}')
+      expect(m.guideProgress).toContain('{total}')
+      expect(translate(lang, 'guideProgress', { n: 2, total: 4 })).toMatch(/2.*4/)
+    })
+
+    // 演練名單用名字當 key，也靠名字讓使用者分辨「我點的是哪一個」：重複的話
+    // 點一個會看起來像點到兩個。
+    it(`${lang}：演練名單的三個名字不重複、不空白`, () => {
+      const names = [m.guideDemoName1, m.guideDemoName2, m.guideDemoName3]
+      expect(names.every((n) => n.trim().length > 0)).toBe(true)
+      expect(new Set(names).size).toBe(3)
+    })
+  }
+
+  it('演練名單的名字跟「填入範例」同一組：之後在真的畫面上會再看到它們', () => {
+    expect(messages.zh.exampleRoster).toContain(messages.zh.guideDemoName1)
+    expect(messages.zh.exampleRoster).toContain(messages.zh.guideDemoName2)
+    expect(messages.zh.exampleRoster).toContain(messages.zh.guideDemoName3)
+  })
+})
+
 describe('translate', () => {
   it('缺的語言退回 zh，不會印出 key', () => {
     expect(translate('en', 'exampleClear')).toBe('Clear the example')

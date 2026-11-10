@@ -17,7 +17,7 @@ import { currentRoute, joinUrl, navigate } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
-import { GuideSteps } from './Guide'
+import { GuideWalkthrough } from './Guide'
 import {
   IconArchive, IconBookmark, IconChevronRight, IconCopy, IconDuplicate,
   IconEdit, IconGoogle, IconHash, IconLink, IconMore,
@@ -969,15 +969,14 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   /*
     使用說明。第一次打開 app 時會自己跳出來（`Guide.tsx` 的 `GuideSheet`），這裡是
-    關掉之後拿回來的那條路。內容是同一份 `GuideSteps`；子畫面不帶「開始使用」——
-    左上角那顆返回鍵就是出口，再放一顆是同一件事的第二個入口（見 overlays.md）。
+    關掉之後拿回來的那條路。內容是同一份 `GuideWalkthrough`，差別只有出口：沒有
+    「略過」（左上角那顆返回鍵就是出口，再放一顆是同一件事的第二個入口），最後一步
+    的鍵叫「完成」、回到設定清單，而不是「開始使用」——人本來就在 app 裡了。
   */
   if (mode === 'guide') {
     return (
       <Sheet title={t('guideTitle')} onClose={onClose} onBack={back}>
-        <div class="stack guide">
-          <GuideSteps />
-        </div>
+        <GuideWalkthrough onFinish={back} finishLabel={t('done')} />
       </Sheet>
     )
   }

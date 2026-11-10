@@ -28,7 +28,7 @@ async function phone(name) {
   // 會擋住後面所有的點擊。這支腳本測的不是它（那在 e2e-local.mjs），看到就按掉。
   await page.addLocatorHandler(
     page.getByRole('dialog', { name: /^使用說明$|^How to use$/ }),
-    (guide) => guide.getByRole('button', { name: /^開始使用$|^Get started$/ }).click(),
+    (guide) => guide.getByRole('button', { name: /^略過$|^Skip$/ }).click(),
   )
   return { name, ctx, page, errs }
 }
