@@ -2123,7 +2123,30 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* 空間舞台省了最上面的 `AppBar`（見 Guide.tsx 的 `RoomStage`），頂欄於是貼著螢幕上緣，
    第二步框住右上角那顆「更多」的聚焦框會有一截落在螢幕外。補一格頂端的空，大小是
    聚焦框外放的那一圈（`PAD`）再多一點呼吸。 */
-.tour-stage .topbar { padding-top: calc(var(--sp-4) + env(safe-area-inset-top)); }
+.tour-stage .topbar:not(.home-filterbar) { padding-top: calc(var(--sp-4) + env(safe-area-inset-top)); }
+/* 輸入框在舞台上只是擺著給人看，不需要整頁那麼高（真的開空間頁是把整個螢幕剩下的高度都給它）。 */
+.tour-stage .textarea { min-height: 120px; }
+/* 預覽自己有 max-height（名單長了在裡面捲）；舞台上只有四個人，要全部露出來，不然聚焦框框住的
+   那一塊最後一列是半截的。 */
+.tour-stage .preview { max-height: none; }
+
+/*
+ * 舞台上的面板與對話框是**靜態的複本**（見 GuideStages.tsx）：貼在舞台下緣／上方，不用真的
+ * `Sheet`／`ConfirmDialog`。**動畫要關掉**：真的 `.sheet` 長出來靠 `rise`、`.dialog` 靠 `pop`
+ * （都帶位移或縮放），聚焦框是用 `getBoundingClientRect` 量目標的位置，量到動畫開頭那一格，
+ * 框就偏了一截而且停在那裡。
+ * 層級跟底部動作列同一階（`--z-dock`）——它們在 DOM 裡排在動作列後面，所以蓋得住它。
+ */
+.tour-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; margin-inline: auto; z-index: var(--z-dock);
+  animation: none;
+}
+/* 對話框靠上，不置中：說明卡片釘在下緣，置中的對話框（約 320px 高）會被它壓住一半。 */
+.tour-dialog-wrap {
+  position: absolute; left: var(--sp-4); right: var(--sp-4); top: var(--sp-7); z-index: var(--z-dock);
+  display: flex; justify-content: center;
+}
+.tour-stage .dialog { animation: none; }
 
 /*
  * 聚焦框。**暗部是它自己的陰影**：往外撒一整個螢幕那麼大（`100vmax`），框在哪，亮的就在
@@ -2167,14 +2190,26 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .guide { gap: var(--sp-4); }
 
 /*
- * 進度：四根短條，走到哪就亮到哪（不是只亮當前那一根）。**亮的是「走過的」**，所以
- * 第三步時前三根都亮，讀起來就是一條走了四分之三的進度條，不必數。未走到的用凹槽
- * 色（`--surface-2`）：它們的工作是說「還有」，不需要被讀到。
- * 不可互動，所以不受 48px 觸控下限約束；`aria-hidden`，螢幕閱讀器聽的是 `sr-only` 那句。
+ * 「我在哪」：章節名 · 第幾步／共幾步，點下去開目錄；底下一條細的進度線。
+ *
+ * 那一行是按鈕，所以要有 48px 的觸控高度，但它的視覺高度只有一行字（`--sp-5`）：用負外距把撐出去的
+ * 觸控區收回來（跟 `.note-call`、`.toast-action` 同一個做法），不然卡片會多出 24px——在矮的手機上
+ * 那 24px 就是卡片放不放得進名單與螢幕下緣之間的差別。
+ *
+ * 進度線只有一條，不是「每一步一根短條」：三十步的短條每根不到 4px 寬，讀成一條虛線，說不出走到哪。
+ * 走過的亮 `--accent`，沒走到的是凹槽色（`--surface-2`）；不可互動、`aria-hidden`，螢幕閱讀器聽的是
+ * `sr-only` 那句。
  */
-.guide-bars { display: flex; gap: var(--sp-1); }
-.guide-bar { width: var(--sp-5); height: var(--sp-1); border-radius: var(--r-full); background: var(--surface-2); }
-.guide-bar.is-on { background: var(--accent); }
+.guide-where-wrap { display: flex; flex-direction: column; gap: var(--sp-1); }
+.guide-where {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: var(--sp-1);
+  min-height: var(--tap-min); margin-block: calc((var(--tap-min) - var(--sp-5)) / -2);
+  padding: 0; border: none; background: none; cursor: pointer;
+  font-size: var(--fs-2); font-weight: 600; line-height: var(--sp-5); color: var(--ink-2);
+}
+.guide-where:hover { color: var(--ink); }
+.guide-track { height: var(--sp-1); border-radius: var(--r-full); background: var(--surface-2); overflow: hidden; }
+.guide-track > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
 
 .guide-pane { display: flex; flex-direction: column; gap: var(--sp-3); }
 /* 編號、標題、進度條一列。擠不下時（英文、放大字級）進度條換到下一行，不是被截掉。 */
@@ -2205,9 +2240,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
  * 緊貼在它上面的那一行罩暗。
  */
 .guide-demo-slot .toast { box-shadow: none; }
-/* 第四步的結果預覽。上面那句引子貼著它，不像 `.stack` 的預設間距那樣拉開。 */
-.guide-result { display: flex; flex-direction: column; gap: var(--sp-2); }
-
 /* 兩顆等寬、永遠兩格：左邊是「略過／上一步」，右邊永遠是往前。 */
 .guide-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
 /*

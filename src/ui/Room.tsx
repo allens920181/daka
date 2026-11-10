@@ -753,7 +753,7 @@ export function Room({ code, onSettings, onGuide }: { code: string; onSettings: 
  * 「複製／CSV」讀得出來的意思跟完整標籤一模一樣。短標籤是完整標籤的子字串，螢幕
  * 閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。
  */
-function ResultActions({ onCopy, onCsv }: {
+export function ResultActions({ onCopy, onCsv }: {
   onCopy: () => void
   onCsv: () => void
 }) {

@@ -39,48 +39,46 @@ ok('首頁載入', await p.locator('.app-name').first().isVisible()
 ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 
 /*
-  使用說明（2026-11）：第一次打開 app、停在首頁時跳出一次的**聚焦導覽**——蓋一層舞台
-  （用真的零件拼的首頁／空間，資料是模擬的），聚焦框框住這一步要講的那個按鈕或區塊，
-  第三步的名單點得動。全新的 context 就是「第一次打開」，而它是覆蓋層，後面所有的點擊
+  使用說明（2026-11）：第一次打開 app、停在首頁時跳出一次的**聚焦導覽**——整個 app 的每一個
+  功能，一個一個框給你看。蓋一層舞台（用真的零件拼的首頁／空間／面板，資料是模擬的），聚焦框框住
+  這一步要講的那個按鈕或區塊。全新的 context 就是「第一次打開」，而它是覆蓋層，後面所有的點擊
   都會被它擋住，所以這一段要在碰任何別的東西之前跑完。
+
+  **通用走查**：一路按「下一步」走完整份步驟表，每一步都驗同樣的東西（聚焦框包住它的目標、
+  卡片在螢幕裡不蓋住框、舞台除了該點的地方全 inert），再加上幾步各自的行為。這支腳本跑的是
+  單機版（沒設定雲端），所以雲端才有的步驟不會出現（見 guideSteps.ts 的 `cloud`）。
 */
 const guide = p.getByRole('dialog', { name: '使用說明' })
-const stepTitle = async () => ((await p.locator('.guide-step-title').textContent()) || '').trim()
+/** 單機版的步驟表（順序就是導覽的順序）。步驟表改了，這裡要一起改。 */
+const LOCAL_STEPS = ['create', 'roster', 'example', 'help', 'preview', 'confirm',
+  'identity', 'filter', 'groups', 'tap', 'notes', 'more', 'menu', 'invite',
+  'edit', 'walkin', 'finish', 'finishDialog', 'closed',
+  'rows', 'homeFilter', 'rowMenu', 'settings', 'tips']
 const nextStep = async () => {
   await p.getByRole('button', { name: '下一步' }).click(); await p.waitForTimeout(600)
 }
-const prevStep = async () => {
-  await p.getByRole('button', { name: '上一步' }).click(); await p.waitForTimeout(600)
-}
-/** 聚焦框、說明卡片、目標的位置（`data-tour`）。轉場 320ms，量之前要等它走完。 */
-const tourGeo = (target) => p.evaluate((tg) => {
+const stepTitle = async () => ((await p.locator('.tour-callout .guide-step-title').first().textContent()) || '').trim()
+const tourGeo = () => p.evaluate(() => {
   const r = (e) => { if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height, r: b.right, b: b.bottom } }
-  return { frame: r(document.querySelector('.tour-focus')), card: r(document.querySelector('.tour-callout')),
-           target: r(document.querySelector(`.tour-stage [data-tour="${tg}"]`)),
-           vh: document.querySelector('.tour-layer').clientHeight }
-}, target)
-const frameCovers = (g) => g.frame.x <= g.target.x && g.frame.y <= g.target.y && g.frame.r >= g.target.r && g.frame.b >= g.target.b
-const noOverlap = (g) => g.card.y >= g.frame.b - 1 || g.card.b <= g.frame.y + 1
-const regionsInert = () => p.evaluate(() => [...document.querySelectorAll('.tour-region')].map((e) => e.hasAttribute('inert')))
+  const frame = document.querySelector('.tour-focus')
+  const sel = frame?.getAttribute('data-target') ?? null
+  return { step: document.querySelector('.tour-callout')?.getAttribute('data-step'),
+           sel, frame: r(frame), target: sel ? r(document.querySelector(`.tour-stage ${sel}`)) : null,
+           card: r(document.querySelector('.tour-callout')), vh: document.querySelector('.tour-layer').clientHeight,
+           where: document.querySelector('.guide-where')?.textContent ?? '',
+           regions: [...document.querySelectorAll('.tour-region')].map((e) => e.hasAttribute('inert')) }
+})
+const demoPressed = (n) => p.locator('.tour-stage .member-main').nth(n).getAttribute('aria-pressed')
+const tourSeg = async (i) => ((await p.locator('.tour-stage .segment').nth(i).textContent()) || '').replace(/\D/g, '')
 
 ok('第一次打開：跳出使用說明', await guide.isVisible())
-ok('一次只給一步，從第一步開始（進度條四根、亮一根）',
+ok('從第一步開始：卡片上有章節名與「1 / 24」，進度線在最前面',
    (await stepTitle()) === '創建空間'
-   && (await p.locator('.guide-step-title').count()) === 1
-   && (await p.locator('.guide-bar').count()) === 4
-   && (await p.locator('.guide-bar.is-on').count()) === 1)
-
-// 第一步框的是首頁真的那顆「創建空間」（舞台用真的 .btn、真的 AppBar 拼的）。
-const g1 = await tourGeo('create')
-ok('聚焦框包住首頁的「創建空間」，而且不是貼著邊（外放一圈）',
-   frameCovers(g1) && g1.frame.w > g1.target.w && g1.frame.h > g1.target.h
-   && ((await p.locator('.tour-stage [data-tour="create"]').textContent()) || '').includes('創建空間'))
-ok('其餘壓暗：聚焦框的陰影就是暗部（--scrim）',
-   (await p.evaluate(() => getComputedStyle(document.querySelector('.tour-focus')).boxShadow)) !== 'none')
-ok('說明卡片在螢幕裡、不蓋住聚焦框', g1.card.y >= 0 && g1.card.b <= g1.vh && noOverlap(g1))
-ok('第一步左邊是「略過」、右邊是「下一步」，沒有「上一步」',
+   && ((await p.locator('.guide-where').textContent()) || '').includes('開一個空間 · 1 / 24')
+   && (await p.locator('.guide-track > span').count()) === 1)
+ok('隨時退得出去：每一步卡片上都有一顆「略過」（✕），第一步左邊是「目錄」不是「略過」',
    (await p.getByRole('button', { name: '略過' }).count()) === 1
-   && (await p.getByRole('button', { name: '下一步' }).count()) === 1
+   && (await p.getByRole('button', { name: '目錄' }).count()) === 1
    && (await p.getByRole('button', { name: '上一步' }).count()) === 0)
 ok('初始焦點在「下一步」，不是「略過」（Enter 不該是跳過）',
    (await p.evaluate(() => document.activeElement?.textContent?.trim())) === '下一步')
@@ -88,100 +86,136 @@ ok('「下一步」是唯一的主要按鈕（舞台上那顆「創建空間」�
    (await p.locator('.tour-callout .btn-primary').count()) === 1)
 ok('背景是 inert，不只是視覺遮罩',
    await p.evaluate(() => document.querySelector('.app-name')?.closest('[inert]') != null))
-ok('第一步：舞台整個 inert（點得到的只有說明卡片）', (await regionsInert()).every(Boolean))
-// 舞台上的「創建空間」是真的 .btn，但它不能真的把人帶去開空間——那會把教學變成一條
-// 離開教學的路，而且是在使用者最沒準備好的時候。
-await p.mouse.click(g1.target.x + g1.target.w / 2, g1.target.y + g1.target.h / 2); await p.waitForTimeout(300)
-ok('點聚焦框裡那顆「創建空間」什麼事都不會發生（沒有跳去開空間、導覽還在）',
-   (await p.evaluate(() => location.hash)) === '' && (await p.locator('.tour').count()) === 1)
-// Tab 出不去：舞台是 inert 的，所以焦點只在說明卡片的兩顆鍵之間轉。
-const tabTrail = []
-for (let i = 0; i < 5; i++) {
-  await p.keyboard.press('Tab')
-  tabTrail.push(await p.evaluate(() => {
-    const a = document.activeElement
-    return !!a?.closest('.tour-callout') && !a.closest('[inert]')
-  }))
-}
-ok('Tab 轉圈不會跑進舞台或跑出導覽', tabTrail.every(Boolean))
-await p.evaluate(() => document.querySelector('.tour-callout .btn-primary').focus())
 ok('說了關掉之後去哪裡拿回來',
    ((await guide.textContent()) || '').includes('右上角') && ((await guide.textContent()) || '').includes('?'))
 ok('螢幕閱讀器聽得到走到第幾步',
-   ((await p.locator('.tour-callout [role=status].sr-only').textContent()) || '').includes('第 1 步，共 4 步'))
-const nextY1 = (await p.locator('.tour-callout .btn-primary').boundingBox()).y
+   ((await p.locator('.tour-callout [role=status].sr-only').textContent()) || '').includes('第 1 步，共 24 步'))
+ok('其餘壓暗：聚焦框的陰影就是暗部（--scrim）',
+   (await p.evaluate(() => getComputedStyle(document.querySelector('.tour-focus')).boxShadow)) !== 'none')
 
-// 第二步：舞台換成空間，框住右上角真的那顆「更多」（邀請點名在它裡面）。
-await nextStep()
-const g2 = await tourGeo('more')
-ok('第二步：聚焦框包住空間頂欄的「更多」，舞台換成空間',
-   (await stepTitle()) === '邀請點名' && frameCovers(g2) && g2.frame.y >= 0
-   && (await p.locator('.tour-stage .topbar-name').count()) === 1
-   && (await p.locator('.tour-stage .home-filterbar, .tour-stage .recent-item').count()) === 0)
-ok('第二步：說明講的是真的路徑（更多 › 邀請點名），單機模式不承諾別人加得進來',
-   await (async () => {
-     const body = (await p.locator('.guide-step-body').textContent()) || ''
-     return body.includes('「更多」') && body.includes('「邀請點名」') && body.includes('只存在這支手機')
-   })())
-ok('第二步起左邊換成「上一步」，右邊的位置不動',
-   (await p.getByRole('button', { name: '上一步' }).count()) === 1
-   && (await p.getByRole('button', { name: '略過' }).count()) === 0
-   && (await p.locator('.guide-bar.is-on').count()) === 2)
-ok('第二步：說明卡片不蓋住聚焦框', noOverlap(g2))
+// 第一步框的是首頁真的那顆「創建空間」。舞台上它是真的 .btn，但**不能**真的把人帶去開空間——
+// 那會把教學變成一條離開教學的路，而且是在使用者最沒準備好的時候。
+const g1 = await tourGeo()
+await p.mouse.click(g1.target.x + g1.target.w / 2, g1.target.y + g1.target.h / 2); await p.waitForTimeout(300)
+ok('點聚焦框裡那顆「創建空間」什麼事都不會發生（沒有跳去開空間、導覽還在）',
+   (await p.evaluate(() => location.hash)) === '' && (await p.locator('.tour').count()) === 1)
+// Tab 出不去：舞台是 inert 的，所以焦點只在說明卡片的幾顆鍵之間轉。
+const tabTrail = []
+for (let i = 0; i < 6; i++) {
+  await p.keyboard.press('Tab')
+  tabTrail.push(await p.evaluate(() => { const a = document.activeElement; return !!a?.closest('.tour-callout') && !a.closest('[inert]') }))
+}
+ok('Tab 轉圈不會跑進舞台或跑出導覽', tabTrail.every(Boolean))
+await p.evaluate(() => document.querySelector('.tour-callout .btn-primary').focus())
 
-// 第三步：框住名單。名單是真的 MemberRow，點得動；其餘仍然 inert。
-await nextStep()
-const g3 = await tourGeo('list')
-const demoPressed = (n) => p.locator('.tour-stage .member-main').nth(n).getAttribute('aria-pressed')
-const tourSeg = async (i) => ((await p.locator('.tour-stage .segment').nth(i).textContent()) || '').replace(/\D/g, '')
-ok('第三步：聚焦框包住整份名單，三個人一開始都沒到、沒有 Toast',
-   (await stepTitle()) === '點名' && frameCovers(g3)
-   && (await p.locator('.tour-stage .member').count()) === 3
-   && (await demoPressed(0)) === 'false' && (await demoPressed(1)) === 'false' && (await demoPressed(2)) === 'false'
-   && (await p.locator('.tour-callout .toast').count()) === 0
-   && (await tourSeg(0)) === '3' && (await tourSeg(1)) === '3' && (await tourSeg(2)) === '0')
-ok('第三步：只有名單那一塊碰得到，頂欄、動作列都是 inert',
-   JSON.stringify(await regionsInert()) === JSON.stringify([true, false, true]))
-ok('第三步：說明卡片不蓋住名單', noOverlap(g3))
-await p.getByRole('button', { name: /王小明/ }).click(); await p.waitForTimeout(250)
-ok('點一下名字＝已到：舞台上真的篩選列「未到」跟著少一個、已到多一個',
-   (await demoPressed(0)) === 'true'
-   && (await p.locator('.tour-stage .member.is-arrived').count()) === 1
-   && (await tourSeg(1)) === '2' && (await tourSeg(2)) === '1')
-ok('跟真的畫面一樣跳出「某某 · 已到」＋復原（在說明卡片裡）',
-   ((await p.locator('.tour-callout .toast-text').textContent()) || '').trim() === '王小明 · 已到'
-   && (await p.locator('.tour-callout .toast').getByRole('button', { name: '復原' }).count()) === 1)
-ok('已到的那一列右邊印著時間（真的畫面也有）',
-   /^\d{2}:\d{2}$/.test(((await p.locator('.tour-stage .member-when').textContent()) || '').trim()))
-await p.getByRole('button', { name: '復原' }).click(); await p.waitForTimeout(250)
-ok('復原：退回剛剛那一個人，Toast 收起，回到提示',
-   (await demoPressed(0)) === 'false' && (await tourSeg(1)) === '3'
-   && (await p.locator('.tour-callout .toast').count()) === 0
-   && ((await p.locator('.tour-callout .hint').textContent()) || '').includes('試試看'))
-await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
-await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
-ok('點錯了再點一次也退得回來（不靠復原）', (await demoPressed(1)) === 'false')
-await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
-// 演練的結果會活過換頁：走回上一步再回來，李美花還是已到。
-await prevStep(); await nextStep()
-ok('換頁不會把演練洗掉', (await demoPressed(1)) === 'true')
-ok('前三步的「下一步」在同一個位置（連按不必追著它跑）',
-   Math.abs((await p.locator('.tour-callout .btn-primary').boundingBox()).y - nextY1) <= 1)
-ok('演練不碰真的資料：舞台是示範用的，導覽外面真的首頁仍然是空的',
-   (await p.evaluate(() => [...document.querySelectorAll('.recent-item')].filter((e) => !e.closest('.tour')).length)) === 0)
+// ---- 一路走完 ----
+const seen = []
+const walkIssues = []
+for (let i = 0; i < 40; i++) {
+  await p.waitForTimeout(550)
+  const g = await tourGeo()
+  seen.push(g.step)
+  const where = `${g.step}`
+  // 聚焦框：包住目標（容許 5px：全寬的目標框被夾在離螢幕邊緣 4px 的地方）、在螢幕裡。
+  if (g.step === 'tips') {
+    if (g.frame) walkIssues.push(`${where}: 最後一步不該有聚焦框`)
+  } else if (!g.frame || !g.target) {
+    walkIssues.push(`${where}: 找不到聚焦框或它的目標（${g.sel}）`)
+  } else {
+    if (!(g.frame.x <= g.target.x + 5 && g.frame.y <= g.target.y + 5 && g.frame.r >= g.target.r - 5 && g.frame.b >= g.target.b - 5)) walkIssues.push(`${where}: 聚焦框沒有包住目標`)
+    if (g.frame.y < 0 || g.frame.b > g.vh || g.frame.x < 0) walkIssues.push(`${where}: 聚焦框跑出螢幕`)
+    if (!(g.card.y >= g.frame.b - 1 || g.card.b <= g.frame.y + 1)) walkIssues.push(`${where}: 說明卡片蓋住了聚焦框`)
+  }
+  if (g.card.y < 0 || g.card.b > g.vh) walkIssues.push(`${where}: 說明卡片跑出螢幕`)
+  // 舞台：除了「點名」那一步的名單，全部 inert。
+  const free = g.regions.filter((x) => !x).length
+  if (g.step === 'tap' ? free !== 1 : free !== 0) walkIssues.push(`${where}: 舞台的 inert 不對（${JSON.stringify(g.regions)}）`)
+  // 每一步都有章節名與進度
+  if (!g.where.includes('/ 24')) walkIssues.push(`${where}: 卡片上沒有「第幾步 / 24」`)
 
-// 第四步：框住底部動作列的「結束點名」；結果預覽就是它會交出去的那段文字，吃剛剛點出來的名單。
-await nextStep()
-const g4 = await tourGeo('finish')
-const guideResult = ((await p.locator('.guide-result .fmt-eg').textContent()) || '')
-ok('第四步：聚焦框包住「結束點名」，說明卡片抬到它上方',
-   (await stepTitle()) === '結束點名' && frameCovers(g4) && g4.card.b <= g4.frame.y + 1
-   && (await p.locator('.guide-bar.is-on').count()) === 4)
-ok('第四步：結果預覽反映剛剛點的人（已到 1 / 3、李美花不在未到裡）',
-   guideResult.includes('已到 1 / 3 人') && guideResult.includes('未到 2 位：王小明、陳大同'))
+  if (g.step === 'create') {
+    ok('第一步框的是首頁的「創建空間」，而且外放一圈、不貼著邊',
+       g.frame.w > g.target.w && ((await p.locator('.tour-stage [data-tour="create"]').textContent()) || '').includes('創建空間'))
+  }
+  if (g.step === 'preview') {
+    // 用真的解析器去解析真的範例名單，再交給真的 RosterPreview：分組標題與備註都不是舞台自己畫的。
+    ok('清單預覽是真的 RosterPreview：四個人、兩個分車標題、備註當晶片',
+       (await p.locator('.tour-stage .preview-row').count()) === 4
+       && (await p.locator('.tour-stage .preview .group-divider').count()) === 2
+       && (await p.locator('.tour-stage .preview .chip-note').count()) >= 2)
+  }
+  if (g.step === 'notes') {
+    ok('備註那一步框住第一個人的備註，旁邊有真的撥號鍵', (await p.locator('.tour-stage .member:first-child .note-call').count()) === 1)
+  }
+  if (g.step === 'tap') {
+    ok('第三步：三個人的演練名單，一開始都沒到、沒有 Toast，篩選列數字是 3 / 3 / 0',
+       (await p.locator('.tour-stage .member').count()) === 3
+       && (await demoPressed(0)) === 'false' && (await demoPressed(1)) === 'false' && (await demoPressed(2)) === 'false'
+       && (await p.locator('.tour-callout .toast').count()) === 0
+       && (await tourSeg(0)) === '3' && (await tourSeg(1)) === '3' && (await tourSeg(2)) === '0')
+    await p.getByRole('button', { name: /王小明/ }).click(); await p.waitForTimeout(250)
+    ok('點一下名字＝已到：舞台上真的篩選列「未到」少一個、已到多一個',
+       (await demoPressed(0)) === 'true' && (await p.locator('.tour-stage .member.is-arrived').count()) === 1
+       && (await tourSeg(1)) === '2' && (await tourSeg(2)) === '1')
+    ok('跟真的畫面一樣跳出「某某 · 已到」＋復原（在說明卡片裡），右邊印著時間',
+       ((await p.locator('.tour-callout .toast-text').textContent()) || '').trim() === '王小明 · 已到'
+       && (await p.locator('.tour-callout .toast').getByRole('button', { name: '復原' }).count()) === 1
+       && /^\d{2}:\d{2}$/.test(((await p.locator('.tour-stage .member-when').textContent()) || '').trim()))
+    // 名單裡真的有電話鍵（`<a href="tel:…">`），而這一步名單是點得動的——按到它會真的撥電話。
+    ok('名單上的電話鍵被擋掉了（教學裡沒有任何一顆鍵會離開教學）',
+       // MemberRow 的電話鍵自己 stopPropagation，所以不能掛在 document 上等事件冒上來；
+       // dispatchEvent 的回傳值才是答案（有人 preventDefault ＝ false）。
+       await p.evaluate(() => document.querySelector('.tour-stage .note-call')
+         .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })) === false))
+    await p.getByRole('button', { name: '復原' }).click(); await p.waitForTimeout(250)
+    ok('復原：退回剛剛那一個人，Toast 收起，回到提示',
+       (await demoPressed(0)) === 'false' && (await tourSeg(1)) === '3'
+       && (await p.locator('.tour-callout .toast').count()) === 0
+       && ((await p.locator('.tour-callout .hint').textContent()) || '').includes('試試看'))
+    await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
+    await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
+    ok('點錯了再點一次也退得回來（不靠復原）', (await demoPressed(1)) === 'false')
+    await p.getByRole('button', { name: /李美花/ }).click(); await p.waitForTimeout(200)
+    // 演練的結果會活過換頁：走回上一步再回來，李美花還是已到。
+    await p.getByRole('button', { name: '上一步' }).click(); await p.waitForTimeout(500)
+    await nextStep()
+    ok('換頁不會把演練洗掉', (await demoPressed(1)) === 'true')
+  }
+  if (g.step === 'edit') {
+    ok('編輯模式：名單每一列右邊有真的 ✕，頂欄的「更多」換成 ✓', (await p.locator('.tour-stage .member-side .icon-btn').count()) === 3)
+  }
+  if (g.step === 'finishDialog') {
+    // 結果預覽是真的 toShareText，餵給它的是「點名」那一步點出來的名單。
+    const prev = (await p.locator('.tour-stage .result-preview').textContent()) || ''
+    ok('「結束點名」對話框裡的結果預覽，反映剛剛點的人（已到 1 / 3、李美花不在未到裡）',
+       prev.includes('已到 1 / 3 人') && prev.includes('未到 2 位：王小明、陳大同'))
+  }
+  if (g.step === 'closed') {
+    ok('結束之後：結果卡片＋複製／CSV，名單鎖住，底部變「重新開啟」',
+       (await p.locator('.tour-stage .result-card .result-actions .btn').count()) === 2
+       && (await p.locator('.tour-stage .member-main:disabled').count()) === 3
+       && ((await p.locator('.tour-stage .dock .btn').textContent()) || '').includes('重新開啟'))
+  }
+  if (g.step === 'rows') {
+    ok('首頁清單：兩個空間（一個是主揪、一個是協助者），第二個不是你開的',
+       (await p.locator('.tour-stage .recent-item').count()) === 2 && (await p.locator('.tour-stage .recent-item .role-badge.is-owner').count()) === 1)
+  }
+  if (g.step === 'settings') {
+    ok('設定面板：單機版沒有「帳戶」那一列（跟真的一樣）',
+       (await p.locator('.tour-stage .sheet-item').count()) === 5 && (await p.locator('.tour-stage [data-tour="account"]').count()) === 0)
+  }
+
+  if (await p.getByRole('button', { name: '開始使用' }).count()) break
+  await nextStep()
+}
+ok(`一路走完：步驟的順序與數量就是步驟表（單機版 ${LOCAL_STEPS.length} 步）`, JSON.stringify(seen) === JSON.stringify(LOCAL_STEPS))
+if (walkIssues.length) console.log('  走查發現：\n    ' + walkIssues.join('\n    '))
+ok('每一步：聚焦框包住目標、卡片在螢幕裡不蓋住框、舞台只有該點的地方碰得到', walkIssues.length === 0)
 ok('最後一步右邊換成「開始使用」，而且仍是唯一的主要按鈕',
    (await p.getByRole('button', { name: '開始使用' }).count()) === 1
    && (await p.locator('.tour-callout .btn-primary').count()) === 1)
+ok('演練不碰真的資料：導覽外面真的首頁仍然是空的',
+   (await p.evaluate(() => [...document.querySelectorAll('.recent-item')].filter((e) => !e.closest('.tour')).length)) === 0)
 await p.getByRole('button', { name: '開始使用' }).click(); await p.waitForTimeout(500)
 ok('按「開始使用」關得掉', (await p.locator('.guide').count()) === 0 && (await p.locator('.tour').count()) === 0)
 await p.reload(); await p.waitForTimeout(1200)
@@ -225,19 +259,30 @@ ok('設定裡不再有「使用說明」那一列（同一個目的地不需要�
      await p.keyboard.press('Escape'); await p.waitForTimeout(400)
      return none
    })())
-await p.locator('.app-bar button[aria-label="使用說明"]').click(); await p.waitForTimeout(500)
-ok('按「?」打開，從第一步重新開始（演練也是新的）',
-   (await stepTitle()) === '創建空間' && (await p.locator('.guide-bar.is-on').count()) === 1
-   && (await p.locator('.tour-stage .member').count()) === 0)
-ok('手動打開：第一步左邊是「關閉」，不是「略過」',
-   (await p.getByRole('button', { name: '關閉' }).count()) === 1
-   && (await p.getByRole('button', { name: '略過' }).count()) === 0)
+// ---- 手動打開：先看到目錄 ----
+await p.locator('.app-bar button[aria-label="使用說明"]').click(); await p.waitForTimeout(700)
+const idxItems = await p.locator('.tour-callout .sheet-item').allTextContents()
+ok('按「?」打開：先看到目錄，單機版八章（沒有「加入別人的空間」那一章）',
+   (await p.locator('.tour-callout').getAttribute('data-step')) === 'index'
+   && idxItems.length === 8 && !idxItems.some((x) => x.includes('加入別人的空間')))
+ok('目錄上每一章都標了有幾步，加起來就是全部（24 步），只有一步的章節不說「1 steps」',
+   idxItems.map((x) => Number((x.match(/(\d+) 步/) || [])[1] || 0)).reduce((a, c) => a + c, 0) === 24)
+ok('手動打開：右上角叫「關閉」，不是「略過」',
+   (await p.getByRole('button', { name: '關閉' }).count()) === 1 && (await p.getByRole('button', { name: '略過' }).count()) === 0)
+await p.getByRole('button', { name: /^點名/ }).click(); await p.waitForTimeout(700)
+ok('點哪一章就從那一章第一步開始（點名 ＝ 第 7 步「主揪與協助者」）',
+   (await p.locator('.tour-callout').getAttribute('data-step')) === 'identity'
+   && ((await p.locator('.guide-where').textContent()) || '').includes('點名 · 7 / 24'))
 ok('手動打開：不再說「之後想再看」（他剛剛才按過那顆鍵）',
    !((await p.locator('.tour-callout').textContent()) || '').includes('之後想再看'))
+await p.locator('.guide-where').click(); await p.waitForTimeout(500)
+ok('卡片上的章節名可以回目錄，而且目前這一章有標示',
+   (await p.locator('.tour-callout').getAttribute('data-step')) === 'index'
+   && (await p.locator('.tour-callout .sheet-item[aria-current="true"]').textContent() || '').includes('點名'))
 await p.getByRole('button', { name: '關閉' }).click(); await p.waitForTimeout(400)
 ok('按「關閉」關得掉', (await p.locator('.guide').count()) === 0)
-await p.locator('.app-bar button[aria-label="使用說明"]').click(); await p.waitForTimeout(500)
-await nextStep(); await nextStep(); await nextStep()
+await p.locator('.app-bar button[aria-label="使用說明"]').click(); await p.waitForTimeout(600)
+await p.getByRole('button', { name: /^最後/ }).click(); await p.waitForTimeout(600)
 ok('手動打開：最後一步叫「完成」，不是「開始使用」',
    (await p.getByRole('button', { name: '完成' }).count()) === 1
    && (await p.getByRole('button', { name: '開始使用' }).count()) === 0)

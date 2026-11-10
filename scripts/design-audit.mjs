@@ -346,29 +346,38 @@ for (const pass of PASSES) {
 
   /*
    * 使用說明（2026-11）：全新的 context 第一次停在首頁時會跳出一次聚焦導覽。它是覆蓋層，
-   * 得先走過它才碰得到後面的任何東西——而它自己有四個不一樣的畫面，所以一步一步驗：
-   * 第三步（名單可以點）與點過一個人之後（說明卡片裡長出 Toast）是兩個狀態，後者是半透明
-   * 材質加一顆 44px 的復原鍵，只在那一刻才存在。
+   * 得先走過它才碰得到後面的任何東西——而它自己有二十幾個不一樣的畫面，所以一步一步驗。
+   * 「點名」那一步與點過一個人之後（說明卡片裡長出 Toast）是兩個狀態，後者是半透明材質加一顆
+   * 44px 的復原鍵，只在那一刻才存在。
    *
-   * 舞台（用真的零件拼的首頁／空間）除了第三步的名單全是 `inert`，所以不在稽核範圍內——
-   * 那跟面板開著時背後的畫面是同一個規矩。稽核的是**說明卡片**（對比、觸控尺寸、字級、
-   * 文字沒被夾住）與第三步那份可以點的名單。
+   * 舞台（用真的零件拼的首頁／空間／面板）除了「點名」那一步的名單全是 `inert`，所以不在稽核
+   * 範圍內——那跟面板開著時背後的畫面是同一個規矩。稽核的是**說明卡片**（對比、觸控尺寸、
+   * 字級、文字沒被夾住）與「點名」那一步那份可以點的名單。
    * 系統放大字級那一輪（內文 1.5 倍）是它最容易爆版的地方：卡片放不下時內部會捲，
    * 「上一步／下一步」黏在卡片下緣。
    */
   const nextStep = async () => {
     await page.getByRole('button', { name: /^下一步$|^Next$/ }).click(); await page.waitForTimeout(500)
   }
-  await audit(page, scheme, '使用說明 · 第 1 步（第一次開啟）')
-  await nextStep()
-  await audit(page, scheme, '使用說明 · 第 2 步')
-  await nextStep()
-  await audit(page, scheme, '使用說明 · 第 3 步（名單可以點）')
-  await page.locator('.tour-stage .member-main').first().click(); await page.waitForTimeout(300)
-  await audit(page, scheme, '使用說明 · 第 3 步（點過一個人之後）')
-  await nextStep()
-  await audit(page, scheme, '使用說明 · 第 4 步（結果預覽）')
-  await page.getByRole('button', { name: /^開始使用$|^Get started$/ }).click(); await page.waitForTimeout(500)
+  /*
+   * 一步一步走完整份導覽（單機版 24 步）：每一步都是不同的舞台、不同的卡片內容，任何一步都可能
+   * 是那個在放大字級下爆版的。「點名」那一步另外在點過一個人之後再驗一次（說明卡片裡長出 Toast）。
+   */
+  let stepId = await page.locator('.tour-callout').getAttribute('data-step')
+  for (let n = 1; n <= 60; n++) {
+    await audit(page, scheme, `使用說明 · 第 ${n} 步（${stepId}）`)
+    if (stepId === 'tap') {
+      await page.locator('.tour-stage .member-main').first().click(); await page.waitForTimeout(300)
+      await audit(page, scheme, `使用說明 · 第 ${n} 步（${stepId}，點過一個人之後）`)
+    }
+    if (await page.getByRole('button', { name: /^開始使用$|^Get started$/ }).count()) break
+    await nextStep()
+    stepId = await page.locator('.tour-callout').getAttribute('data-step')
+  }
+  // 目錄：九章（單機版八章）的清單，卡片比任何一步都高。
+  await page.locator('.guide-where').click(); await page.waitForTimeout(500)
+  await audit(page, scheme, '使用說明 · 目錄')
+  await page.getByRole('button', { name: /^略過$|^Skip$/ }).click(); await page.waitForTimeout(500)
 
   /*
    * app 那顆字級鍵要**走一遍真的設定畫面**，不是直接蓋 DOM 屬性——
