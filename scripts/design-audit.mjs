@@ -338,6 +338,14 @@ for (const pass of PASSES) {
   await page.goto(URL); await page.waitForTimeout(900)
 
   /*
+   * 使用說明（2026-11）：全新的 context 第一次停在首頁時會跳出一次。它是覆蓋層，
+   * 得先走過它才碰得到後面的任何東西——而它自己也是一個畫面，所以先驗再關。
+   * 系統放大字級那一輪（內文 1.5 倍）是它最容易爆版的地方：四段說明加一顆按鈕。
+   */
+  await audit(page, scheme, '首頁 · 使用說明（第一次開啟）')
+  await page.getByRole('button', { name: /^開始使用$|^Get started$/ }).click(); await page.waitForTimeout(500)
+
+  /*
    * app 那顆字級鍵要**走一遍真的設定畫面**，不是直接蓋 DOM 屬性——
    * `applyFontScale()` 在每次啟動時都會照著存下來的偏好重設那個屬性，蓋上去的
    * 會被它拿掉（第一版就是這樣安靜地退化成「再跑一次淺色」，被下面那段對帳

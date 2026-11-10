@@ -36,6 +36,69 @@ ok('首頁載入', await p.locator('.app-name').isVisible()
    && (await p.locator('.topbar-name').count()) === 0)
 ok('顯示單機模式提示', (await p.locator('.page-note').count()) > 0)
 
+/*
+  使用說明（2026-11）：第一次打開 app、停在首頁時跳出一次。全新的 context 就是
+  「第一次打開」，而它是覆蓋層——後面所有的點擊都會被它擋住，所以這一段要在碰任何
+  別的東西之前跑完。
+*/
+const guide = p.getByRole('dialog', { name: '使用說明' })
+ok('第一次打開：跳出使用說明', await guide.isVisible())
+ok('四步，每一步一個編號、一個標題、一段說明',
+   (await p.locator('.guide-step').count()) === 4
+   && (await p.locator('.guide-step-title').count()) === 4
+   && (await p.locator('.guide-step-body').count()) === 4)
+ok('步驟是一份有序清單（螢幕閱讀器唸得出「第幾項」）',
+   (await p.locator('ol.guide-steps[role=list]').count()) === 1)
+const guideText = (await guide.textContent()) || ''
+// 說明是拿去畫面上找字的：引用的每個按鈕名稱都要是畫面上的原字。
+ok('步驟引用的按鈕名稱都是畫面上的原字',
+   ['創建空間', '邀請點名', '復原', '未到', '結束點名'].every((s) => guideText.includes(s)))
+// 這支腳本跑的是單機模式：那時候「把代碼給協助的人」是不會發生的事，第二步要換一句。
+ok('單機模式下第二步不承諾別人加得進來',
+   ((await p.locator('.guide-step-body').nth(1).textContent()) || '').includes('只存在這支手機'))
+ok('說了關掉之後去哪裡拿回來', guideText.includes('設定 › 使用說明'))
+ok('「開始使用」是唯一的主要按鈕，焦點一開始就在它身上（Enter ＝ 知道了）',
+   (await p.locator('.sheet .btn-primary').count()) === 1
+   && (await p.evaluate(() => document.activeElement?.textContent?.trim())) === '開始使用')
+ok('背景是 inert，不只是視覺遮罩',
+   await p.evaluate(() => document.querySelector('.app-name')?.closest('[inert]') != null))
+await p.getByRole('button', { name: '開始使用' }).click(); await p.waitForTimeout(500)
+ok('按「開始使用」關得掉', (await p.locator('.guide').count()) === 0)
+await p.reload(); await p.waitForTimeout(1200)
+ok('重新整理之後不再跳出來', (await p.locator('.guide').count()) === 0)
+
+// 關掉之後的那條路：設定 › 使用說明，同一份四步。
+await p.locator('button[aria-label="設定"]').click(); await p.waitForTimeout(500)
+await p.getByRole('button', { name: /^使用說明/ }).click(); await p.waitForTimeout(500)
+ok('設定 › 使用說明 拿得回來，同一份四步', (await p.locator('.guide-step').count()) === 4)
+ok('子畫面不帶「開始使用」：左上角的返回鍵就是出口',
+   (await p.getByRole('button', { name: '開始使用' }).count()) === 0
+   && (await p.locator('.sheet-bar button[aria-label="返回"]').count()) === 1)
+await p.locator('.sheet-bar button[aria-label="返回"]').click(); await p.waitForTimeout(400)
+ok('返回之後回到設定清單', await p.getByRole('button', { name: /^暱稱/ }).isVisible())
+await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+
+{
+  // 另外兩台手機。關法不只一種，任何一種都算看過；而協助者是掃連結直接落進空間
+  // 的，一張寫給主揪看的四步說明擋在名單前面，是在最不該的時候多一層。
+  const ctx2 = await b.newContext({ viewport: { width: 390, height: 844 } })
+  const q2 = await ctx2.newPage()
+  await q2.goto(URL); await q2.waitForTimeout(1000)
+  await q2.keyboard.press('Escape'); await q2.waitForTimeout(500)
+  ok('Esc 關掉也算看過', (await q2.locator('.guide').count()) === 0)
+  await q2.reload(); await q2.waitForTimeout(1000)
+  ok('Esc 關掉之後重新整理不再跳出來', (await q2.locator('.guide').count()) === 0)
+  await ctx2.close()
+
+  const ctx3 = await b.newContext({ viewport: { width: 390, height: 844 } })
+  const q3 = await ctx3.newPage()
+  await q3.goto(`${URL}#/r/ABCDEF`); await q3.waitForTimeout(1500)
+  ok('直接落進空間的人不被擋', (await q3.locator('.guide').count()) === 0)
+  await q3.evaluate(() => { window.location.hash = '#/' }); await q3.waitForTimeout(800)
+  ok('第一次回到首頁才看到', (await q3.locator('.guide').count()) === 1)
+  await ctx3.close()
+}
+
 
 // 開空間
 await p.getByRole('button', { name: /創建空間/ }).first().click()
@@ -1212,14 +1275,16 @@ ok('設定面板沒有標題列', (await p.locator('.sheet-title').count()) === 
 ok('但無障礙名稱還是「設定」', (await p.locator('.sheet').getAttribute('aria-label')) === '設定')
 ok('沒有震動回饋這個設定了', (await p.getByText('震動回饋').count()) === 0)
 
-// 設定頁是四列長得一樣的面板列：暱稱、帳戶、主題、語言（2026-09）。單機模式
-// 沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
+// 設定頁是長得一樣的面板列：暱稱、帳戶、主題、字級、點名提示、語言（2026-09），
+// 最後一列是使用說明（2026-11：第一次打開 app 的彈窗關掉之後，拿回來的那條路）。
+// 單機模式沒有雲端，帳戶那一列整列不出現——不給一個按了只會說「還沒設定雲端」的入口。
 const rows = await p.locator('.sheet .sheet-item strong').allTextContents()
 ok(`設定頁的每一列：${rows.join('、')}`,
-   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '點名提示', '語言']))
+   JSON.stringify(rows) === JSON.stringify(['暱稱', '主題', '文字大小', '點名提示', '語言', '使用說明']))
 ok('單機模式沒有帳戶那一列', (await p.getByText('帳戶').count()) === 0)
 
 // 收合時右邊印著目前的值，不展開也看得到自己設了什麼。
+// 使用說明那一列不是偏好，沒有「目前的值」可以印，所以不在這份清單裡。
 const shown = await p.locator('.sheet .sheet-item-value').allTextContents()
 ok(`每一列都印著目前的值：${shown.join('、')}`,
    shown[0] === '未填寫' && shown[1] === '跟隨系統' && shown[2] === '標準'

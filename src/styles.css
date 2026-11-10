@@ -2089,6 +2089,50 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* 最後那條沒有例子，自己跟上面拉開一點，不然它讀起來像前一格的第二句。 */
 .fmt-tail { margin-top: var(--sp-3); color: var(--ink-3); }
 
+/* === 使用說明 ============================================================ */
+
+/*
+ * 四步，由上往下讀（2026-11）。第一次打開 app 的彈窗與「設定 › 使用說明」共用。
+ *
+ * 比 `.stack` 的預設間距鬆一階（`--sp-4`）：這一頁是**要從頭讀到尾**的內容，不是
+ * 一疊控制項，步驟之間要有呼吸才分得出哪一段屬於哪一步。
+ */
+.guide { gap: var(--sp-4); }
+.guide-heading { font-size: var(--fs-5); }
+.guide-steps {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  margin: 0; padding: 0; list-style: none;
+  counter-reset: guide;
+}
+/*
+ * 一步＝左邊一顆編號、右邊標題與說明。編號用生成內容畫，所以 `<ol>` 的語意與
+ * 螢幕閱讀器唸到的「1、2、3、4」都還在，畫面上又不必多一個 `<span>`。
+ *
+ * 圓的大小跟著它自己的字級走（`2em`），不寫死像素：放大字級時編號與標題同比例變大，
+ * 兩者仍然對齊在第一行（標題的行高是 1.5 × 17 ＝ 25.5，圓是 2 × 13 ＝ 26）。
+ * 淡 teal 底 ＋ `--accent` 字是全站「強調文字放在淡底上」的同一組配對。
+ */
+.guide-step {
+  display: grid; grid-template-columns: auto 1fr; column-gap: var(--sp-3);
+  counter-increment: guide;
+}
+.guide-step::before {
+  content: counter(guide);
+  grid-row: 1 / span 2; align-self: start;
+  display: grid; place-items: center;
+  width: 2em; height: 2em; border-radius: var(--r-full);
+  background: var(--accent-soft); color: var(--accent);
+  font-size: var(--fs-2); font-weight: 700; line-height: 1;
+}
+.guide-step-title { grid-column: 2; font-size: var(--fs-4); font-weight: 600; line-height: 1.5; }
+/* `pretty`：不讓一段話的最後一行只剩一兩個字（「…再複製結 / 果。」）。
+   沒支援的瀏覽器照舊換行，只是少了這一點修飾。 */
+.guide-step-body {
+  grid-column: 2; margin-top: var(--sp-1);
+  font-size: var(--fs-3); color: var(--ink-2); line-height: 1.6;
+  text-wrap: pretty;
+}
+
 /* === 提示框 ============================================================== */
 
 .note {

@@ -26,6 +26,12 @@ const mk = async (name) => {
   const p = await ctx.newPage()
   const errs = []
   p.on('pageerror', e => errs.push(`${name}: ${e.message}`))
+  // 使用說明（2026-11）：全新的 context 第一次停在首頁都會跳出來，而它是覆蓋層，
+  // 會擋住後面所有的點擊。這支腳本測的不是它（那在 e2e-local.mjs），看到就按掉。
+  await p.addLocatorHandler(
+    p.getByRole('dialog', { name: /^使用說明$|^How to use$/ }),
+    (guide) => guide.getByRole('button', { name: /^開始使用$|^Get started$/ }).click(),
+  )
   return { ctx, p, errs, name }
 }
 const A = await mk('主揪')
