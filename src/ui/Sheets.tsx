@@ -17,7 +17,6 @@ import { currentRoute, joinUrl, navigate } from '../router'
 import { RosterInput, draftsFrom } from './RosterInput'
 import { ConfirmDialog, Sheet } from './Sheet'
 import { errorMessage } from './NewRoom'
-import { GuideSteps } from './Guide'
 import {
   IconArchive, IconBookmark, IconChevronRight, IconCopy, IconDuplicate,
   IconEdit, IconGoogle, IconHash, IconLink, IconMore,
@@ -763,7 +762,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState(identity.value.checkerName)
   const [signingIn, setSigningIn] = useState(false)
   /** 現在停在哪一張子畫面；null 就是那份清單。 */
-  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'font' | 'toast' | 'lang' | 'guide'>(null)
+  const [mode, setMode] = useState<null | 'name' | 'account' | 'theme' | 'font' | 'toast' | 'lang'>(null)
 
   // 登入成功後要一路關到底：使用者的心智模型是「我登入了，讓我看到我的東西」，
   // 留在設定面板上會讓人以為沒成功。
@@ -967,21 +966,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     )
   }
 
-  /*
-    使用說明。第一次打開 app 時會自己跳出來（`Guide.tsx` 的 `GuideSheet`），這裡是
-    關掉之後拿回來的那條路。內容是同一份 `GuideSteps`；子畫面不帶「開始使用」——
-    左上角那顆返回鍵就是出口，再放一顆是同一件事的第二個入口（見 overlays.md）。
-  */
-  if (mode === 'guide') {
-    return (
-      <Sheet title={t('guideTitle')} onClose={onClose} onBack={back}>
-        <div class="stack guide">
-          <GuideSteps />
-        </div>
-      </Sheet>
-    )
-  }
-
   return (
     <Sheet title={t('settings')} onClose={onClose}>
       <div class="sheet-items">
@@ -1024,13 +1008,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <button class="sheet-item" onClick={() => setMode('lang')}>
           <span class="sheet-item-main"><strong>{t('language')}</strong></span>
           <span class="sheet-item-value">{p.lang === 'zh' ? '中文' : 'English'}</span>
-          <IconChevronRight class="go" />
-        </button>
-
-        {/* 排在最後：上面五列是「這支手機的偏好」，這一列不是偏好，是說明——
-            它沒有目前的值可以印，所以尾端只有箭頭。 */}
-        <button class="sheet-item" onClick={() => setMode('guide')}>
-          <span class="sheet-item-main"><strong>{t('guideTitle')}</strong></span>
           <IconChevronRight class="go" />
         </button>
       </div>

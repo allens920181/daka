@@ -319,7 +319,7 @@ const zh = {
   retry: '重試',
 
   settings: '設定',
-  /* 使用說明（2026-11）。第一次打開 app、停在首頁時跳出一次，之後從「設定 › 使用說明」
+  /* 使用說明（2026-11）。第一次打開 app、停在首頁時跳出一次，之後按導航列右上角的「?」
      再看。寫的是**主揪**一場活動從頭到尾的四件事，而協助者在第二步被點到名
      （「他們按『加入空間』」）——所以不另外寫一份給協助者看的。
 
@@ -339,7 +339,23 @@ const zh = {
   guideStep4Title: '結束點名',
   guideStep4Body: '切到「未到」看還有誰沒到，有電話的可以直接撥。最後按「結束點名」，把結果複製貼回 LINE。',
   guideStart: '開始使用',
-  guideLater: '之後想再看，到「設定 › 使用說明」。',
+  guideLater: '之後想再看，按右上角的 ? 鍵。',
+  /* 2026-11 改成一次一步的互動式教學：上一步／下一步／略過，加第三步那份三個人的
+     演練名單。**「略過」與「之後想再看」只在第一次自己跳出來時才有**——使用者按導航列
+     右上角那顆「?」打開的那一份，第一步左邊是「關閉」（close）、最後一步是「完成」
+     （done），也不必再說去哪裡拿回來：他剛剛才按過那顆鍵。
+     guideLater 說的 ? 是那顆鍵的圖示本身（不是文字標籤），所以不加引號。 */
+  guideNext: '下一步',
+  guidePrev: '上一步',
+  guideSkip: '略過',
+  guideProgress: '第 {n} 步，共 {total} 步',
+  /* 演練名單上方那一句。點了之後換成真正的 Toast（「某某 · 已到」＋復原）。 */
+  guideTry: '試試看：點一下任何一個名字。',
+  /* 演練用的三個人，跟「填入範例」同一組名字——使用者之後開空間按範例時會再看到。 */
+  guideDemoName1: '王小明',
+  guideDemoName2: '李美花',
+  guideDemoName3: '陳大同',
+  guideResultLead: '貼回 LINE 的結果會像這樣：',
   callMember: '打電話給 {name}',
   overridden: '{name} 已由{who}改為{status}',
   overriddenAnon: '{name} 已被其他人改為{status}',
@@ -618,7 +634,16 @@ const en: Record<MessageKey, string> = {
   guideStep4Title: 'Finish roll call',
   guideStep4Body: 'Switch to “Missing” to see who is left; anyone with a phone number gets a call button. When you are done, tap “Finish roll call” and paste the result into your chat.',
   guideStart: 'Get started',
-  guideLater: 'To see this again, go to Settings › How to use.',
+  guideLater: 'To see this again, tap the ? button at the top right.',
+  guideNext: 'Next',
+  guidePrev: 'Previous',
+  guideSkip: 'Skip',
+  guideProgress: 'Step {n} of {total}',
+  guideTry: 'Try it: tap any name.',
+  guideDemoName1: 'Alice Chen',
+  guideDemoName2: 'Bob Lin',
+  guideDemoName3: 'Dana Wu',
+  guideResultLead: 'What you would paste into your chat:',
   callMember: 'Call {name}',
   overridden: '{name} was set to {status} by {who}',
   overriddenAnon: '{name} was set to {status} by someone else',

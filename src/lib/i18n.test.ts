@@ -76,10 +76,39 @@ describe('使用說明引用的按鈕名稱', () => {
       expect(m.guideStep4Body).toContain(q(m.finishRound))
     })
 
-    it(`${lang}：告訴使用者去哪裡拿回來的那句，路徑跟設定裡的一致`, () => {
-      expect(m.guideLater).toContain(`${m.settings} › ${m.guideTitle}`)
+    // 入口是導航列右上角那顆 ? 鍵（2026-11 從設定最後一列搬出來）。這句話說的是那顆鍵
+    // 的圖示；入口再搬家時，這條會逼你回來改這句話，而不是讓它指著一個不存在的地方。
+    it(`${lang}：告訴使用者去哪裡拿回來的那句，說的是導航列那顆 ? 鍵`, () => {
+      expect(m.guideLater).toContain('?')
+      expect(m.guideLater).not.toContain(m.settings)
     })
   }
+})
+
+describe('互動式教學的文案', () => {
+  for (const lang of ['zh', 'en'] as const) {
+    const m = messages[lang]
+
+    it(`${lang}：進度文字吃得到 {n} 與 {total}（少一個，螢幕閱讀器就聽不到走到哪了）`, () => {
+      expect(m.guideProgress).toContain('{n}')
+      expect(m.guideProgress).toContain('{total}')
+      expect(translate(lang, 'guideProgress', { n: 2, total: 4 })).toMatch(/2.*4/)
+    })
+
+    // 演練名單用名字當 key，也靠名字讓使用者分辨「我點的是哪一個」：重複的話
+    // 點一個會看起來像點到兩個。
+    it(`${lang}：演練名單的三個名字不重複、不空白`, () => {
+      const names = [m.guideDemoName1, m.guideDemoName2, m.guideDemoName3]
+      expect(names.every((n) => n.trim().length > 0)).toBe(true)
+      expect(new Set(names).size).toBe(3)
+    })
+  }
+
+  it('演練名單的名字跟「填入範例」同一組：之後在真的畫面上會再看到它們', () => {
+    expect(messages.zh.exampleRoster).toContain(messages.zh.guideDemoName1)
+    expect(messages.zh.exampleRoster).toContain(messages.zh.guideDemoName2)
+    expect(messages.zh.exampleRoster).toContain(messages.zh.guideDemoName3)
+  })
 })
 
 describe('translate', () => {

@@ -23,7 +23,7 @@ interface RoomRow {
   meta: ComponentChildren
 }
 
-export function Home({ onSettings }: { onSettings: () => void }) {
+export function Home({ onSettings, onGuide }: { onSettings: () => void; onGuide: () => void }) {
   const t = useT()
   const [joinOpen, setJoinOpen] = useState(false)
   const [filter, setFilter] = useState<RoomFilter>('all')
@@ -170,7 +170,7 @@ export function Home({ onSettings }: { onSettings: () => void }) {
           東西，而那句話每次都把它往下推一行。
           這一列本身 2026-09 搬進 AppBar，空間裡用的是同一條；它自己帶滿版的底色
           帶，所以掛在 `.shell` 外面。 */}
-      <AppBar onSettings={onSettings} />
+      <AppBar onSettings={onSettings} onGuide={onGuide} />
 
       <div class="shell">
         {connection.value === 'local-only' && (

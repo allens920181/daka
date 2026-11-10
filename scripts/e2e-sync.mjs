@@ -30,7 +30,7 @@ const mk = async (name) => {
   // 會擋住後面所有的點擊。這支腳本測的不是它（那在 e2e-local.mjs），看到就按掉。
   await p.addLocatorHandler(
     p.getByRole('dialog', { name: /^使用說明$|^How to use$/ }),
-    (guide) => guide.getByRole('button', { name: /^開始使用$|^Get started$/ }).click(),
+    (guide) => guide.getByRole('button', { name: /^略過$|^Skip$/ }).click(),
   )
   return { ctx, p, errs, name }
 }

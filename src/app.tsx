@@ -13,6 +13,8 @@ export function App() {
   const t = useT()
   const path = useRoute()
   const [settings, setSettings] = useState(false)
+  /** 使用者自己按導航列的「?」打開教學。第一次打開時自己跳出來的那一條不經過它（見 `autoGuide`）。 */
+  const [guide, setGuide] = useState(false)
 
   // 分享連結是 #/j/CODE。進來後換成 #/r/CODE，
   // 這樣重新整理或按上一頁不會又跑一次「加入」流程。
@@ -37,18 +39,28 @@ export function App() {
     要簽收的東西。`setPrefs` 先改記憶體再寫 IndexedDB，所以儲存不可用（無痕模式）時
     至少這一次開啟內不會再跳第二次。設定開著時不疊上去——兩張面板同時要使用者的注意力。
   */
-  const showGuide = !inRoom && path !== '/new' && !settings && !prefs.value.guideSeen
+  const autoGuide = !inRoom && path !== '/new' && !settings && !prefs.value.guideSeen
+
+  /*
+    兩條路進同一張面板：自己跳出來（`autoGuide`），或使用者按導航列的「?」（`guide`）。
+    **不論從哪條路進來，關掉就算看過**——按了「?」看完的人，沒有理由下次再被自己跳出來
+    的那一次打擾。手動打開的那一份出口不同（見 `GuideSheet` 的 `firstRun`）。
+  */
+  const closeGuide = () => {
+    setGuide(false)
+    if (!prefs.value.guideSeen) void setPrefs({ guideSeen: true })
+  }
 
   return (
     <>
       {inRoom?.[1]
-        ? <Room code={inRoom[1].toUpperCase()} onSettings={() => setSettings(true)} />
+        ? <Room code={inRoom[1].toUpperCase()} onSettings={() => setSettings(true)} onGuide={() => setGuide(true)} />
         : path === '/new'
           ? <NewRoom />
-          : <Home onSettings={() => setSettings(true)} />}
+          : <Home onSettings={() => setSettings(true)} onGuide={() => setGuide(true)} />}
 
       {settings && <SettingsSheet onClose={() => setSettings(false)} />}
-      {showGuide && <GuideSheet onClose={() => { void setPrefs({ guideSeen: true }) }} />}
+      {(autoGuide || guide) && !settings && <GuideSheet firstRun={autoGuide} onClose={closeGuide} />}
       <Toast />
     </>
   )

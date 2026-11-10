@@ -34,7 +34,7 @@ type MenuMode = 'invite' | undefined
  */
 const UNGROUPED = '\u0000ungrouped'
 
-export function Room({ code, onSettings }: { code: string; onSettings: () => void }) {
+export function Room({ code, onSettings, onGuide }: { code: string; onSettings: () => void; onGuide: () => void }) {
   const t = useT()
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
@@ -335,7 +335,7 @@ export function Room({ code, onSettings }: { code: string; onSettings: () => voi
         style={folded ? `transform: translateY(${-foldH}px)` : undefined}
       >
         <div class="room-chrome-fold" ref={foldRef}>
-          <AppBar onSettings={onSettings} />
+          <AppBar onSettings={onSettings} onGuide={onGuide} />
         <div class="shell topbar-inner">
           <button class="icon-btn" onClick={() => navigate('/')} aria-label={t('back')}>
             <IconBack />

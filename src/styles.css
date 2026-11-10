@@ -775,7 +775,20 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* `padding-block`，不是 `padding` 簡寫：這一格現在跟 `.shell` 同一個元素，
    簡寫會把 `.shell` 的左右內距歸零，標誌就貼到螢幕邊緣去了。 */
 .app-bar { padding-block: var(--sp-4) var(--sp-3); }
-.app-name { flex: 1; min-width: 0; font-size: var(--fs-6); letter-spacing: -.01em; }
+/*
+ * 名字讓位給右邊兩顆鍵，不是反過來（2026-11，加了「?」之後）。
+ *
+ * `min-width: 0` 只讓這個 flex 項目**可以**縮得比內容窄，字本身仍然是 `visible`
+ * 溢出——「RollRoom」是一個不能斷行的詞，所以在 320px 寬、系統字級放到 1.5 倍時（需要
+ * 176px、只剩 140px），它的尾巴會蓋到「?」鍵上，而那顆鍵是看得見、按得到的。
+ * 加那顆鍵之前這一格有 196px，放得下，所以這個洞是那顆鍵帶出來的。
+ *
+ * 截的是名字：兩顆鍵是動作，名字只是標籤；而且標誌就在名字旁邊，「RollR…」仍然認得出來。
+ */
+.app-name {
+  flex: 1; min-width: 0; font-size: var(--fs-6); letter-spacing: -.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 /*
  * 首頁的篩選＋搜尋列，sticky（2026-09）。
@@ -2092,46 +2105,70 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* === 使用說明 ============================================================ */
 
 /*
- * 四步，由上往下讀（2026-11）。第一次打開 app 的彈窗與「設定 › 使用說明」共用。
+ * 一次一步的互動式教學（2026-11）。第一次打開 app 自己跳出來，與使用者按導航列「?」
+ * 打開的是同一張面板。
  *
- * 比 `.stack` 的預設間距鬆一階（`--sp-4`）：這一頁是**要從頭讀到尾**的內容，不是
- * 一疊控制項，步驟之間要有呼吸才分得出哪一段屬於哪一步。
+ * 比 `.stack` 的預設間距鬆一階（`--sp-4`）：這一頁是要讀、要動手的內容，不是一疊
+ * 控制項，標題列、這一步、按鈕列之間要有呼吸才分得出各自是哪一塊。
  */
 .guide { gap: var(--sp-4); }
-.guide-heading { font-size: var(--fs-5); }
-.guide-steps {
-  display: flex; flex-direction: column; gap: var(--sp-4);
-  margin: 0; padding: 0; list-style: none;
-  counter-reset: guide;
-}
+
+/* 上緣：左邊說「這是什麼」，右邊說「讀到哪了」。擠不下時（英文、放大字級）進度條
+   換到下一行，不是被截掉。 */
+.guide-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
+/* 這一行是引子，不是主角——主角是底下那一步的標題（--fs-5）。同一階的兩個標題疊在
+   一起，讀的人分不出哪個才是「現在這一步」。 */
+.guide-heading { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
+
 /*
- * 一步＝左邊一顆編號、右邊標題與說明。編號用生成內容畫，所以 `<ol>` 的語意與
- * 螢幕閱讀器唸到的「1、2、3、4」都還在，畫面上又不必多一個 `<span>`。
- *
- * 圓的大小跟著它自己的字級走（`2em`），不寫死像素：放大字級時編號與標題同比例變大，
- * 兩者仍然對齊在第一行（標題的行高是 1.5 × 17 ＝ 25.5，圓是 2 × 13 ＝ 26）。
- * 淡 teal 底 ＋ `--accent` 字是全站「強調文字放在淡底上」的同一組配對。
+ * 進度：四根短條，走到哪就亮到哪（不是只亮當前那一根）。**亮的是「走過的」**，所以
+ * 第三步時前三根都亮，讀起來就是一條走了四分之三的進度條，不必數。未走到的用凹槽
+ * 色（`--surface-2`）：它們的工作是說「還有」，不需要被讀到。
+ * 不可互動，所以不受 48px 觸控下限約束；`aria-hidden`，螢幕閱讀器聽的是 `sr-only` 那句。
  */
-.guide-step {
-  display: grid; grid-template-columns: auto 1fr; column-gap: var(--sp-3);
-  counter-increment: guide;
-}
-.guide-step::before {
-  content: counter(guide);
-  grid-row: 1 / span 2; align-self: start;
-  display: grid; place-items: center;
+.guide-bars { display: flex; gap: var(--sp-1); }
+.guide-bar { width: var(--sp-5); height: var(--sp-1); border-radius: var(--r-full); background: var(--surface-2); }
+.guide-bar.is-on { background: var(--accent); }
+
+.guide-pane { display: flex; flex-direction: column; gap: var(--sp-3); }
+.guide-step-head { display: flex; align-items: center; gap: var(--sp-3); }
+/*
+ * 編號。淡 teal 底 ＋ `--accent` 字是全站「強調文字放在淡底上」的同一組配對。
+ * 圓的大小跟著它自己的字級走（`2em`），不寫死像素：放大字級時編號與標題同比例變大。
+ */
+.guide-num {
+  display: grid; place-items: center; flex: none;
   width: 2em; height: 2em; border-radius: var(--r-full);
   background: var(--accent-soft); color: var(--accent);
-  font-size: var(--fs-2); font-weight: 700; line-height: 1;
+  font-size: var(--fs-3); font-weight: 700; line-height: 1;
 }
-.guide-step-title { grid-column: 2; font-size: var(--fs-4); font-weight: 600; line-height: 1.5; }
-/* `pretty`：不讓一段話的最後一行只剩一兩個字（「…再複製結 / 果。」）。
-   沒支援的瀏覽器照舊換行，只是少了這一點修飾。 */
-.guide-step-body {
-  grid-column: 2; margin-top: var(--sp-1);
-  font-size: var(--fs-3); color: var(--ink-2); line-height: 1.6;
-  text-wrap: pretty;
-}
+.guide-step-title { font-size: var(--fs-5); }
+/* `pretty`：不讓一段話的最後一行只剩一兩個字。沒支援的瀏覽器照舊換行，只是少了
+   這一點修飾。 */
+.guide-step-body { font-size: var(--fs-3); color: var(--ink-2); line-height: 1.6; text-wrap: pretty; }
+
+/*
+ * 演練名單。**底色是 `--paper`**：真的名單是坐在頁面上的，未到的列「浮起」、已到的列
+ * 「沉回頁面」靠的就是它底下那一層比列低一階（見 `.member`）。放在面板的白底上，
+ * 那兩個狀態會變成白對白。名單列本身一個樣式都沒有另外寫——它就是 `.member`。
+ */
+.guide-demo { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); border-radius: var(--r-2); background: var(--paper); }
+.guide-demo-count { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
+/* 不能借 `.list`：它帶著 160px 的底部內距（給底部動作列讓位）。 */
+.guide-demo-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+/* 提示與 Toast 住同一格：點完只是換掉裡面的東西，不會把名單頂上去。高度由 Toast 決定。 */
+.guide-demo-slot { display: flex; align-items: center; min-height: var(--tap-lg); }
+/*
+ * 這顆 Toast 是內嵌的，不浮在任何東西上，所以沒有陰影。真的 Toast 那道 `--el-3` 是往
+ * **上**打的大陰影（它浮在畫面下緣，要把底下的名單壓暗一點）——留著的話，它會把
+ * 緊貼在它上面的那一列罩暗，讓最後一個人看起來像在淡出。
+ */
+.guide-demo .toast { box-shadow: none; }
+/* 第四步的結果預覽。上面那句引子貼著它，不像 `.stack` 的預設間距那樣拉開。 */
+.guide-result { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* 兩顆等寬、永遠兩格：左邊空著的時候右邊那顆也要留在右邊，不然第一步它會跳到左邊。 */
+.guide-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
 
 /* === 提示框 ============================================================== */
 
