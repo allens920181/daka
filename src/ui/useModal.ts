@@ -25,7 +25,13 @@ export function useModal(
 
   useEffect(() => {
     const restoreTo = document.activeElement as HTMLElement | null
+    /*
+      `[inert]` 子樹裡的東西不算：它們根本聚焦不到，留在清單裡的話，Tab 轉圈的頭尾
+      會落在一個永遠拿不到焦點的元素上，焦點就從層的邊緣漏出去了。聚焦導覽的舞台
+      （`GuideTour`）是這樣的——整個畫面都在層裡，但只有目標那一塊碰得到。
+    */
     const items = () => [...(layer.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])]
+      .filter((el) => !el.closest('[inert]'))
 
     const initial = items()
     if (initial.length > 0) {

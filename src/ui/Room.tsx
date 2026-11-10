@@ -789,7 +789,7 @@ function RoomSkeleton({ label }: { label: string }) {
  * 說「畫面上最大的數字永遠是還有幾位沒到」，而計分區拿掉之後這裡就是那個數字
  * 唯一的家——它不能長得跟旁邊兩個一樣。
  */
-function Segment({ active, onClick, label, count, tone }: {
+export function Segment({ active, onClick, label, count, tone }: {
   active: boolean; onClick: () => void; label: string; count: number
   tone?: 'pending' | 'done'
 }) {
@@ -803,7 +803,7 @@ function Segment({ active, onClick, label, count, tone }: {
   )
 }
 
-function MemberRow({
+export function MemberRow({
   member, closed, showGroup, editing, editingThis, onToggle, onEdit, onSave, onRemove,
 }: {
   member: Member

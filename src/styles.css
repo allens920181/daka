@@ -2102,23 +2102,69 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* 最後那條沒有例子，自己跟上面拉開一點，不然它讀起來像前一格的第二句。 */
 .fmt-tail { margin-top: var(--sp-3); color: var(--ink-3); }
 
-/* === 使用說明 ============================================================ */
+/* === 使用說明（聚焦導覽）================================================== */
 
 /*
- * 一次一步的互動式教學（2026-11）。第一次打開 app 自己跳出來，與使用者按導航列「?」
- * 打開的是同一張面板。
+ * 聚焦導覽（2026-11）：蓋一層全螢幕的舞台，用真的零件拼出首頁／空間，聚焦框框住
+ * 這一步要講的那個按鈕或區塊，其餘壓暗；說明卡片釘在下緣。見 Guide.tsx 的說明。
  *
- * 比 `.stack` 的預設間距鬆一階（`--sp-4`）：這一頁是要讀、要動手的內容，不是一疊
- * 控制項，標題列、這一步、按鈕列之間要有呼吸才分得出各自是哪一塊。
+ * 三層，由下而上：舞台（`.tour-stage`，真的零件）→ 聚焦框（`.tour-focus`，它的
+ * `box-shadow` 就是暗部）→ 說明卡片（`.tour-callout`，沿用 `.dialog`）。
+ */
+.tour { position: fixed; inset: 0; z-index: var(--z-modal); }
+.tour-layer { position: absolute; inset: 0; overflow: hidden; }
+/* 不透明：底下真的畫面完全被蓋住，舞台上看到的只有示範用的東西。 */
+.tour-stage { position: absolute; inset: 0; overflow: hidden; background: var(--paper); }
+/* 只負責 `inert`，不參與版面。 */
+.tour-region { display: contents; }
+/* `.list` 自己帶 160px 的底部內距（給底部動作列讓位）；舞台上的動作列是 fixed 的、
+   不佔位置，而那 160px 會讓名單那一塊虛胖——聚焦框量的就是這一塊。 */
+.tour-stage .list { padding-bottom: 0; }
+/* 空間舞台省了最上面的 `AppBar`（見 Guide.tsx 的 `RoomStage`），頂欄於是貼著螢幕上緣，
+   第二步框住右上角那顆「更多」的聚焦框會有一截落在螢幕外。補一格頂端的空，大小是
+   聚焦框外放的那一圈（`PAD`）再多一點呼吸。 */
+.tour-stage .topbar { padding-top: calc(var(--sp-4) + env(safe-area-inset-top)); }
+
+/*
+ * 聚焦框。**暗部是它自己的陰影**：往外撒一整個螢幕那麼大（`100vmax`），框在哪，亮的就在
+ * 哪，其餘都暗。比「四塊遮罩拼出一個洞」少三塊要跟著動的東西，也不會在轉場時露縫。
+ * `--scrim` 是面板與對話框後面同一層遮罩，深淺兩個主題各有自己的值；描邊用
+ * `--accent-strong`（規範裡「焦點框」專用的那一階，不得用於一般文字）。
+ *
+ * `pointer-events: none`：陰影本來就不吃點擊，所以暗的地方碰到的是底下的舞台——而舞台上
+ * 除了第三步的名單全是 `inert`，碰了什麼都不會發生。圓角是 `--r-2`，跟被框住的按鈕、
+ * 名單列同一階（`--r-3` 只給面板與對話框）。
+ */
+.tour-focus {
+  position: absolute; z-index: var(--z-modal); pointer-events: none;
+  border-radius: var(--r-2);
+  box-shadow: 0 0 0 100vmax var(--scrim);
+  outline: 2px solid var(--accent-strong);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tour-focus {
+    transition: left var(--dur-3) var(--ease), top var(--dur-3) var(--ease),
+      width var(--dur-3) var(--ease), height var(--dur-3) var(--ease);
+  }
+}
+
+/*
+ * 說明卡片：就是一張對話框（`.dialog`），只是不置中。`.dialog` 的 `width: 100%` 在這裡
+ * 要讓開——左右各留 `--sp-4`、最寬 420px、靠 `margin: auto` 置中，不用 `transform`（
+ * `.dialog` 的進場動畫會蓋掉它）。`bottom` 與 `max-height` 由 Guide.tsx 依框的位置算
+ * 出來；放不下就卡片內部捲動，不蓋住目標。
+ */
+.tour-callout {
+  position: absolute; z-index: var(--z-modal);
+  left: var(--sp-4); right: var(--sp-4); width: auto; margin-inline: auto;
+  overflow-y: auto;
+}
+
+/*
+ * 比 `.stack` 的預設間距鬆一階（`--sp-4`）：這一張卡片是要讀的內容，不是一疊控制項，
+ * 進度、這一步、按鈕列之間要有呼吸才分得出各自是哪一塊。
  */
 .guide { gap: var(--sp-4); }
-
-/* 上緣：左邊說「這是什麼」，右邊說「讀到哪了」。擠不下時（英文、放大字級）進度條
-   換到下一行，不是被截掉。 */
-.guide-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
-/* 這一行是引子，不是主角——主角是底下那一步的標題（--fs-5）。同一階的兩個標題疊在
-   一起，讀的人分不出哪個才是「現在這一步」。 */
-.guide-heading { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
 
 /*
  * 進度：四根短條，走到哪就亮到哪（不是只亮當前那一根）。**亮的是「走過的」**，所以
@@ -2131,7 +2177,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .guide-bar.is-on { background: var(--accent); }
 
 .guide-pane { display: flex; flex-direction: column; gap: var(--sp-3); }
-.guide-step-head { display: flex; align-items: center; gap: var(--sp-3); }
+/* 編號、標題、進度條一列。擠不下時（英文、放大字級）進度條換到下一行，不是被截掉。 */
+.guide-step-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
 /*
  * 編號。淡 teal 底 ＋ `--accent` 字是全站「強調文字放在淡底上」的同一組配對。
  * 圓的大小跟著它自己的字級走（`2em`），不寫死像素：放大字級時編號與標題同比例變大。
@@ -2142,33 +2189,39 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--accent-soft); color: var(--accent);
   font-size: var(--fs-3); font-weight: 700; line-height: 1;
 }
-.guide-step-title { font-size: var(--fs-5); }
+.guide-step-title { flex: 1; min-width: 0; font-size: var(--fs-5); }
 /* `pretty`：不讓一段話的最後一行只剩一兩個字。沒支援的瀏覽器照舊換行，只是少了
    這一點修飾。 */
 .guide-step-body { font-size: var(--fs-3); color: var(--ink-2); line-height: 1.6; text-wrap: pretty; }
 
-/*
- * 演練名單。**底色是 `--paper`**：真的名單是坐在頁面上的，未到的列「浮起」、已到的列
- * 「沉回頁面」靠的就是它底下那一層比列低一階（見 `.member`）。放在面板的白底上，
- * 那兩個狀態會變成白對白。名單列本身一個樣式都沒有另外寫——它就是 `.member`。
- */
-.guide-demo { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); border-radius: var(--r-2); background: var(--paper); }
-.guide-demo-count { font-size: var(--fs-3); font-weight: 600; color: var(--ink-2); }
-/* 不能借 `.list`：它帶著 160px 的底部內距（給底部動作列讓位）。 */
-.guide-demo-list { display: flex; flex-direction: column; gap: var(--sp-2); }
-/* 提示與 Toast 住同一格：點完只是換掉裡面的東西，不會把名單頂上去。高度由 Toast 決定。 */
+/* 第三步的回饋格：提示與 Toast 住同一格，點完只是換掉裡面的東西，不會把卡片頂高。
+   高度由 Toast 決定。 */
 .guide-demo-slot { display: flex; align-items: center; min-height: var(--tap-lg); }
+/* 捲進視野時要讓開黏在卡片下緣的按鈕列（`.guide-actions`：一顆 `--tap-lg` ＋ 上下內距）。 */
+.tour-callout .guide-demo-slot { scroll-margin-bottom: calc(var(--tap-lg) + var(--sp-5)); }
 /*
  * 這顆 Toast 是內嵌的，不浮在任何東西上，所以沒有陰影。真的 Toast 那道 `--el-3` 是往
  * **上**打的大陰影（它浮在畫面下緣，要把底下的名單壓暗一點）——留著的話，它會把
- * 緊貼在它上面的那一列罩暗，讓最後一個人看起來像在淡出。
+ * 緊貼在它上面的那一行罩暗。
  */
-.guide-demo .toast { box-shadow: none; }
+.guide-demo-slot .toast { box-shadow: none; }
 /* 第四步的結果預覽。上面那句引子貼著它，不像 `.stack` 的預設間距那樣拉開。 */
 .guide-result { display: flex; flex-direction: column; gap: var(--sp-2); }
 
-/* 兩顆等寬、永遠兩格：左邊空著的時候右邊那顆也要留在右邊，不然第一步它會跳到左邊。 */
+/* 兩顆等寬、永遠兩格：左邊是「略過／上一步」，右邊永遠是往前。 */
 .guide-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+/*
+ * 卡片放不下（矮的手機、放大的字級）時是**卡片內部在捲**，這時候「上一步／下一步」要
+ * 黏在卡片下緣——不然「下一步」會捲到看不見，而導覽沒有別的往前的路。
+ * 卡片自己的底部內距讓給這一列（`.tour-callout` 的 `padding-bottom: 0`）：黏住時它貼著
+ * 卡片下緣、底下仍有一格呼吸，沒捲動時它就長在原位，兩種情形按鈕的位置是同一個。
+ */
+.tour-callout { padding-bottom: 0; }
+.tour-callout .guide-actions {
+  position: sticky; bottom: 0;
+  padding-block: var(--sp-1) var(--sp-4);
+  background: var(--surface);
+}
 
 /* === 提示框 ============================================================== */
 

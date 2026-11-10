@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { booted, prefs, setPrefs } from './lib/store'
 import { navigate, useRoute } from './router'
-import { GuideSheet } from './ui/Guide'
+import { GuideTour } from './ui/Guide'
 import { Home } from './ui/Home'
 import { NewRoom } from './ui/NewRoom'
 import { Room } from './ui/Room'
@@ -42,9 +42,9 @@ export function App() {
   const autoGuide = !inRoom && path !== '/new' && !settings && !prefs.value.guideSeen
 
   /*
-    兩條路進同一張面板：自己跳出來（`autoGuide`），或使用者按導航列的「?」（`guide`）。
+    兩條路進同一份導覽：自己跳出來（`autoGuide`），或使用者按導航列的「?」（`guide`）。
     **不論從哪條路進來，關掉就算看過**——按了「?」看完的人，沒有理由下次再被自己跳出來
-    的那一次打擾。手動打開的那一份出口不同（見 `GuideSheet` 的 `firstRun`）。
+    的那一次打擾。手動打開的那一份出口不同（見 `GuideTour` 的 `firstRun`）。
   */
   const closeGuide = () => {
     setGuide(false)
@@ -60,7 +60,7 @@ export function App() {
           : <Home onSettings={() => setSettings(true)} onGuide={() => setGuide(true)} />}
 
       {settings && <SettingsSheet onClose={() => setSettings(false)} />}
-      {(autoGuide || guide) && !settings && <GuideSheet firstRun={autoGuide} onClose={closeGuide} />}
+      {(autoGuide || guide) && !settings && <GuideTour firstRun={autoGuide} onClose={closeGuide} />}
       <Toast />
     </>
   )

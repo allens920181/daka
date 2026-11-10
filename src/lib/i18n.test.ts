@@ -69,6 +69,8 @@ describe('使用說明引用的按鈕名稱', () => {
     })
 
     it(`${lang}：說明裡用括號引起來的按鈕名稱都存在`, () => {
+      // 邀請點名在空間右上角的「更多」裡（不是底部動作列），聚焦框框住的就是那顆「更多」。
+      expect(m.guideStep2Body).toContain(q(m.manage))
       expect(m.guideStep2Body).toContain(q(m.invite))
       expect(m.guideStep2Body).toContain(q(m.joinRoom))
       expect(m.guideStep3Body).toContain(q(m.undo))

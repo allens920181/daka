@@ -345,21 +345,26 @@ for (const pass of PASSES) {
   await page.goto(URL); await page.waitForTimeout(900)
 
   /*
-   * 使用說明（2026-11）：全新的 context 第一次停在首頁時會跳出一次互動式教學。它是
-   * 覆蓋層，得先走過它才碰得到後面的任何東西——而它自己有四個不一樣的畫面，所以一步
-   * 一步驗：第三步（三人演練名單）與點過一個人之後（Toast 長出來）是兩個狀態，
-   * 後者是半透明材質加一顆 44px 的復原鍵，只在那一刻才存在。
-   * 系統放大字級那一輪（內文 1.5 倍）是它最容易爆版的地方：第三步最高。
+   * 使用說明（2026-11）：全新的 context 第一次停在首頁時會跳出一次聚焦導覽。它是覆蓋層，
+   * 得先走過它才碰得到後面的任何東西——而它自己有四個不一樣的畫面，所以一步一步驗：
+   * 第三步（名單可以點）與點過一個人之後（說明卡片裡長出 Toast）是兩個狀態，後者是半透明
+   * 材質加一顆 44px 的復原鍵，只在那一刻才存在。
+   *
+   * 舞台（用真的零件拼的首頁／空間）除了第三步的名單全是 `inert`，所以不在稽核範圍內——
+   * 那跟面板開著時背後的畫面是同一個規矩。稽核的是**說明卡片**（對比、觸控尺寸、字級、
+   * 文字沒被夾住）與第三步那份可以點的名單。
+   * 系統放大字級那一輪（內文 1.5 倍）是它最容易爆版的地方：卡片放不下時內部會捲，
+   * 「上一步／下一步」黏在卡片下緣。
    */
   const nextStep = async () => {
-    await page.getByRole('button', { name: /^下一步$|^Next$/ }).click(); await page.waitForTimeout(300)
+    await page.getByRole('button', { name: /^下一步$|^Next$/ }).click(); await page.waitForTimeout(500)
   }
   await audit(page, scheme, '使用說明 · 第 1 步（第一次開啟）')
   await nextStep()
   await audit(page, scheme, '使用說明 · 第 2 步')
   await nextStep()
-  await audit(page, scheme, '使用說明 · 第 3 步（演練名單）')
-  await page.locator('.guide-demo .member-main').first().click(); await page.waitForTimeout(300)
+  await audit(page, scheme, '使用說明 · 第 3 步（名單可以點）')
+  await page.locator('.tour-stage .member-main').first().click(); await page.waitForTimeout(300)
   await audit(page, scheme, '使用說明 · 第 3 步（點過一個人之後）')
   await nextStep()
   await audit(page, scheme, '使用說明 · 第 4 步（結果預覽）')
