@@ -319,6 +319,27 @@ const zh = {
   retry: '重試',
 
   settings: '設定',
+  /* 使用說明（2026-11）。第一次打開 app、停在首頁時跳出一次，之後從「設定 › 使用說明」
+     再看。寫的是**主揪**一場活動從頭到尾的四件事，而協助者在第二步被點到名
+     （「他們按『加入空間』」）——所以不另外寫一份給協助者看的。
+
+     每一步引用的按鈕名稱都是畫面上的原字（創建空間／邀請點名／加入空間／復原／
+     未到／結束點名），照抄不改寫：使用者是拿這段話去畫面上找字的。
+     第二步在單機模式下換一句——那時候「把代碼給協助的人」是一句不會發生的承諾
+     （見 shareLocalBody），§1.2：說明不得承諾沒有發生的事。 */
+  guideTitle: '使用說明',
+  guideHeading: '四步完成一場點名',
+  guideStep1Title: '創建空間',
+  guideStep1Body: '貼上名單（LINE 接龍直接貼就行），取個活動名字，看過清單預覽再建立。',
+  guideStep2Title: '邀請點名',
+  guideStep2Body: '進到空間後按「邀請點名」，把代碼、連結或 QR 碼給協助的人。他們按「加入空間」就能一起點，不用登入。',
+  guideStep2BodyLocal: '這個版本還沒連上雲端，名單只存在這支手機，其他人加不進來。你可以自己點完，再複製結果。',
+  guideStep3Title: '點名',
+  guideStep3Body: '點一下名字就是已到。點錯了再點一次，或按「復原」。',
+  guideStep4Title: '結束點名',
+  guideStep4Body: '切到「未到」看還有誰沒到，有電話的可以直接撥。最後按「結束點名」，把結果複製貼回 LINE。',
+  guideStart: '開始使用',
+  guideLater: '之後想再看，到「設定 › 使用說明」。',
   callMember: '打電話給 {name}',
   overridden: '{name} 已由{who}改為{status}',
   overriddenAnon: '{name} 已被其他人改為{status}',
@@ -585,6 +606,19 @@ const en: Record<MessageKey, string> = {
   retry: 'Retry',
 
   settings: 'Settings',
+  guideTitle: 'How to use',
+  guideHeading: 'Four steps to run a roll call',
+  guideStep1Title: 'Create a room',
+  guideStep1Body: 'Paste the roster (a chat thread works as-is), name the event, and check the preview before you create it.',
+  guideStep2Title: 'Invite',
+  guideStep2Body: 'In the room, tap “Invite” and give helpers the code, link or QR code. They tap “Join a room” and check names with you — no sign-in needed.',
+  guideStep2BodyLocal: 'This build has no cloud connection, so the list lives only on this phone and nobody else can join. You can still check names yourself and copy the result.',
+  guideStep3Title: 'Check names',
+  guideStep3Body: 'Tap a name to mark them here. Tapped the wrong one? Tap again, or press “Undo”.',
+  guideStep4Title: 'Finish roll call',
+  guideStep4Body: 'Switch to “Missing” to see who is left; anyone with a phone number gets a call button. When you are done, tap “Finish roll call” and paste the result into your chat.',
+  guideStart: 'Get started',
+  guideLater: 'To see this again, go to Settings › How to use.',
   callMember: 'Call {name}',
   overridden: '{name} was set to {status} by {who}',
   overriddenAnon: '{name} was set to {status} by someone else',

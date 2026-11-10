@@ -38,6 +38,20 @@ export interface Prefs {
    * 預設開著：它帶著「復原」，是誤觸的安全網。
    */
   rollCallToast: boolean
+  /**
+   * 使用說明看過了沒（2026-11）。
+   *
+   * 第一次打開 app、停在首頁時跳出一次，**任何一種關法都算看過**（按「開始使用」、
+   * 點面板外面、Esc、往下滑）——它不是一份要簽收的條款，使用者想略過就讓他略過。
+   * 之後想再看，從「設定 › 使用說明」。
+   *
+   * 為什麼只跳一次：這個 app 是站在遊覽車門口、趕時間用的，每次開啟都先擋一層
+   * 面板，是拿「第一次用的人需要」去罰「第五十次用的人」。
+   *
+   * 放在偏好裡而不是另開一格：它跟主題、字級一樣是「這支手機的事」，而且
+   * `loadPrefs` 本來就會把缺的欄位補成預設值，舊版存下來的偏好不必遷移。
+   */
+  guideSeen: boolean
 }
 
 export interface RecentRoom {
@@ -47,7 +61,9 @@ export interface RecentRoom {
   lastSeen: number
 }
 
-export const DEFAULT_PREFS: Prefs = { lang: 'zh', theme: 'system', font: 'base', rollCallToast: true }
+export const DEFAULT_PREFS: Prefs = {
+  lang: 'zh', theme: 'system', font: 'base', rollCallToast: true, guideSeen: false,
+}
 
 /** IndexedDB 在無痕模式或停用儲存時會丟錯；一律降級成「沒有資料」而不是讓畫面掛掉。 */
 async function safeGet<T>(key: string): Promise<T | undefined> {

@@ -48,6 +48,40 @@ describe('isExampleName', () => {
   })
 })
 
+/**
+ * 使用說明是拿去畫面上找字的：說明裡引用的每個按鈕名稱，都得跟那顆按鈕**現在**的名稱
+ * 一致。比對的是 `messages` 裡的原字，不是寫死在測試裡的字——按鈕改了名而說明沒跟著改，
+ * 這裡才會紅。（e2e 那條斷言寫死了字，擋不住這種漂移，只擋得住說明自己被改壞。）
+ */
+describe('使用說明引用的按鈕名稱', () => {
+  const quote = {
+    zh: (s: string) => `「${s}」`,
+    en: (s: string) => `“${s}”`,
+  }
+  for (const lang of ['zh', 'en'] as const) {
+    const m = messages[lang]
+    const q = quote[lang]
+
+    it(`${lang}：四步的標題就是對應那顆按鈕的名稱`, () => {
+      expect(m.guideStep1Title).toBe(m.openRoom)
+      expect(m.guideStep2Title).toBe(m.invite)
+      expect(m.guideStep4Title).toBe(m.finishRound)
+    })
+
+    it(`${lang}：說明裡用括號引起來的按鈕名稱都存在`, () => {
+      expect(m.guideStep2Body).toContain(q(m.invite))
+      expect(m.guideStep2Body).toContain(q(m.joinRoom))
+      expect(m.guideStep3Body).toContain(q(m.undo))
+      expect(m.guideStep4Body).toContain(q(m.missing))
+      expect(m.guideStep4Body).toContain(q(m.finishRound))
+    })
+
+    it(`${lang}：告訴使用者去哪裡拿回來的那句，路徑跟設定裡的一致`, () => {
+      expect(m.guideLater).toContain(`${m.settings} › ${m.guideTitle}`)
+    })
+  }
+})
+
 describe('translate', () => {
   it('缺的語言退回 zh，不會印出 key', () => {
     expect(translate('en', 'exampleClear')).toBe('Clear the example')
