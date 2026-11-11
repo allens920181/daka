@@ -319,43 +319,122 @@ const zh = {
   retry: '重試',
 
   settings: '設定',
-  /* 使用說明（2026-11）。第一次打開 app、停在首頁時跳出一次，之後按導航列右上角的「?」
-     再看。寫的是**主揪**一場活動從頭到尾的四件事，而協助者在第二步被點到名
-     （「他們按『加入空間』」）——所以不另外寫一份給協助者看的。
-
-     每一步引用的按鈕名稱都是畫面上的原字（創建空間／邀請點名／加入空間／復原／
-     未到／結束點名），照抄不改寫：使用者是拿這段話去畫面上找字的。
-     第二步在單機模式下換一句——那時候「把代碼給協助的人」是一句不會發生的承諾
-     （見 shareLocalBody），§1.2：說明不得承諾沒有發生的事。 */
+  /*
+   * 聚焦導覽（2026-11）：**整個 app 的每一個功能，一個一個框給你看**。步驟表在
+   * `src/ui/guideSteps.ts`，每一步兩個字串：`guide<Id>Title`、`guide<Id>Body`。
+   *
+   * 第一次打開 app、停在首頁時跳出一次，之後按導航列右上角的「?」。寫的是**主揪**一場活動從頭到尾
+   * 的事，協助者的部分（加入、點名、能做與不能做的）穿插在對應的那一步裡，不另外寫一份。
+   *
+   * 「」括起來的字都是畫面上的原字，照抄不改寫：使用者是拿這段話去畫面上找字的，而聚焦框框住
+   * 的就是那顆按鈕。`i18n.test.ts` 會一個一個去對（不是畫面上的標籤的，要明列在那邊的例外清單
+   * 裡）。標題多半就是那顆按鈕的名稱，測試也釘著。
+   *
+   * 單機版（沒設定雲端）換掉或不出現的步驟見 `guideSteps.ts` 的 `cloud`／`bodyLocal`：
+   * 說明不得承諾沒有發生的事（§1.2）。
+   */
   guideTitle: '使用說明',
-  guideHeading: '四步完成一場點名',
-  guideStep1Title: '創建空間',
-  guideStep1Body: '貼上名單（LINE 接龍直接貼就行），取個活動名字，看過清單預覽再建立。',
-  guideStep2Title: '邀請點名',
-  guideStep2Body: '進到空間後按「邀請點名」，把代碼、連結或 QR 碼給協助的人。他們按「加入空間」就能一起點，不用登入。',
-  guideStep2BodyLocal: '這個版本還沒連上雲端，名單只存在這支手機，其他人加不進來。你可以自己點完，再複製結果。',
-  guideStep3Title: '點名',
-  guideStep3Body: '點一下名字就是已到。點錯了再點一次，或按「復原」。',
-  guideStep4Title: '結束點名',
-  guideStep4Body: '切到「未到」看還有誰沒到，有電話的可以直接撥。最後按「結束點名」，把結果複製貼回 LINE。',
   guideStart: '開始使用',
   guideLater: '之後想再看，按右上角的 ? 鍵。',
-  /* 2026-11 改成一次一步的互動式教學：上一步／下一步／略過，加第三步那份三個人的
-     演練名單。**「略過」與「之後想再看」只在第一次自己跳出來時才有**——使用者按導航列
-     右上角那顆「?」打開的那一份，第一步左邊是「關閉」（close）、最後一步是「完成」
-     （done），也不必再說去哪裡拿回來：他剛剛才按過那顆鍵。
-     guideLater 說的 ? 是那顆鍵的圖示本身（不是文字標籤），所以不加引號。 */
   guideNext: '下一步',
   guidePrev: '上一步',
+  guideIndex: '目錄',
+  guideIndexHint: '想看哪一章？',
+  guideFromStart: '從頭看',
+  guideCount: '{n} / {total}',
+  guideStepsCount: '{n} 步',
+  guideStepsOne: '{n} 步',
   guideSkip: '略過',
   guideProgress: '第 {n} 步，共 {total} 步',
-  /* 演練名單上方那一句。點了之後換成真正的 Toast（「某某 · 已到」＋復原）。 */
+  /* 「點名」那一步的回饋格：提示，點了之後換成真正的 Toast 樣式（「某某 · 已到」＋復原）。 */
   guideTry: '試試看：點一下任何一個名字。',
   /* 演練用的三個人，跟「填入範例」同一組名字——使用者之後開空間按範例時會再看到。 */
   guideDemoName1: '王小明',
   guideDemoName2: '李美花',
   guideDemoName3: '陳大同',
-  guideResultLead: '貼回 LINE 的結果會像這樣：',
+  guideDemoNote3: '坐輪椅',
+  guideDemoGroup1: '第一車',
+  guideDemoGroup2: '第二車',
+  guideDemoRoom2: '週日崇拜',
+
+  guideChStart: '開一個空間',
+  guideChJoin: '加入別人的空間',
+  guideChRoll: '點名',
+  guideChInvite: '邀請與協助者',
+  guideChEdit: '編輯名單',
+  guideChFinish: '結束與帶走',
+  guideChHome: '管理你的空間',
+  guideChSettings: '設定與帳戶',
+  guideChTips: '最後',
+
+  guideCreateTitle: '創建空間',
+  guideCreateBody: '一場活動一個空間。按「創建空間」，貼上名單，幾秒鐘就開好。',
+  guideRosterTitle: '貼上名單',
+  guideRosterBody: 'LINE 接龍直接貼就行。開頭的編號與符號會自動拿掉；名字後面接的電話、備註會留在備註裡；寫「#第一車」就會分車。',
+  guideExampleTitle: '填入範例',
+  guideExampleBody: '不知道怎麼寫？按「填入範例」，活動名稱與一份範例名單一起填好，馬上看得到結果；之後按「清除範例」收乾淨。',
+  guideHelpTitle: '名單怎麼寫',
+  guideHelpBody: '標題旁的「?」就是「名單怎麼寫」：一行一個人、名字後面可以接備註、用 # 分車，每一條都配一個例子。',
+  guideSavedTitle: '常用名單',
+  guideSavedBody: '右上角的書籤是「常用名單」：把固定班底存起來，下次開空間一鍵套用。',
+  guidePreviewTitle: '清單預覽',
+  guidePreviewBody: '按「產生名單」會先給你看解析結果：每一列右邊的 ✕ 可以拿掉（猜錯的標題行就這樣處理）；同名的人會警告，讀不出名字的行會說略過了幾行；分車標題也會列出來。',
+  guideConfirmTitle: '確認建立',
+  guideConfirmBody: '沒問題就按「確認建立」，建好直接進空間；想改按「調整清單」回去。沒建成（例如沒網路）也不用重貼，名單會留一份草稿。',
+
+  guideJoinTitle: '加入空間',
+  guideJoinBody: '協助點名的人按「加入空間」。',
+  guideJoinCodeTitle: '代碼、連結或掃碼',
+  guideJoinCodeBody: '輸入主揪給的 6 碼代碼，貼上整條連結也行；有相機就按「掃描 QR 碼」直接掃。用代碼、連結或 QR 碼進來，都不用註冊、不用登入。',
+
+  guideIdentityTitle: '主揪與協助者',
+  guideIdentityBody: '頂欄最前面是你的身分：鑰匙是主揪，人像是協助者。編輯名單與結束點名只有主揪做得到；協助者可以點名，也可以臨時加人。點一下空間名稱回到名單頂端。',
+  guideFilterTitle: '篩選與搜尋',
+  guideFilterBody: '「全部」「未到」「已到」三段，大數字就是人數。「未到」是畫面上最重要的數字，歸零會變綠。右邊的放大鏡搜尋姓名，邊打邊篩。',
+  guideGroupsTitle: '分車分組',
+  guideGroupsBody: '名單裡寫了「#第一車」這種分組，就會多出一排分組標籤：點一車，畫面與數字就只算那一車；看「全部」時每一段前面有分組標題。',
+  guideTapTitle: '點名',
+  guideTapBody: '點一下名字就是已到。點錯了再點一次，或按「復原」。',
+  guideNotesTitle: '備註與撥號',
+  guideNotesBody: '名字底下是備註（例如「坐輪椅」）。備註裡撥得出去的號碼旁有一顆電話鍵：收尾時看到沒到的人，一鍵打電話。同名的人會多一個標籤（分車或電話尾碼）區分。',
+  guideSyncTitle: '離線與同步',
+  guideSyncBody: '名字旁的小圓點是同步狀態：一切正常時不出現；離線時出現，旁邊的數字是還沒上傳的筆數。離線照樣點，連上網會自動補上。你剛點的被別人改掉，會跳提示告訴你是誰改的。',
+
+  guideMoreTitle: '更多',
+  guideMoreBody: '空間右上角的「更多」：這份名單的事都在裡面。',
+  guideMenuTitle: '更多裡有什麼',
+  guideMenuBody: '「邀請點名」把代碼發出去；「編輯」進入編輯模式；「存成常用」把這份名單留起來。協助者看到的比較少：編輯名單、結束點名只有主揪做得到。',
+  guideMenuBodyLocal: '「邀請點名」說明這個版本為什麼發不出去；「編輯」進入編輯模式。協助者看到的比較少：編輯名單、結束點名只有主揪做得到。',
+  guideInviteTitle: '邀請點名',
+  guideInviteBody: '三種給法：「代碼」隔著車門喊得出去，「連結」貼進 LINE 群，「二維碼」讓對方用相機掃。協助者用任何一種進來都能一起點，不用註冊。',
+  guideInviteBodyLocal: '這個版本還沒連上雲端，名單只存在這支手機：代碼、連結、二維碼發出去別人也打不開，所以這一頁只說明這件事。你可以自己點完，再複製結果。',
+
+  guideEditTitle: '編輯',
+  guideEditBody: '在「更多」按「編輯」：標題可以直接改，名字與備註點開就能改，右邊的 ✕ 把人從名單移除（會再問一次，因為它會從所有裝置消失而且不能復原）。按右上角的 ✓ 完成。',
+  guideWalkinTitle: '臨時加人',
+  guideWalkinBody: '編輯模式底下的「＋」：沒報名卻到場的人，貼上名字就加進來，一加進來就是已到——他正站在你面前。協助者也可以加。',
+
+  guideFinishTitle: '結束點名',
+  guideFinishBody: '車開了，按「結束點名」。這一顆只有主揪看得到。',
+  guideFinishDialogTitle: '把結果帶走',
+  guideFinishDialogBody: '確認之前先把結果帶走：「複製」貼回 LINE（沒到的人排在最前面），「CSV」存成八欄的表格，有時間、誰點的、電話、分組、備註。',
+  guideClosedTitle: '結束之後',
+  guideClosedBody: '結束之後，頂端定格成結果卡片，仍然可以複製結果、下載 CSV，名單鎖住不能再點。要再點就按底下的「重新開啟」。',
+
+  guideRowsTitle: '你的空間清單',
+  guideRowsBody: '首頁每一列是一個空間：左邊是你的身分，接著是名稱、6 碼代碼與日期（你開的空間還帶著已到／總人數）。點一下進去；右邊的 ⋯ 是這個空間本身的選單。',
+  guideHomeFilterTitle: '找空間',
+  guideHomeFilterBody: '空間有兩個以上，清單上方才會出現篩選：「全部」「我的」「他人的」，有封存的時候多一個「封存」；右邊的放大鏡用名稱或代碼搜尋。',
+  guideRowMenuTitle: '空間的更多',
+  guideRowMenuBody: '「建立副本」把同一份名單、狀態全部歸零，回程點名用這個（協助者也做得到，副本會變成你的）；「封存」只是從清單收起來，隨時拿得回來；「刪除空間」只有主揪看得到，連同所有紀錄一起刪掉，下面的日期是它自動刪除的時間（開了 30 天後）。',
+
+  guideSettingsTitle: '設定',
+  guideSettingsBody: '首頁右上角的齒輪：「暱稱」讓別人看得到每個人是誰點的，「主題」「文字大小」「語言」照你的習慣調，「點名提示」決定每點一個人要不要跳「某某 · 已到」。',
+  guideAccountTitle: '帳戶',
+  guideAccountBody: '「帳戶」：登入（Google，或 Email 六碼驗證碼）之後，換手機也管得動你開的空間，常用名單跟著走；這支手機原本開的空間，登入時會一併接過去。協助點名的人永遠不用登入。',
+
+  guideTipsTitle: '加到主畫面',
+  guideTipsBody: '把 app 加到主畫面（iPhone：分享鍵 → 加入主畫面），它就像一般 app，也不會被 Safari 七天沒開就清掉名單。想再看這份導覽，隨時按右上角的 ? 鍵。',
   callMember: '打電話給 {name}',
   overridden: '{name} 已由{who}改為{status}',
   overriddenAnon: '{name} 已被其他人改為{status}',
@@ -623,27 +702,105 @@ const en: Record<MessageKey, string> = {
 
   settings: 'Settings',
   guideTitle: 'How to use',
-  guideHeading: 'Four steps to run a roll call',
-  guideStep1Title: 'Create a room',
-  guideStep1Body: 'Paste the roster (a chat thread works as-is), name the event, and check the preview before you create it.',
-  guideStep2Title: 'Invite',
-  guideStep2Body: 'In the room, tap “Invite” and give helpers the code, link or QR code. They tap “Join a room” and check names with you — no sign-in needed.',
-  guideStep2BodyLocal: 'This build has no cloud connection, so the list lives only on this phone and nobody else can join. You can still check names yourself and copy the result.',
-  guideStep3Title: 'Check names',
-  guideStep3Body: 'Tap a name to mark them here. Tapped the wrong one? Tap again, or press “Undo”.',
-  guideStep4Title: 'Finish roll call',
-  guideStep4Body: 'Switch to “Missing” to see who is left; anyone with a phone number gets a call button. When you are done, tap “Finish roll call” and paste the result into your chat.',
   guideStart: 'Get started',
   guideLater: 'To see this again, tap the ? button at the top right.',
   guideNext: 'Next',
   guidePrev: 'Previous',
+  guideIndex: 'Contents',
+  guideIndexHint: 'Which chapter?',
+  guideFromStart: 'Start from the beginning',
+  guideCount: '{n} / {total}',
+  guideStepsCount: '{n} steps',
+  guideStepsOne: '{n} step',
   guideSkip: 'Skip',
   guideProgress: 'Step {n} of {total}',
   guideTry: 'Try it: tap any name.',
   guideDemoName1: 'Alice Chen',
   guideDemoName2: 'Bob Lin',
   guideDemoName3: 'Dana Wu',
-  guideResultLead: 'What you would paste into your chat:',
+  guideDemoNote3: 'wheelchair',
+  guideDemoGroup1: 'Bus 1',
+  guideDemoGroup2: 'Bus 2',
+  guideDemoRoom2: 'Sunday service',
+
+  guideChStart: 'Create a room',
+  guideChJoin: 'Join a room',
+  guideChRoll: 'Check names',
+  guideChInvite: 'Invite & helpers',
+  guideChEdit: 'Edit the roster',
+  guideChFinish: 'Finish & take it with you',
+  guideChHome: 'Manage your rooms',
+  guideChSettings: 'Settings & account',
+  guideChTips: 'One last thing',
+
+  guideCreateTitle: 'Create a room',
+  guideCreateBody: 'One room per event. Tap “Create a room”, paste the roster, and it is ready in seconds.',
+  guideRosterTitle: 'Paste the roster',
+  guideRosterBody: 'Paste a chat thread as-is. Leading numbers and bullets are stripped; anything after the name (a phone number, a note) stays as a note; a line like “#Bus 1” starts a group.',
+  guideExampleTitle: 'Fill in an example',
+  guideExampleBody: 'Not sure how to write it? Tap “Fill in an example” — the event name and a sample roster are filled in so you can see the result right away. “Clear the example” puts it back.',
+  guideHelpTitle: 'How to write the roster',
+  guideHelpBody: 'The “?” next to the title is “How to write the roster”: one person per line, notes after the name, # for buses — each rule comes with an example.',
+  guideSavedTitle: 'Saved rosters',
+  guideSavedBody: 'The bookmark at the top right is “Saved rosters”: keep your regular crew and reuse it the next time you create a room.',
+  guidePreviewTitle: 'Preview',
+  guidePreviewBody: '“Generate the list” shows you how the roster was read first: tap ✕ on a row to drop it (that is how you remove a title line mistaken for a person); duplicate names are flagged, unreadable lines are counted as skipped, and group headings are listed.',
+  guideConfirmTitle: 'Confirm & create',
+  guideConfirmBody: 'Looks right? Tap “Confirm & create” and you are in the room. Want to change something? “Adjust the list” goes back. If it fails (no signal, say) you do not need to paste again — a draft is kept.',
+
+  guideJoinTitle: 'Join a room',
+  guideJoinBody: 'Helpers tap “Join a room”.',
+  guideJoinCodeTitle: 'Code, link or scan',
+  guideJoinCodeBody: 'Type the 6-character code the organiser gave you, or paste the whole link; with a camera, tap “Scan a QR code”. Code, link or QR — no sign-up, no sign-in.',
+
+  guideIdentityTitle: 'Organiser and helper',
+  guideIdentityBody: 'First in the top bar is who you are: a key is the organiser, a person is a helper. Editing the roster and finishing are the organiser’s; helpers can check names and add people on the spot. Tap the room name to jump back to the top of the list.',
+  guideFilterTitle: 'Filter & search',
+  guideFilterBody: '“All”, “Missing” and “Here”: the big number is the head count. “Missing” is the most important number on the screen — it turns green at zero. The magnifier searches names as you type.',
+  guideGroupsTitle: 'Buses and groups',
+  guideGroupsBody: 'Write “#Bus 1” in the roster and a row of group chips appears: tap one and the screen and its numbers count only that bus; in “All”, each section has a heading.',
+  guideTapTitle: 'Check names',
+  guideTapBody: 'Tap a name to mark them here. Tapped the wrong one? Tap again, or press “Undo”.',
+  guideNotesTitle: 'Notes and calling',
+  guideNotesBody: 'Under a name is the note (for example “wheelchair”). If the note has a number that can be dialled, a phone button sits next to it: when you spot who is missing, call them in one tap. Duplicate names get a tag (bus or last four digits) to tell them apart.',
+  guideSyncTitle: 'Offline and sync',
+  guideSyncBody: 'The small dot by the name is the sync state: it is absent when all is well, and shows up when you are offline — the number beside it is how many check-ins are waiting to upload. Keep checking offline; they upload when you are back. If someone changes what you just did, you get a note saying who.',
+
+  guideMoreTitle: 'More',
+  guideMoreBody: '“More” at the top right of the room: everything about this list lives in there.',
+  guideMenuTitle: 'What is in More',
+  guideMenuBody: '“Invite” hands out the code; “Edit” switches to edit mode; “Save as roster” keeps this list for later. Helpers see less: editing the roster and finishing are the organiser’s.',
+  guideMenuBodyLocal: '“Invite” explains why nothing can be sent from this build; “Edit” switches to edit mode. Helpers see less: editing the roster and finishing are the organiser’s.',
+  guideInviteTitle: 'Invite',
+  guideInviteBody: 'Three ways to give it out: the “Room code” can be shouted across a bus door, the “Link” goes into a chat group, the “QR code” is scanned with a camera. Helpers can join any way and check names with you — no sign-up.',
+  guideInviteBodyLocal: 'This build has no cloud connection, so the list lives only on this phone: a code, link or QR code would not open for anyone else — this page just says so. You can still check names yourself and copy the result.',
+
+  guideEditTitle: 'Edit',
+  guideEditBody: 'In “More”, tap “Edit”: the title can be renamed, a name or note opens to edit, and ✕ on the right removes a person (asked once more, because it disappears from every device and cannot be undone). Tap ✓ at the top right when done.',
+  guideWalkinTitle: 'Add someone',
+  guideWalkinBody: 'The “+” at the bottom in edit mode: someone who turned up without signing up — paste their name and they are added, already marked here, because they are standing in front of you. Helpers can add people too.',
+
+  guideFinishTitle: 'Finish roll call',
+  guideFinishBody: 'The bus is leaving: tap “Finish roll call”. Only the organiser sees this button.',
+  guideFinishDialogTitle: 'Take the result with you',
+  guideFinishDialogBody: 'Before you confirm, take the result with you: “Copy” pastes into your chat (people who are missing come first), “CSV” saves an eight-column table — time, who checked, phone, group, note.',
+  guideClosedTitle: 'After finishing',
+  guideClosedBody: 'After finishing, the top freezes into a result card — you can still copy the result or download the CSV, and the list is locked. To check names again, tap “Reopen” at the bottom.',
+
+  guideRowsTitle: 'Your rooms',
+  guideRowsBody: 'Each row on the home screen is a room: your role first, then the name, the 6-character code and the date (rooms you opened also show here / total). Tap to enter; the ⋯ on the right is the menu for the room itself.',
+  guideHomeFilterTitle: 'Finding a room',
+  guideHomeFilterBody: 'Once you have two or more rooms, a filter appears above the list: “All”, “Mine” and “Others\'” (plus “Archived” when there is something archived); the magnifier searches by name or code.',
+  guideRowMenuTitle: 'A room’s More',
+  guideRowMenuBody: '“Duplicate room” keeps the roster and resets every status — use it for the return trip (helpers can too, and become the organiser of the copy); “Archive” only tucks the room away, and you can bring it back; “Delete room” is the organiser’s only, removes every check-in, and the date below is when it is deleted automatically (30 days after it was created).',
+
+  guideSettingsTitle: 'Settings',
+  guideSettingsBody: 'The gear at the top right of the home screen: “Nickname” lets others see who checked each name; “Theme”, “Text size” and “Language” follow your habits; “Roll-call toast” decides whether each check shows “name · Here”.',
+  guideAccountTitle: 'Account',
+  guideAccountBody: '“Account”: sign in (Google, or a six-digit email code) and you can still manage your rooms after switching phones, and your saved rosters come along; rooms this phone already opened are moved over. Helpers never need to sign in.',
+
+  guideTipsTitle: 'Add to Home Screen',
+  guideTipsBody: 'Add the app to your home screen (iPhone: Share → Add to Home Screen): it behaves like a regular app and Safari will not clear your lists after seven days. To see this tour again, tap the ? button at the top right any time.',
   callMember: 'Call {name}',
   overridden: '{name} was set to {status} by {who}',
   overriddenAnon: '{name} was set to {status} by someone else',

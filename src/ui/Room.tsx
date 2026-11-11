@@ -753,7 +753,7 @@ export function Room({ code, onSettings, onGuide }: { code: string; onSettings: 
  * 「複製／CSV」讀得出來的意思跟完整標籤一模一樣。短標籤是完整標籤的子字串，螢幕
  * 閱讀器唸到的仍然是完整那一句（WCAG 2.5.3 label in name）。
  */
-function ResultActions({ onCopy, onCsv }: {
+export function ResultActions({ onCopy, onCsv }: {
   onCopy: () => void
   onCsv: () => void
 }) {
@@ -789,7 +789,7 @@ function RoomSkeleton({ label }: { label: string }) {
  * 說「畫面上最大的數字永遠是還有幾位沒到」，而計分區拿掉之後這裡就是那個數字
  * 唯一的家——它不能長得跟旁邊兩個一樣。
  */
-function Segment({ active, onClick, label, count, tone }: {
+export function Segment({ active, onClick, label, count, tone }: {
   active: boolean; onClick: () => void; label: string; count: number
   tone?: 'pending' | 'done'
 }) {
@@ -803,7 +803,7 @@ function Segment({ active, onClick, label, count, tone }: {
   )
 }
 
-function MemberRow({
+export function MemberRow({
   member, closed, showGroup, editing, editingThis, onToggle, onEdit, onSave, onRemove,
 }: {
   member: Member

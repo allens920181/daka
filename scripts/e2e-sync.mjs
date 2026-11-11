@@ -299,6 +299,70 @@ ok('[新同工] 不會卡在空白骨架', (await C.p.locator('.skeleton-row').c
 ok('[新同工] 有一顆回得去的按鈕', (await C.p.getByRole('button', { name: /回|返/ }).count()) > 0)
 await C.ctx.setOffline(false)
 
+// --- 聚焦導覽（雲端版）：整個 app 的每一個功能，29 步 ------------------------
+// 單機版跑的是 e2e-local.mjs（24 步）；雲端版多了「常用名單」「加入空間」「離線與同步」「帳戶」
+// 五步（見 guideSteps.ts 的 `cloud`），而且「更多」裡多一列「存成常用」、設定裡多一列「帳戶」。
+// 這個 context **不掛**自動關掉的處理器（見 `mk`）：要測的就是那個導覽本身。
+{
+  const CLOUD_STEPS = ['create', 'roster', 'example', 'help', 'saved', 'preview', 'confirm',
+    'join', 'joinCode',
+    'identity', 'filter', 'groups', 'tap', 'notes', 'sync',
+    'more', 'menu', 'invite', 'edit', 'walkin', 'finish', 'finishDialog', 'closed',
+    'rows', 'homeFilter', 'rowMenu', 'settings', 'account', 'tips']
+  const T = await b.newContext({ viewport: { width: 390, height: 844 } })
+  const q = await T.newPage()
+  const terrs = []
+  q.on('pageerror', (e) => terrs.push(e.message))
+  await q.goto(URL); await q.waitForTimeout(1500)
+  const geo = () => q.evaluate(() => {
+    const r = (e) => { if (!e) return null; const bb = e.getBoundingClientRect(); return { x: bb.x, y: bb.y, r: bb.right, b: bb.bottom } }
+    const frame = document.querySelector('.tour-focus'); const sel = frame?.getAttribute('data-target') ?? null
+    return { step: document.querySelector('.tour-callout')?.getAttribute('data-step'), sel,
+             frame: r(frame), target: sel ? r(document.querySelector(`.tour-stage ${sel}`)) : null,
+             card: r(document.querySelector('.tour-callout')), vh: document.querySelector('.tour-layer').clientHeight,
+             where: document.querySelector('.guide-where')?.textContent ?? '',
+             free: [...document.querySelectorAll('.tour-region')].filter((e) => !e.hasAttribute('inert')).length }
+  })
+  const seen = []; const issues = []
+  for (let i = 0; i < 40; i++) {
+    await q.waitForTimeout(550)
+    const g = await geo()
+    seen.push(g.step)
+    if (g.step === 'tips') { if (g.frame) issues.push('tips: 不該有聚焦框') }
+    else if (!g.frame || !g.target) issues.push(`${g.step}: 找不到聚焦框或目標（${g.sel}）`)
+    else {
+      if (!(g.frame.x <= g.target.x + 5 && g.frame.y <= g.target.y + 5 && g.frame.r >= g.target.r - 5 && g.frame.b >= g.target.b - 5)) issues.push(`${g.step}: 聚焦框沒有包住目標`)
+      if (!(g.card.y >= g.frame.b - 1 || g.card.b <= g.frame.y + 1)) issues.push(`${g.step}: 卡片蓋住了聚焦框`)
+    }
+    if (g.card.y < 0 || g.card.b > g.vh) issues.push(`${g.step}: 卡片跑出螢幕`)
+    if (g.step === 'tap' ? g.free !== 1 : g.free !== 0) issues.push(`${g.step}: 舞台 inert 不對`)
+    if (!g.where.includes('/ 29')) issues.push(`${g.step}: 卡片上沒有「/ 29」`)
+    // 雲端版才有的東西，舞台上也要有（跟真的畫面一樣）。
+    if (g.step === 'saved') ok('[導覽] 開空間頂欄右邊有書籤（常用名單，雲端版才有）', (await q.locator('.tour-stage [data-tour="saved"]').count()) === 1)
+    if (g.step === 'joinCode') ok('[導覽] 「加入空間」面板：代碼框、「加入」、「掃描 QR 碼」', (await q.locator('.tour-stage .code-row').count()) === 1 && (await q.locator('.tour-stage .sheet').getByRole('button', { name: /掃描 QR/ }).count()) === 1)
+    if (g.step === 'sync') ok('[導覽] 離線與同步：名字旁是離線的圓點，旁邊的數字是待上傳筆數', ((await q.locator('.tour-stage .sync-n').textContent()) || '').trim() === '2')
+    if (g.step === 'menu') ok('[導覽] 「更多」面板：邀請點名、編輯、存成常用（三列）', (await q.locator('.tour-stage .sheet-item').count()) === 3)
+    if (g.step === 'invite') ok('[導覽] 「邀請點名」：代碼、連結、二維碼三列（雲端版不是「只有你看得到」的警告）', (await q.locator('.tour-stage .sheet-item').count()) === 3 && (await q.locator('.tour-stage .note-warn').count()) === 0)
+    if (g.step === 'finishDialog') ok('[導覽] 結束對話框用雲端版的說法（「紀錄還在」），不是單機版的「只存在這支手機」', ((await q.locator('.tour-stage .dialog-body').textContent()) || '').includes('紀錄還在'))
+    if (g.step === 'settings') ok('[導覽] 設定面板多一列「帳戶」（未登入）', (await q.locator('.tour-stage .sheet-item').count()) === 6 && (await q.locator('.tour-stage [data-tour="account"]').count()) === 1)
+    if (g.step === 'tap') { await q.locator('.tour-stage .member-main').first().click(); await q.waitForTimeout(200) }
+    if (await q.getByRole('button', { name: '開始使用' }).count()) break
+    await q.getByRole('button', { name: '下一步' }).click()
+  }
+  ok(`[導覽] 一路走完：雲端版 ${CLOUD_STEPS.length} 步，順序就是步驟表`, JSON.stringify(seen) === JSON.stringify(CLOUD_STEPS))
+  if (issues.length) console.log('  走查發現：\n    ' + issues.join('\n    '))
+  ok('[導覽] 每一步：聚焦框包住目標、卡片在螢幕裡不蓋住框、舞台只有該點的地方碰得到', issues.length === 0)
+  // 目錄：雲端版九章，多了「加入別人的空間」。
+  await q.locator('.guide-where').click(); await q.waitForTimeout(500)
+  const items = await q.locator('.tour-callout .sheet-item').allTextContents()
+  ok('[導覽] 目錄：雲端版九章（含「加入別人的空間」）', items.length === 9 && items.some((x) => x.includes('加入別人的空間')))
+  ok('[導覽] 沒有動到任何一個真的空間（舞台的資料是模擬的）', (await q.evaluate(() => [...document.querySelectorAll('.recent-item')].filter((e) => !e.closest('.tour')).length)) === 0)
+  await q.getByRole('button', { name: '略過' }).click(); await q.waitForTimeout(400)
+  ok('[導覽] 看完關掉之後，這台手機上真的沒有多出任何空間', (await q.locator('.recent-item').count()) === 0)
+  console.log(terrs.length ? 'tour errors: ' + terrs.join('\n') : '')
+  await T.close()
+}
+
 console.log('\n--- page errors ---')
 const all = [...A.errs, ...B.errs, ...C.errs]
 console.log(all.length ? all.join('\n') : '(none)')
